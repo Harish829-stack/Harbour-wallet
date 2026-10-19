@@ -52,11 +52,11 @@ sequenceDiagram
   UI->>V: loadWithPassword(password) via throttle guard
   V->>L: read trust:vault, trust:pbkdf2
   loop iterations in [recorded, 20000, 210000], unique
-    V->>V: key = deriveKey(password, salt, n); try AES-GCM decrypt
+    V->>V: key = deriveKey(password, salt, n), then try AES-GCM decrypt
   end
   V->>S: password = key(20,000), unlockKey = key(210,000)
   alt recorded iterations were not 210,000
-    V->>L: re-encrypt vault with 210,000 key; trust:pbkdf2 = {salt, 210000}
+    V->>L: re-encrypt vault with 210,000 key, then trust:pbkdf2 = {salt, 210000}
   end
   V->>V: dispatch INIT(decrypted state)
 ```

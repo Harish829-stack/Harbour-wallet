@@ -51,11 +51,10 @@ Result: a web page cannot self-assert `isInternal` (CONFIRMED stripping). Exact 
 | Asset | Where | Protection | Label |
 |---|---|---|---|
 | Mnemonic / keys | Vault + wallet-core keystore | PBKDF2 + AES-GCM; keystore AES-128-CTR (doc 03) | CONFIRMED |
-| Wallet password (unlocked) | `storage.session["password"]` | Plain string, memory-backed, cleared on browser close | CONFIRMED |
-| Unlock key | `storage.session` | Form unknown | UNKNOWN |
+| Vault keys (unlocked) | `storage.session["password"]` (PBKDF2 20k derived key) and unlock key (210k) | Derived keys, not the raw password; memory-backed, cleared on browser close | CONFIRMED |
 | App state | `storage.local["trust:store"]` | Not shown encrypted | CONFIRMED storage, UNKNOWN contents |
 
-Risk note: any extension context able to read `storage.session` can read the password while unlocked. By default session storage is not exposed to content scripts, so the practical risk is a compromised extension page, not a web page (INFERRED).
+Risk note: any extension context able to read `storage.session` can read keys that decrypt the vault while unlocked. By default session storage is not exposed to content scripts, so the practical risk is a compromised extension page, not a web page (INFERRED).
 
 ## 6. Phishing and site controls
 
@@ -81,14 +80,14 @@ On WASM desync errors the worker schedules a guarded reload, limited by `selfHea
 
 ## 10. Threat surface summary (ranked)
 
-1. Plaintext password in session storage while unlocked.
+1. Vault-decrypting derived keys held in session storage while unlocked (not the raw password).
 2. Broad host permissions plus `scripting`/`tabs`.
 3. Telemetry data minimization unknown.
 4. No automated phishing or simulation protection (feature gap rather than vulnerability).
 
 ## 11. UNKNOWNs
 
-- `isInPopup` exact logic; max reload count; unlock key format.
+- `isInPopup` exact logic; max reload count.
 - Passkey secret source (carried from doc 03).
 - WalletConnect relay/project configuration (carried).
 - Sentry/Amplitude scrubbing.

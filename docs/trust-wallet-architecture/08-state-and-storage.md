@@ -18,7 +18,7 @@ flowchart TB
     PQ[popup query cache<br/>persistentQueryClient]
   end
   subgraph Sess[chrome.storage.session - cleared on browser close]
-    PW["password (MV3)"]
+    PW["password = 20k-iteration derived key (MV3)"]
     UK[unlock key]
   end
   RS -- persist/hydrate --> TS
@@ -35,8 +35,8 @@ flowchart TB
 | `storage.local` | `selfHealReloadGuard` | Guard record limiting self-heal reloads (1 h window) after WASM desync errors | No | CONFIRMED |
 | `storage.local` | popup query cache key | React Query persisted queries (offlineFirst persister) | No | CONFIRMED mechanism |
 | `storage.local` | `one-tap:*` prefix | Removed by migration `migrateOneTapRemoval` | n/a | CONFIRMED |
-| `storage.session` | `password` | The wallet password, read by `VaultService.getPassword()` and `isVaultUnlocked()` in MV3 | **Plain string in session storage** | CONFIRMED |
-| `storage.session` | unlock key | Derived unlock key (`getUnlockKey`) | UNKNOWN form | CONFIRMED access |
+| `storage.session` | `password` | Despite the name, the PBKDF2 (20,000 iterations) derived key, not the raw password: `setPassword(deriveKey(pw, salt, 20000))` in create/unlock; read by `VaultService.getPassword()` and `isVaultUnlocked()` in MV3 | Derived key, memory-backed session storage | CONFIRMED |
+| `storage.session` | unlock key | Derived unlock key: PBKDF2 210,000 iterations (`setUnlockKey`) | Derived key | CONFIRMED |
 | `localStorage` / cookie | `loglevel` | Third-party logger level only | No | CONFIRMED |
 | IndexedDB | none found | | | CONFIRMED absence (0 matches) |
 | `storage.sync` | none found | | | CONFIRMED absence |
@@ -84,13 +84,13 @@ Versioned arrays with two tracks, `migrations.version` (pre-boot) and `migration
 
 ## 6. Worked example: browser restart
 
-1. Browser closes: `storage.session` is wiped, so `password` and unlock key vanish; `trust:store` survives.
+1. Browser closes: `storage.session` is wiped, so the derived keys vanish; `trust:store` survives.
 2. Browser reopens, worker boots, hydrates `trust:store`, finds no session password, forces `authenticated=false`.
-3. UI shows unlock. Entering the password re-derives keys (doc 03) and rewrites `password` into session storage.
+3. UI shows unlock. Entering the password re-derives keys (doc 03) and rewrites them into session storage.
 
 ## 7. Findings worth flagging
 
-- The raw wallet password sits in `storage.session` while unlocked (MV3). Session storage is memory-only and not exposed to content scripts by default, but it is readable by any extension context and persists until browser close (see doc 09).
+- While unlocked, two derived keys (20k and 210k PBKDF2) sit in `storage.session` (MV3); the raw password is not stored. A key that decrypts the vault is still equivalent to the password for this wallet, so it is a sensitive in-memory secret until browser close (see doc 09).
 - Whether `trust:store` includes the encrypted vault or only UI state is UNKNOWN; vault ciphertext location was documented in doc 03 via VaultService.
 
 ## 8. UNKNOWNs
