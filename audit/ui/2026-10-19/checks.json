@@ -1,0 +1,302 @@
+{
+  "results": [
+    {
+      "name": "home",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1Back up your secret phrase…SendReceiveSwapFundCryptoApprova"
+    },
+    {
+      "name": "send",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SendAssetSepolia0.00000 ETH available · SepoliaRecipientAmountETHMaxSepolia is a"
+    },
+    {
+      "name": "send-invalid",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SendAssetSepolia0.00000 ETH available · SepoliaRecipientEnter a valid 0x address"
+    },
+    {
+      "name": "send-asset-sheet",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SendAssetSepolia0.00000 ETH available · SepoliaRecipientAmountETHMaxSepolia is a"
+    },
+    {
+      "name": "buy",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Fund your walletBuy cryptoPay with card, bank transfer or Apple/Google Pay throu"
+    },
+    {
+      "name": "receive-select",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "ReceiveSelect asset to receiveBitcoinBTCEthereumETHEthereum ClassicETCICONICXCos"
+    },
+    {
+      "name": "receive-qr",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "ReceiveEthereumEVM address0x45AbDa11812c2CdB53533E0f78E07F3A248517F5ShareCopy"
+    },
+    {
+      "name": "network-selector",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Select networkAll NetworksBitcoinEthereumEthereum ClassicICONCosmosRippleStellar"
+    },
+    {
+      "name": "search",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SearchCryptoDAppsAll87BTCBitcoinETHEthereumETCEthereum ClassicICXICONATOMCosmosX"
+    },
+    {
+      "name": "search-dapps",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SearchCryptoDAppsAll"
+    },
+    {
+      "name": "asset-detail",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "BitcoinBitcoin—1H1D1W1M1YAllHoldingsHistoryAboutMy BalanceBitcoin—…—SendReceive"
+    },
+    {
+      "name": "activity",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Activity"
+    },
+    {
+      "name": "nfts",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Collectibles"
+    },
+    {
+      "name": "trending-loading",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1TrendingNetworksTrending24HTokenPrice▼Market▼USDTTether$0.9"
+    },
+    {
+      "name": "trending-settled",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1TrendingNetworksTrending24HTokenPrice▼Market▼USDTTether$0.9"
+    },
+    {
+      "name": "swap",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1SwapYou payBalance: 0ETHEthereumYou will receive0Select Tok"
+    },
+    {
+      "name": "earn",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1EarnStaking is not available yetLive positions and rates wi"
+    },
+    {
+      "name": "wallet-selector",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "WalletsSecret phraseMain walletAccount 10x45Ab...17F5Add account Add new walletM"
+    },
+    {
+      "name": "settings",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SettingsHManage walletsMain wallet · 1 accountFullscreenSecurity10 minutesCustom"
+    },
+    {
+      "name": "currency",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "CurrencyPopularAUD - Australian DollarEUR - EuroGBP - British Pound SterlingRUB "
+    },
+    {
+      "name": "preferences",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "PreferencesAsset layoutBTC$108,200.00 +12.00%0.05$5,410.00123Manage cryptoHide a"
+    },
+    {
+      "name": "color-mode",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Color modeSystemLightDarkSystem follows your browser or operating-system appeara"
+    },
+    {
+      "name": "color-mode-dark",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Color modeSystemLightDarkSystem follows your browser or operating-system appeara"
+    },
+    {
+      "name": "settings-dark",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "SettingsHManage walletsMain wallet · 1 accountFullscreenSecurity10 minutesCustom"
+    },
+    {
+      "name": "home-dark",
+      "viewport": [
+        375,
+        600
+      ],
+      "bodyScrollWidth": 375,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1Back up your secret phrase…SendReceiveSwapFundCryptoApprova"
+    },
+    {
+      "name": "home-dark-320",
+      "viewport": [
+        320,
+        600
+      ],
+      "bodyScrollWidth": 320,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1Back up your secret phrase…SendReceiveSwapFundCryptoApprova"
+    },
+    {
+      "name": "home-dark-480",
+      "viewport": [
+        480,
+        800
+      ],
+      "bodyScrollWidth": 480,
+      "horizontalOverflow": false,
+      "missingImages": [],
+      "heading": "Main wallet Account 1Back up your secret phrase…SendReceiveSwapFundCryptoApprova"
+    }
+  ],
+  "errors": []
+}

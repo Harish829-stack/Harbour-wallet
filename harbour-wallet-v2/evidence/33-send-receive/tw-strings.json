@@ -1,0 +1,274 @@
+{
+ "address-and-memo-input.address.label": {
+  "text": "Address or Domain Name",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-and-memo-input.address.placeholder": {
+  "text": "`${g.symbol} Address`",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-and-memo-input.button.label": {
+  "text": "Done",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.add-wallet.title": {
+  "text": "Wallet Address",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.cancel-confirmation.discard": {
+  "text": "Discard Changes",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.cancel-confirmation.keep-editing": {
+  "text": "Keep Editing",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.edit-address-and-memo.title": {
+  "text": "Edit",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.input-address-and-memo.title": {
+  "text": "Add Address",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.select-asset.title": {
+  "text": "Select Asset",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "address-book-modal.title": {
+  "text": "Address Book",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "component.transaction-item.type.bridge": {
+  "text": "Bridge",
+  "chunk": "useTransactionsByDate-nTUC5P1-.js"
+ },
+ "dust-cleaner.token-count": {
+  "text": "{count, plural, one {# token} other {# tokens}}",
+  "chunk": "transaction-BuYaLDhl.js"
+ },
+ "gas-station.average": {
+  "text": "Average",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "gas-station.estimates.heading": {
+  "text": "Estimated transaction cost",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "gas-station.fast": {
+  "text": "Fast",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "gas-station.header": {
+  "text": "Gas Station",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "gas-station.heading": {
+  "text": "Gas cost",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "gas-station.safe": {
+  "text": "Safe",
+  "chunk": "gas-station-N9K16uK8.js"
+ },
+ "generic.pay-fee-with-flexgas": {
+  "text": "Pay this fee with <a>FlexGas</a>",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "inscription-balance-modal.description": {
+  "text": "You have {amount} {symbol} inscribed. If you want to spend it you need to unlock it from Settings.",
+  "chunk": "asset-COrXZQtQ.js"
+ },
+ "inscription-balance-modal.got-button": {
+  "text": "Got it",
+  "chunk": "asset-COrXZQtQ.js"
+ },
+ "inscription-balance-modal.header": {
+  "text": "Inscribed Tokens",
+  "chunk": "asset-COrXZQtQ.js"
+ },
+ "receive-asset-cell.address-copied": {
+  "text": "Address copied",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "select-asset.send.title": {
+  "text": "Select asset to send",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.content.amount": {
+  "text": "Amount",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.content.detail.data": {
+  "text": "Data",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.desc.contract": {
+  "text": "Runs the contract call below from your wallet. Review the recipient and the amount before you confirm.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.desc.send": {
+  "text": "Sends from your wallet to the address below.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.operator": {
+  "text": "Operator",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.set-approval-for-all-revoke": {
+  "text": "This revokes an operator’s permission to transfer NFTs in this collection.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.set-approval-for-all-warning": {
+  "text": "This grants the operator below permission to transfer ALL NFTs you own in this collection. Only approve if you fully trust this site.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.token-transfer-raw-amount": {
+  "text": "{amount} (base units)",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send-tx.token-transfer-warning": {
+  "text": "This transaction sends tokens out of your wallet. Verify the token, amount and recipient below before approving.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.approve": {
+  "text": "Approve {symbol}",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.approving": {
+  "text": "Approving...",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.confirm": {
+  "text": "Confirm Bridge",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.from": {
+  "text": "From",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.from-network": {
+  "text": "From Network",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.minimum-received": {
+  "text": "Minimum received",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.processing": {
+  "text": "Processing...",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.provider": {
+  "text": "Provider",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.title": {
+  "text": "Bridge & send",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.to": {
+  "text": "To",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.to-network": {
+  "text": "To Network",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.bridge.total": {
+  "text": "Total",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.confirm.bitcoin-dust-error": {
+  "text": "Unable to prepare the transaction due to a dust error. <a>Learn more</a>",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.insufficient-funds": {
+  "text": "Insufficient funds, please try again with a larger amount.",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.ledger-solana-blockhash-expired-retry": {
+  "text": "The transaction expired while waiting for your Ledger. Confirm it again on the device.",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.reserve-fee": {
+  "text": "Added to Reserve",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.reserve-fee-info": {
+  "text": "Learn more about XRP reserves",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.simulation-network": {
+  "text": "Couldn't verify the transaction due to a network issue. Check your connection and try again.",
+  "chunk": "logger-BMfNJZDI.js"
+ },
+ "send.confirm.simulation-reverted": {
+  "text": "This transaction can't be completed right now — it was rejected during simulation. If you just approved a token, wait a few seconds and try again.",
+  "chunk": "logger-BMfNJZDI.js"
+ },
+ "send.confirm.staking-transaction-not-supported": {
+  "text": "Staking transactions are not supported on hardware wallets.",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirm.validation.generic": {
+  "text": "Something went wrong.",
+  "chunk": "logger-BMfNJZDI.js"
+ },
+ "send.confirm.wasm-desync": {
+  "text": "Trust Wallet was updated in the background and needs a quick restart to finish. It will restart automatically — please try again right after.",
+  "chunk": "logger-BMfNJZDI.js"
+ },
+ "send.confirmation.guard.title": {
+  "text": "Before you send",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirmation.hot-wallet-memo-required": {
+  "text": "A memo is required when sending to this exchange address. Go back and add a memo, or your funds may be lost.",
+  "chunk": "HiddenAmount-fg7TOE71.js"
+ },
+ "send.confirmation.risk.high-risk-inline": {
+  "text": "This address has been identified as potentially risky.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.confirmation.risk.hot-wallet-memo": {
+  "text": "This looks like an exchange deposit address. It will need a memo/tag.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.confirmation.risk.sanctioned": {
+  "text": "This recipient address is restricted or has been flagged as fraudulent.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.confirmation.risk.smart-contract": {
+  "text": "This address belongs to a smart contract. Sending tokens directly to a contract may result in permanent loss.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.confirmation.risk.unavailable": {
+  "text": "We couldn't check this recipient right now. Double-check the address before continuing.",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "send.destination-network.label": {
+  "text": "Destination network",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "transaction.spending-limit-unlimited": {
+  "text": "Unlimited",
+  "chunk": "App-D29UTaP5.js"
+ },
+ "transaction.still-pending.body": {
+  "text": "It's taking longer than usual to confirm. You can check its status on the block explorer, or learn what to do if it stays stuck.",
+  "chunk": "transaction-BuYaLDhl.js"
+ },
+ "transaction.still-pending.learn-more": {
+  "text": "Learn more",
+  "chunk": "transaction-BuYaLDhl.js"
+ },
+ "transaction.still-pending.title": {
+  "text": "This transaction is still pending",
+  "chunk": "transaction-BuYaLDhl.js"
+ },
+ "transaction.swap-reverted.retry": {
+  "text": "Try again",
+  "chunk": "transaction-BuYaLDhl.js"
+ }
+}

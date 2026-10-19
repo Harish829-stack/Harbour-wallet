@@ -1,0 +1,42 @@
+{
+  "browser": "141.0.7390.37",
+  "scope": "development fixtures only; no extension integration or target parity claim",
+  "results": [
+    {
+      "case": "portfolio rendered",
+      "status": "captured, requires inspection"
+    },
+    {
+      "case": "send rendered",
+      "status": "captured, requires inspection"
+    },
+    {
+      "case": "approval rendered",
+      "status": "captured, requires inspection"
+    },
+    {
+      "case": "components rendered",
+      "status": "captured, requires inspection"
+    },
+    {
+      "case": "welcome rendered",
+      "status": "captured, requires inspection"
+    },
+    {
+      "case": "form validation, review gating, dialog Escape",
+      "status": "pass"
+    },
+    {
+      "case": "preview rejection feedback",
+      "status": "pass"
+    },
+    {
+      "case": "375x600 horizontal overflow (four fixture surfaces)",
+      "status": "pass"
+    },
+    {
+      "case": "browser page errors",
+      "status": "pass"
+    }
+  ]
+}

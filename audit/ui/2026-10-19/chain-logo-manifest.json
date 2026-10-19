@@ -1,0 +1,415 @@
+{
+  "source": "trustwallet/assets master, unpinned; original candidate URL per file not recorded",
+  "files": [
+    {
+      "name": "agoric.png",
+      "bytes": 5883,
+      "sha256": "629557f1f89186e940b501da6b20076c6ded99a4d4de97488b1e1b1e7d787693"
+    },
+    {
+      "name": "aion.png",
+      "bytes": 24458,
+      "sha256": "81827d0dd536975ef905b73d56c963aa263fe3b931b512294604099d1654fdd6"
+    },
+    {
+      "name": "akash.png",
+      "bytes": 9299,
+      "sha256": "5cc60d19875df8eb6421c3893286edd278d53d57c0337b3f67814c39ed252d8a"
+    },
+    {
+      "name": "algorand.png",
+      "bytes": 3070,
+      "sha256": "8a0776d710e86eba00609e3aa89effaa2c895dd3137a050ac58c8915dac942fb"
+    },
+    {
+      "name": "aptos.png",
+      "bytes": 5466,
+      "sha256": "030fc736338e392f4da475108706266e10ff77442b181e6a3b1d034f7481a615"
+    },
+    {
+      "name": "arbitrum.png",
+      "bytes": 21628,
+      "sha256": "a12644f04d8b8099dd5f0427a8189abcf1a60707efe68feee354587ec23ae403"
+    },
+    {
+      "name": "arc.png",
+      "bytes": 17841,
+      "sha256": "85b16b415267be18dadb42f2fad5c140f444fd0cff0d2becf5a864dc64eac5c9"
+    },
+    {
+      "name": "avalanchec.png",
+      "bytes": 23229,
+      "sha256": "fde310a87a0c83345d8fd194b3a65edf6d73cdd6ef5c2f1aa9344e60ebc88589"
+    },
+    {
+      "name": "axelar.png",
+      "bytes": 9738,
+      "sha256": "b4ff3b5f402fe293b571d784eaaf77f75b5bec178e499b4a46c54863867244f7"
+    },
+    {
+      "name": "base.png",
+      "bytes": 3367,
+      "sha256": "5a47cf1cb030398a2ba05f578573f3f3ed6b9d9f9a776a772049f05a57d60c6e"
+    },
+    {
+      "name": "bitcoin.png",
+      "bytes": 4918,
+      "sha256": "5119d67e7902df5ef9d0e40e309b5f2da85dd8a736eae870072dbe647ed6bcc4"
+    },
+    {
+      "name": "blast.png",
+      "bytes": 14137,
+      "sha256": "307040066f0af378034c8be51688f5765b3dc3a772646233317c937fa1c5918f"
+    },
+    {
+      "name": "boba.png",
+      "bytes": 7274,
+      "sha256": "85263a20cfeed2be95eb4cd91b8b4d59f17c89ce0a2528f1c8d7d1bc3ec23962"
+    },
+    {
+      "name": "bouncebit.png",
+      "bytes": 15822,
+      "sha256": "e3205ff6c18b128e5154fe8a79b349d78c3a0b95242cde8a06b2f0ede4ea90a3"
+    },
+    {
+      "name": "celo.png",
+      "bytes": 8401,
+      "sha256": "097f3d9bf6ddb304ec98040a5a89f61b519d9840e3ab9f4ba6f3fac765a0a0f2"
+    },
+    {
+      "name": "cfxevm.png",
+      "bytes": 56970,
+      "sha256": "b4b2eec6a097699a5bd4d55b4ff67a0c02162337dcc5ba42a6c57adc323fc558"
+    },
+    {
+      "name": "classic.png",
+      "bytes": 2953,
+      "sha256": "fb97a335e2264c783fdf0416fc249482a0389676817f18a9c5ef3088bd964c39"
+    },
+    {
+      "name": "cosmos.png",
+      "bytes": 5944,
+      "sha256": "dc5c2d0bd18ed4f4def21b6459f4eff45c04991c7662d05a72399fe655f71b44"
+    },
+    {
+      "name": "cronos.png",
+      "bytes": 9539,
+      "sha256": "d7bb796b43eb7754cf28ceaf795a05127fa1258472eee6e58ac6efdf57a845b7"
+    },
+    {
+      "name": "elrond.png",
+      "bytes": 6724,
+      "sha256": "278951c51c4fbfcb26c09e463aad0e54981aaa5c53059a82fcffee080d28ef21"
+    },
+    {
+      "name": "ethereum.png",
+      "bytes": 2984,
+      "sha256": "c253d7c5d4203783e31bde1d33e143f6a9ce1defac24ab5e06948847696b80a1"
+    },
+    {
+      "name": "fantom.png",
+      "bytes": 6050,
+      "sha256": "682efebfb0145afab90f40636dd5c1a67f2f26e470ac3ae5226f7117d3224fab"
+    },
+    {
+      "name": "filecoin.png",
+      "bytes": 5606,
+      "sha256": "51619095c855eb5829973b606149d059b3d5c2aef3420f4d9a02364f12d041b5"
+    },
+    {
+      "name": "fio.png",
+      "bytes": 27410,
+      "sha256": "b1a00d68c3f6818c7ffceb13769475e416a5241258136c4c3fa896b4369b4a51"
+    },
+    {
+      "name": "gochain.png",
+      "bytes": 14371,
+      "sha256": "28852d1cafa964f4f128f5802ed8fb31549366e48b17d8fedcb344eaa3996661"
+    },
+    {
+      "name": "harmony.png",
+      "bytes": 28422,
+      "sha256": "410ca3f041808bb541c6b8e4702185d3e680e74cb5d188f7418d588a6f2f648f"
+    },
+    {
+      "name": "hyperevm.png",
+      "bytes": 5563,
+      "sha256": "27ba7a7b1267e95890710ba2d67fd44b144d0871b5b3bf773c2cab6b723a9521"
+    },
+    {
+      "name": "icon.png",
+      "bytes": 8579,
+      "sha256": "f1c796f0a4f0db2eab5df480d161f9d2a7d2ad34e86cd94c1fa4beb5d0541ded"
+    },
+    {
+      "name": "internet_computer.png",
+      "bytes": 29783,
+      "sha256": "1b6e114580326c8745798f74f800abf32f48b71d79cd3bdd687ada306e87c090"
+    },
+    {
+      "name": "iotex.png",
+      "bytes": 42520,
+      "sha256": "a401620f0e23dd13672366ef07827f8a40f5152b32d90251c0dedef15673260a"
+    },
+    {
+      "name": "iotexevm.png",
+      "bytes": 29592,
+      "sha256": "725a70071136091dfc7a4ff88c205d08571018696d28bb75ffc03b102d2063f0"
+    },
+    {
+      "name": "juno.png",
+      "bytes": 18493,
+      "sha256": "567024e7a20c283a66618aedf816454ed30e01520931bc35bb85bcd0f90f12a6"
+    },
+    {
+      "name": "kava.png",
+      "bytes": 17152,
+      "sha256": "4988c6c9fe34d5f28a717db722e2814e999ab6bf2d0394b8ffecd182f78f670c"
+    },
+    {
+      "name": "kavaevm.png",
+      "bytes": 17152,
+      "sha256": "4988c6c9fe34d5f28a717db722e2814e999ab6bf2d0394b8ffecd182f78f670c"
+    },
+    {
+      "name": "kcc.png",
+      "bytes": 19738,
+      "sha256": "f3e1558f23270af3e25810152ed76e5c1dfeca7db4b03e907d62776fc63d2324"
+    },
+    {
+      "name": "klaytn.png",
+      "bytes": 4607,
+      "sha256": "128a159efc2e1d61b926380c4c4ded05a1b98eef13b1afed0ca747c483c826df"
+    },
+    {
+      "name": "kusama.png",
+      "bytes": 2215,
+      "sha256": "d058e51b6d7b17b7849d4f9fac56393c524541bc8e6a84a4109e35d732d6db5b"
+    },
+    {
+      "name": "linea.png",
+      "bytes": 15785,
+      "sha256": "557e6310f4f1886ff354832749270abb9581ba286cf31b3c7b99d1d12077c400"
+    },
+    {
+      "name": "manta.png",
+      "bytes": 10919,
+      "sha256": "73229d7bd424109afa0e47b2860a291f2f08fe02c559d83ecc47cf46e266c56d"
+    },
+    {
+      "name": "mantle.png",
+      "bytes": 14499,
+      "sha256": "e2c7f562c73973ff34b941477f916e7d6ca519e0181d628d6651eb40c836413f"
+    },
+    {
+      "name": "megaeth.png",
+      "bytes": 60498,
+      "sha256": "2b6a36d69bef2bed5c5671da854677d0d9d846938abbec86966f64ff71e638bb"
+    },
+    {
+      "name": "merlin.png",
+      "bytes": 44385,
+      "sha256": "cd1b73d7b89bc6306c2a917f2a4dbdb75f024dffad63ff0c7bd5e833ec5bcbca"
+    },
+    {
+      "name": "metis.png",
+      "bytes": 41657,
+      "sha256": "e1ce465bdd09908a746de9597c251e527c3135c91bcb5b88a9522f7f7279c2f1"
+    },
+    {
+      "name": "monad.png",
+      "bytes": 26990,
+      "sha256": "eb4c3a7c42a23d483ebce40e79067563404b3bcfa0bae8a2577b9f63f14a4d9e"
+    },
+    {
+      "name": "moonbeam.png",
+      "bytes": 13936,
+      "sha256": "5267a248b580b12d13fa9f00b948a405a2de1d51ecc5f3bb55474a34dd7f1778"
+    },
+    {
+      "name": "moonriver.png",
+      "bytes": 18185,
+      "sha256": "a21e25d457537c517b871ff2040a78ebe7d25af32e5d8919c0d30820ec8b8d00"
+    },
+    {
+      "name": "nativeinjective.png",
+      "bytes": 12362,
+      "sha256": "17b815e57a055469e46f7cfd70df4616f0713ebeba77f41a0faf378144277dab"
+    },
+    {
+      "name": "near.png",
+      "bytes": 1900,
+      "sha256": "3ef6620bdc78d7c782068d435c0b97cec0f68b3c7ed4e0e9e2787b8ba5cd8102"
+    },
+    {
+      "name": "nimiq.png",
+      "bytes": 2835,
+      "sha256": "1857ec55c47129323309baeb10cf1eefdaac6808e9083645f937db811c24a1d5"
+    },
+    {
+      "name": "ontology.png",
+      "bytes": 3477,
+      "sha256": "cbd27deb84500457c7ae3ebda89518441ec503b2864fbbba1fa8822d31f32e64"
+    },
+    {
+      "name": "opbnb.png",
+      "bytes": 28999,
+      "sha256": "33c0f62cd9bc5d3c789cde5834accc6988e351039c2ecaf22402fa8490a8aa1a"
+    },
+    {
+      "name": "optimism.png",
+      "bytes": 2506,
+      "sha256": "ac49f27e374a1f192a8a473ca00082294729410c1c02e6a538ce730681380d7d"
+    },
+    {
+      "name": "osmosis.png",
+      "bytes": 39366,
+      "sha256": "978917fa160a821cbe9458de54ddd8f38bf5f7c5987b6cc42d896f4b5fa9561e"
+    },
+    {
+      "name": "plasma.png",
+      "bytes": 29091,
+      "sha256": "613ca1d95a1b74f2ed4e55196d9fb6cf8a43a039beae9a6462725c342e1c7d7e"
+    },
+    {
+      "name": "polkadot.png",
+      "bytes": 14415,
+      "sha256": "d36bf05f05ea4d94d6c76adad58214306ac28cb7481543603fe3685b15e8e5f4"
+    },
+    {
+      "name": "polygon.png",
+      "bytes": 10248,
+      "sha256": "ba495a374776ab6cfaecc15b3e3d0f9b04743cd0309f99575b8599fc0112e030"
+    },
+    {
+      "name": "ripple.png",
+      "bytes": 7004,
+      "sha256": "11110d0ef1946d0c2eb9c140631daabbda798a09c9bb9d70875d5773a987848f"
+    },
+    {
+      "name": "robinhoodchain.png",
+      "bytes": 8227,
+      "sha256": "83372dbd91a9faf263e9690efe5086fbdd218183fe8f6b6d73a19245ec5dc72e"
+    },
+    {
+      "name": "ronin.png",
+      "bytes": 1586,
+      "sha256": "cd325811f4fc5522ab3b7fc1bece71d9f409edbfaa1f22a330470aa0f08384ab"
+    },
+    {
+      "name": "scroll.png",
+      "bytes": 14610,
+      "sha256": "c3087d036cb4b31e3c92d326f6835136294cf3a55af206e8cf447161dac6bb9a"
+    },
+    {
+      "name": "sei.png",
+      "bytes": 27592,
+      "sha256": "7b6d10508f216de6e4f09035be26f9d95a18c8645b64e54fcdc7e86c30220031"
+    },
+    {
+      "name": "smartchain.png",
+      "bytes": 16072,
+      "sha256": "1ceadd0447350643dd0828120b3768ffad23c857d3e127a730217a3a1a03dbcc"
+    },
+    {
+      "name": "solana.png",
+      "bytes": 54309,
+      "sha256": "b0fb83e48d1b455333436ae158cd9e547b7493ef4f5b2d5de3d678e93a994d4c"
+    },
+    {
+      "name": "sonic.png",
+      "bytes": 26234,
+      "sha256": "f6a08690c283b992da67d8eddfb95d56375b58814734483f40bb6fc2fbc79e40"
+    },
+    {
+      "name": "stellar.png",
+      "bytes": 2943,
+      "sha256": "1b334463e85c45ff525d13453a8ed6857fdffd2889385934454b624f271fd893"
+    },
+    {
+      "name": "stride.png",
+      "bytes": 1929,
+      "sha256": "126c0ab235207b74c95a3d0a7321d5b2a1c1fc8534381204242c6be7a4162782"
+    },
+    {
+      "name": "sui.png",
+      "bytes": 6535,
+      "sha256": "4f8bdce8c8effcc5fb8402578051f3800eab3ac590b100de4e0f4da35dd0dc93"
+    },
+    {
+      "name": "terra.png",
+      "bytes": 15714,
+      "sha256": "ed1dfd91477bd55ed50263644ee101c7e123617212558e7a043ecfc20df5bba5"
+    },
+    {
+      "name": "tezos.png",
+      "bytes": 6839,
+      "sha256": "8837630c17f51cc7fa3c4538eda8ba6bfb248bd8649db3800292cc7cb93e00aa"
+    },
+    {
+      "name": "theta.png",
+      "bytes": 2021,
+      "sha256": "28ce0c03848f9a516e4064bb20fb56ad2329c85f1589971c8f1513df074991d4"
+    },
+    {
+      "name": "thorchain.png",
+      "bytes": 13760,
+      "sha256": "864ab98b0959d359202f14e86a4fecc4136bb54a97d7cf19f3f9a9c9e6681cc3"
+    },
+    {
+      "name": "thundertoken.png",
+      "bytes": 11725,
+      "sha256": "2fde1324acc6326c5e6ac5c4c9c790cc3277080c379bf12bc2f14a8fbc2b8dbc"
+    },
+    {
+      "name": "tomochain.png",
+      "bytes": 10038,
+      "sha256": "e83a982f56a40f16fb521b2b921563e13f188ff5cb52f216e7e9e7ed1e7afb60"
+    },
+    {
+      "name": "ton.png",
+      "bytes": 6185,
+      "sha256": "6434e8d6e515f65e422e8583cd96f6bffe18904e6a4babb140fb6d542ea4488a"
+    },
+    {
+      "name": "tron.png",
+      "bytes": 25773,
+      "sha256": "53830c1f0b3c7654c7caa55df858d2967b7e55194d207162bf7cf9371323a1c6"
+    },
+    {
+      "name": "vechain.png",
+      "bytes": 6043,
+      "sha256": "0e950082a5954bfc60ae3a6017d02c8bb307fb65316c9b44b02ab222a6e73678"
+    },
+    {
+      "name": "wanchain.png",
+      "bytes": 3088,
+      "sha256": "367e4799681c82eda0437f5ecfea0ad06ba7c17a6f7faa64f9301ad690db8592"
+    },
+    {
+      "name": "waves.png",
+      "bytes": 12376,
+      "sha256": "0f221f63c6ec5844f20aba753b5e627dd2cc62a536cf70d4a62837652d4a80a4"
+    },
+    {
+      "name": "xdai.png",
+      "bytes": 19942,
+      "sha256": "05a882a3d6dbef94c78cd32f531cf9f7814581badd4de203ef7ce9baf81f2dac"
+    },
+    {
+      "name": "zetachain.png",
+      "bytes": 22032,
+      "sha256": "130a6fb32a3bb4e8f53de34557718fce34115789914f95d9440157ac16075577"
+    },
+    {
+      "name": "zilliqa.png",
+      "bytes": 5333,
+      "sha256": "220c07e2ad888be0c2a191a461670d5945e3c1660253ba3ce27add363483c730"
+    },
+    {
+      "name": "zksync.png",
+      "bytes": 11863,
+      "sha256": "7ee37859e1a4e751ecbdd59f33c1e330b0834a7ccdd83d0c3c864f8cc3598867"
+    }
+  ]
+}

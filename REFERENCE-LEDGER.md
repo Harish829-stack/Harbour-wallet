@@ -1,0 +1,13 @@
+# Extension visual references — 2026-10-16
+
+This is design research, not evidence of target runtime behavior. Trust v26.41.0 behavior and navigation claims are recorded separately in `trust-wallet-RE.md`, `UI-PARITY.md`, and `evidence/`.
+
+| Extension | Material inspected | Useful visual observations | Limit |
+|---|---|---|---|
+| Trust Wallet | Supplied v26.41.0 loaded in isolated Chromium; fresh onboarding captures in `evidence/02-onboarding-flow/2026-10-16-runtime/`; [official extension page](https://trustwallet.com/browser-extension) and [Chrome listing](https://chromewebstore.google.com/detail/trust-wallet/egjidjbpglichdcondbcbdnbeeppgdph) | Full-page onboarding has an illustrated left rail, restrained right-side controls, clear step transitions. Target route structure is separately code-discovered. | Official marketing pages do not establish runtime behavior or packaging signature. |
+| Rabby | [Official Rabby site](https://rabby.io/), desktop extension screenshots inspected in browser | Denser asset and approval composition, stronger number emphasis and compact rows. | Marketing screenshot only; no Rabby extension interaction observed. |
+| Rainbow | [Official browser extension import guide](https://rainbow.me/support/extension/importing-an-existing-wallet-on-the-browser-extension) | Desktop extension import uses a distinct full-page state and dark, focused form treatment. | Guide screenshots, not local runtime. The general `/extension` page redirected to mobile-oriented content and was excluded. |
+| MetaMask | [Official extension feature update](https://metamask.io/en-GB/news/metamask-feature-update-portfolio-view-extension) | A large balance, compact actions, and clear asset list hierarchy work at extension width. | Dated marketing imagery; no MetaMask runtime observed. |
+| Phantom | [Official browser wallet guide](https://phantom.com/learn/guides/how-to-create-a-new-wallet) and [official help](https://help.phantom.com/articles/29995498642195) | Browser-specific flow documentation confirms onboarding surface category. | No usable desktop extension screenshot was inspected; no visual conclusion is drawn. |
+
+Chosen Harbour direction: Inter, deep teal and warm paper, generous type contrast without oversized cards, locally bundled real asset marks, one line-icon family, flat controls with restrained depth, visible focus and reduced-motion support. Purposeful nautical illustration belongs to onboarding; asset and approval surfaces prioritize information. Portfolio, send and approval fixture captures and checks are in `audit/design/2026-10-16/`. Those fixtures never count as integrated wallet screens.

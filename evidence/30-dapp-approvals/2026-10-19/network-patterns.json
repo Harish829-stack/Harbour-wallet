@@ -1,0 +1,929 @@
+{
+  "source": {
+    "path": "harbour-wallet-v2/E2E-network-log-trust-wallet.har",
+    "sha256": "4842eee7bf7be240e277e175aa4cd0645eee623c0e87cf26ff0ac9e03f121abf",
+    "bytes": 53464733,
+    "entries": 1098
+  },
+  "projection": "URLs omit query values, naas tokens and hex addresses; headers/cookies/response bodies/params omitted; RPC method names retained. Ordinals unchanged. This is a derivative, not original bytes.",
+  "hosts": {
+    "gateway.us.trustwallet.com": 543,
+    "gateway.trustwallet.com": 5,
+    "theta.twnodes.com": 12,
+    "litecoin-blockbook.twnodes.com": 6,
+    "doge-blockbook.twnodes.com": 6,
+    "dash-blockbook.twnodes.com": 6,
+    "viacoin-blockbook.twnodes.com": 12,
+    "groestlcoin-blockbook.twnodes.com": 6,
+    "digibyte-blockbook.twnodes.com": 6,
+    "o4507686279512064.ingest.us.sentry.io": 9,
+    "stargaze-api.twnodes.com": 24,
+    "neutron-api.twnodes.com": 6,
+    "zcash-blockbook.twnodes.com": 6,
+    "firo-blockbook.twnodes.com": 6,
+    "bitcoincash-blockbook.twnodes.com": 6,
+    "nano.twnodes.com": 12,
+    "polkadot.twnodes.com": 6,
+    "aion.twnodes.com": 6,
+    "ravencoin-blockbook.twnodes.com": 6,
+    "kusama.twnodes.com": 6,
+    "aeternity.twnodes.com": 6,
+    "callisto.twnodes.com": 6,
+    "thundertoken.twnodes.com": 7,
+    "cardano-graphql.twnodes.com": 30,
+    "qtum-blockbook.twnodes.com": 6,
+    "nebulas.twnodes.com": 11,
+    "zelcash-blockbook.twnodes.com": 6,
+    "thorchain.twnodes.com": 6,
+    "polygon-zkevm.twnodes.com": 6,
+    "crypto-org-lcd.twnodes.com": 24,
+    "osmosis-lcd.twnodes.com": 20,
+    "evmos-jsonrpc.twnodes.com": 6,
+    "evmos-api.twnodes.com": 24,
+    "klaytn.twnodes.com": 6,
+    "greenfield.twnodes.com": 6,
+    "zetachain-evm.twnodes.com": 6,
+    "neon.twnodes.com": 9,
+    "bouncebit.twnodes.com": 6,
+    "zklink-nova-evm.twnodes.com": 6,
+    "btc-book.twnodes.com": 32,
+    "ethereum.twnodes.com": 20,
+    "assets-cdn.trustwallet.com": 7,
+    "bsc.twnodes.com": 13,
+    "platform.trustwallet.com": 6,
+    "query.thegraph.kiln.fi": 11,
+    "api.bnbchain.org": 5,
+    "solana.twnodes.com": 10,
+    "wallet-kit.trustwallet.com": 1,
+    "ronin.twnodes.com": 3,
+    "ethereum-sepolia-rpc.publicnode.com": 81,
+    "bin.bnbstatic.com": 1,
+    "decred-blockbook.twnodes.com": 3,
+    "aag.twnodes.com": 11,
+    "ethereum-sponsored.twnodes.com": 2
+  },
+  "rpcMethods": [
+    {
+      "host": "theta.twnodes.com",
+      "method": "theta.GetAccount",
+      "count": 12
+    },
+    {
+      "host": "aion.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "callisto.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "thundertoken.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 7
+    },
+    {
+      "host": "polygon-zkevm.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "evmos-jsonrpc.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "klaytn.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "zetachain-evm.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "neon.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 9
+    },
+    {
+      "host": "bouncebit.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "zklink-nova-evm.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 6
+    },
+    {
+      "host": "ethereum.twnodes.com",
+      "method": "eth_call",
+      "count": 18
+    },
+    {
+      "host": "bsc.twnodes.com",
+      "method": "eth_call",
+      "count": 12
+    },
+    {
+      "host": "ethereum.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 2
+    },
+    {
+      "host": "bsc.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 1
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getStakeMinimumDelegation",
+      "count": 1
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getBalance",
+      "count": 1
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getInflationRate",
+      "count": 2
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getMinimumBalanceForRentExemption",
+      "count": 1
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getProgramAccounts",
+      "count": 2
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getVoteAccounts",
+      "count": 2
+    },
+    {
+      "host": "solana.twnodes.com",
+      "method": "getEpochInfo",
+      "count": 1
+    },
+    {
+      "host": "ronin.twnodes.com",
+      "method": "eth_getBalance",
+      "count": 3
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_chainId",
+      "count": 8
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_getBalance",
+      "count": 21
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_getTransactionCount",
+      "count": 6
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_estimateGas",
+      "count": 6
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_gasPrice",
+      "count": 6
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_sendRawTransaction",
+      "count": 2
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_getTransactionByHash",
+      "count": 11
+    },
+    {
+      "host": "aag.twnodes.com",
+      "method": "eth_getUserOperationReceipt",
+      "count": 11
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_getTransactionReceipt",
+      "count": 2
+    },
+    {
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "method": "eth_call",
+      "count": 19
+    },
+    {
+      "host": "ethereum-sponsored.twnodes.com",
+      "method": "pm_isSponsorable",
+      "count": 2
+    }
+  ],
+  "paths": [
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v3/devices/REDACTED_ID/wallets/REDACTED_ID/meta",
+      "count": 3
+    },
+    {
+      "method": "PUT",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/devices/REDACTED_ID/push-topics",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets",
+      "count": 120
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v3/nft/collections",
+      "count": 15
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/market/tickers",
+      "count": 51
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v3/devices/REDACTED_ID/wallets/REDACTED_ID/register",
+      "count": 7
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/balances/stream",
+      "count": 35
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/announcements",
+      "count": 32
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/amber-api/v1/domains",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/c0",
+      "count": 3
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/c60",
+      "count": 4
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/c20000714",
+      "count": 4
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/centrifugo-hooks/token",
+      "count": 4
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/balances/chains",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/cex-transfer/providers/coinbase-pay/assets",
+      "count": 33
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/cex-transfer/providers/binance-pay/assets",
+      "count": 33
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/devices/REDACTED_ID",
+      "count": 17
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/stream/ws",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/devices/fingerprint",
+      "count": 9
+    },
+    {
+      "method": "GET",
+      "host": "gateway.trustwallet.com",
+      "path": "/v2/projects/REDACTED_ID/nodes",
+      "count": 5
+    },
+    {
+      "method": "POST",
+      "host": "theta.twnodes.com",
+      "path": "/naas/session/REDACTED/rpc",
+      "count": 12
+    },
+    {
+      "method": "GET",
+      "host": "litecoin-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "doge-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "dash-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "viacoin-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 12
+    },
+    {
+      "method": "GET",
+      "host": "groestlcoin-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "digibyte-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "o4507686279512064.ingest.us.sentry.io",
+      "path": "/api/4509275482226688/envelope/",
+      "count": 9
+    },
+    {
+      "method": "GET",
+      "host": "stargaze-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegators/REDACTED_ID/unbonding_delegations",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "stargaze-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegations/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "stargaze-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/distribution/v1beta1/delegators/REDACTED_ID/rewards",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "stargaze-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "neutron-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "zcash-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "firo-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "bitcoincash-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "nano.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 12
+    },
+    {
+      "method": "GET",
+      "host": "polkadot.twnodes.com",
+      "path": "/naas/session/REDACTED/accounts/REDACTED_ID/balance-info",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "aion.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "ravencoin-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/invests/stablecoin/config",
+      "count": 2
+    },
+    {
+      "method": "GET",
+      "host": "kusama.twnodes.com",
+      "path": "/naas/session/REDACTED/accounts/REDACTED_ID/balance-info",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "aeternity.twnodes.com",
+      "path": "/naas/session/REDACTED/v2/accounts/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "callisto.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "thundertoken.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 7
+    },
+    {
+      "method": "POST",
+      "host": "cardano-graphql.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 30
+    },
+    {
+      "method": "GET",
+      "host": "qtum-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "nebulas.twnodes.com",
+      "path": "/naas/session/REDACTED/v1/user/accountstate",
+      "count": 11
+    },
+    {
+      "method": "GET",
+      "host": "zelcash-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "thorchain.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "polygon-zkevm.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "crypto-org-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegators/REDACTED_ID/unbonding_delegations",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "crypto-org-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegations/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "crypto-org-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/distribution/v1beta1/delegators/REDACTED_ID/rewards",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "crypto-org-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "osmosis-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegators/REDACTED_ID/unbonding_delegations",
+      "count": 5
+    },
+    {
+      "method": "GET",
+      "host": "osmosis-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegations/REDACTED_ID",
+      "count": 5
+    },
+    {
+      "method": "GET",
+      "host": "osmosis-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/distribution/v1beta1/delegators/REDACTED_ID/rewards",
+      "count": 5
+    },
+    {
+      "method": "GET",
+      "host": "osmosis-lcd.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 5
+    },
+    {
+      "method": "POST",
+      "host": "evmos-jsonrpc.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "evmos-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegators/REDACTED_ID/unbonding_delegations",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "evmos-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/staking/v1beta1/delegations/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "evmos-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/distribution/v1beta1/delegators/REDACTED_ID/rewards",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "evmos-api.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ID",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "klaytn.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "greenfield.twnodes.com",
+      "path": "/naas/session/REDACTED/cosmos/bank/v1beta1/balances/REDACTED_ADDRESS",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "zetachain-evm.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "neon.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 9
+    },
+    {
+      "method": "POST",
+      "host": "bouncebit.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "host": "zklink-nova-evm.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "btc-book.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 32
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets/listings",
+      "count": 12
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/discover/new",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/REDACTED_ID",
+      "count": 26
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets/c60_tREDACTED_ADDRESS",
+      "count": 8
+    },
+    {
+      "method": "POST",
+      "host": "ethereum.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 20
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/coinstatus/c60",
+      "count": 3
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/validate/address",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "assets-cdn.trustwallet.com",
+      "path": "/blockchains/smartchain/tokenlist.json",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/search/assets",
+      "count": 6
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets",
+      "count": 3
+    },
+    {
+      "method": "GET",
+      "host": "assets-cdn.trustwallet.com",
+      "path": "/blockchains/ethereum/tokenlist.json",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v3/points/REDACTED_ADDRESS/vip",
+      "count": 4
+    },
+    {
+      "method": "POST",
+      "host": "bsc.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 13
+    },
+    {
+      "method": "GET",
+      "host": "platform.trustwallet.com",
+      "path": "/v1/defi/network-stats",
+      "count": 2
+    },
+    {
+      "method": "GET",
+      "host": "platform.trustwallet.com",
+      "path": "/v1/defi/stakes",
+      "count": 4
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/txhub/bulk_history",
+      "count": 62
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/c966",
+      "count": 3
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets/tabs-config",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/assets/trending-config",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/coinstatus/REDACTED_ID",
+      "count": 4
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/invests/staking",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "query.thegraph.kiln.fi",
+      "path": "/subgraphs/name/vsuite",
+      "count": 11
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/coinstatus/c20000714",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "assets-cdn.trustwallet.com",
+      "path": "/blockchains/smartchain/validators/list.json",
+      "count": 3
+    },
+    {
+      "method": "GET",
+      "host": "api.bnbchain.org",
+      "path": "/bnb-staking/v1/validator/all",
+      "count": 5
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/coinstatus/c501",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/coinstatus/c501",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "assets-cdn.trustwallet.com",
+      "path": "/blockchains/solana/validators/list.json",
+      "count": 2
+    },
+    {
+      "method": "POST",
+      "host": "solana.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 10
+    },
+    {
+      "method": "GET",
+      "host": "wallet-kit.trustwallet.com",
+      "path": "/v1/apr/proxy/stakewiz",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "ronin.twnodes.com",
+      "path": "/naas/session/REDACTED",
+      "count": 3
+    },
+    {
+      "method": "POST",
+      "host": "ethereum-sepolia-rpc.publicnode.com",
+      "path": "/",
+      "count": 81
+    },
+    {
+      "method": "GET",
+      "host": "bin.bnbstatic.com",
+      "path": "/api/i18n/-/web/cms/sp/86a37593e/en/translations",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v3/devices/REDACTED_ID/wallets/REDACTED_ID/address_association",
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/approvals/scan",
+      "count": 2
+    },
+    {
+      "method": "GET",
+      "host": "decred-blockbook.twnodes.com",
+      "path": "/naas/session/REDACTED/api/v2/address/REDACTED_ID",
+      "count": 3
+    },
+    {
+      "method": "POST",
+      "host": "aag.twnodes.com",
+      "path": "/naas/session/REDACTED/v2",
+      "count": 11
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/buycrypto/screens/funding",
+      "count": 1
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/market/charts/REDACTED_ID",
+      "count": 5
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/discover/group/invest-staking",
+      "count": 4
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/market/info/REDACTED_ID",
+      "count": 2
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v2/market/sentiment-assets",
+      "count": 4
+    },
+    {
+      "method": "GET",
+      "host": "gateway.us.trustwallet.com",
+      "path": "/v1/txhub/txs",
+      "count": 4
+    },
+    {
+      "method": "POST",
+      "host": "ethereum-sponsored.twnodes.com",
+      "path": "/naas/session/REDACTED/v2/",
+      "count": 2
+    }
+  ]
+}

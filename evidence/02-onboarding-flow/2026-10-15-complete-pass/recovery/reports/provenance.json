@@ -1,0 +1,22 @@
+{
+  "format": "unknown",
+  "strategy": "structural",
+  "modules": {
+    "Completed-5mEUoaUY.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/Completed-5mEUoaUY.js", "ranges": [[0,525757]], "extraction": "structural"},
+    "CreatePassword-BarNsCnn.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/CreatePassword-BarNsCnn.js", "ranges": [[0,3953]], "extraction": "structural"},
+    "Globe--aAbxHdG.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/Globe--aAbxHdG.js", "ranges": [[0,236974]], "extraction": "structural"},
+    "OnboardingBoxContent-DcFJIaKL.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/OnboardingBoxContent-DcFJIaKL.js", "ranges": [[0,10919]], "extraction": "structural"},
+    "Security-BkVC-Kss.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/Security-BkVC-Kss.js", "ranges": [[0,90563]], "extraction": "structural"},
+    "SelectImportMethod-ClL8FjcB.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/SelectImportMethod-ClL8FjcB.js", "ranges": [[0,166739]], "extraction": "structural"},
+    "authentication-CGHHMXIG.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/authentication-CGHHMXIG.js", "ranges": [[0,115303]], "extraction": "structural"},
+    "backup-seedphrase-Cpn6mc58.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/backup-seedphrase-Cpn6mc58.js", "ranges": [[0,126549]], "extraction": "structural"},
+    "create-mnemonic-DKsF45cy.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/create-mnemonic-DKsF45cy.js", "ranges": [[0,1168]], "extraction": "structural"},
+    "import-mnemonic-or-private-key-CXfCQtf3.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/import-mnemonic-or-private-key-CXfCQtf3.js", "ranges": [[0,28377]], "extraction": "structural"},
+    "import-qr-nu_XkZeU.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/import-qr-nu_XkZeU.js", "ranges": [[0,832959]], "extraction": "structural"},
+    "onboarding-BHcKddMJ.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/onboarding-BHcKddMJ.js", "ranges": [[0,15880]], "extraction": "structural"},
+    "set-passkeys-BWLIDsIJ.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/set-passkeys-BWLIDsIJ.js", "ranges": [[0,3922]], "extraction": "structural"},
+    "types-DrDwy2JA.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/types-DrDwy2JA.js", "ranges": [[0,1705]], "extraction": "structural"},
+    "useSetupAuthentication-EZlruew7.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/useSetupAuthentication-EZlruew7.js", "ranges": [[0,3158]], "extraction": "structural"},
+    "useValidatePassword-Dn2iwOd-.js": {"input": "/tmp/rea-wakaru-kNtl8V/inputs/useValidatePassword-Dn2iwOd-.js", "ranges": [[0,6279]], "extraction": "structural"}
+  }
+}

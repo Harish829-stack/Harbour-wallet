@@ -1,0 +1,14 @@
+import type React from 'react';
+import type { Ctx } from '../screens';
+import { SCREENS_provider } from './provider';
+import { SCREENS_send } from './send';
+import { SCREENS_earn } from './earn';
+import { SCREENS_nfts } from './nfts';
+import { SCREENS_ramps } from './ramps';
+import { SCREENS_discover } from './discover';
+import { SCREENS_onboarding } from './onboarding';
+import { SCREENS_settings } from './settings';
+import { SCREENS_walletconnect } from './walletconnect';
+import { SCREENS_ledger } from './ledger';
+import { SCREENS_gas } from './gas';
+export const FEATURE_SCREENS: Record<string, React.FC<Ctx>> = { ...SCREENS_provider, ...SCREENS_send, ...SCREENS_earn, ...SCREENS_nfts, ...SCREENS_ramps, ...SCREENS_discover, ...SCREENS_onboarding, ...SCREENS_settings, ...SCREENS_walletconnect, ...SCREENS_ledger, ...SCREENS_gas };

@@ -1,0 +1,68 @@
+[
+  {
+    "slice": "evidence/slices/10-home-assets-slice.js",
+    "bytes": 19582,
+    "contiguous_in_background": -1,
+    "sha256": "163e0cf388f1278a3e84683f8bbf5343bf9f3f27939fd43b97c26cda0fbc75f7"
+  },
+  {
+    "slice": "evidence/slices/11-transaction-slice.js",
+    "bytes": 1150,
+    "contiguous_in_background": -1,
+    "sha256": "4b6e90d686616bf1378a5f98c8aad9d13c2e208cc8d94e76b14923cae975059b"
+  },
+  {
+    "slice": "evidence/slices/12-dapp-provider-slice.js",
+    "bytes": 627,
+    "contiguous_in_background": -1,
+    "sha256": "5d61810a4c28640bb828f677fc52bd02b3733a8eea72c852b0e32a5ca476b9fe"
+  },
+  {
+    "slice": "evidence/slices/15-network-slice.js",
+    "bytes": 3939,
+    "contiguous_in_background": -1,
+    "sha256": "eddd47e7ec6db291adbb2cfcb6763518c99724fd2efe575a29147e0085776191"
+  },
+  {
+    "slice": "evidence/slices/16-walletconnect-slice.js",
+    "bytes": 1737,
+    "contiguous_in_background": -1,
+    "sha256": "03807d72f8536568ed4ff7cc58db2588fbe3a70061d335c8f9267a4d82a71071"
+  },
+  {
+    "slice": "evidence/slices/17-swap-slice.js",
+    "bytes": 17922,
+    "contiguous_in_background": -1,
+    "sha256": "0e40f8b946cb8ee26c16bb0200bd4f692db0119eef10b948adab98059384a962"
+  },
+  {
+    "slice": "evidence/slices/derivation-slice.js",
+    "bytes": 30773,
+    "contiguous_in_background": -1,
+    "sha256": "9711f3846a1bde8faac33fcfac6b3178fc6d78af32399aebd9cb55d8a76b59d9"
+  },
+  {
+    "slice": "evidence/slices/install-entry-slice.js",
+    "bytes": 2811,
+    "contiguous_in_background": -1,
+    "sha256": "d750d801161a024e4749092944008af82f0417d412e65b05281ad2c8c85348c2"
+  },
+  {
+    "slice": "evidence/slices/lock-session-slice.js",
+    "bytes": 2228,
+    "contiguous_in_background": -1,
+    "sha256": "2cfd07f75f9869191cd802e076d6691a86389bc451e21d52d51d79ab4959f4f4"
+  },
+  {
+    "slice": "evidence/slices/vault-crypto-slice.js",
+    "bytes": 16989,
+    "contiguous_in_background": -1,
+    "sha256": "8849d4e683417b5194ead0a69396187b256ae13ae4da7da88821b0e21350711a"
+  },
+  {
+    "slice": "evidence/slices/walletcore-usage-slice.js",
+    "bytes": 33291,
+    "contiguous_in_background": -1,
+    "sha256": "4710134be1a372a27053e3caece6cbfce5a11cede7f4d7b3a22271ddec5905bc"
+  }
+]

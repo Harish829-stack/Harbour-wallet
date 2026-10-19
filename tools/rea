@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+tool_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export REA_WAKARU_COMMAND="$tool_root/toolchain/node_modules/@wakaru/cli-darwin-arm64/wakaru"
+export REA_WABT_BIN_DIRECTORY="$tool_root/vendor/wabt/build"
+export REA_DARWIN_MODULE_CACHE_PATH="$tool_root/darwin-module-cache"
+exec "$tool_root/toolchain/node_modules/.bin/rea" "$@"

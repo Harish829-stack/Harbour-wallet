@@ -1,0 +1,2147 @@
+[
+  {
+    "path": "_locales/en/messages.json",
+    "bytes": 980,
+    "sha256": "688f3aedbb86aac7b449aa65841aa337e9c17032d89544c03791932a56489315"
+  },
+  {
+    "path": "_metadata/computed_hashes.json",
+    "bytes": 2003025,
+    "sha256": "dfc94bfc8701ab746deb9280b7b6b8b2cc28324eecb4d5c3d2a8462f116419ee"
+  },
+  {
+    "path": "_metadata/verified_contents.json",
+    "bytes": 66467,
+    "sha256": "e415bc4f144910805c45e76b172c5cfff2dbce81adf3166fc9d315d3f5d17ff8"
+  },
+  {
+    "path": "assets/BinancePlex-Light-Dk-luP3T.otf",
+    "bytes": 125588,
+    "sha256": "b57351c9057d720855f5e01ce6949b507ba3ab3f0d862eed12e3920138c82cff"
+  },
+  {
+    "path": "assets/BinancePlex-Medium-BpU6gxin.otf",
+    "bytes": 130276,
+    "sha256": "764befa8d285d29d174344e8fefc6961d3a084cc00e231c1d31422fcf532df4b"
+  },
+  {
+    "path": "assets/BinancePlex-Regular-BLuvvIRe.otf",
+    "bytes": 124572,
+    "sha256": "b57676888c12c1c5fe37cb3b46297c3fd455e0f80473aeab535edc25be1ff304"
+  },
+  {
+    "path": "assets/BinancePlex-SemiBold--t69YBF_.otf",
+    "bytes": 129860,
+    "sha256": "7affb9abef8faa60ddbf1dca59ee237801b4ea8fff9ab5283edf00d469168200"
+  },
+  {
+    "path": "assets/Geeza-Bold-BMj5jrYh.ttf",
+    "bytes": 474064,
+    "sha256": "c8bd83c573242c219e9a75cf5838e47e463661ca731dcc5811d1eefba8c63ed6"
+  },
+  {
+    "path": "assets/Geeza-Regular-9V6Mz8PY.ttf",
+    "bytes": 105808,
+    "sha256": "cc1ae045f684e35afec9e72aa803736447c66138735d842cc08baaac0067200b"
+  },
+  {
+    "path": "assets/Inter-Bold-BVTOCPiq.ttf",
+    "bytes": 344152,
+    "sha256": "30a5c45ec23a594af2effe8d3b589ad22c2dede27441050a1604d00ff82fd0dc"
+  },
+  {
+    "path": "assets/Inter-Light-DbzEu6wT.ttf",
+    "bytes": 343704,
+    "sha256": "f0e82b52327efcb68e1b181019ad81d6773bc5ee2addb0b3588d5712740054cd"
+  },
+  {
+    "path": "assets/Inter-Medium-BtfNrkJj.ttf",
+    "bytes": 343200,
+    "sha256": "7c7206c451a89a8fa8f38f3c217f67e60b830db9e21645e36155cc62cd1f9903"
+  },
+  {
+    "path": "assets/Inter-Regular-BpskOkD5.ttf",
+    "bytes": 342680,
+    "sha256": "3e5f90a0138b38de4cf4d779ad78391974ea1df776b9164842bdcbb60ce383c5"
+  },
+  {
+    "path": "assets/Inter-SemiBold-C9_sHzqi.ttf",
+    "bytes": 343828,
+    "sha256": "a8b276e25bb13dfa39cface35cc92aff9a7d5f1b96143f0df8c66351ccfed2a4"
+  },
+  {
+    "path": "assets/P2P-A7NbmPSP.png",
+    "bytes": 9721,
+    "sha256": "f874ae86a71c8ae4de98af602107afd7bc460c893a398f367a16c7d02d00ff81"
+  },
+  {
+    "path": "assets/PSE-ByBkIjEB.png",
+    "bytes": 4772,
+    "sha256": "d795ce8e020d4542c12bb3cea2768d8d9b1b99a9e992703115fd6d029c832fbf"
+  },
+  {
+    "path": "assets/PingFang-Bold-Bl6A-zU-.ttf",
+    "bytes": 10923212,
+    "sha256": "96ec2276d8e77453e0e44f1e9633ee513396f2eeabb3d330f9e9306343b25fd9"
+  },
+  {
+    "path": "assets/PingFang-Light-Daf0V7Ff.ttf",
+    "bytes": 11024840,
+    "sha256": "b5d7b527d7d055508ee3be44df5d3a7820ba874073897a4e0d7c761dcfe7ef8f"
+  },
+  {
+    "path": "assets/PingFang-Regular-BHiaWigb.ttf",
+    "bytes": 11004656,
+    "sha256": "26b017dfb34a8aa0059f47eda6f90d7ffd19a24912dc1129abc24867a1385353"
+  },
+  {
+    "path": "assets/Render-JDzJ85ta.css",
+    "bytes": 132573,
+    "sha256": "9387f8fe9b0062d3756ba796b4fcb3016757eba636d5e7b345a2e7f2aed49e3f"
+  },
+  {
+    "path": "assets/afghanistan-CsKYyZ-O.svg",
+    "bytes": 93819,
+    "sha256": "5a40cbb05523642d22fcac685c71bd1e345625a0cd1eb6d5c085a5ac898af849"
+  },
+  {
+    "path": "assets/albania-BjJ1avUQ.svg",
+    "bytes": 9494,
+    "sha256": "4de1b958e4cb7ac40cb8c633ed07ff5bd41bc2b88e8d1be2d8dab2d485227b33"
+  },
+  {
+    "path": "assets/argentina-Cg82Ylbx.svg",
+    "bytes": 60207,
+    "sha256": "1c251dfc6c9c6a89b3628eb16ec72a77e09511ab56dadf23f7a5a7fb6700e1db"
+  },
+  {
+    "path": "assets/belarus-BVsKJ3k9.svg",
+    "bytes": 7923,
+    "sha256": "b1f1f8366cf8bc93b924ea8de8d0b2f70cfc5c190240878495aa12d2cf1e3c82"
+  },
+  {
+    "path": "assets/belize-DcZw9n54.svg",
+    "bytes": 423756,
+    "sha256": "000f53f22cfc0bba800f8ef11a886e5d3ac90e30e9607d43ef12edc8e05e8db4"
+  },
+  {
+    "path": "assets/bermuda-DwIjt2EI.svg",
+    "bytes": 133929,
+    "sha256": "d34fb49b1b12c1389fbff46bae1f3f98fbf1e325769ffea9cd7e915ca76cba0b"
+  },
+  {
+    "path": "assets/brazil-DTI3tvGv.svg",
+    "bytes": 12564,
+    "sha256": "c554ea6c6b7d2c342fbdb584f73c64d87b263d78bb5f19331ae11642d919118b"
+  },
+  {
+    "path": "assets/brunei-B-lIuWKT.svg",
+    "bytes": 30439,
+    "sha256": "fcf8db74853025f1f62ce6bd76d24a6e42560d0cc7d67eab42dc0fa403fa6073"
+  },
+  {
+    "path": "assets/cambodia-Bt6gDOGV.svg",
+    "bytes": 62923,
+    "sha256": "614b0af8b85ed059e7a668c8b4e70e3a0f71b77a9b66b717509b35c21e1251fe"
+  },
+  {
+    "path": "assets/cayman-islands-BaxbQge-.svg",
+    "bytes": 227821,
+    "sha256": "c0f0cdf3897c92d6826e102e7344d50018da14da1bbfd4b9292dd50b1189aad7"
+  },
+  {
+    "path": "assets/croatia-B0zsQ2vW.svg",
+    "bytes": 135800,
+    "sha256": "1126fbcbe13dfd6b0a5e91de49e7a5b429a8dcf5c73c9d179a6f2acfb75da969"
+  },
+  {
+    "path": "assets/dominican-republic-BGSroZ64.svg",
+    "bytes": 233524,
+    "sha256": "b50eac16d964d5b284bec6b57e65666a3e5f7e3b442469d74148597e0e7bb8a4"
+  },
+  {
+    "path": "assets/egypt-ZjynIeoE.svg",
+    "bytes": 49756,
+    "sha256": "651b733907414e20684c456ed669ff08506da63d197713969d4cf12c6c538ae0"
+  },
+  {
+    "path": "assets/eritrea-Eo9t8nA_.svg",
+    "bytes": 26311,
+    "sha256": "d4bf4e2c65dfff40114be9e733ca9fd03db30847791c62d02fd5b4b75422569c"
+  },
+  {
+    "path": "assets/falkland-islands-CwbdmWD-.svg",
+    "bytes": 206965,
+    "sha256": "767c981209ad5384d9f0047ae87fff724ba82b5e31e94da25ae98cee316ff50c"
+  },
+  {
+    "path": "assets/fiji-zQzdujBf.svg",
+    "bytes": 222470,
+    "sha256": "0957f572656bc4a76c16c8eb4dcf41bc90c46acb55a5bb6c2a81e6b782e6ca77"
+  },
+  {
+    "path": "assets/french-polynesia-yQmRf4iM.svg",
+    "bytes": 12861,
+    "sha256": "9e5135708dc9604046c335bcf3cefd8829d53c692de2ba529ea05e2edcdf3cf2"
+  },
+  {
+    "path": "assets/generic-1-BMQaBaYP.gif",
+    "bytes": 1827846,
+    "sha256": "60403438b38bee70f1b701c50c0cb8d870d13ca0ef4c95f88d2dd29c11e9e421"
+  },
+  {
+    "path": "assets/generic-2-C7xANjS3.gif",
+    "bytes": 1745668,
+    "sha256": "84f81faac6ff686135d5f5797acf7814ae08bf878647d48bf6faf9475edb1e31"
+  },
+  {
+    "path": "assets/generic-3-B4T264Cr.gif",
+    "bytes": 2328799,
+    "sha256": "6cbe48dbb2d04eaff1e48fb9dcba1a40699273ad1232af316c1c180c3137e11b"
+  },
+  {
+    "path": "assets/gibraltar-Dwq5exM5.svg",
+    "bytes": 28969,
+    "sha256": "318df0509ccbf66b2a0ea9b13692ad78c1dd98f8e8539d8d30ad26f166564ab8"
+  },
+  {
+    "path": "assets/guatemala-TBTmapAJ.svg",
+    "bytes": 546256,
+    "sha256": "dec68e2b61493ce80f97b56199655c154edd1ef25b2114c814c9b277b6eb3cc5"
+  },
+  {
+    "path": "assets/haiti-DNSlBEht.svg",
+    "bytes": 95906,
+    "sha256": "9eacb6b5f731f7d98a5af839e9257411a72bc84dcd73b4a3056e5c43a5b1eb22"
+  },
+  {
+    "path": "assets/hong-kong-HcvRMPsC.svg",
+    "bytes": 5603,
+    "sha256": "81572d03b22ffb49d783fc7705edeb7a07569291905b9971c59d21075b045e09"
+  },
+  {
+    "path": "assets/india-Csk9noVw.svg",
+    "bytes": 14332,
+    "sha256": "c3ed7e8120dc28691a8fda7619068765da8dc0ceb77811a8dd602ef4289f1785"
+  },
+  {
+    "path": "assets/iran-BT1EUQ5H.svg",
+    "bytes": 8619,
+    "sha256": "fbf1dc9831021f79e78bd0387cf84b6c6088ca5a52a6d4dd8601f92b548c33c9"
+  },
+  {
+    "path": "assets/iraq-BkkwHn7o.svg",
+    "bytes": 4556,
+    "sha256": "dd0488f3244ad16b6c01a91ec61998c9b5ee04f2009c9c55169e26c2e5f73642"
+  },
+  {
+    "path": "assets/isle-of-man-Cjan8YiI.svg",
+    "bytes": 63328,
+    "sha256": "9889a9747ebd16c11574e59f9f78623fd254e1fe4c5464a37c505d85fbff2a02"
+  },
+  {
+    "path": "assets/jersey-BLZaUINV.svg",
+    "bytes": 179287,
+    "sha256": "8d89b034caa6dbaa1a5a9597b62eef6bc9b3576c5ef6d8a6739d468d8b061cae"
+  },
+  {
+    "path": "assets/kazakhstan-DJNazIsM.svg",
+    "bytes": 29296,
+    "sha256": "4e1224bdff18282d64a1a8194da7909c5ee44535f31c7ca47f12fa2faa3e6e74"
+  },
+  {
+    "path": "assets/kyrgyzstan-Bi9x4EJ9.svg",
+    "bytes": 11316,
+    "sha256": "2f9fa6e786efe66fff877ca1f562375fe626c79147996ffef2dd7823eb10e68d"
+  },
+  {
+    "path": "assets/lebanon-HOKyPZ8n.svg",
+    "bytes": 14488,
+    "sha256": "53f062963c41bf767d4aba29d38c64c76dd631596f764cc2baaf46c213163afd"
+  },
+  {
+    "path": "assets/malawi-Civw-rQ3.svg",
+    "bytes": 7136,
+    "sha256": "f6894492e0ecaefa60bccc50dcb780a3d17a4bc8b8de62ab25a7c80982915bf1"
+  },
+  {
+    "path": "assets/mexico-BngtIIkt.svg",
+    "bytes": 298984,
+    "sha256": "fc6b30f1cd8fcb0b178fc8e10e57fd8c4e05c3de3c346df3a8d5ca90ea4e83ee"
+  },
+  {
+    "path": "assets/moldova-Bzo9LuiK.svg",
+    "bytes": 42929,
+    "sha256": "658d7702f55a7e230d68b00896bb553a9c0137c76344ec80f1aea43ad75946ba"
+  },
+  {
+    "path": "assets/mongolia-BTSpGoss.svg",
+    "bytes": 4582,
+    "sha256": "01277ac8c8909463cb8ab92c53d30835551408e3cdf76f273054819b8ed8e227"
+  },
+  {
+    "path": "assets/mozambique-CkZqjPvY.svg",
+    "bytes": 8322,
+    "sha256": "06a4ff8c84b2ae06394d6618f0e8b431c017d04426aa192175a2ce5a1849db6f"
+  },
+  {
+    "path": "assets/nicaragua-BSnMObiw.svg",
+    "bytes": 127253,
+    "sha256": "10d0b01832b075a6f221b7f2fd9d022cc4f932130b1da965bec81e444a47ff74"
+  },
+  {
+    "path": "assets/pancakeswap-banner-DZpaafr7.png",
+    "bytes": 58236,
+    "sha256": "dae4dc9f262d065cd59ba81702b32d83f7b7e6f2929503faf8e25313a382abf1"
+  },
+  {
+    "path": "assets/papua-new-guinea-UJ1OCN3W.svg",
+    "bytes": 4361,
+    "sha256": "344e0195e2648e6f39fc7b6686bbe79f74509597501b82182f9991f723d907b1"
+  },
+  {
+    "path": "assets/paraguay-DgyvZ7TT.svg",
+    "bytes": 34508,
+    "sha256": "bcf222b457c6922f6eff8a09d26e0ec757c9545863acb5751815b4b85be33556"
+  },
+  {
+    "path": "assets/peru-ChRzNXuO.svg",
+    "bytes": 349675,
+    "sha256": "9bd95485be9fb091acf5becd772e41df82bf9aa397506f1263f524470e78b7ef"
+  },
+  {
+    "path": "assets/salvador-BKVcY04Y.svg",
+    "bytes": 252314,
+    "sha256": "dab651cf2d6b0245bc4d69d7cc31c88e1421e5dfd51aff63d2db9432eb4e6d80"
+  },
+  {
+    "path": "assets/saudi-arabia-BZ_cx4GS.svg",
+    "bytes": 23187,
+    "sha256": "1f6879adccc7f8c0ae8f40eb6274ccb0e52972474619eb633069709f0b775341"
+  },
+  {
+    "path": "assets/serbia-BUSu7EYB.svg",
+    "bytes": 340328,
+    "sha256": "3b60b93a79a41e3c61ce5679bd297c2c0522c372d4cf95b44dd796d10e111e1c"
+  },
+  {
+    "path": "assets/sri-lanka-DgxnyHoc.svg",
+    "bytes": 34532,
+    "sha256": "9f3f9a150737df9b64abee4cce4d3ef17e614e3b5c74772d03f3425242d9e376"
+  },
+  {
+    "path": "assets/swaziland-q3iZyRpv.svg",
+    "bytes": 34471,
+    "sha256": "4ce4c3d1c66674c1d3b29c587b6dc6de6b1c3aaeb6f91152f8bee5fe2281ed3e"
+  },
+  {
+    "path": "assets/tajikistan-BmaBD9og.svg",
+    "bytes": 4783,
+    "sha256": "bec998991c3096bb4abfc8dd5df142c5ca6ad80b04e32b5e5c9c2064244ee1ff"
+  },
+  {
+    "path": "assets/trust-wallet-1-BsoWnpIo.gif",
+    "bytes": 1358954,
+    "sha256": "ca6e2f95a5c4ff2b866914a12f43b9c76915f2509ba3a8f046efe011131a9f4c"
+  },
+  {
+    "path": "assets/trust-wallet-2-BcexborV.gif",
+    "bytes": 2041243,
+    "sha256": "d878b921b4fe884de1cbccf8437b680e9e4f64b249464b08b41bcba335667961"
+  },
+  {
+    "path": "assets/trust-wallet-3-Bhyn5ruu.gif",
+    "bytes": 1098448,
+    "sha256": "3da39b22122666c3946a3bb806a60328d33c8d2b12473db6f2f4046f7051f504"
+  },
+  {
+    "path": "assets/trust-wallet-extension-1-BFRN1GFu.gif",
+    "bytes": 903180,
+    "sha256": "a557a38336b5a11fa8b342ec5a1239d4a1c9fe08e5a4ec919e923fbe24a6a760"
+  },
+  {
+    "path": "assets/trust-wallet-extension-2-DPWgc1fl.gif",
+    "bytes": 760296,
+    "sha256": "c97d78e0c5475ea9a84186d7185e3ce7a9840b5564c47843487ee2628165cfd3"
+  },
+  {
+    "path": "assets/trust-wallet-extension-3-5r-CgMms.gif",
+    "bytes": 839062,
+    "sha256": "21eb01a14cf994167a8b4474705094c280719fe0f651fe085357d1c91885779e"
+  },
+  {
+    "path": "assets/turkmenistan-DblmPcwx.svg",
+    "bytes": 94626,
+    "sha256": "70e182a559f2f935d1e7486690556af00f7a577cf4ef2d6b27e75f17b1594d33"
+  },
+  {
+    "path": "assets/uganda-SiuVDWhy.svg",
+    "bytes": 5360,
+    "sha256": "8a4ae61ca34ae2da8c512f737d65f90302795398fef8426323bc2f41754aa1fc"
+  },
+  {
+    "path": "assets/united-nations-CxCCch4j.svg",
+    "bytes": 74063,
+    "sha256": "b7d8857a260c9251afd06f20fc26ad6b807539467becdd68e5735a41e66137ff"
+  },
+  {
+    "path": "assets/united-states-of-america-C9ERacrM.svg",
+    "bytes": 7290,
+    "sha256": "f0076571eb426384acc18828ee7d897107cf9432757b2a423359950744e62c52"
+  },
+  {
+    "path": "assets/uruguay-CRpCZfTx.svg",
+    "bytes": 12809,
+    "sha256": "d78a4054c71b2d22846410cc9dc026e42f4832e4bf1a3ecbf867b10825cddddb"
+  },
+  {
+    "path": "assets/vanuatu-BPYUiCYa.svg",
+    "bytes": 5552,
+    "sha256": "fb73e0999dc2cbe7721790d62561d99bc2186c9c19f881705fb9bed09efb3abf"
+  },
+  {
+    "path": "assets/zambia-B5r5a3c-.svg",
+    "bytes": 38405,
+    "sha256": "be2232184731f333ee6078b90e255d5877fbdbec10eecb3acbe2e4adf4d9488a"
+  },
+  {
+    "path": "assets/zimbabwe-Db4o2_PD.svg",
+    "bytes": 7618,
+    "sha256": "6ca71732f633cc75babe7775b2a4f335cdb860f414a49ab03614ce5c61fee669"
+  },
+  {
+    "path": "background.js",
+    "bytes": 42723770,
+    "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+  },
+  {
+    "path": "chunks/Alert-Hvaga4Yx.js",
+    "bytes": 6509,
+    "sha256": "e60e7814a3cc3be70a01e8de6057d0e1c584253dc5e7443a55271966705ee830"
+  },
+  {
+    "path": "chunks/App-D29UTaP5.js",
+    "bytes": 2137186,
+    "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5"
+  },
+  {
+    "path": "chunks/ArrowLeftIcon-CEFCqNF-.js",
+    "bytes": 1363,
+    "sha256": "fa67ed2b59ea02dd47174a73400210cd04c22ed6b99929fe717f1ee1c4130f2f"
+  },
+  {
+    "path": "chunks/ArrowRightIcon-CjwrzRSe.js",
+    "bytes": 1335,
+    "sha256": "f945dfb989fd7458f8b0caf007f6b89b5b27788b59b655f2dfd5e5ded3afadef"
+  },
+  {
+    "path": "chunks/AssetImage-BQ2Pnx9g.js",
+    "bytes": 7744,
+    "sha256": "8d9e8db36a99901bc1056df1d1b0669fab6e71e2058e1921529554fcca201a0f"
+  },
+  {
+    "path": "chunks/AssetSelector-8DzswJ8V.js",
+    "bytes": 1731,
+    "sha256": "931467979ff8adbf4b1a181e55f40f9ac4d5d98d7cd42152dfff5a06b3e32b4f"
+  },
+  {
+    "path": "chunks/Badge-smZjUX8n.js",
+    "bytes": 1488,
+    "sha256": "31b752b90c90f85a7d79d67bf0cf88819277660a367e4380ba4dcfbe714bfd2b"
+  },
+  {
+    "path": "chunks/BlockedMaxWallets-6ukMLunP.js",
+    "bytes": 1172,
+    "sha256": "dc48f76d66a5ab24d2b061f6b629b080c35e9aacfb2f15587484905bcdf95e8d"
+  },
+  {
+    "path": "chunks/BookIllustration-B6_u-WsX.js",
+    "bytes": 21335,
+    "sha256": "39511df7bd229e60c12db127940e113d11a806a928133182d4986ee46ed6fe0d"
+  },
+  {
+    "path": "chunks/CanvasStringPlaceholder-CBT1pugG.js",
+    "bytes": 1643,
+    "sha256": "8445031a4f25cc182f0b1560ad144a90e054926617520ce5569742fa83f23b47"
+  },
+  {
+    "path": "chunks/Card-BZmkTDlX.js",
+    "bytes": 1101,
+    "sha256": "00e9ec4793c996a145d6b2c79c4a568bf12d2d2442676648c1dba5e308ed78f3"
+  },
+  {
+    "path": "chunks/CaretDownIcon-qWhOaTgi.js",
+    "bytes": 1110,
+    "sha256": "a87780a1dcab91879241b5e79abd91503eb891ffed2ee246b6c1c2cc2064575b"
+  },
+  {
+    "path": "chunks/CarouselControl-MPn6Zgxk.js",
+    "bytes": 1661,
+    "sha256": "43fa0505ea66a81689452900085d4286b50630c332193728ca3d26e0f4ae77f3"
+  },
+  {
+    "path": "chunks/Category-vM_OyGpQ.js",
+    "bytes": 1662,
+    "sha256": "0a6bdba6e480fd158ec404f98bde56c2e850256f8bd7b09f18a43e61c68e4493"
+  },
+  {
+    "path": "chunks/Center-Biy7RhoP.js",
+    "bytes": 749,
+    "sha256": "5ea2cd8996ee52ce8d282d01aac1fa289c3ac67e5ecf344074d3e7a30c59abc9"
+  },
+  {
+    "path": "chunks/CheckIcon-EcHbjY0b.js",
+    "bytes": 1164,
+    "sha256": "5e7b38a6f0dc88eef6df02af101cdda440ce99a71e60969c1896a67b427c2649"
+  },
+  {
+    "path": "chunks/CheckSolidIcon-BhQrXkEI.js",
+    "bytes": 1165,
+    "sha256": "cf9c151f035d6390e6f70554b2e13f81bea982b6f601b1cd2909a0b1473a1843"
+  },
+  {
+    "path": "chunks/Checkbox-BLoP25Tu.js",
+    "bytes": 1321,
+    "sha256": "ba2478ba1d9a52e222275c91f32d77e4787b33240ca25ad137608a8b3350487b"
+  },
+  {
+    "path": "chunks/ChevronDownIcon--tkyd4-4.js",
+    "bytes": 1093,
+    "sha256": "f250223513140f1534e5af5f0fcb274b9c9c088c6ad81804c85cd33d8d6878db"
+  },
+  {
+    "path": "chunks/ChevronLeftIcon-q2VwJ_BU.js",
+    "bytes": 1128,
+    "sha256": "4234c15c36f4c071fa425ca91182521fa4308e1b4fc4ca7ad8302834855ba964"
+  },
+  {
+    "path": "chunks/ChevronRightIcon-yVP5lW7x.js",
+    "bytes": 1115,
+    "sha256": "b5b4fb82d3a96d46ada2e6515efc4a61f12b1b6c0f4645ba7675b6c56e989ece"
+  },
+  {
+    "path": "chunks/CircleSelector-C07C2Q9z.js",
+    "bytes": 805,
+    "sha256": "d01abeb8c599d0552e791555390613fa5013fea1a61ddd546439459c5e9a3a75"
+  },
+  {
+    "path": "chunks/ClickableArea-BE_vFWHj.js",
+    "bytes": 1174,
+    "sha256": "c46d8fbc34fd03d6f175188ab3729f88333ea1356d342cf47e25735d1ebe2b14"
+  },
+  {
+    "path": "chunks/CloseIcon-p4AoLZNW.js",
+    "bytes": 1295,
+    "sha256": "47aa3ecf774c29175cbfbdfae334a4f9ac132bd89eec50b458147e700c15de3d"
+  },
+  {
+    "path": "chunks/CollapsibleTextSection-lHtfTpjW.js",
+    "bytes": 1145,
+    "sha256": "2e41629720f8a2409d0a544775ef36b89fda243065351b810fb5721d95a5304a"
+  },
+  {
+    "path": "chunks/Completed-5mEUoaUY.js",
+    "bytes": 525757,
+    "sha256": "1403884f1c1263b352ad8754c9d4655bab414780af661a2090a53f688a38afd9"
+  },
+  {
+    "path": "chunks/CopyIcon-BjPIDqyP.js",
+    "bytes": 3692,
+    "sha256": "0465ba18061eecc6e8823adf044f3dbc420d9f2b0172183bae520c889567d3aa"
+  },
+  {
+    "path": "chunks/CopyToClipboardButton-C1uY6ocr.js",
+    "bytes": 2073,
+    "sha256": "be15c241fd758f97573925591fd3e1d29eb767b3c0710b39ef2d9aafd407e02a"
+  },
+  {
+    "path": "chunks/CreatePassword-BarNsCnn.js",
+    "bytes": 3953,
+    "sha256": "75e53d6490d93b3de9ff66a69e748f5d90076322dac99a66a695100c8eb6a41e"
+  },
+  {
+    "path": "chunks/DataListRow-CWCrec8q.js",
+    "bytes": 1650,
+    "sha256": "60cd330ccd0d2d91777a50825bb29298b93736fc876bb3a03e64f5b81f709416"
+  },
+  {
+    "path": "chunks/DeleteIcon-sowkUA2L.js",
+    "bytes": 1804,
+    "sha256": "2bc00aa2035352dc22033ee73d36bb16977c40083aaeb311d0152839e8090bc5"
+  },
+  {
+    "path": "chunks/DocumentIcon-DVQhyCu1.js",
+    "bytes": 1442,
+    "sha256": "5bce8c313fcb06489665df5180c29e5210001007425846dd336ebe61550bc101"
+  },
+  {
+    "path": "chunks/EditIcon-SLprAfaa.js",
+    "bytes": 1387,
+    "sha256": "07c40dbd8749d8873732fa9f8105f1b48215f2fdfe1df18d8b4fc0f5a5b8d19c"
+  },
+  {
+    "path": "chunks/EmptyList-D0dVloH1.js",
+    "bytes": 56289,
+    "sha256": "3c0e4a6fd69325e86faf726c5a6d47d45f2e773e0a5cbdad11d3bab068f706bd"
+  },
+  {
+    "path": "chunks/EmptySearchContent-BPhzgYFK.js",
+    "bytes": 1152,
+    "sha256": "ad48d769623e0db068d5d7cbc91fcb90853668062f6969153f9b7f719ecf43d0"
+  },
+  {
+    "path": "chunks/EnergyIcon-CWLrxkHP.js",
+    "bytes": 2003,
+    "sha256": "0ba4a071a0240febcf9e0e8f4ab898b95f235ade91cd7de5c248dd5e5cf16cb0"
+  },
+  {
+    "path": "chunks/ErrorBoundary-D1BTyLzb.js",
+    "bytes": 1231,
+    "sha256": "6a21ffd60ed1807fdc253400d4b4bc0627812250022da931490d5842be433515"
+  },
+  {
+    "path": "chunks/ErrorIllustration-C_Bakrn6.js",
+    "bytes": 13693,
+    "sha256": "5f630bfba56b999f6fd79d597329bec8bdc75f651ee4ed34b21aac88560e8397"
+  },
+  {
+    "path": "chunks/FormattedAmount-CZiJdoJL.js",
+    "bytes": 21078,
+    "sha256": "7804a0371ec7f8b4ffecd3149abf41178ecc148a5d0e6c11b05a1ed6a7d86a4f"
+  },
+  {
+    "path": "chunks/FormattedDate-KI6n61_6.js",
+    "bytes": 818,
+    "sha256": "8bce0715301a05acfcdfceca74f407a9656a2231b5c39104e777437942cd4186"
+  },
+  {
+    "path": "chunks/Globe--aAbxHdG.js",
+    "bytes": 236974,
+    "sha256": "fc0b795f9037ec583d36710d1b4b1f82d3d8759b4d5efb0d9a1254855206f7ac"
+  },
+  {
+    "path": "chunks/HiddenAmount-fg7TOE71.js",
+    "bytes": 383505,
+    "sha256": "a72ed4b78a9873fcb4157bc781ee6a9c13ffcf718900779cd010660ea03dda11"
+  },
+  {
+    "path": "chunks/HorizontalNetworksFilter-D_mSA3oc.js",
+    "bytes": 8754,
+    "sha256": "b8808a22fbc4504ee57d727fe353a4379d560cceffb54c0f239a34fcab706202"
+  },
+  {
+    "path": "chunks/InfoBox-D8toT627.js",
+    "bytes": 1598,
+    "sha256": "84657dd3ce2534bc671136ffc846bde485e218ac544c2455d22b5f463dae81d2"
+  },
+  {
+    "path": "chunks/InfoElevatedIllustration-StPJzrBL.js",
+    "bytes": 16810,
+    "sha256": "119be771724d17002132e151bbc3b43091ce7ef7fcb318afbc400d7c137283e6"
+  },
+  {
+    "path": "chunks/InfoIllustration-Bc6zhvox.js",
+    "bytes": 12669,
+    "sha256": "ab4c4a0f6316420f904b90539d9f356b30a83637bfeac647e4e6b726bb398685"
+  },
+  {
+    "path": "chunks/InfoOutlineIcon-CdKUuFkc.js",
+    "bytes": 2182,
+    "sha256": "a91dfbeb549e9d15372724d3529ccf932e0986d1f7217f44a66a0333aa571a4f"
+  },
+  {
+    "path": "chunks/InfoSolidIcon-DlVZDT3T.js",
+    "bytes": 1935,
+    "sha256": "acf58f0bb139b5a6bf6d263b7d48a7df70b8c944f9ca20bac08653604a7ee3a9"
+  },
+  {
+    "path": "chunks/InputAmount-DZI0_huv.js",
+    "bytes": 2440,
+    "sha256": "5770582ccb1dfdf0efd3c9ddf0ce2ce3ebfcdb2a87e7074f7c3a5af0f6914d24"
+  },
+  {
+    "path": "chunks/InputPassword-D9sGWGS1.js",
+    "bytes": 5548,
+    "sha256": "13890f0218724fc864933096b39f5a9ec92ca5601dc99229f15e288bd48fc9e4"
+  },
+  {
+    "path": "chunks/InputText--Q-rwLzs.js",
+    "bytes": 3245,
+    "sha256": "0710cdca74e6b0298c13a86f1ee927874759c75968148ddede647821131eab39"
+  },
+  {
+    "path": "chunks/LogoIllustration-B05krauY.js",
+    "bytes": 5977,
+    "sha256": "65005f6572cd0f0a71cb49b24174de0c90ccb1339445d8e57ec4033ef1245a92"
+  },
+  {
+    "path": "chunks/LogoWithoutTextIllustration-CKX3aFRl.js",
+    "bytes": 2674,
+    "sha256": "8360715a6f82f603a1a57df5cf669fc755757d225f380c46de8df09c788d11f5"
+  },
+  {
+    "path": "chunks/MediaResolver-DfekTJXw.js",
+    "bytes": 2885,
+    "sha256": "cdac7ba8e34489cf66756def70fc22c793e943846005c8d9dc179a91f84f552c"
+  },
+  {
+    "path": "chunks/Modal-BV3SfE1S.js",
+    "bytes": 14833,
+    "sha256": "effea0a094534e8c06a486836ddf3311db7aefd8f66ede9eb8d2c19359239ea7"
+  },
+  {
+    "path": "chunks/NetworkIcon-CNKOmZnW.js",
+    "bytes": 2068,
+    "sha256": "960eaa3984e697b759c6404741100a6c34e35b5692507face9c1602ef2d8d9dc"
+  },
+  {
+    "path": "chunks/NotConnectedIllustration-oJlLM4ih.js",
+    "bytes": 37343,
+    "sha256": "55ed8b3e2397330464c5ecb0eaea52976cb52272131825b98289e6520d775f24"
+  },
+  {
+    "path": "chunks/OnboardingBoxContent-DcFJIaKL.js",
+    "bytes": 10919,
+    "sha256": "c041d9cf9fe75cafd3db182e66e59d87bdfb8d5080f980aee9df26229bd03baa"
+  },
+  {
+    "path": "chunks/Page-7xxhohWn.js",
+    "bytes": 32975,
+    "sha256": "b3eb599b7b13ee7631ec95cd67a4279ef925df6b50a476bd02e19d65a6799372"
+  },
+  {
+    "path": "chunks/PlusIcon-B6VDMCyI.js",
+    "bytes": 1050,
+    "sha256": "e7100b0e1d63a68f5b05fb0d09f3ffc45057f9c4ce5393ac64ff65997bddb52a"
+  },
+  {
+    "path": "chunks/PrivateDataProvider-8vglgSNV.js",
+    "bytes": 1024,
+    "sha256": "21e8ccef959099cb6e994343374f30639804a80826c891b60f368168125db138"
+  },
+  {
+    "path": "chunks/QRCode-DspwcBOV.js",
+    "bytes": 51186,
+    "sha256": "f96bbf2d482ee47bed8d0c41e849535d528b4c70b2b7adcd776d34f71d3b0f31"
+  },
+  {
+    "path": "chunks/QrCodeIcon-DyHe5kLn.js",
+    "bytes": 22423,
+    "sha256": "e12dad4881fce4cc5e5843cf3df53e39e46c98f300f3a2ec0525ea3e0ae00e65"
+  },
+  {
+    "path": "chunks/RadioUncheckedIcon-Dsz_4zlU.js",
+    "bytes": 1187,
+    "sha256": "6f2fb384509a78e05e9b734666686a919e0fee297c5821f0f86126c4e3b6d129"
+  },
+  {
+    "path": "chunks/RecurringBuyModal-9KGi9jaQ.js",
+    "bytes": 8655,
+    "sha256": "c7c396a713c7fba4a87d001acebd45306a8820c52c26a5ce11e7a8d3b059181c"
+  },
+  {
+    "path": "chunks/Render-B2fV25G8.js",
+    "bytes": 236143,
+    "sha256": "7d5e060fe08f888f49552d1916802b600b0e4cfd5e46d5572545147d577972ca"
+  },
+  {
+    "path": "chunks/SearchInput-BIldQfbO.js",
+    "bytes": 2185,
+    "sha256": "fc3210dd1570ab98f7836c859c0f8b6844416373b2d05e82219e7e8da2866147"
+  },
+  {
+    "path": "chunks/Security-BkVC-Kss.js",
+    "bytes": 90563,
+    "sha256": "a52ad737d2391eeeedbf752256bdc2139c1022ba795bed882ad78e264f163369"
+  },
+  {
+    "path": "chunks/SelectImportMethod-ClL8FjcB.js",
+    "bytes": 166739,
+    "sha256": "2d4997f811411dbf31df8bdc91d3ae16c67e748fd88c37f4c537702b97b0c893"
+  },
+  {
+    "path": "chunks/SelectProviderItem-dJ2hTZYn.js",
+    "bytes": 189339,
+    "sha256": "c84c866e5526007065e907700343095de64648fdbb1eb69d6302b8db50b7edb0"
+  },
+  {
+    "path": "chunks/SellCryptoModal-BKBGq8Ds.js",
+    "bytes": 4624,
+    "sha256": "f40220d3c2e5bac4cddc92f1e8c08d6e74f3ef1cf7e3d1aa6dd32bc74073a9b3"
+  },
+  {
+    "path": "chunks/SettingsIcon-BMRm4vwX.js",
+    "bytes": 3436,
+    "sha256": "e3b16aeb3d72d9301850da10822029df4a2eac852343fcb690f49aeb1ceb2ed5"
+  },
+  {
+    "path": "chunks/ShareIcon-DQEJf4ke.js",
+    "bytes": 1907,
+    "sha256": "02d56825563ded43d3d425786e5188d73223cbf9069f8ded4449f01ad093eb4c"
+  },
+  {
+    "path": "chunks/ShieldPassIllustration-Mqv354JL.js",
+    "bytes": 19120,
+    "sha256": "1282a8aa50c635601e416d98e8e4f80b03a55059fb28b6db4d137cbf58afc75a"
+  },
+  {
+    "path": "chunks/Skeleton-CuI4vc4O.js",
+    "bytes": 1416,
+    "sha256": "489b355c175847b1da6ab28350f1b2402fd93e7aaa5c04ec7c06c3d000af0436"
+  },
+  {
+    "path": "chunks/SkeletonCircle-CpoDhi_S.js",
+    "bytes": 787,
+    "sha256": "c166965d11f6fce2a847b557e5ff3bac239456dbd72994c40bbd9bbff266e4ce"
+  },
+  {
+    "path": "chunks/SkeletonLine-gBdUFNjv.js",
+    "bytes": 809,
+    "sha256": "65bb5af00a6e99bbb309d134e3a998dbde0dcd10e267b6df2324ad8ce1430d8f"
+  },
+  {
+    "path": "chunks/SkeletonList-DzLojTJO.js",
+    "bytes": 911,
+    "sha256": "a59efa9cde1ff674e3b56278187b62cef0655b04e4252a749d58df0021c106b4"
+  },
+  {
+    "path": "chunks/Spacer-CJ9Lm_aK.js",
+    "bytes": 623,
+    "sha256": "ea07ea8213d4548b44a652030e9e4b186347efbfffcd35200c2f793c45c5478c"
+  },
+  {
+    "path": "chunks/SpaceshipIllustration-Cm5_a9hc.js",
+    "bytes": 22127,
+    "sha256": "5a2e4e5e4f23fc4e99c7c1b9174c1fb897ddd6acc7cce1b929b6319ed8c82f8c"
+  },
+  {
+    "path": "chunks/Switch-B-r8Q0cU.js",
+    "bytes": 3357,
+    "sha256": "9f606ad63080dc1213ccb76f0088dbbca655610e3596c86e8dc274a8a8261a80"
+  },
+  {
+    "path": "chunks/TabButton-BUDYFNPu.js",
+    "bytes": 1028,
+    "sha256": "87b9a04458131be4a7abe1c82e6700113f6794222e9bec398a99cdf29afe3124"
+  },
+  {
+    "path": "chunks/Tag-B9IIC0ts.js",
+    "bytes": 1568,
+    "sha256": "ef8ce8140ed87fc0c35c6ec061d55f293df5696b33d45692ca39e6be238278c3"
+  },
+  {
+    "path": "chunks/TransactionIcon-j_6iAx8I.js",
+    "bytes": 3336,
+    "sha256": "56a1ae92d6a0c6cad1249cf14bc702f83bdb1dc2b5f067d2ef4ef554448fc1b1"
+  },
+  {
+    "path": "chunks/TransactionSenderRow-ctp5_55S.js",
+    "bytes": 8112,
+    "sha256": "cc6a477d8d62ac398b434b57ba712f2e939fbc976c185e475360e9d5539d1e38"
+  },
+  {
+    "path": "chunks/WalletIcon-BiOXNHUE.js",
+    "bytes": 1587,
+    "sha256": "d8e1d3ed8d408546ebec969b61cdcd704cecafc1e52a7efcb09af2340da274ab"
+  },
+  {
+    "path": "chunks/address.utils-DddXF067.js",
+    "bytes": 593,
+    "sha256": "047d238628dabb062cfe28a054802b931910ebc6977d23187136252d02daf597"
+  },
+  {
+    "path": "chunks/api.constants-BU0j9B-o.js",
+    "bytes": 651,
+    "sha256": "9e7da346fd1b96d29862e32b58b6d1dda41a3c2ee295b5f23840d2a36bd1efd3"
+  },
+  {
+    "path": "chunks/approval-detail-CuYqbU-I.js",
+    "bytes": 7105,
+    "sha256": "94a6545d4a11e689510eb350354f15c075f21dd6a0e086fd960bee468bb735d4"
+  },
+  {
+    "path": "chunks/asset-63gBbrJ-.js",
+    "bytes": 1439,
+    "sha256": "a52cdb57ff71978eec43412241e993ff6f1b07f2a502c8f2bd6104244a049bcc"
+  },
+  {
+    "path": "chunks/asset-COrXZQtQ.js",
+    "bytes": 69213,
+    "sha256": "d336cd7cf5f37c7e0ddce1247e6fdb2ae02de9e0965aa8f4338c164bcf7c5a78"
+  },
+  {
+    "path": "chunks/authentication-CGHHMXIG.js",
+    "bytes": 115303,
+    "sha256": "3bebfe5e21bd14989a8aab55c1d6809426464bfefc9ac39b28cba788f0bcba6c"
+  },
+  {
+    "path": "chunks/backup-seedphrase-Cpn6mc58.js",
+    "bytes": 126549,
+    "sha256": "a97a8da5dc404c268f46480950dccacae86490eb2d46b052e1be5be5dddb3446"
+  },
+  {
+    "path": "chunks/base64-CMV3qoyP.js",
+    "bytes": 3093,
+    "sha256": "dfddbe4fa7116fd5fd75bc735ddec7674ee58c7e92643dd6917fc799600aebde"
+  },
+  {
+    "path": "chunks/biometrics-CO4_TFG1.js",
+    "bytes": 6302,
+    "sha256": "34c534cd96aa7c8f23be6f296af8a8888eacc511c4fea704fb3b2d6453744506"
+  },
+  {
+    "path": "chunks/biometricsErrorReporting-B5X0T93f.js",
+    "bytes": 3201,
+    "sha256": "49fed4db58f2fa7ef5596ed3bc58fbe96d541a646fbe6e21af1d186310c692b5"
+  },
+  {
+    "path": "chunks/blockchain-DRDWqNiT.js",
+    "bytes": 2364,
+    "sha256": "f17e19bb29037f8b69af5633bc036ddf24d46184b2d54af5d4105c863c0fe09d"
+  },
+  {
+    "path": "chunks/blockchains-DGtzUK8-.js",
+    "bytes": 3087,
+    "sha256": "673a2856b2b250377fc1e1cbfa5ed73ba10d96d03c97695e643b7e97bedf2b24"
+  },
+  {
+    "path": "chunks/browser-BspumAet.js",
+    "bytes": 678,
+    "sha256": "9772160d5b12dc13627746071966502fbceb7a52cf02f739a465386da938ba2b"
+  },
+  {
+    "path": "chunks/bugs-Ch90ef4W.js",
+    "bytes": 821,
+    "sha256": "33b480ae8b1df9b604992dbc5809eb38bb584d40d665187ed7146fe4eac5510a"
+  },
+  {
+    "path": "chunks/buy-mUiKGiqX.js",
+    "bytes": 49149,
+    "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c"
+  },
+  {
+    "path": "chunks/buyCrypto.interfaces-DI-SFr7i.js",
+    "bytes": 673,
+    "sha256": "247f686356085b398fa01b384983186417f05058768e7b791a253db9344afc1c"
+  },
+  {
+    "path": "chunks/codes-BxmijjuO.js",
+    "bytes": 1102,
+    "sha256": "9e23484cdf87df3aff9480ca30dccca4562b5d0384bdcfa183654835dbd69129"
+  },
+  {
+    "path": "chunks/codes-WTUft8Zz.js",
+    "bytes": 51140,
+    "sha256": "a12aaca305197731a1202d03c834a4c42204b80a488d17c16e8cab65d53b0dba"
+  },
+  {
+    "path": "chunks/constants-BML4aAnK.js",
+    "bytes": 53572,
+    "sha256": "8a566af189cedb964d04f1846cefea1c75bd38c66dd7d77bc3599df6131317fa"
+  },
+  {
+    "path": "chunks/constants-CV-R2xp4.js",
+    "bytes": 2313,
+    "sha256": "91bced3cc3b2cfd20053f6dc090478d77eea0b0f9efe2ba05618c93a0372d8af"
+  },
+  {
+    "path": "chunks/create-mnemonic-DKsF45cy.js",
+    "bytes": 1168,
+    "sha256": "7a3812fb05766df547da59d2661e9d9f47d4933a728113a702d6e2890aa0fb57"
+  },
+  {
+    "path": "chunks/custom-asset-Bpl9EE2o.js",
+    "bytes": 34756,
+    "sha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8"
+  },
+  {
+    "path": "chunks/dAppBlockchain-Bmr4Qqt_.js",
+    "bytes": 878,
+    "sha256": "7146225863c0acdbf04c0552c5ed647ce2d26e23582e725e5eaad9ffd0a69b7f"
+  },
+  {
+    "path": "chunks/dapps-D5KacSOR.js",
+    "bytes": 2588,
+    "sha256": "db84ccc0d51830005c815c13601be8d2d2cf361ba18a365ac75111870377df7d"
+  },
+  {
+    "path": "chunks/debounce-BX89IPBk.js",
+    "bytes": 3437,
+    "sha256": "2160f4e1a9eb5a88cfcddf49fcf316747c4500cf0376e96a810f3ae3211de7f5"
+  },
+  {
+    "path": "chunks/dist-B_ANQAOl.js",
+    "bytes": 151260,
+    "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61"
+  },
+  {
+    "path": "chunks/dist-CCiTn9wL.js",
+    "bytes": 12477,
+    "sha256": "ddafd08f5a31615d8fbd62aa91e6d77596fee912796cd3571f34ef594b2ad4d3"
+  },
+  {
+    "path": "chunks/dist-D8ll09D_.js",
+    "bytes": 38393,
+    "sha256": "e71ae66611f8a4e17574356bc999ab59a76a29e9f84afb605686372bb255804b"
+  },
+  {
+    "path": "chunks/enforceTrustedRampAddress-CJYoIQc5.js",
+    "bytes": 896,
+    "sha256": "25da63f81772959b2066826a3345814b8aaeb3c65a33c3ab125e90f0b3bac896"
+  },
+  {
+    "path": "chunks/erc20-DMn3RMu5.js",
+    "bytes": 2323,
+    "sha256": "b5ac2fa50b0391f909f17f0605365e2216d7077c7bcd7f64f2c5b53ccb4cef69"
+  },
+  {
+    "path": "chunks/esm-BkKt8UqE.js",
+    "bytes": 145282,
+    "sha256": "7b797e9c3c4cd76c68c8fb242327af79ee84501457486ab02e508bd2b3a1d982"
+  },
+  {
+    "path": "chunks/fetch-BWDPg6HI.js",
+    "bytes": 58640,
+    "sha256": "9bc623e422a7cd34fa3a618a7b7f8545cbd23a02f2f6326255cf8b937f3e2b93"
+  },
+  {
+    "path": "chunks/fetchAssetByContractAddress-mxaI5X6w.js",
+    "bytes": 1150,
+    "sha256": "9bc5fd0657fc44bc41aa82c6412a73fcc0e50096c0c1b625b2ed9c74ec5f8eef"
+  },
+  {
+    "path": "chunks/fiat-ramps-BdoaGdC5.js",
+    "bytes": 172441,
+    "sha256": "4493cc5241c2e8c81797346713cc4c564438c9134258cdb670e919cf01bac076"
+  },
+  {
+    "path": "chunks/floating-Dg_qltnX.js",
+    "bytes": 14819,
+    "sha256": "dd9085d8f02512f9af86cfed189566b48d43046c16c4357ed7621fcc6247df44"
+  },
+  {
+    "path": "chunks/formatAssetAmount-BJWMMv5e.js",
+    "bytes": 2738,
+    "sha256": "612b8b0b2f029daa7859f0e04442494215eddb183f49ff2279a4b44677562fe2"
+  },
+  {
+    "path": "chunks/formatTruncatedString-CZ8GNKMv.js",
+    "bytes": 820,
+    "sha256": "708d58837427f0ce446837c8f36e353eb7199815a23a84295cf3ca909a58e393"
+  },
+  {
+    "path": "chunks/fp-DA8NAoIP.js",
+    "bytes": 88794,
+    "sha256": "51374fdb2d5bed25037b6750f77cacb3d8468d8c416af905574d49db1a783407"
+  },
+  {
+    "path": "chunks/fundingProviders-Du7VN_g1.js",
+    "bytes": 724,
+    "sha256": "15893d1f13e9eb7320b731daeb1c70fab3ba9698e37b1657e9965f295cae49a1"
+  },
+  {
+    "path": "chunks/gas-station-N9K16uK8.js",
+    "bytes": 51540,
+    "sha256": "3d1df06da249108029177a005f5dffa795a7813d7c015565149e0c329b4421da"
+  },
+  {
+    "path": "chunks/hex.utils-hbh8pOgS.js",
+    "bytes": 954,
+    "sha256": "11bdb470bf7d70168202b0120e88997bd7d9d555ffe63ad6792353a38684da9d"
+  },
+  {
+    "path": "chunks/iTokenType-JE3qwmJB.js",
+    "bytes": 593,
+    "sha256": "993a363ee9f1c5553c2ff0ae99b6ebeb0949dd1bfbf15971d49906049fea3de9"
+  },
+  {
+    "path": "chunks/import-ledger-BvEfx1nD.js",
+    "bytes": 143876,
+    "sha256": "71f01ddf07c043ad73b634100f444a8b42ac815bb07591322f132318fbcdd000"
+  },
+  {
+    "path": "chunks/import-mnemonic-or-private-key-CXfCQtf3.js",
+    "bytes": 28377,
+    "sha256": "1b379bca0989a52908c45d5d48b47911105cc8f8d70b72ff3ecafaa0e23c848d"
+  },
+  {
+    "path": "chunks/import-qr-nu_XkZeU.js",
+    "bytes": 832959,
+    "sha256": "0f9b23a9397a3b4ef15a43933f3b4649b38f8e8f225a06c7b219bd88e71012eb"
+  },
+  {
+    "path": "chunks/index.es-B0L6n6Xe.js",
+    "bytes": 8394,
+    "sha256": "9fc175b7051e678ef7b49554ab50de48ac72c6c3d45989945e3f6f674ff46b2b"
+  },
+  {
+    "path": "chunks/index.es-BPYsvUAn.js",
+    "bytes": 328355,
+    "sha256": "3df2cf009daf0034de138f29ff2527bff182751f3d3a40d6fb84f900004ae7d2"
+  },
+  {
+    "path": "chunks/jsx-runtime-C2w7GV0M.js",
+    "bytes": 916,
+    "sha256": "3f16b45337bd718ef4cf9878ebeafa2ed35b3e89908d12cbc9e3647c02506a77"
+  },
+  {
+    "path": "chunks/label-ySB0pn1F.js",
+    "bytes": 5356,
+    "sha256": "077c55f04b5c749c44c2995f31255824100af618d57be18ad31cb6c6092fca2a"
+  },
+  {
+    "path": "chunks/ledger-9TVWcyBQ.js",
+    "bytes": 2573982,
+    "sha256": "d10102b2e88b0bb89f130a264d64f4dd9428bc2a6f1996ee0071361ae4a3fe02"
+  },
+  {
+    "path": "chunks/logger-BMfNJZDI.js",
+    "bytes": 106717,
+    "sha256": "10ff753c1e6187a8fae16caa0ca059f03a5c0980748a78f834672564a0e2fc92"
+  },
+  {
+    "path": "chunks/manage-crypto-CZfZXrkn.js",
+    "bytes": 13678,
+    "sha256": "3987b34f551f7fc5283db37c48c556a7369da49aec60017d6c99c3cf24e52289"
+  },
+  {
+    "path": "chunks/math.utils-BUDjteRJ.js",
+    "bytes": 885,
+    "sha256": "f88b6d13856d90d11fc1617b3fca9f2bf2669574b3d7444457a7ae4e24e78e0f"
+  },
+  {
+    "path": "chunks/mutation-B1rm4Qpe.js",
+    "bytes": 4038,
+    "sha256": "773935938035b0b6621547c1f5dc7cb053260ba93409200b63b1e7c4fd9a785f"
+  },
+  {
+    "path": "chunks/network-BgRJPftY.js",
+    "bytes": 179826,
+    "sha256": "e9ce8221bbe2f66ffbe19f181aa5cdf00f5ea441b1ed0f4b9b43a8ce853bb75f"
+  },
+  {
+    "path": "chunks/nft-collection-DrcRadTj.js",
+    "bytes": 3868,
+    "sha256": "595971d5e0d8688d0630a1d89c2a837ab9f9d0b232689fb51f398860e5671c8b"
+  },
+  {
+    "path": "chunks/nft-item-BRbZMTFu.js",
+    "bytes": 5029,
+    "sha256": "6f6a320c53b80a56d29a460aebe44442e2f653b3c63e01f1156573356649fba6"
+  },
+  {
+    "path": "chunks/nft-reported-collections-QkuxYamZ.js",
+    "bytes": 1555,
+    "sha256": "e312c25167eefb2cb5174bcec05ac7b013e251933b8e542c2cdb818ee9834fcf"
+  },
+  {
+    "path": "chunks/notification-C0DFw0BI.js",
+    "bytes": 488,
+    "sha256": "b270e2ee14798a168d040fd8b6983ba1f37382f971e3cfb8ef4638e0f7a95caf"
+  },
+  {
+    "path": "chunks/offramp-revamp-DH8bfOcs.js",
+    "bytes": 528,
+    "sha256": "efebcc3c4917bb34710e2207b527ca2bc9a1b0aec0083f2c8e838c1e24868b9d"
+  },
+  {
+    "path": "chunks/onboarding-BHcKddMJ.js",
+    "bytes": 15880,
+    "sha256": "1697bf495fc40af9218511f71705e54d9547f9b97181f50e4f31d6e01b72a57d"
+  },
+  {
+    "path": "chunks/onramp-revamp-Bs6CZqaj.js",
+    "bytes": 526,
+    "sha256": "025fd26cd7f79c435e7e57d3bbd17688304e545e3c1a4ccceb323f59909609e8"
+  },
+  {
+    "path": "chunks/pWaitForMinTime-B1Z-6awB.js",
+    "bytes": 5175,
+    "sha256": "60c1c4ff2862b3b47e77879e775b51ea65936e00f9a17815a35ec9f089890b7e"
+  },
+  {
+    "path": "chunks/persistentQueryClient-B26tiIt4.js",
+    "bytes": 9870,
+    "sha256": "01639a1e25abc7ed227abe9a72ce1e8f22baf7876b33e399ab1632b7be15c0c4"
+  },
+  {
+    "path": "chunks/poller-Dzr8hzmN.js",
+    "bytes": 1955,
+    "sha256": "d372f02d8216a65bc261b62d33e2e01ef7672e2e481a8c03e770b696f2585704"
+  },
+  {
+    "path": "chunks/popover-C4NHkoPs.js",
+    "bytes": 13267,
+    "sha256": "43d637fd5a307c71649ba88a95a5c95d2f74e9284738a2a1b525a0da2b150d43"
+  },
+  {
+    "path": "chunks/popularChains-kJ9npbND.js",
+    "bytes": 1470,
+    "sha256": "d067926833848dd54010deb02073f7dab9987d0b75a1f01910dc72f986c12c29"
+  },
+  {
+    "path": "chunks/popup-BmMPx8n6.js",
+    "bytes": 1694,
+    "sha256": "049496a9d83e04ad7eab0063c6dfb3d6403a4ec8390f1dc399c8881be26f3fb2"
+  },
+  {
+    "path": "chunks/preload-helper-C61CWiqK.js",
+    "bytes": 14440,
+    "sha256": "2a6ba214e7683da8da3ef30e374f724c784f954cd9b1d302751bc5b19cdcc8f4"
+  },
+  {
+    "path": "chunks/privateKeyErrors-gzTHkPk1.js",
+    "bytes": 567,
+    "sha256": "c115518a71c828879b66287e41be5412c06f200480d255eb73063c1ff56fc0de"
+  },
+  {
+    "path": "chunks/query-DURgXg5-.js",
+    "bytes": 17471,
+    "sha256": "b7db09a0e233c00bdbd76bf44ae9033cee7cdf3bad804626a078736c4e71d052"
+  },
+  {
+    "path": "chunks/radio-group-Bkb1vIta.js",
+    "bytes": 6092,
+    "sha256": "bd4eb3a9099c53929d0c1d630c175ed840d8812d72181e6c58e60e29355c1a79"
+  },
+  {
+    "path": "chunks/react-dom-DmK0ZQY1.js",
+    "bytes": 4244,
+    "sha256": "252c15e3dbbe93edce52e986ae7832a6389e0b1f4fdf85e79d16a52fb4b25fa9"
+  },
+  {
+    "path": "chunks/reportEmptyRampResponse-PKPfmI0r.js",
+    "bytes": 1568,
+    "sha256": "2862760a62251593dce6f7fbc0fa37d3864a8f14607702c2056728d34543fdee"
+  },
+  {
+    "path": "chunks/sell-DEKcDK89.js",
+    "bytes": 19653,
+    "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f"
+  },
+  {
+    "path": "chunks/send-Da9f11E3.js",
+    "bytes": 488,
+    "sha256": "6f729db34a5ec1ff099aec7f389f3a4c8b4c862a293435435d5a9c65ea4c85ef"
+  },
+  {
+    "path": "chunks/sendLikeTransactionType-Bwls70uE.js",
+    "bytes": 12275,
+    "sha256": "f9e374b84a99bef12aec45f4817dbcb85b9ccd5feb58de0313a8586755744365"
+  },
+  {
+    "path": "chunks/set-passkeys-BWLIDsIJ.js",
+    "bytes": 3922,
+    "sha256": "77a05fb557726a73476f7b157482e1782b10ecf28d1e19da363472ca83b282fe"
+  },
+  {
+    "path": "chunks/sha3-B4zRefS2.js",
+    "bytes": 6885,
+    "sha256": "b6f381b41e91ce377f54bb58d506b5346dce8beffda85db83606d63b527a2b72"
+  },
+  {
+    "path": "chunks/sidepanel-Be7kU8Zo.js",
+    "bytes": 1383,
+    "sha256": "abdb344a93fe0bf50cf284b83498ecf088354514624e9f92a16fb21ed4b958ca"
+  },
+  {
+    "path": "chunks/src-CzMAtq-j.js",
+    "bytes": 238447,
+    "sha256": "2264004123917cc2e9c0eff8048e8678b6bce58b9306b6c28ea2600feed0b44e"
+  },
+  {
+    "path": "chunks/storage-DhfTzOIA.js",
+    "bytes": 10369,
+    "sha256": "839941886c3965eb64a0cfc1d012b1c1e6feda711795d360d36d1fa1f9402c68"
+  },
+  {
+    "path": "chunks/store-cAVdfWrK.js",
+    "bytes": 1037625,
+    "sha256": "66310fe9417cb5ced382651258306734552194571ea7b510957e42e61125ffe0"
+  },
+  {
+    "path": "chunks/supportedDappNetworks-CuX8ccxp.js",
+    "bytes": 618,
+    "sha256": "acd0e51629b8765c79f888991387e1bf55888509235cd1fa90a255599c73f2fe"
+  },
+  {
+    "path": "chunks/tabs-DqgailPo.js",
+    "bytes": 8105,
+    "sha256": "316fe7efd254a1004665649028db51aa46ebd0559e37541037c3aac1411dde8c"
+  },
+  {
+    "path": "chunks/transaction-BuYaLDhl.js",
+    "bytes": 19285,
+    "sha256": "dadb647c1a693621a90fa2d58d4ad5f933df1608d531d1eec96a4d50e835a79e"
+  },
+  {
+    "path": "chunks/transition-B174DQ7a.js",
+    "bytes": 32811,
+    "sha256": "b9fb986f8fccd77faab13d780711f95ab5c73f86c45d6eb32b575354531cab4e"
+  },
+  {
+    "path": "chunks/twClsx.utils-DD0Dt0LF.js",
+    "bytes": 1610,
+    "sha256": "63bf91c2d9b695eb11d037a9d553ca02ee78b4eb67da0bc2aab19ce3038203b4"
+  },
+  {
+    "path": "chunks/txType-CH4ucKXs.js",
+    "bytes": 872,
+    "sha256": "55671ce23110e58557f17beb8fc6bad1dd0724fd433e44c263e7f7c94d4d2cbd"
+  },
+  {
+    "path": "chunks/types-Da-Ovuve.js",
+    "bytes": 729,
+    "sha256": "f20c9ddb9cb790667a7799782fe38e6783227d43ecd7943cd9889c956678afc3"
+  },
+  {
+    "path": "chunks/types-DrDwy2JA.js",
+    "bytes": 1705,
+    "sha256": "fe677a37bc642de0dc61a49dc3ec7aaf35136b900c87759ac3defaa360d88eb5"
+  },
+  {
+    "path": "chunks/unlock-BSgWJTYA.js",
+    "bytes": 5506,
+    "sha256": "55a925694e0ee872bac016b3a1e66797131d66cc068dfad33011ccfc6d9c886d"
+  },
+  {
+    "path": "chunks/use-by-comparator-wkG3a1aU.js",
+    "bytes": 832,
+    "sha256": "0403be1cf605fcc227d91a0e9cd23d96367a4a594ba84aefe4d1cad0c8d4a924"
+  },
+  {
+    "path": "chunks/use-inert-others-CjRpHgYi.js",
+    "bytes": 2762,
+    "sha256": "d8ed0a59ff2fa774570a86e367cfe2d2c07a4ddb657230ff2e315c6671af4769"
+  },
+  {
+    "path": "chunks/use-resolve-button-type-W7UpO3VO.js",
+    "bytes": 1597,
+    "sha256": "5ff72ae38ad88ecb738d4ad6ae89d84e9c3520f08925d939cf5f8ca29c4b38b8"
+  },
+  {
+    "path": "chunks/use-tab-direction-u_xFOxYN.js",
+    "bytes": 2245,
+    "sha256": "e7e19f3a81c704592a7f22258d10d088821a594163fb342988c4acc2f9d12548"
+  },
+  {
+    "path": "chunks/useAccount-DmXl3FcQ.js",
+    "bytes": 1199,
+    "sha256": "298c544745841822e8e37a2f69566074cb83305ea16cbffe3fe0009fdd472f1b"
+  },
+  {
+    "path": "chunks/useAccounts-CoMylq9s.js",
+    "bytes": 1157,
+    "sha256": "bd5213a8b1f8dc3eb52b208e0fb5847a8ff8b25e6e1b44b19e736d49ca1e7cc3"
+  },
+  {
+    "path": "chunks/useAllBlockchains-BCf0ZYTP.js",
+    "bytes": 906,
+    "sha256": "9e6d77642ebbe18b79679c820744e7b2999eb5d6df67e70453df6b38c73fc4f2"
+  },
+  {
+    "path": "chunks/useAnalytics-COpZR7i2.js",
+    "bytes": 431625,
+    "sha256": "d639f77c80c2c904e072c4b4905307881ef64c99287a0b472b384c130cf2825e"
+  },
+  {
+    "path": "chunks/useAnalyticsCaptureOnMount-BJcdtAcr.js",
+    "bytes": 733,
+    "sha256": "f7209796bf8d1af63847a9d479384227c395d9caa27c71d48ebe9939c9eefa1a"
+  },
+  {
+    "path": "chunks/useAsset-DL8yf1Bm.js",
+    "bytes": 6226,
+    "sha256": "377201eef641e1b36113a6231389506e0106cb87cce707ffe81ffda6ae009bc7"
+  },
+  {
+    "path": "chunks/useAssetBlockchain-W0mhozm9.js",
+    "bytes": 820,
+    "sha256": "18bff6158d7ea24260c99f990f5094542b85a0d6418760f896919e259bb8fdb4"
+  },
+  {
+    "path": "chunks/useAssets-Bjfxdw7H.js",
+    "bytes": 618,
+    "sha256": "0375be68b01d09ed13c35630f7ae6e9ddbc9814c264f622293f4c044cae146e5"
+  },
+  {
+    "path": "chunks/useAuthenticateWithBiometrics-BLIwCDAo.js",
+    "bytes": 1695,
+    "sha256": "81aa49a5e9f8a185105c5ad136e05f3b96b244f035a7df3fc9aa930cf293abb1"
+  },
+  {
+    "path": "chunks/useAvailableBalance-CpZl8a44.js",
+    "bytes": 685,
+    "sha256": "7b63e7365cc57fc6f0e1ad918c9bfbb76a815b293e4d64cba9e4ba531d27c7ef"
+  },
+  {
+    "path": "chunks/useAvailableBiometricName-lo1nd3PA.js",
+    "bytes": 4080,
+    "sha256": "eadcf6b354d4b6d3366bdee2ced21742e3eed502c44d19e0cad3546c40568db3"
+  },
+  {
+    "path": "chunks/useBalances-DMp9HZ2B.js",
+    "bytes": 723,
+    "sha256": "df5160f4c7c4fc85018393fd6b56fa216bb88f6bc21ccf7de00f390c2a733af8"
+  },
+  {
+    "path": "chunks/useBlockchain-DL94zuTF.js",
+    "bytes": 735,
+    "sha256": "a0a91585a8dcb49d6ae5cc0267063ec49ef8994c0ab29cc4a74293ca3d7a893a"
+  },
+  {
+    "path": "chunks/useBlockchains-CyglC5V0.js",
+    "bytes": 947,
+    "sha256": "1f7f4f914e3f5fc5548e663de5e3a6bb0f6f090d26b77b360a81a7915d2af9fa"
+  },
+  {
+    "path": "chunks/useBlockchainsByPrefixedCoinId-DqfDfoJ_.js",
+    "bytes": 664,
+    "sha256": "186bb080443f7b7e7587b98f613a4616d6798b2931572e351aace42e799f03c1"
+  },
+  {
+    "path": "chunks/useCombinedBalances-4DPvLCVf.js",
+    "bytes": 921,
+    "sha256": "a26e12b49e1100a7769a6e5a01eac3dbc0e71d35d3151e8a39762572168a0024"
+  },
+  {
+    "path": "chunks/useCountryCode-DVzTzA3I.js",
+    "bytes": 700,
+    "sha256": "8f908c2df60abf83c7a8ab84e8bbd30858a44e78b2642d27f0cae0fc82d942c3"
+  },
+  {
+    "path": "chunks/useDebounce-kScTeB3K.js",
+    "bytes": 712,
+    "sha256": "c45ba48f31abea94f9486dcc31be638f5989f169144ddfd73e55309c9dc58950"
+  },
+  {
+    "path": "chunks/useEnhancedUnmount-CF3xX24E.js",
+    "bytes": 2007,
+    "sha256": "0d6b9ba802ecda115cd69ceb0c3fe91ffa60ac3d563d6ca3577d8e28934680ff"
+  },
+  {
+    "path": "chunks/useFiat-DH2a13VO.js",
+    "bytes": 37665,
+    "sha256": "d6a33c6941f47c2636e74fa762f1ac29864a3f0cc6330e81ec031e595460cce6"
+  },
+  {
+    "path": "chunks/useFiats-BdU5VUCi.js",
+    "bytes": 564,
+    "sha256": "07c1047592b65886588dc11928e39c2da6e768280ac08a413a3bfe86f8d71d34"
+  },
+  {
+    "path": "chunks/useFormattedTransaction-CLqdEJDk.js",
+    "bytes": 3014,
+    "sha256": "ffe1d8c62540d828c576dd784c2eb74026b5364eb47e1b6294c4e0f88dd8bd7b"
+  },
+  {
+    "path": "chunks/useHomeScreenAssets-DXW0UWI9.js",
+    "bytes": 1325,
+    "sha256": "3596e298f86f3ed417d21cbe1e5603fe0362f1f036313099e1652cab3a71119a"
+  },
+  {
+    "path": "chunks/useHover-BOYjkzuo.js",
+    "bytes": 16715,
+    "sha256": "24ccb5f225ebe70ba68cc5d873ca2e9cf0b5a9e5ec7b98907c0ae4b7ba11097f"
+  },
+  {
+    "path": "chunks/useInfiniteQuery-Do1OtVLh.js",
+    "bytes": 1657,
+    "sha256": "9d72d59914a03fca3256b20c9426e4f016b874b3d142ceeb9c676ff245882ab5"
+  },
+  {
+    "path": "chunks/useIsFeatureEnabled-BIr5U5d0.js",
+    "bytes": 785,
+    "sha256": "76eab2aff46aa05aefa2b7f7838e047b5b113a3df8513ab6b77d69dcfeafb8a8"
+  },
+  {
+    "path": "chunks/useIsPopupView-Bz33u8cO.js",
+    "bytes": 1145,
+    "sha256": "f798a064c623b93a2e9a7565a96b100175004a0b87654a683cbcada63a9aebaf"
+  },
+  {
+    "path": "chunks/useMinMaxValidation-CfoTPrNB.js",
+    "bytes": 1343,
+    "sha256": "be2a845db016c5b742901657790242db7e5d8ee558e443ecebc369bf794829f3"
+  },
+  {
+    "path": "chunks/useNFTCollection-BNBCGYKx.js",
+    "bytes": 712,
+    "sha256": "c3118b1ec0c0d5fe9b4c127fd771c04dfa115f1c649f3c6b93de0eab1635365c"
+  },
+  {
+    "path": "chunks/useNFTCollections-TEli8oBN.js",
+    "bytes": 27190,
+    "sha256": "87da54d2379ed13327344de64f71b25f2d9d3620f670d585cd635338d6a36c4a"
+  },
+  {
+    "path": "chunks/useNFTItem-Cg9NY7CD.js",
+    "bytes": 708,
+    "sha256": "5880658d8c597c5c4d84c0efca76f26824ba105b64336e707dea4a66ab628b75"
+  },
+  {
+    "path": "chunks/useNavigateInNewTab-CH8tITZN.js",
+    "bytes": 746,
+    "sha256": "a3ad5e2747ad0e761c5893e821a666d391507788c6a21732fcadca489fbb1526"
+  },
+  {
+    "path": "chunks/useNetworkBlockchain-Da_3X3wB.js",
+    "bytes": 1016,
+    "sha256": "7bf544d4f7a061dc9ac3df34ace31eb69c894b6971f2d620cf80c16af9bfd823"
+  },
+  {
+    "path": "chunks/useOnboardingType-C_Lvvffu.js",
+    "bytes": 768,
+    "sha256": "379f9baf1aa17c7ff074d5e671807d5b0b125befa68ad09e3e9cdf6e31e19731"
+  },
+  {
+    "path": "chunks/useQuery-xfIhCxCG.js",
+    "bytes": 10155,
+    "sha256": "1528b175499f1ff30ab0b88c59993c7a098e4c85c6a3132c86cd6b8ba9c22358"
+  },
+  {
+    "path": "chunks/useReadTheme-ly1K6tiY.js",
+    "bytes": 20819,
+    "sha256": "9f10b20e6b543899c6e6f12aaa95c9078489f8c4d7fa949fa7fc02dcd27da85d"
+  },
+  {
+    "path": "chunks/useSeedPhraseBackupRequired-DciKShdc.js",
+    "bytes": 680,
+    "sha256": "e0534c1d7873eccd68c6f74ff69ddbddd8daa400869293cb85409cf9c14a5a3c"
+  },
+  {
+    "path": "chunks/useSelectedBaseCurrency-drfds3sV.js",
+    "bytes": 5466,
+    "sha256": "a402727bb19f24ed1374d98b1801857002ad174f5db94610c3ff933a4ac72e53"
+  },
+  {
+    "path": "chunks/useSelectedBlockchain-CdAMZ61x.js",
+    "bytes": 670,
+    "sha256": "3c86551221858dbe5157114329bb1c556be0d0f1628e3cd5ba6ac037f24ce59c"
+  },
+  {
+    "path": "chunks/useSetupAuthentication-EZlruew7.js",
+    "bytes": 3158,
+    "sha256": "3ddc39caeea1a7b6290f6733496ff8a9ef90411b53e25f485f4cc051c2d981be"
+  },
+  {
+    "path": "chunks/useShowToast-CRiwUCIa.js",
+    "bytes": 683,
+    "sha256": "0d84fc005292ef93065a80006bc6997f185780f52cf60e30c503c60d1622b33f"
+  },
+  {
+    "path": "chunks/useTransactionsByDate-nTUC5P1-.js",
+    "bytes": 13477,
+    "sha256": "d27015982677eeeab6b8246504a4c5744c2e73d759f18fd43f1406161e02dfa4"
+  },
+  {
+    "path": "chunks/useTransferable-vb_RgYBB.js",
+    "bytes": 3205,
+    "sha256": "f24a3667d71e3674a08dce918467832043b90fd8cb7431ed750e2649c9486fe6"
+  },
+  {
+    "path": "chunks/useValidateNotEmpty-C3v9ry5f.js",
+    "bytes": 973,
+    "sha256": "08cae4f70c2d90464df5059c197f1afa5702e2530d974127c6c1ddd8ff029332"
+  },
+  {
+    "path": "chunks/useValidatePassword-Dn2iwOd-.js",
+    "bytes": 6279,
+    "sha256": "c3f9917908023d0a79fba503207c2383fb9a75c0a6323b8a7268fe3e2c511257"
+  },
+  {
+    "path": "chunks/useWalletName-DIkqlJED.js",
+    "bytes": 1001,
+    "sha256": "c869dd4aeec1280c9b239e485876242b9df19f8069a3ef4782baddc1d41a7c54"
+  },
+  {
+    "path": "chunks/useWallets-BE-S4cY7.js",
+    "bytes": 1049,
+    "sha256": "c20c6b143e2801ab87196c1e70fe93157e2d681a8e3b31908dce0d02064047c0"
+  },
+  {
+    "path": "chunks/utils-BEeAK54T.js",
+    "bytes": 1451,
+    "sha256": "a6947f4753895ac86a606712b95bd5331757f3bbbbbc43d67a6f8aa5d9d98067"
+  },
+  {
+    "path": "chunks/utils-CrqWOcqs.js",
+    "bytes": 311812,
+    "sha256": "08a706d1f2b4c0c6d408035931882e79fdf0cb931f69ee7c6f2ebb30250aa027"
+  },
+  {
+    "path": "chunks/wallet-kIuX5SXY.js",
+    "bytes": 1000,
+    "sha256": "51569badbb70d7c97625851554c2aad3becc89ea3a5e33fa203b5833cab8e6f7"
+  },
+  {
+    "path": "chunks/walletkit.service-C_NgWHzp.js",
+    "bytes": 37331651,
+    "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+  },
+  {
+    "path": "chunks/window-COx4dq7s.js",
+    "bytes": 1371,
+    "sha256": "a3fd59930f8ef128e09c63a1c9d8b19085d98d5b1bac45ce773337989d22704f"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values/strings.commonMain.cvr",
+    "bytes": 89237,
+    "sha256": "ca2d2c622cb802647443b6315d528d5650dd3abacf4cc5e7659d84312f8108dc"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ar/strings.commonMain.cvr",
+    "bytes": 131324,
+    "sha256": "e85a982dfc062b5181d555b13247e9cc08514051a72c19f3112490bd69775f42"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-bg/strings.commonMain.cvr",
+    "bytes": 146924,
+    "sha256": "202b26b746b6bcfe045992a8cfc9c955cb2866da3d5ccb3b7c3178bdc6b4f467"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-bg-rBG/strings.commonMain.cvr",
+    "bytes": 146924,
+    "sha256": "202b26b746b6bcfe045992a8cfc9c955cb2866da3d5ccb3b7c3178bdc6b4f467"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-bn/strings.commonMain.cvr",
+    "bytes": 98228,
+    "sha256": "911fa3dd1777e822f34a8bdc4280189b4c107af23226252fd4832430eb06d765"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-bn-rBD/strings.commonMain.cvr",
+    "bytes": 98228,
+    "sha256": "911fa3dd1777e822f34a8bdc4280189b4c107af23226252fd4832430eb06d765"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-br/strings.commonMain.cvr",
+    "bytes": 97956,
+    "sha256": "55580b122622df6007ec2d3b1d747ffbecf2935eb3801c5960ae519884e4846d"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-cs/strings.commonMain.cvr",
+    "bytes": 99796,
+    "sha256": "5e34e265260b0f1d5937cf8e6d6754cbd9c6db3aec808f26001fe46765c3ff95"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-cs-rCZ/strings.commonMain.cvr",
+    "bytes": 99796,
+    "sha256": "5e34e265260b0f1d5937cf8e6d6754cbd9c6db3aec808f26001fe46765c3ff95"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-da/strings.commonMain.cvr",
+    "bytes": 94328,
+    "sha256": "8723779fbda1c59dd61c81a304c867e3c3f493622d3c1bf87901c51d8b99fd62"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-da-rDK/strings.commonMain.cvr",
+    "bytes": 94328,
+    "sha256": "8723779fbda1c59dd61c81a304c867e3c3f493622d3c1bf87901c51d8b99fd62"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-de/strings.commonMain.cvr",
+    "bytes": 100860,
+    "sha256": "f5cc5d8a6474c94808ef4efe9f6e8bbd30f7c1336e12cfe925623c6275237c67"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-de-rCH/strings.commonMain.cvr",
+    "bytes": 100860,
+    "sha256": "f5cc5d8a6474c94808ef4efe9f6e8bbd30f7c1336e12cfe925623c6275237c67"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-de-rDE/strings.commonMain.cvr",
+    "bytes": 100860,
+    "sha256": "f5cc5d8a6474c94808ef4efe9f6e8bbd30f7c1336e12cfe925623c6275237c67"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-el/strings.commonMain.cvr",
+    "bytes": 148096,
+    "sha256": "21b7cd0277a72b22537ae220257336f19e8afd5bc5d0f21bf0d86384ab501f6c"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-el-rGR/strings.commonMain.cvr",
+    "bytes": 148096,
+    "sha256": "21b7cd0277a72b22537ae220257336f19e8afd5bc5d0f21bf0d86384ab501f6c"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rAU/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rCA/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rGB/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rGR/strings.commonMain.cvr",
+    "bytes": 83172,
+    "sha256": "3bde4b3e30f656f6548fe2af315351eacd97adc662b2664805d6f5bc7f640c6b"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rIN/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rKZ/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rNG/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rNZ/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-en-rZA/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-es/strings.commonMain.cvr",
+    "bytes": 101844,
+    "sha256": "30d609ba9d852db798df398d95b328755a4941439590666fb0d98b83e46944e5"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-es-rAR/strings.commonMain.cvr",
+    "bytes": 99112,
+    "sha256": "205eac5174d3955e51ee205174d2f08c2abca9844828d843d01453b6f8a0db03"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-es-rES/strings.commonMain.cvr",
+    "bytes": 101844,
+    "sha256": "30d609ba9d852db798df398d95b328755a4941439590666fb0d98b83e46944e5"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-es-rLA/strings.commonMain.cvr",
+    "bytes": 99112,
+    "sha256": "205eac5174d3955e51ee205174d2f08c2abca9844828d843d01453b6f8a0db03"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-es-rMX/strings.commonMain.cvr",
+    "bytes": 99112,
+    "sha256": "205eac5174d3955e51ee205174d2f08c2abca9844828d843d01453b6f8a0db03"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-fr/strings.commonMain.cvr",
+    "bytes": 104772,
+    "sha256": "c2588ccb3cb2b82f26c03a61c7cd266553782270a86cf92972d77bf0b8ded92a"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-fr-rAF/strings.commonMain.cvr",
+    "bytes": 104772,
+    "sha256": "c2588ccb3cb2b82f26c03a61c7cd266553782270a86cf92972d77bf0b8ded92a"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-fr-rFR/strings.commonMain.cvr",
+    "bytes": 104772,
+    "sha256": "c2588ccb3cb2b82f26c03a61c7cd266553782270a86cf92972d77bf0b8ded92a"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-id/strings.commonMain.cvr",
+    "bytes": 95592,
+    "sha256": "e3b1ada26e1790ebc48575ddf3e5b1227be24256d12392525a9bcd1ad9f08436"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-id-rID/strings.commonMain.cvr",
+    "bytes": 95592,
+    "sha256": "e3b1ada26e1790ebc48575ddf3e5b1227be24256d12392525a9bcd1ad9f08436"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-in/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-it/strings.commonMain.cvr",
+    "bytes": 97928,
+    "sha256": "63a95b01d66e6d3febb33fc5e5e35dbdc69f6c65dd97ee759031edad41d5cc6c"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-it-rIT/strings.commonMain.cvr",
+    "bytes": 97928,
+    "sha256": "63a95b01d66e6d3febb33fc5e5e35dbdc69f6c65dd97ee759031edad41d5cc6c"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ja/strings.commonMain.cvr",
+    "bytes": 113356,
+    "sha256": "18daddd43897eb33464710e7f1efe9e4b7d70d323354dae71378fc0d41acbeb3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ja-rJP/strings.commonMain.cvr",
+    "bytes": 113356,
+    "sha256": "18daddd43897eb33464710e7f1efe9e4b7d70d323354dae71378fc0d41acbeb3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ka/strings.commonMain.cvr",
+    "bytes": 98644,
+    "sha256": "22f7d68bef7bfbf15aa65b5fc8b68d07f817343c043a9e3841fe1919a562bcd4"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ka-rGE/strings.commonMain.cvr",
+    "bytes": 98644,
+    "sha256": "22f7d68bef7bfbf15aa65b5fc8b68d07f817343c043a9e3841fe1919a562bcd4"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-kk/strings.commonMain.cvr",
+    "bytes": 147772,
+    "sha256": "4d91ce9b287bedb90f46c104bc86b9616d53ba8d619c001d1b3cd71f5bdc73a3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-kk-rKZ/strings.commonMain.cvr",
+    "bytes": 147772,
+    "sha256": "4d91ce9b287bedb90f46c104bc86b9616d53ba8d619c001d1b3cd71f5bdc73a3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ko/strings.commonMain.cvr",
+    "bytes": 103884,
+    "sha256": "809b6f26849cbb0cd3e63ec6a75ce98114df9ac9cbef7ca4c02da91bb9835376"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ko-rKR/strings.commonMain.cvr",
+    "bytes": 103884,
+    "sha256": "809b6f26849cbb0cd3e63ec6a75ce98114df9ac9cbef7ca4c02da91bb9835376"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-kr/strings.commonMain.cvr",
+    "bytes": 103884,
+    "sha256": "809b6f26849cbb0cd3e63ec6a75ce98114df9ac9cbef7ca4c02da91bb9835376"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-lo/strings.commonMain.cvr",
+    "bytes": 174336,
+    "sha256": "d9593154ace2930d78102fa8943c8d42861c983965db8be4dc0a6bb491ff529d"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-lo-rLA/strings.commonMain.cvr",
+    "bytes": 174336,
+    "sha256": "d9593154ace2930d78102fa8943c8d42861c983965db8be4dc0a6bb491ff529d"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-lv/strings.commonMain.cvr",
+    "bytes": 101212,
+    "sha256": "5faaee7bbc7736cd0ebe228d462f10b7d2c8e0b6d1ec431a6c359c3f265c3277"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-lv-rLV/strings.commonMain.cvr",
+    "bytes": 101212,
+    "sha256": "5faaee7bbc7736cd0ebe228d462f10b7d2c8e0b6d1ec431a6c359c3f265c3277"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-my/strings.commonMain.cvr",
+    "bytes": 236980,
+    "sha256": "a4fc422a6574cb6d62e5802198cbc252c77e1938a41d7bba82997031cbe36069"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-my-rMM/strings.commonMain.cvr",
+    "bytes": 236980,
+    "sha256": "a4fc422a6574cb6d62e5802198cbc252c77e1938a41d7bba82997031cbe36069"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ng/strings.commonMain.cvr",
+    "bytes": 87564,
+    "sha256": "b516fac6a04dd0e8872d5a9956e5185717502ce85fa06ecbe548331b6850fec3"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-nl/strings.commonMain.cvr",
+    "bytes": 88212,
+    "sha256": "59ad374b90a478e226c9669abb7fbf3b9f51081871b4ca2e2f9ea2f473ceecef"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-nl-rNL/strings.commonMain.cvr",
+    "bytes": 88212,
+    "sha256": "59ad374b90a478e226c9669abb7fbf3b9f51081871b4ca2e2f9ea2f473ceecef"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-pl/strings.commonMain.cvr",
+    "bytes": 99056,
+    "sha256": "fc3934d09b6cb1911e6bd7def70aa892c7d14705f98c9040848d7a6b2ed395ea"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-pl-rPL/strings.commonMain.cvr",
+    "bytes": 99056,
+    "sha256": "fc3934d09b6cb1911e6bd7def70aa892c7d14705f98c9040848d7a6b2ed395ea"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-pt/strings.commonMain.cvr",
+    "bytes": 99764,
+    "sha256": "7cebd20d7749ef1df6088e191c382e336389b48ea233b504081b53e47e538ef9"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-pt-rBR/strings.commonMain.cvr",
+    "bytes": 97956,
+    "sha256": "55580b122622df6007ec2d3b1d747ffbecf2935eb3801c5960ae519884e4846d"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-pt-rPT/strings.commonMain.cvr",
+    "bytes": 99764,
+    "sha256": "7cebd20d7749ef1df6088e191c382e336389b48ea233b504081b53e47e538ef9"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ro/strings.commonMain.cvr",
+    "bytes": 101652,
+    "sha256": "9dcce07b0fcaf10a45ff8ef8a69aad9db4e5f3ca9b6adfafb7c833606805346a"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ro-rRO/strings.commonMain.cvr",
+    "bytes": 101652,
+    "sha256": "9dcce07b0fcaf10a45ff8ef8a69aad9db4e5f3ca9b6adfafb7c833606805346a"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ru/strings.commonMain.cvr",
+    "bytes": 146908,
+    "sha256": "41692d5bcfffbfc46cf1322a25e2d995a9e3798ae6c36361f309abff22b8dbed"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ru-rKZ/strings.commonMain.cvr",
+    "bytes": 146908,
+    "sha256": "41692d5bcfffbfc46cf1322a25e2d995a9e3798ae6c36361f309abff22b8dbed"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ru-rRU/strings.commonMain.cvr",
+    "bytes": 146908,
+    "sha256": "41692d5bcfffbfc46cf1322a25e2d995a9e3798ae6c36361f309abff22b8dbed"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ru-rUA/strings.commonMain.cvr",
+    "bytes": 146908,
+    "sha256": "41692d5bcfffbfc46cf1322a25e2d995a9e3798ae6c36361f309abff22b8dbed"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-si/strings.commonMain.cvr",
+    "bytes": 182136,
+    "sha256": "bfe2f3fc4e9f6a16597e2da17c086996554ac148228badb1cbc0903548a80cb1"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-si-rLK/strings.commonMain.cvr",
+    "bytes": 182136,
+    "sha256": "bfe2f3fc4e9f6a16597e2da17c086996554ac148228badb1cbc0903548a80cb1"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sk/strings.commonMain.cvr",
+    "bytes": 99316,
+    "sha256": "9411fedadc776145e3f932214c2a366d52eb565cc64f2a0796a7507ea9ec6da6"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sk-rSK/strings.commonMain.cvr",
+    "bytes": 99316,
+    "sha256": "9411fedadc776145e3f932214c2a366d52eb565cc64f2a0796a7507ea9ec6da6"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sl/strings.commonMain.cvr",
+    "bytes": 96516,
+    "sha256": "4ccbe927eb9e2444bd401b4fcb8823e1798b0b68a453f38fbdc4eb350fe7f6b5"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sl-rSI/strings.commonMain.cvr",
+    "bytes": 96516,
+    "sha256": "4ccbe927eb9e2444bd401b4fcb8823e1798b0b68a453f38fbdc4eb350fe7f6b5"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sv/strings.commonMain.cvr",
+    "bytes": 95232,
+    "sha256": "dd27a7d893bf913475267555a6d1bb818f5a14ce28f544303081313b102749ec"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-sv-rSE/strings.commonMain.cvr",
+    "bytes": 95232,
+    "sha256": "dd27a7d893bf913475267555a6d1bb818f5a14ce28f544303081313b102749ec"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-tr/strings.commonMain.cvr",
+    "bytes": 90700,
+    "sha256": "1853fc0a53720b0b0e1bae6431a734702bab6e653d4860730d12416150302e8f"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-tr-rTR/strings.commonMain.cvr",
+    "bytes": 90700,
+    "sha256": "1853fc0a53720b0b0e1bae6431a734702bab6e653d4860730d12416150302e8f"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-tw/strings.commonMain.cvr",
+    "bytes": 84676,
+    "sha256": "1a044394baeb80ff5f6250fc2dc0a4529fd08bd5536f8bf8642a99ef9a0f983e"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-uk/strings.commonMain.cvr",
+    "bytes": 144496,
+    "sha256": "bdcc409371ec75add79c75eef714aab174432c310a2f2746f0c503a64051fcba"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-uk-rUA/strings.commonMain.cvr",
+    "bytes": 144496,
+    "sha256": "bdcc409371ec75add79c75eef714aab174432c310a2f2746f0c503a64051fcba"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ur/strings.commonMain.cvr",
+    "bytes": 92564,
+    "sha256": "74fc1a41e2e0c9a109d8c9f15fe9a9b587e8a9ce7cb0a0405fc2797b25871220"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-ur-rPK/strings.commonMain.cvr",
+    "bytes": 92564,
+    "sha256": "74fc1a41e2e0c9a109d8c9f15fe9a9b587e8a9ce7cb0a0405fc2797b25871220"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-vi/strings.commonMain.cvr",
+    "bytes": 112904,
+    "sha256": "4eeb77110aa2a4fd2d2db94375375606d945e6eeb544c42266ac1a55a9d57184"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-vi-rVN/strings.commonMain.cvr",
+    "bytes": 112904,
+    "sha256": "4eeb77110aa2a4fd2d2db94375375606d945e6eeb544c42266ac1a55a9d57184"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-zh/strings.commonMain.cvr",
+    "bytes": 84064,
+    "sha256": "2779e21f39c7a34ddfd0e10deb408ece5a21f248cee08d5860d84c9d1fe6a1a2"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-zh-rCN/strings.commonMain.cvr",
+    "bytes": 84064,
+    "sha256": "2779e21f39c7a34ddfd0e10deb408ece5a21f248cee08d5860d84c9d1fe6a1a2"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-zh-rHK/strings.commonMain.cvr",
+    "bytes": 84676,
+    "sha256": "1a044394baeb80ff5f6250fc2dc0a4529fd08bd5536f8bf8642a99ef9a0f983e"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-zh-rTC/strings.commonMain.cvr",
+    "bytes": 84676,
+    "sha256": "1a044394baeb80ff5f6250fc2dc0a4529fd08bd5536f8bf8642a99ef9a0f983e"
+  },
+  {
+    "path": "composeResources/com.trustwallet.sdk.strings.generated.resources/values-zh-rTW/strings.commonMain.cvr",
+    "bytes": 84676,
+    "sha256": "1a044394baeb80ff5f6250fc2dc0a4529fd08bd5536f8bf8642a99ef9a0f983e"
+  },
+  {
+    "path": "content-scripts/content.js",
+    "bytes": 53225,
+    "sha256": "7c9c7dd82106d8c0008241fe8103ed42ba3861aaeedfa12c896d61ce7a892596"
+  },
+  {
+    "path": "home.html",
+    "bytes": 2536,
+    "sha256": "2dc751ab31aedea8a5d4f23ba31c229f5976cdb5fee8c1f18eeec1a8dae2241f"
+  },
+  {
+    "path": "icons/dark/128.png",
+    "bytes": 4383,
+    "sha256": "f5cf951495688fc3566e4674cd3af802a847a5c67b8c662122156883be85dc87"
+  },
+  {
+    "path": "icons/dark/32px-notif.png",
+    "bytes": 1132,
+    "sha256": "ee0f86cee70049a7092c66b82c81066a8893d0c74a208f0b8ad91cfaa7057bfe"
+  },
+  {
+    "path": "icons/dark/32px-warning.png",
+    "bytes": 1123,
+    "sha256": "b29deb60891fed41a2e8738602c307b5caa526a0d9f2897a431ed6edad9cb3ce"
+  },
+  {
+    "path": "icons/dark/32px.png",
+    "bytes": 934,
+    "sha256": "0826df011b112c1048138220c69620c5464cb6e9175d6aa1b4e02053ee60fd58"
+  },
+  {
+    "path": "icons/icon128.png",
+    "bytes": 4357,
+    "sha256": "a8636e958e037aed82bbd16ea18bf5d13c7eeb253a41977fe89e88a6fdcdcd1d"
+  },
+  {
+    "path": "icons/icon16.png",
+    "bytes": 452,
+    "sha256": "51172ab5bac97341d8806446f35c8ce973fac8d46b97f9062f251269563e402b"
+  },
+  {
+    "path": "icons/icon32.png",
+    "bytes": 833,
+    "sha256": "ca4dbdacf89b780035a4e514e0375675d55161aae9654394917a114097f4a667"
+  },
+  {
+    "path": "icons/icon48.png",
+    "bytes": 1202,
+    "sha256": "c5d4f003b23a0b53be24232ba2a5004efc9bf837897db4b892baef2321f22633"
+  },
+  {
+    "path": "icons/icon512.png",
+    "bytes": 35502,
+    "sha256": "6c394865a625d9b8365890aebc9a00691fbf9557bcfa168db1ded2194b5259ee"
+  },
+  {
+    "path": "icons/icon64.png",
+    "bytes": 1761,
+    "sha256": "c313446b462863527ef6fa4ed635df769fc43288876521d13a0b2abe39ead730"
+  },
+  {
+    "path": "icons/light/128.png",
+    "bytes": 4335,
+    "sha256": "f7041b15e64e73b1fce2ba909ab828c4004b7ec160e55c6618bf0bca6ca419a9"
+  },
+  {
+    "path": "icons/light/32px-notif.png",
+    "bytes": 1047,
+    "sha256": "8e58dae5c9a2968d6b0f2d0ff2b100cd7359ad38b0dae903e3a26c360b118ddb"
+  },
+  {
+    "path": "icons/light/32px-warning.png",
+    "bytes": 1033,
+    "sha256": "c12d624a460359ba76c7c3c70b0539b264cc3eb262dbdcf19683addd8e1bf831"
+  },
+  {
+    "path": "icons/light/32px.png",
+    "bytes": 833,
+    "sha256": "ca4dbdacf89b780035a4e514e0375675d55161aae9654394917a114097f4a667"
+  },
+  {
+    "path": "inpage.js",
+    "bytes": 3185335,
+    "sha256": "a5b3fc8d2cb38874e19f23bc9431f2e0d8693838771e13c38123351a45968b20"
+  },
+  {
+    "path": "keepAlive.js",
+    "bytes": 1512,
+    "sha256": "20b9ced878d79cdab8aef3219cfa39ea41991aa479268d272eba3c719edc213c"
+  },
+  {
+    "path": "manifest.json",
+    "bytes": 2440,
+    "sha256": "b50e23c3686f3c185299e4f452a8df548d07ac0ec55f56c9efb1c306dbeda569"
+  },
+  {
+    "path": "popup.html",
+    "bytes": 2975,
+    "sha256": "06fa9b1966529f4f4732d084731a22519f714de284e9d4a8c835d8c0cf344a30"
+  },
+  {
+    "path": "sidepanel.html",
+    "bytes": 2887,
+    "sha256": "f0f70d874f43336e6261a0748b85f5f961d2107b78a605f04d6aeacf1aab90b5"
+  },
+  {
+    "path": "sql-wasm.wasm",
+    "bytes": 613426,
+    "sha256": "18fc45ef410e6015296dad9fa775684c96e71e7007b99f2d87799a18a354e750"
+  },
+  {
+    "path": "wallet-core.wasm",
+    "bytes": 10362000,
+    "sha256": "1b78048fa04fd8905b4eea99eb281bffb167e46a5559d28392a5e8116a885171"
+  }
+]

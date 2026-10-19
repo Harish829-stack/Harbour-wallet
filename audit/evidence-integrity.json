@@ -1,0 +1,256 @@
+[
+  {
+    "manifest": "evidence/01-install/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/01-install/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/01-install/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/02-onboarding-flow/onboarding-BHcKddMJ.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/onboarding-BHcKddMJ.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/OnboardingBoxContent-DcFJIaKL.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/OnboardingBoxContent-DcFJIaKL.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/backup-seedphrase-Cpn6mc58.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/backup-seedphrase-Cpn6mc58.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/import-mnemonic-or-private-key-CXfCQtf3.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/import-mnemonic-or-private-key-CXfCQtf3.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/SelectImportMethod-ClL8FjcB.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/SelectImportMethod-ClL8FjcB.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/useSeedPhraseBackupRequired-DciKShdc.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/02-onboarding-flow/useSeedPhraseBackupRequired-DciKShdc.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/03-auth-password/authentication-CGHHMXIG.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/authentication-CGHHMXIG.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/CreatePassword-BarNsCnn.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/CreatePassword-BarNsCnn.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/useSetupAuthentication-EZlruew7.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/useSetupAuthentication-EZlruew7.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/useValidatePassword-Dn2iwOd-.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/useValidatePassword-Dn2iwOd-.js.map",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/InputPassword-D9sGWGS1.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/03-auth-password/InputPassword-D9sGWGS1.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/04-06-vault-crypto/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/04-06-vault-crypto/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/04-06-vault-crypto/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/07-walletcore-usage/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/07-walletcore-usage/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/07-walletcore-usage/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/08-derivation/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/08-derivation/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/08-derivation/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/09-lock-session/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/09-lock-session/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/09-lock-session/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/10-home-assets/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/10-home-assets/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/10-home-assets/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/11-transaction/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/11-transaction/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/11-transaction/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/12-dapp-provider/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/12-dapp-provider/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/12-dapp-provider/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/14-bridge/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/14-bridge/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/14-bridge/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/15-network/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/15-network/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/15-network/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/17-swap/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/17-swap/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/17-swap/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  },
+  {
+    "manifest": "evidence/18-ledger/REA-manifest.json",
+    "files": [
+      {
+        "path": "evidence/18-ledger/bundle.js",
+        "matches_manifest": true
+      },
+      {
+        "path": "evidence/18-ledger/bundle.js.map",
+        "matches_manifest": true
+      }
+    ]
+  }
+]

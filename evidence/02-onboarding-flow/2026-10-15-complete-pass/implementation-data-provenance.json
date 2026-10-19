@@ -1,0 +1,10 @@
+{
+  "defaultCoins": {
+    "source": "call-recovery/modules/output/wallet-onboarding-calls.js",
+    "evidence_id": "ev_8f56c809bddf0eebbff70755ea5684e1d109c658e1d984b6dc0530d0d3d338f6",
+    "count": 128,
+    "matches": true,
+    "output": "harbour-wallet/src/core/defaultCoins.json",
+    "sha256": "a6a098bb2fcbe56102f6654730dbbd0c030100657577c842c1cfb3f775fc0b79"
+  }
+}

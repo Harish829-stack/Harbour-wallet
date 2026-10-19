@@ -1,0 +1,47 @@
+[
+  {
+    "path": "tools/toolchain/node_modules/rea-agents/dist/cli.js",
+    "sha256": "73ec2c86e22e6fcb6b008ad94624c386dcf8e4e2107c10c2bcf5eb681c75e97e",
+    "bytes": 7171
+  },
+  {
+    "path": "tools/toolchain/node_modules/@wakaru/cli-darwin-arm64/wakaru",
+    "sha256": "f9d5e969aed8c6049aacd0ce20d3030fa73bb6563ad5154699b046eb33869a95",
+    "bytes": 22844064
+  },
+  {
+    "path": "tools/vendor/wabt/build/wasm-validate",
+    "sha256": "325f2b883a77b34c0e4abac1f994115540df34f362cb3ca4786a5eaedf51079f",
+    "bytes": 1282416
+  },
+  {
+    "path": "tools/vendor/wabt/build/wasm-objdump",
+    "sha256": "521ef66077d5eea8981aafd528e4d293668548e0b8fb517b671ab7cb3b4abd45",
+    "bytes": 1016464
+  },
+  {
+    "path": "tools/vendor/wabt/build/wasm2wat",
+    "sha256": "6dfc09879b405f9c8747ca90f81306eb80a825d7807621fabe1d6850a88b45fe",
+    "bytes": 1387320
+  },
+  {
+    "path": "tools/toolchain/node_modules/rea-agents/scripts/rea.mjs",
+    "sha256": "526105418604cc6e5a202a6275b700814e27450bfaffd45e7510530ba669de8d",
+    "bytes": 4385
+  },
+  {
+    "path": "tools/browsers/chromium-1194/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+    "sha256": "a01de8bb11d24acc6f91848415c9df9744965bea7fd58763f2930d4f280d5b84",
+    "bytes": 52096
+  },
+  {
+    "path": "tools/browsers/chromium-1194/chrome-mac/Chromium.app/Contents/Frameworks/Chromium Framework.framework/Chromium Framework",
+    "sha256": "fdc1ddd3dc52fc395effc668f679d097ac3edff15c534ca684287f1f73ba8e69",
+    "bytes": 211192032
+  },
+  {
+    "path": "tools/browsers/chromium-1194/chrome-mac/Chromium.app/Contents/Frameworks/Chromium Framework.framework/Versions/141.0.7390.37/Chromium Framework",
+    "sha256": "fdc1ddd3dc52fc395effc668f679d097ac3edff15c534ca684287f1f73ba8e69",
+    "bytes": 211192032
+  }
+]

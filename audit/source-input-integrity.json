@@ -1,0 +1,163 @@
+[
+  {
+    "manifest": "evidence/01-install/REA-manifest.json",
+    "historical_input_basename": "install-entry-slice.js",
+    "sha256": "d750d801161a024e4749092944008af82f0417d412e65b05281ad2c8c85348c2",
+    "verified_local_input": "evidence/slices/install-entry-slice.js",
+    "deposited_input": "evidence/01-install/inputs-verified-local/install-entry-slice.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "onboarding-BHcKddMJ.js",
+    "sha256": "1697bf495fc40af9218511f71705e54d9547f9b97181f50e4f31d6e01b72a57d",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/onboarding-BHcKddMJ.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/onboarding-BHcKddMJ.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "OnboardingBoxContent-DcFJIaKL.js",
+    "sha256": "c041d9cf9fe75cafd3db182e66e59d87bdfb8d5080f980aee9df26229bd03baa",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/OnboardingBoxContent-DcFJIaKL.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/OnboardingBoxContent-DcFJIaKL.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "backup-seedphrase-Cpn6mc58.js",
+    "sha256": "a97a8da5dc404c268f46480950dccacae86490eb2d46b052e1be5be5dddb3446",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/backup-seedphrase-Cpn6mc58.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/backup-seedphrase-Cpn6mc58.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "import-mnemonic-or-private-key-CXfCQtf3.js",
+    "sha256": "1b379bca0989a52908c45d5d48b47911105cc8f8d70b72ff3ecafaa0e23c848d",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/import-mnemonic-or-private-key-CXfCQtf3.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/import-mnemonic-or-private-key-CXfCQtf3.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "SelectImportMethod-ClL8FjcB.js",
+    "sha256": "2d4997f811411dbf31df8bdc91d3ae16c67e748fd88c37f4c537702b97b0c893",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/SelectImportMethod-ClL8FjcB.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/SelectImportMethod-ClL8FjcB.js"
+  },
+  {
+    "manifest": "evidence/02-onboarding-flow/REA-manifest.json",
+    "historical_input_basename": "useSeedPhraseBackupRequired-DciKShdc.js",
+    "sha256": "e0534c1d7873eccd68c6f74ff69ddbddd8daa400869293cb85409cf9c14a5a3c",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/useSeedPhraseBackupRequired-DciKShdc.js",
+    "deposited_input": "evidence/02-onboarding-flow/inputs-verified-local/useSeedPhraseBackupRequired-DciKShdc.js"
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "historical_input_basename": "authentication-CGHHMXIG.js",
+    "sha256": "3bebfe5e21bd14989a8aab55c1d6809426464bfefc9ac39b28cba788f0bcba6c",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/authentication-CGHHMXIG.js",
+    "deposited_input": "evidence/03-auth-password/inputs-verified-local/authentication-CGHHMXIG.js"
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "historical_input_basename": "CreatePassword-BarNsCnn.js",
+    "sha256": "75e53d6490d93b3de9ff66a69e748f5d90076322dac99a66a695100c8eb6a41e",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/CreatePassword-BarNsCnn.js",
+    "deposited_input": "evidence/03-auth-password/inputs-verified-local/CreatePassword-BarNsCnn.js"
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "historical_input_basename": "useSetupAuthentication-EZlruew7.js",
+    "sha256": "3ddc39caeea1a7b6290f6733496ff8a9ef90411b53e25f485f4cc051c2d981be",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/useSetupAuthentication-EZlruew7.js",
+    "deposited_input": "evidence/03-auth-password/inputs-verified-local/useSetupAuthentication-EZlruew7.js"
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "historical_input_basename": "useValidatePassword-Dn2iwOd-.js",
+    "sha256": "c3f9917908023d0a79fba503207c2383fb9a75c0a6323b8a7268fe3e2c511257",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/useValidatePassword-Dn2iwOd-.js",
+    "deposited_input": "evidence/03-auth-password/inputs-verified-local/useValidatePassword-Dn2iwOd-.js"
+  },
+  {
+    "manifest": "evidence/03-auth-password/REA-manifest.json",
+    "historical_input_basename": "InputPassword-D9sGWGS1.js",
+    "sha256": "13890f0218724fc864933096b39f5a9ec92ca5601dc99229f15e288bd48fc9e4",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/InputPassword-D9sGWGS1.js",
+    "deposited_input": "evidence/03-auth-password/inputs-verified-local/InputPassword-D9sGWGS1.js"
+  },
+  {
+    "manifest": "evidence/04-06-vault-crypto/REA-manifest.json",
+    "historical_input_basename": "vault-crypto-slice.js",
+    "sha256": "8849d4e683417b5194ead0a69396187b256ae13ae4da7da88821b0e21350711a",
+    "verified_local_input": "evidence/slices/vault-crypto-slice.js",
+    "deposited_input": "evidence/04-06-vault-crypto/inputs-verified-local/vault-crypto-slice.js"
+  },
+  {
+    "manifest": "evidence/07-walletcore-usage/REA-manifest.json",
+    "historical_input_basename": "walletcore-usage-slice.js",
+    "sha256": "4710134be1a372a27053e3caece6cbfce5a11cede7f4d7b3a22271ddec5905bc",
+    "verified_local_input": "evidence/slices/walletcore-usage-slice.js",
+    "deposited_input": "evidence/07-walletcore-usage/inputs-verified-local/walletcore-usage-slice.js"
+  },
+  {
+    "manifest": "evidence/08-derivation/REA-manifest.json",
+    "historical_input_basename": "derivation-slice.js",
+    "sha256": "9711f3846a1bde8faac33fcfac6b3178fc6d78af32399aebd9cb55d8a76b59d9",
+    "verified_local_input": "evidence/slices/derivation-slice.js",
+    "deposited_input": "evidence/08-derivation/inputs-verified-local/derivation-slice.js"
+  },
+  {
+    "manifest": "evidence/09-lock-session/REA-manifest.json",
+    "historical_input_basename": "lock-session-slice.js",
+    "sha256": "2cfd07f75f9869191cd802e076d6691a86389bc451e21d52d51d79ab4959f4f4",
+    "verified_local_input": "evidence/slices/lock-session-slice.js",
+    "deposited_input": "evidence/09-lock-session/inputs-verified-local/lock-session-slice.js"
+  },
+  {
+    "manifest": "evidence/10-home-assets/REA-manifest.json",
+    "historical_input_basename": "10-home-assets-slice.js",
+    "sha256": "163e0cf388f1278a3e84683f8bbf5343bf9f3f27939fd43b97c26cda0fbc75f7",
+    "verified_local_input": "evidence/slices/10-home-assets-slice.js",
+    "deposited_input": "evidence/10-home-assets/inputs-verified-local/10-home-assets-slice.js"
+  },
+  {
+    "manifest": "evidence/11-transaction/REA-manifest.json",
+    "historical_input_basename": "11-transaction-slice.js",
+    "sha256": "4b6e90d686616bf1378a5f98c8aad9d13c2e208cc8d94e76b14923cae975059b",
+    "verified_local_input": "evidence/slices/11-transaction-slice.js",
+    "deposited_input": "evidence/11-transaction/inputs-verified-local/11-transaction-slice.js"
+  },
+  {
+    "manifest": "evidence/12-dapp-provider/REA-manifest.json",
+    "historical_input_basename": "inpage.js",
+    "sha256": "a5b3fc8d2cb38874e19f23bc9431f2e0d8693838771e13c38123351a45968b20",
+    "verified_local_input": "artifacts/reference-26.41.0/inpage.js",
+    "deposited_input": "evidence/12-dapp-provider/inputs-verified-local/inpage.js"
+  },
+  {
+    "manifest": "evidence/14-bridge/REA-manifest.json",
+    "historical_input_basename": "content.js",
+    "sha256": "7c9c7dd82106d8c0008241fe8103ed42ba3861aaeedfa12c896d61ce7a892596",
+    "verified_local_input": "artifacts/reference-26.41.0/content-scripts/content.js",
+    "deposited_input": "evidence/14-bridge/inputs-verified-local/content.js"
+  },
+  {
+    "manifest": "evidence/15-network/REA-manifest.json",
+    "historical_input_basename": "15-network-slice.js",
+    "sha256": "eddd47e7ec6db291adbb2cfcb6763518c99724fd2efe575a29147e0085776191",
+    "verified_local_input": "evidence/slices/15-network-slice.js",
+    "deposited_input": "evidence/15-network/inputs-verified-local/15-network-slice.js"
+  },
+  {
+    "manifest": "evidence/17-swap/REA-manifest.json",
+    "historical_input_basename": "17-swap-slice.js",
+    "sha256": "0e40f8b946cb8ee26c16bb0200bd4f692db0119eef10b948adab98059384a962",
+    "verified_local_input": "evidence/slices/17-swap-slice.js",
+    "deposited_input": "evidence/17-swap/inputs-verified-local/17-swap-slice.js"
+  },
+  {
+    "manifest": "evidence/18-ledger/REA-manifest.json",
+    "historical_input_basename": "import-ledger-BvEfx1nD.js",
+    "sha256": "71f01ddf07c043ad73b634100f444a8b42ac815bb07591322f132318fbcdd000",
+    "verified_local_input": "artifacts/reference-26.41.0/chunks/import-ledger-BvEfx1nD.js",
+    "deposited_input": "evidence/18-ledger/inputs-verified-local/import-ledger-BvEfx1nD.js"
+  }
+]

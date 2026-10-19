@@ -1,0 +1,18 @@
+{
+  "text": "H\nHARBOUR\nWALLET\nSecure your wallet\nⓘ Help\n‹\nBack\nSelect an option\nPassword",
+  "buttons": [
+    {
+      "text": "‹\nBack",
+      "disabled": false
+    },
+    {
+      "text": "Password",
+      "disabled": false
+    }
+  ],
+  "inputs": [],
+  "viewport": {
+    "width": 1365,
+    "height": 900
+  }
+}

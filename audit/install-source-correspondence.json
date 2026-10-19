@@ -1,0 +1,20 @@
+[
+  {
+    "slice_line_sha256": "8528923393a1b45931cc339d205d8960f1c39054cc817256fefbb56411458dab",
+    "original_offset": 42721922,
+    "bytes": 179,
+    "exact_match": true
+  },
+  {
+    "slice_line_sha256": "c3353b3ae954953eefa339ff1f34e58d7777507a8039181cda423fea999947ee",
+    "original_offset": 42722101,
+    "bytes": 172,
+    "exact_match": true
+  },
+  {
+    "slice_line_sha256": "2eef290afc52ab80f18dd7f0731edf3a4e0263642e469507a52e3adec10e5a6f",
+    "original_offset": -1,
+    "bytes": 734,
+    "exact_match": false
+  }
+]

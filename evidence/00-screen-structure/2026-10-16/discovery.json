@@ -1,0 +1,2937 @@
+{
+  "baseline": "26.41.0",
+  "method": "Babel inert AST candidate extraction; REA recovery required for claims",
+  "files": [
+    {
+      "file": "chunks/Alert-Hvaga4Yx.js",
+      "sha256": "e60e7814a3cc3be70a01e8de6057d0e1c584253dc5e7443a55271966705ee830",
+      "bytes": 6509,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "bytes": 2137186,
+      "routeCandidates": 71
+    },
+    {
+      "file": "chunks/ArrowLeftIcon-CEFCqNF-.js",
+      "sha256": "fa67ed2b59ea02dd47174a73400210cd04c22ed6b99929fe717f1ee1c4130f2f",
+      "bytes": 1363,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ArrowRightIcon-CjwrzRSe.js",
+      "sha256": "f945dfb989fd7458f8b0caf007f6b89b5b27788b59b655f2dfd5e5ded3afadef",
+      "bytes": 1335,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/AssetImage-BQ2Pnx9g.js",
+      "sha256": "8d9e8db36a99901bc1056df1d1b0669fab6e71e2058e1921529554fcca201a0f",
+      "bytes": 7744,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/AssetSelector-8DzswJ8V.js",
+      "sha256": "931467979ff8adbf4b1a181e55f40f9ac4d5d98d7cd42152dfff5a06b3e32b4f",
+      "bytes": 1731,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Badge-smZjUX8n.js",
+      "sha256": "31b752b90c90f85a7d79d67bf0cf88819277660a367e4380ba4dcfbe714bfd2b",
+      "bytes": 1488,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/BlockedMaxWallets-6ukMLunP.js",
+      "sha256": "dc48f76d66a5ab24d2b061f6b629b080c35e9aacfb2f15587484905bcdf95e8d",
+      "bytes": 1172,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/BookIllustration-B6_u-WsX.js",
+      "sha256": "39511df7bd229e60c12db127940e113d11a806a928133182d4986ee46ed6fe0d",
+      "bytes": 21335,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CanvasStringPlaceholder-CBT1pugG.js",
+      "sha256": "8445031a4f25cc182f0b1560ad144a90e054926617520ce5569742fa83f23b47",
+      "bytes": 1643,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Card-BZmkTDlX.js",
+      "sha256": "00e9ec4793c996a145d6b2c79c4a568bf12d2d2442676648c1dba5e308ed78f3",
+      "bytes": 1101,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CaretDownIcon-qWhOaTgi.js",
+      "sha256": "a87780a1dcab91879241b5e79abd91503eb891ffed2ee246b6c1c2cc2064575b",
+      "bytes": 1110,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CarouselControl-MPn6Zgxk.js",
+      "sha256": "43fa0505ea66a81689452900085d4286b50630c332193728ca3d26e0f4ae77f3",
+      "bytes": 1661,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Category-vM_OyGpQ.js",
+      "sha256": "0a6bdba6e480fd158ec404f98bde56c2e850256f8bd7b09f18a43e61c68e4493",
+      "bytes": 1662,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Center-Biy7RhoP.js",
+      "sha256": "5ea2cd8996ee52ce8d282d01aac1fa289c3ac67e5ecf344074d3e7a30c59abc9",
+      "bytes": 749,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CheckIcon-EcHbjY0b.js",
+      "sha256": "5e7b38a6f0dc88eef6df02af101cdda440ce99a71e60969c1896a67b427c2649",
+      "bytes": 1164,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CheckSolidIcon-BhQrXkEI.js",
+      "sha256": "cf9c151f035d6390e6f70554b2e13f81bea982b6f601b1cd2909a0b1473a1843",
+      "bytes": 1165,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Checkbox-BLoP25Tu.js",
+      "sha256": "ba2478ba1d9a52e222275c91f32d77e4787b33240ca25ad137608a8b3350487b",
+      "bytes": 1321,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ChevronDownIcon--tkyd4-4.js",
+      "sha256": "f250223513140f1534e5af5f0fcb274b9c9c088c6ad81804c85cd33d8d6878db",
+      "bytes": 1093,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ChevronLeftIcon-q2VwJ_BU.js",
+      "sha256": "4234c15c36f4c071fa425ca91182521fa4308e1b4fc4ca7ad8302834855ba964",
+      "bytes": 1128,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ChevronRightIcon-yVP5lW7x.js",
+      "sha256": "b5b4fb82d3a96d46ada2e6515efc4a61f12b1b6c0f4645ba7675b6c56e989ece",
+      "bytes": 1115,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CircleSelector-C07C2Q9z.js",
+      "sha256": "d01abeb8c599d0552e791555390613fa5013fea1a61ddd546439459c5e9a3a75",
+      "bytes": 805,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ClickableArea-BE_vFWHj.js",
+      "sha256": "c46d8fbc34fd03d6f175188ab3729f88333ea1356d342cf47e25735d1ebe2b14",
+      "bytes": 1174,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CloseIcon-p4AoLZNW.js",
+      "sha256": "47aa3ecf774c29175cbfbdfae334a4f9ac132bd89eec50b458147e700c15de3d",
+      "bytes": 1295,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CollapsibleTextSection-lHtfTpjW.js",
+      "sha256": "2e41629720f8a2409d0a544775ef36b89fda243065351b810fb5721d95a5304a",
+      "bytes": 1145,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Completed-5mEUoaUY.js",
+      "sha256": "1403884f1c1263b352ad8754c9d4655bab414780af661a2090a53f688a38afd9",
+      "bytes": 525757,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CopyIcon-BjPIDqyP.js",
+      "sha256": "0465ba18061eecc6e8823adf044f3dbc420d9f2b0172183bae520c889567d3aa",
+      "bytes": 3692,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CopyToClipboardButton-C1uY6ocr.js",
+      "sha256": "be15c241fd758f97573925591fd3e1d29eb767b3c0710b39ef2d9aafd407e02a",
+      "bytes": 2073,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/CreatePassword-BarNsCnn.js",
+      "sha256": "75e53d6490d93b3de9ff66a69e748f5d90076322dac99a66a695100c8eb6a41e",
+      "bytes": 3953,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/DataListRow-CWCrec8q.js",
+      "sha256": "60cd330ccd0d2d91777a50825bb29298b93736fc876bb3a03e64f5b81f709416",
+      "bytes": 1650,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/DeleteIcon-sowkUA2L.js",
+      "sha256": "2bc00aa2035352dc22033ee73d36bb16977c40083aaeb311d0152839e8090bc5",
+      "bytes": 1804,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/DocumentIcon-DVQhyCu1.js",
+      "sha256": "5bce8c313fcb06489665df5180c29e5210001007425846dd336ebe61550bc101",
+      "bytes": 1442,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/EditIcon-SLprAfaa.js",
+      "sha256": "07c40dbd8749d8873732fa9f8105f1b48215f2fdfe1df18d8b4fc0f5a5b8d19c",
+      "bytes": 1387,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/EmptyList-D0dVloH1.js",
+      "sha256": "3c0e4a6fd69325e86faf726c5a6d47d45f2e773e0a5cbdad11d3bab068f706bd",
+      "bytes": 56289,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/EmptySearchContent-BPhzgYFK.js",
+      "sha256": "ad48d769623e0db068d5d7cbc91fcb90853668062f6969153f9b7f719ecf43d0",
+      "bytes": 1152,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/EnergyIcon-CWLrxkHP.js",
+      "sha256": "0ba4a071a0240febcf9e0e8f4ab898b95f235ade91cd7de5c248dd5e5cf16cb0",
+      "bytes": 2003,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ErrorBoundary-D1BTyLzb.js",
+      "sha256": "6a21ffd60ed1807fdc253400d4b4bc0627812250022da931490d5842be433515",
+      "bytes": 1231,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ErrorIllustration-C_Bakrn6.js",
+      "sha256": "5f630bfba56b999f6fd79d597329bec8bdc75f651ee4ed34b21aac88560e8397",
+      "bytes": 13693,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/FormattedAmount-CZiJdoJL.js",
+      "sha256": "7804a0371ec7f8b4ffecd3149abf41178ecc148a5d0e6c11b05a1ed6a7d86a4f",
+      "bytes": 21078,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/FormattedDate-KI6n61_6.js",
+      "sha256": "8bce0715301a05acfcdfceca74f407a9656a2231b5c39104e777437942cd4186",
+      "bytes": 818,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Globe--aAbxHdG.js",
+      "sha256": "fc0b795f9037ec583d36710d1b4b1f82d3d8759b4d5efb0d9a1254855206f7ac",
+      "bytes": 236974,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/HiddenAmount-fg7TOE71.js",
+      "sha256": "a72ed4b78a9873fcb4157bc781ee6a9c13ffcf718900779cd010660ea03dda11",
+      "bytes": 383505,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/HorizontalNetworksFilter-D_mSA3oc.js",
+      "sha256": "b8808a22fbc4504ee57d727fe353a4379d560cceffb54c0f239a34fcab706202",
+      "bytes": 8754,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InfoBox-D8toT627.js",
+      "sha256": "84657dd3ce2534bc671136ffc846bde485e218ac544c2455d22b5f463dae81d2",
+      "bytes": 1598,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InfoElevatedIllustration-StPJzrBL.js",
+      "sha256": "119be771724d17002132e151bbc3b43091ce7ef7fcb318afbc400d7c137283e6",
+      "bytes": 16810,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InfoIllustration-Bc6zhvox.js",
+      "sha256": "ab4c4a0f6316420f904b90539d9f356b30a83637bfeac647e4e6b726bb398685",
+      "bytes": 12669,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InfoOutlineIcon-CdKUuFkc.js",
+      "sha256": "a91dfbeb549e9d15372724d3529ccf932e0986d1f7217f44a66a0333aa571a4f",
+      "bytes": 2182,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InfoSolidIcon-DlVZDT3T.js",
+      "sha256": "acf58f0bb139b5a6bf6d263b7d48a7df70b8c944f9ca20bac08653604a7ee3a9",
+      "bytes": 1935,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InputAmount-DZI0_huv.js",
+      "sha256": "5770582ccb1dfdf0efd3c9ddf0ce2ce3ebfcdb2a87e7074f7c3a5af0f6914d24",
+      "bytes": 2440,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InputPassword-D9sGWGS1.js",
+      "sha256": "13890f0218724fc864933096b39f5a9ec92ca5601dc99229f15e288bd48fc9e4",
+      "bytes": 5548,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/InputText--Q-rwLzs.js",
+      "sha256": "0710cdca74e6b0298c13a86f1ee927874759c75968148ddede647821131eab39",
+      "bytes": 3245,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/LogoIllustration-B05krauY.js",
+      "sha256": "65005f6572cd0f0a71cb49b24174de0c90ccb1339445d8e57ec4033ef1245a92",
+      "bytes": 5977,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/LogoWithoutTextIllustration-CKX3aFRl.js",
+      "sha256": "8360715a6f82f603a1a57df5cf669fc755757d225f380c46de8df09c788d11f5",
+      "bytes": 2674,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/MediaResolver-DfekTJXw.js",
+      "sha256": "cdac7ba8e34489cf66756def70fc22c793e943846005c8d9dc179a91f84f552c",
+      "bytes": 2885,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Modal-BV3SfE1S.js",
+      "sha256": "effea0a094534e8c06a486836ddf3311db7aefd8f66ede9eb8d2c19359239ea7",
+      "bytes": 14833,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/NetworkIcon-CNKOmZnW.js",
+      "sha256": "960eaa3984e697b759c6404741100a6c34e35b5692507face9c1602ef2d8d9dc",
+      "bytes": 2068,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/NotConnectedIllustration-oJlLM4ih.js",
+      "sha256": "55ed8b3e2397330464c5ecb0eaea52976cb52272131825b98289e6520d775f24",
+      "bytes": 37343,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/OnboardingBoxContent-DcFJIaKL.js",
+      "sha256": "c041d9cf9fe75cafd3db182e66e59d87bdfb8d5080f980aee9df26229bd03baa",
+      "bytes": 10919,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Page-7xxhohWn.js",
+      "sha256": "b3eb599b7b13ee7631ec95cd67a4279ef925df6b50a476bd02e19d65a6799372",
+      "bytes": 32975,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/PlusIcon-B6VDMCyI.js",
+      "sha256": "e7100b0e1d63a68f5b05fb0d09f3ffc45057f9c4ce5393ac64ff65997bddb52a",
+      "bytes": 1050,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/PrivateDataProvider-8vglgSNV.js",
+      "sha256": "21e8ccef959099cb6e994343374f30639804a80826c891b60f368168125db138",
+      "bytes": 1024,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/QRCode-DspwcBOV.js",
+      "sha256": "f96bbf2d482ee47bed8d0c41e849535d528b4c70b2b7adcd776d34f71d3b0f31",
+      "bytes": 51186,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/QrCodeIcon-DyHe5kLn.js",
+      "sha256": "e12dad4881fce4cc5e5843cf3df53e39e46c98f300f3a2ec0525ea3e0ae00e65",
+      "bytes": 22423,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/RadioUncheckedIcon-Dsz_4zlU.js",
+      "sha256": "6f2fb384509a78e05e9b734666686a919e0fee297c5821f0f86126c4e3b6d129",
+      "bytes": 1187,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/RecurringBuyModal-9KGi9jaQ.js",
+      "sha256": "c7c396a713c7fba4a87d001acebd45306a8820c52c26a5ce11e7a8d3b059181c",
+      "bytes": 8655,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Render-B2fV25G8.js",
+      "sha256": "7d5e060fe08f888f49552d1916802b600b0e4cfd5e46d5572545147d577972ca",
+      "bytes": 236143,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SearchInput-BIldQfbO.js",
+      "sha256": "fc3210dd1570ab98f7836c859c0f8b6844416373b2d05e82219e7e8da2866147",
+      "bytes": 2185,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Security-BkVC-Kss.js",
+      "sha256": "a52ad737d2391eeeedbf752256bdc2139c1022ba795bed882ad78e264f163369",
+      "bytes": 90563,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SelectImportMethod-ClL8FjcB.js",
+      "sha256": "2d4997f811411dbf31df8bdc91d3ae16c67e748fd88c37f4c537702b97b0c893",
+      "bytes": 166739,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SelectProviderItem-dJ2hTZYn.js",
+      "sha256": "c84c866e5526007065e907700343095de64648fdbb1eb69d6302b8db50b7edb0",
+      "bytes": 189339,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SellCryptoModal-BKBGq8Ds.js",
+      "sha256": "f40220d3c2e5bac4cddc92f1e8c08d6e74f3ef1cf7e3d1aa6dd32bc74073a9b3",
+      "bytes": 4624,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SettingsIcon-BMRm4vwX.js",
+      "sha256": "e3b16aeb3d72d9301850da10822029df4a2eac852343fcb690f49aeb1ceb2ed5",
+      "bytes": 3436,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ShareIcon-DQEJf4ke.js",
+      "sha256": "02d56825563ded43d3d425786e5188d73223cbf9069f8ded4449f01ad093eb4c",
+      "bytes": 1907,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ShieldPassIllustration-Mqv354JL.js",
+      "sha256": "1282a8aa50c635601e416d98e8e4f80b03a55059fb28b6db4d137cbf58afc75a",
+      "bytes": 19120,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Skeleton-CuI4vc4O.js",
+      "sha256": "489b355c175847b1da6ab28350f1b2402fd93e7aaa5c04ec7c06c3d000af0436",
+      "bytes": 1416,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SkeletonCircle-CpoDhi_S.js",
+      "sha256": "c166965d11f6fce2a847b557e5ff3bac239456dbd72994c40bbd9bbff266e4ce",
+      "bytes": 787,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SkeletonLine-gBdUFNjv.js",
+      "sha256": "65bb5af00a6e99bbb309d134e3a998dbde0dcd10e267b6df2324ad8ce1430d8f",
+      "bytes": 809,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SkeletonList-DzLojTJO.js",
+      "sha256": "a59efa9cde1ff674e3b56278187b62cef0655b04e4252a749d58df0021c106b4",
+      "bytes": 911,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Spacer-CJ9Lm_aK.js",
+      "sha256": "ea07ea8213d4548b44a652030e9e4b186347efbfffcd35200c2f793c45c5478c",
+      "bytes": 623,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/SpaceshipIllustration-Cm5_a9hc.js",
+      "sha256": "5a2e4e5e4f23fc4e99c7c1b9174c1fb897ddd6acc7cce1b929b6319ed8c82f8c",
+      "bytes": 22127,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Switch-B-r8Q0cU.js",
+      "sha256": "9f606ad63080dc1213ccb76f0088dbbca655610e3596c86e8dc274a8a8261a80",
+      "bytes": 3357,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/TabButton-BUDYFNPu.js",
+      "sha256": "87b9a04458131be4a7abe1c82e6700113f6794222e9bec398a99cdf29afe3124",
+      "bytes": 1028,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/Tag-B9IIC0ts.js",
+      "sha256": "ef8ce8140ed87fc0c35c6ec061d55f293df5696b33d45692ca39e6be238278c3",
+      "bytes": 1568,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/TransactionIcon-j_6iAx8I.js",
+      "sha256": "56a1ae92d6a0c6cad1249cf14bc702f83bdb1dc2b5f067d2ef4ef554448fc1b1",
+      "bytes": 3336,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/TransactionSenderRow-ctp5_55S.js",
+      "sha256": "cc6a477d8d62ac398b434b57ba712f2e939fbc976c185e475360e9d5539d1e38",
+      "bytes": 8112,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/WalletIcon-BiOXNHUE.js",
+      "sha256": "d8e1d3ed8d408546ebec969b61cdcd704cecafc1e52a7efcb09af2340da274ab",
+      "bytes": 1587,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/address.utils-DddXF067.js",
+      "sha256": "047d238628dabb062cfe28a054802b931910ebc6977d23187136252d02daf597",
+      "bytes": 593,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/api.constants-BU0j9B-o.js",
+      "sha256": "9e7da346fd1b96d29862e32b58b6d1dda41a3c2ee295b5f23840d2a36bd1efd3",
+      "bytes": 651,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/approval-detail-CuYqbU-I.js",
+      "sha256": "94a6545d4a11e689510eb350354f15c075f21dd6a0e086fd960bee468bb735d4",
+      "bytes": 7105,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/asset-63gBbrJ-.js",
+      "sha256": "a52cdb57ff71978eec43412241e993ff6f1b07f2a502c8f2bd6104244a049bcc",
+      "bytes": 1439,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/asset-COrXZQtQ.js",
+      "sha256": "d336cd7cf5f37c7e0ddce1247e6fdb2ae02de9e0965aa8f4338c164bcf7c5a78",
+      "bytes": 69213,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/authentication-CGHHMXIG.js",
+      "sha256": "3bebfe5e21bd14989a8aab55c1d6809426464bfefc9ac39b28cba788f0bcba6c",
+      "bytes": 115303,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/backup-seedphrase-Cpn6mc58.js",
+      "sha256": "a97a8da5dc404c268f46480950dccacae86490eb2d46b052e1be5be5dddb3446",
+      "bytes": 126549,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/base64-CMV3qoyP.js",
+      "sha256": "dfddbe4fa7116fd5fd75bc735ddec7674ee58c7e92643dd6917fc799600aebde",
+      "bytes": 3093,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/biometrics-CO4_TFG1.js",
+      "sha256": "34c534cd96aa7c8f23be6f296af8a8888eacc511c4fea704fb3b2d6453744506",
+      "bytes": 6302,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/biometricsErrorReporting-B5X0T93f.js",
+      "sha256": "49fed4db58f2fa7ef5596ed3bc58fbe96d541a646fbe6e21af1d186310c692b5",
+      "bytes": 3201,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/blockchain-DRDWqNiT.js",
+      "sha256": "f17e19bb29037f8b69af5633bc036ddf24d46184b2d54af5d4105c863c0fe09d",
+      "bytes": 2364,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/blockchains-DGtzUK8-.js",
+      "sha256": "673a2856b2b250377fc1e1cbfa5ed73ba10d96d03c97695e643b7e97bedf2b24",
+      "bytes": 3087,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/browser-BspumAet.js",
+      "sha256": "9772160d5b12dc13627746071966502fbceb7a52cf02f739a465386da938ba2b",
+      "bytes": 678,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/bugs-Ch90ef4W.js",
+      "sha256": "33b480ae8b1df9b604992dbc5809eb38bb584d40d665187ed7146fe4eac5510a",
+      "bytes": 821,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "bytes": 49149,
+      "routeCandidates": 7
+    },
+    {
+      "file": "chunks/buyCrypto.interfaces-DI-SFr7i.js",
+      "sha256": "247f686356085b398fa01b384983186417f05058768e7b791a253db9344afc1c",
+      "bytes": 673,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/codes-BxmijjuO.js",
+      "sha256": "9e23484cdf87df3aff9480ca30dccca4562b5d0384bdcfa183654835dbd69129",
+      "bytes": 1102,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/codes-WTUft8Zz.js",
+      "sha256": "a12aaca305197731a1202d03c834a4c42204b80a488d17c16e8cab65d53b0dba",
+      "bytes": 51140,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/constants-BML4aAnK.js",
+      "sha256": "8a566af189cedb964d04f1846cefea1c75bd38c66dd7d77bc3599df6131317fa",
+      "bytes": 53572,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/constants-CV-R2xp4.js",
+      "sha256": "91bced3cc3b2cfd20053f6dc090478d77eea0b0f9efe2ba05618c93a0372d8af",
+      "bytes": 2313,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/create-mnemonic-DKsF45cy.js",
+      "sha256": "7a3812fb05766df547da59d2661e9d9f47d4933a728113a702d6e2890aa0fb57",
+      "bytes": 1168,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/custom-asset-Bpl9EE2o.js",
+      "sha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8",
+      "bytes": 34756,
+      "routeCandidates": 3
+    },
+    {
+      "file": "chunks/dAppBlockchain-Bmr4Qqt_.js",
+      "sha256": "7146225863c0acdbf04c0552c5ed647ce2d26e23582e725e5eaad9ffd0a69b7f",
+      "bytes": 878,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/dapps-D5KacSOR.js",
+      "sha256": "db84ccc0d51830005c815c13601be8d2d2cf361ba18a365ac75111870377df7d",
+      "bytes": 2588,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/debounce-BX89IPBk.js",
+      "sha256": "2160f4e1a9eb5a88cfcddf49fcf316747c4500cf0376e96a810f3ae3211de7f5",
+      "bytes": 3437,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "bytes": 151260,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/dist-CCiTn9wL.js",
+      "sha256": "ddafd08f5a31615d8fbd62aa91e6d77596fee912796cd3571f34ef594b2ad4d3",
+      "bytes": 12477,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/dist-D8ll09D_.js",
+      "sha256": "e71ae66611f8a4e17574356bc999ab59a76a29e9f84afb605686372bb255804b",
+      "bytes": 38393,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/enforceTrustedRampAddress-CJYoIQc5.js",
+      "sha256": "25da63f81772959b2066826a3345814b8aaeb3c65a33c3ab125e90f0b3bac896",
+      "bytes": 896,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/erc20-DMn3RMu5.js",
+      "sha256": "b5ac2fa50b0391f909f17f0605365e2216d7077c7bcd7f64f2c5b53ccb4cef69",
+      "bytes": 2323,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/esm-BkKt8UqE.js",
+      "sha256": "7b797e9c3c4cd76c68c8fb242327af79ee84501457486ab02e508bd2b3a1d982",
+      "bytes": 145282,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/fetch-BWDPg6HI.js",
+      "sha256": "9bc623e422a7cd34fa3a618a7b7f8545cbd23a02f2f6326255cf8b937f3e2b93",
+      "bytes": 58640,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/fetchAssetByContractAddress-mxaI5X6w.js",
+      "sha256": "9bc5fd0657fc44bc41aa82c6412a73fcc0e50096c0c1b625b2ed9c74ec5f8eef",
+      "bytes": 1150,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/fiat-ramps-BdoaGdC5.js",
+      "sha256": "4493cc5241c2e8c81797346713cc4c564438c9134258cdb670e919cf01bac076",
+      "bytes": 172441,
+      "routeCandidates": 2
+    },
+    {
+      "file": "chunks/floating-Dg_qltnX.js",
+      "sha256": "dd9085d8f02512f9af86cfed189566b48d43046c16c4357ed7621fcc6247df44",
+      "bytes": 14819,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/formatAssetAmount-BJWMMv5e.js",
+      "sha256": "612b8b0b2f029daa7859f0e04442494215eddb183f49ff2279a4b44677562fe2",
+      "bytes": 2738,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/formatTruncatedString-CZ8GNKMv.js",
+      "sha256": "708d58837427f0ce446837c8f36e353eb7199815a23a84295cf3ca909a58e393",
+      "bytes": 820,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/fp-DA8NAoIP.js",
+      "sha256": "51374fdb2d5bed25037b6750f77cacb3d8468d8c416af905574d49db1a783407",
+      "bytes": 88794,
+      "routeCandidates": 1
+    },
+    {
+      "file": "chunks/fundingProviders-Du7VN_g1.js",
+      "sha256": "15893d1f13e9eb7320b731daeb1c70fab3ba9698e37b1657e9965f295cae49a1",
+      "bytes": 724,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/gas-station-N9K16uK8.js",
+      "sha256": "3d1df06da249108029177a005f5dffa795a7813d7c015565149e0c329b4421da",
+      "bytes": 51540,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/hex.utils-hbh8pOgS.js",
+      "sha256": "11bdb470bf7d70168202b0120e88997bd7d9d555ffe63ad6792353a38684da9d",
+      "bytes": 954,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/iTokenType-JE3qwmJB.js",
+      "sha256": "993a363ee9f1c5553c2ff0ae99b6ebeb0949dd1bfbf15971d49906049fea3de9",
+      "bytes": 593,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/import-ledger-BvEfx1nD.js",
+      "sha256": "71f01ddf07c043ad73b634100f444a8b42ac815bb07591322f132318fbcdd000",
+      "bytes": 143876,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/import-mnemonic-or-private-key-CXfCQtf3.js",
+      "sha256": "1b379bca0989a52908c45d5d48b47911105cc8f8d70b72ff3ecafaa0e23c848d",
+      "bytes": 28377,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/import-qr-nu_XkZeU.js",
+      "sha256": "0f9b23a9397a3b4ef15a43933f3b4649b38f8e8f225a06c7b219bd88e71012eb",
+      "bytes": 832959,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/index.es-B0L6n6Xe.js",
+      "sha256": "9fc175b7051e678ef7b49554ab50de48ac72c6c3d45989945e3f6f674ff46b2b",
+      "bytes": 8394,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/index.es-BPYsvUAn.js",
+      "sha256": "3df2cf009daf0034de138f29ff2527bff182751f3d3a40d6fb84f900004ae7d2",
+      "bytes": 328355,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/jsx-runtime-C2w7GV0M.js",
+      "sha256": "3f16b45337bd718ef4cf9878ebeafa2ed35b3e89908d12cbc9e3647c02506a77",
+      "bytes": 916,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/label-ySB0pn1F.js",
+      "sha256": "077c55f04b5c749c44c2995f31255824100af618d57be18ad31cb6c6092fca2a",
+      "bytes": 5356,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "sha256": "d10102b2e88b0bb89f130a264d64f4dd9428bc2a6f1996ee0071361ae4a3fe02",
+      "bytes": 2573982,
+      "routeCandidates": 2
+    },
+    {
+      "file": "chunks/logger-BMfNJZDI.js",
+      "sha256": "10ff753c1e6187a8fae16caa0ca059f03a5c0980748a78f834672564a0e2fc92",
+      "bytes": 106717,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/manage-crypto-CZfZXrkn.js",
+      "sha256": "3987b34f551f7fc5283db37c48c556a7369da49aec60017d6c99c3cf24e52289",
+      "bytes": 13678,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/math.utils-BUDjteRJ.js",
+      "sha256": "f88b6d13856d90d11fc1617b3fca9f2bf2669574b3d7444457a7ae4e24e78e0f",
+      "bytes": 885,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/mutation-B1rm4Qpe.js",
+      "sha256": "773935938035b0b6621547c1f5dc7cb053260ba93409200b63b1e7c4fd9a785f",
+      "bytes": 4038,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "sha256": "e9ce8221bbe2f66ffbe19f181aa5cdf00f5ea441b1ed0f4b9b43a8ce853bb75f",
+      "bytes": 179826,
+      "routeCandidates": 1
+    },
+    {
+      "file": "chunks/nft-collection-DrcRadTj.js",
+      "sha256": "595971d5e0d8688d0630a1d89c2a837ab9f9d0b232689fb51f398860e5671c8b",
+      "bytes": 3868,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/nft-item-BRbZMTFu.js",
+      "sha256": "6f6a320c53b80a56d29a460aebe44442e2f653b3c63e01f1156573356649fba6",
+      "bytes": 5029,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/nft-reported-collections-QkuxYamZ.js",
+      "sha256": "e312c25167eefb2cb5174bcec05ac7b013e251933b8e542c2cdb818ee9834fcf",
+      "bytes": 1555,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/notification-C0DFw0BI.js",
+      "sha256": "b270e2ee14798a168d040fd8b6983ba1f37382f971e3cfb8ef4638e0f7a95caf",
+      "bytes": 488,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/offramp-revamp-DH8bfOcs.js",
+      "sha256": "efebcc3c4917bb34710e2207b527ca2bc9a1b0aec0083f2c8e838c1e24868b9d",
+      "bytes": 528,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/onboarding-BHcKddMJ.js",
+      "sha256": "1697bf495fc40af9218511f71705e54d9547f9b97181f50e4f31d6e01b72a57d",
+      "bytes": 15880,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/onramp-revamp-Bs6CZqaj.js",
+      "sha256": "025fd26cd7f79c435e7e57d3bbd17688304e545e3c1a4ccceb323f59909609e8",
+      "bytes": 526,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/pWaitForMinTime-B1Z-6awB.js",
+      "sha256": "60c1c4ff2862b3b47e77879e775b51ea65936e00f9a17815a35ec9f089890b7e",
+      "bytes": 5175,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/persistentQueryClient-B26tiIt4.js",
+      "sha256": "01639a1e25abc7ed227abe9a72ce1e8f22baf7876b33e399ab1632b7be15c0c4",
+      "bytes": 9870,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/poller-Dzr8hzmN.js",
+      "sha256": "d372f02d8216a65bc261b62d33e2e01ef7672e2e481a8c03e770b696f2585704",
+      "bytes": 1955,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/popover-C4NHkoPs.js",
+      "sha256": "43d637fd5a307c71649ba88a95a5c95d2f74e9284738a2a1b525a0da2b150d43",
+      "bytes": 13267,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/popularChains-kJ9npbND.js",
+      "sha256": "d067926833848dd54010deb02073f7dab9987d0b75a1f01910dc72f986c12c29",
+      "bytes": 1470,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/popup-BmMPx8n6.js",
+      "sha256": "049496a9d83e04ad7eab0063c6dfb3d6403a4ec8390f1dc399c8881be26f3fb2",
+      "bytes": 1694,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/preload-helper-C61CWiqK.js",
+      "sha256": "2a6ba214e7683da8da3ef30e374f724c784f954cd9b1d302751bc5b19cdcc8f4",
+      "bytes": 14440,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/privateKeyErrors-gzTHkPk1.js",
+      "sha256": "c115518a71c828879b66287e41be5412c06f200480d255eb73063c1ff56fc0de",
+      "bytes": 567,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/query-DURgXg5-.js",
+      "sha256": "b7db09a0e233c00bdbd76bf44ae9033cee7cdf3bad804626a078736c4e71d052",
+      "bytes": 17471,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/radio-group-Bkb1vIta.js",
+      "sha256": "bd4eb3a9099c53929d0c1d630c175ed840d8812d72181e6c58e60e29355c1a79",
+      "bytes": 6092,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/react-dom-DmK0ZQY1.js",
+      "sha256": "252c15e3dbbe93edce52e986ae7832a6389e0b1f4fdf85e79d16a52fb4b25fa9",
+      "bytes": 4244,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/reportEmptyRampResponse-PKPfmI0r.js",
+      "sha256": "2862760a62251593dce6f7fbc0fa37d3864a8f14607702c2056728d34543fdee",
+      "bytes": 1568,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "bytes": 19653,
+      "routeCandidates": 4
+    },
+    {
+      "file": "chunks/send-Da9f11E3.js",
+      "sha256": "6f729db34a5ec1ff099aec7f389f3a4c8b4c862a293435435d5a9c65ea4c85ef",
+      "bytes": 488,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/sendLikeTransactionType-Bwls70uE.js",
+      "sha256": "f9e374b84a99bef12aec45f4817dbcb85b9ccd5feb58de0313a8586755744365",
+      "bytes": 12275,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/set-passkeys-BWLIDsIJ.js",
+      "sha256": "77a05fb557726a73476f7b157482e1782b10ecf28d1e19da363472ca83b282fe",
+      "bytes": 3922,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/sha3-B4zRefS2.js",
+      "sha256": "b6f381b41e91ce377f54bb58d506b5346dce8beffda85db83606d63b527a2b72",
+      "bytes": 6885,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/sidepanel-Be7kU8Zo.js",
+      "sha256": "abdb344a93fe0bf50cf284b83498ecf088354514624e9f92a16fb21ed4b958ca",
+      "bytes": 1383,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/src-CzMAtq-j.js",
+      "sha256": "2264004123917cc2e9c0eff8048e8678b6bce58b9306b6c28ea2600feed0b44e",
+      "bytes": 238447,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/storage-DhfTzOIA.js",
+      "sha256": "839941886c3965eb64a0cfc1d012b1c1e6feda711795d360d36d1fa1f9402c68",
+      "bytes": 10369,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/store-cAVdfWrK.js",
+      "sha256": "66310fe9417cb5ced382651258306734552194571ea7b510957e42e61125ffe0",
+      "bytes": 1037625,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/supportedDappNetworks-CuX8ccxp.js",
+      "sha256": "acd0e51629b8765c79f888991387e1bf55888509235cd1fa90a255599c73f2fe",
+      "bytes": 618,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/tabs-DqgailPo.js",
+      "sha256": "316fe7efd254a1004665649028db51aa46ebd0559e37541037c3aac1411dde8c",
+      "bytes": 8105,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/transaction-BuYaLDhl.js",
+      "sha256": "dadb647c1a693621a90fa2d58d4ad5f933df1608d531d1eec96a4d50e835a79e",
+      "bytes": 19285,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/transition-B174DQ7a.js",
+      "sha256": "b9fb986f8fccd77faab13d780711f95ab5c73f86c45d6eb32b575354531cab4e",
+      "bytes": 32811,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/twClsx.utils-DD0Dt0LF.js",
+      "sha256": "63bf91c2d9b695eb11d037a9d553ca02ee78b4eb67da0bc2aab19ce3038203b4",
+      "bytes": 1610,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/txType-CH4ucKXs.js",
+      "sha256": "55671ce23110e58557f17beb8fc6bad1dd0724fd433e44c263e7f7c94d4d2cbd",
+      "bytes": 872,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/types-Da-Ovuve.js",
+      "sha256": "f20c9ddb9cb790667a7799782fe38e6783227d43ecd7943cd9889c956678afc3",
+      "bytes": 729,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/types-DrDwy2JA.js",
+      "sha256": "fe677a37bc642de0dc61a49dc3ec7aaf35136b900c87759ac3defaa360d88eb5",
+      "bytes": 1705,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/unlock-BSgWJTYA.js",
+      "sha256": "55a925694e0ee872bac016b3a1e66797131d66cc068dfad33011ccfc6d9c886d",
+      "bytes": 5506,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/use-by-comparator-wkG3a1aU.js",
+      "sha256": "0403be1cf605fcc227d91a0e9cd23d96367a4a594ba84aefe4d1cad0c8d4a924",
+      "bytes": 832,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/use-inert-others-CjRpHgYi.js",
+      "sha256": "d8ed0a59ff2fa774570a86e367cfe2d2c07a4ddb657230ff2e315c6671af4769",
+      "bytes": 2762,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/use-resolve-button-type-W7UpO3VO.js",
+      "sha256": "5ff72ae38ad88ecb738d4ad6ae89d84e9c3520f08925d939cf5f8ca29c4b38b8",
+      "bytes": 1597,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/use-tab-direction-u_xFOxYN.js",
+      "sha256": "e7e19f3a81c704592a7f22258d10d088821a594163fb342988c4acc2f9d12548",
+      "bytes": 2245,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAccount-DmXl3FcQ.js",
+      "sha256": "298c544745841822e8e37a2f69566074cb83305ea16cbffe3fe0009fdd472f1b",
+      "bytes": 1199,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAccounts-CoMylq9s.js",
+      "sha256": "bd5213a8b1f8dc3eb52b208e0fb5847a8ff8b25e6e1b44b19e736d49ca1e7cc3",
+      "bytes": 1157,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAllBlockchains-BCf0ZYTP.js",
+      "sha256": "9e6d77642ebbe18b79679c820744e7b2999eb5d6df67e70453df6b38c73fc4f2",
+      "bytes": 906,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAnalytics-COpZR7i2.js",
+      "sha256": "d639f77c80c2c904e072c4b4905307881ef64c99287a0b472b384c130cf2825e",
+      "bytes": 431625,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAnalyticsCaptureOnMount-BJcdtAcr.js",
+      "sha256": "f7209796bf8d1af63847a9d479384227c395d9caa27c71d48ebe9939c9eefa1a",
+      "bytes": 733,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAsset-DL8yf1Bm.js",
+      "sha256": "377201eef641e1b36113a6231389506e0106cb87cce707ffe81ffda6ae009bc7",
+      "bytes": 6226,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAssetBlockchain-W0mhozm9.js",
+      "sha256": "18bff6158d7ea24260c99f990f5094542b85a0d6418760f896919e259bb8fdb4",
+      "bytes": 820,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAssets-Bjfxdw7H.js",
+      "sha256": "0375be68b01d09ed13c35630f7ae6e9ddbc9814c264f622293f4c044cae146e5",
+      "bytes": 618,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAuthenticateWithBiometrics-BLIwCDAo.js",
+      "sha256": "81aa49a5e9f8a185105c5ad136e05f3b96b244f035a7df3fc9aa930cf293abb1",
+      "bytes": 1695,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAvailableBalance-CpZl8a44.js",
+      "sha256": "7b63e7365cc57fc6f0e1ad918c9bfbb76a815b293e4d64cba9e4ba531d27c7ef",
+      "bytes": 685,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useAvailableBiometricName-lo1nd3PA.js",
+      "sha256": "eadcf6b354d4b6d3366bdee2ced21742e3eed502c44d19e0cad3546c40568db3",
+      "bytes": 4080,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useBalances-DMp9HZ2B.js",
+      "sha256": "df5160f4c7c4fc85018393fd6b56fa216bb88f6bc21ccf7de00f390c2a733af8",
+      "bytes": 723,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useBlockchain-DL94zuTF.js",
+      "sha256": "a0a91585a8dcb49d6ae5cc0267063ec49ef8994c0ab29cc4a74293ca3d7a893a",
+      "bytes": 735,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useBlockchains-CyglC5V0.js",
+      "sha256": "1f7f4f914e3f5fc5548e663de5e3a6bb0f6f090d26b77b360a81a7915d2af9fa",
+      "bytes": 947,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useBlockchainsByPrefixedCoinId-DqfDfoJ_.js",
+      "sha256": "186bb080443f7b7e7587b98f613a4616d6798b2931572e351aace42e799f03c1",
+      "bytes": 664,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useCombinedBalances-4DPvLCVf.js",
+      "sha256": "a26e12b49e1100a7769a6e5a01eac3dbc0e71d35d3151e8a39762572168a0024",
+      "bytes": 921,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useCountryCode-DVzTzA3I.js",
+      "sha256": "8f908c2df60abf83c7a8ab84e8bbd30858a44e78b2642d27f0cae0fc82d942c3",
+      "bytes": 700,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useDebounce-kScTeB3K.js",
+      "sha256": "c45ba48f31abea94f9486dcc31be638f5989f169144ddfd73e55309c9dc58950",
+      "bytes": 712,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useEnhancedUnmount-CF3xX24E.js",
+      "sha256": "0d6b9ba802ecda115cd69ceb0c3fe91ffa60ac3d563d6ca3577d8e28934680ff",
+      "bytes": 2007,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useFiat-DH2a13VO.js",
+      "sha256": "d6a33c6941f47c2636e74fa762f1ac29864a3f0cc6330e81ec031e595460cce6",
+      "bytes": 37665,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useFiats-BdU5VUCi.js",
+      "sha256": "07c1047592b65886588dc11928e39c2da6e768280ac08a413a3bfe86f8d71d34",
+      "bytes": 564,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useFormattedTransaction-CLqdEJDk.js",
+      "sha256": "ffe1d8c62540d828c576dd784c2eb74026b5364eb47e1b6294c4e0f88dd8bd7b",
+      "bytes": 3014,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useHomeScreenAssets-DXW0UWI9.js",
+      "sha256": "3596e298f86f3ed417d21cbe1e5603fe0362f1f036313099e1652cab3a71119a",
+      "bytes": 1325,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useHover-BOYjkzuo.js",
+      "sha256": "24ccb5f225ebe70ba68cc5d873ca2e9cf0b5a9e5ec7b98907c0ae4b7ba11097f",
+      "bytes": 16715,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useInfiniteQuery-Do1OtVLh.js",
+      "sha256": "9d72d59914a03fca3256b20c9426e4f016b874b3d142ceeb9c676ff245882ab5",
+      "bytes": 1657,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useIsFeatureEnabled-BIr5U5d0.js",
+      "sha256": "76eab2aff46aa05aefa2b7f7838e047b5b113a3df8513ab6b77d69dcfeafb8a8",
+      "bytes": 785,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useIsPopupView-Bz33u8cO.js",
+      "sha256": "f798a064c623b93a2e9a7565a96b100175004a0b87654a683cbcada63a9aebaf",
+      "bytes": 1145,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useMinMaxValidation-CfoTPrNB.js",
+      "sha256": "be2a845db016c5b742901657790242db7e5d8ee558e443ecebc369bf794829f3",
+      "bytes": 1343,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useNFTCollection-BNBCGYKx.js",
+      "sha256": "c3118b1ec0c0d5fe9b4c127fd771c04dfa115f1c649f3c6b93de0eab1635365c",
+      "bytes": 712,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useNFTCollections-TEli8oBN.js",
+      "sha256": "87da54d2379ed13327344de64f71b25f2d9d3620f670d585cd635338d6a36c4a",
+      "bytes": 27190,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useNFTItem-Cg9NY7CD.js",
+      "sha256": "5880658d8c597c5c4d84c0efca76f26824ba105b64336e707dea4a66ab628b75",
+      "bytes": 708,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useNavigateInNewTab-CH8tITZN.js",
+      "sha256": "a3ad5e2747ad0e761c5893e821a666d391507788c6a21732fcadca489fbb1526",
+      "bytes": 746,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useNetworkBlockchain-Da_3X3wB.js",
+      "sha256": "7bf544d4f7a061dc9ac3df34ace31eb69c894b6971f2d620cf80c16af9bfd823",
+      "bytes": 1016,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useOnboardingType-C_Lvvffu.js",
+      "sha256": "379f9baf1aa17c7ff074d5e671807d5b0b125befa68ad09e3e9cdf6e31e19731",
+      "bytes": 768,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useQuery-xfIhCxCG.js",
+      "sha256": "1528b175499f1ff30ab0b88c59993c7a098e4c85c6a3132c86cd6b8ba9c22358",
+      "bytes": 10155,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useReadTheme-ly1K6tiY.js",
+      "sha256": "9f10b20e6b543899c6e6f12aaa95c9078489f8c4d7fa949fa7fc02dcd27da85d",
+      "bytes": 20819,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useSeedPhraseBackupRequired-DciKShdc.js",
+      "sha256": "e0534c1d7873eccd68c6f74ff69ddbddd8daa400869293cb85409cf9c14a5a3c",
+      "bytes": 680,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useSelectedBaseCurrency-drfds3sV.js",
+      "sha256": "a402727bb19f24ed1374d98b1801857002ad174f5db94610c3ff933a4ac72e53",
+      "bytes": 5466,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useSelectedBlockchain-CdAMZ61x.js",
+      "sha256": "3c86551221858dbe5157114329bb1c556be0d0f1628e3cd5ba6ac037f24ce59c",
+      "bytes": 670,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useSetupAuthentication-EZlruew7.js",
+      "sha256": "3ddc39caeea1a7b6290f6733496ff8a9ef90411b53e25f485f4cc051c2d981be",
+      "bytes": 3158,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useShowToast-CRiwUCIa.js",
+      "sha256": "0d84fc005292ef93065a80006bc6997f185780f52cf60e30c503c60d1622b33f",
+      "bytes": 683,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useTransactionsByDate-nTUC5P1-.js",
+      "sha256": "d27015982677eeeab6b8246504a4c5744c2e73d759f18fd43f1406161e02dfa4",
+      "bytes": 13477,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useTransferable-vb_RgYBB.js",
+      "sha256": "f24a3667d71e3674a08dce918467832043b90fd8cb7431ed750e2649c9486fe6",
+      "bytes": 3205,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useValidateNotEmpty-C3v9ry5f.js",
+      "sha256": "08cae4f70c2d90464df5059c197f1afa5702e2530d974127c6c1ddd8ff029332",
+      "bytes": 973,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useValidatePassword-Dn2iwOd-.js",
+      "sha256": "c3f9917908023d0a79fba503207c2383fb9a75c0a6323b8a7268fe3e2c511257",
+      "bytes": 6279,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useWalletName-DIkqlJED.js",
+      "sha256": "c869dd4aeec1280c9b239e485876242b9df19f8069a3ef4782baddc1d41a7c54",
+      "bytes": 1001,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/useWallets-BE-S4cY7.js",
+      "sha256": "c20c6b143e2801ab87196c1e70fe93157e2d681a8e3b31908dce0d02064047c0",
+      "bytes": 1049,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/utils-BEeAK54T.js",
+      "sha256": "a6947f4753895ac86a606712b95bd5331757f3bbbbbc43d67a6f8aa5d9d98067",
+      "bytes": 1451,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/utils-CrqWOcqs.js",
+      "sha256": "08a706d1f2b4c0c6d408035931882e79fdf0cb931f69ee7c6f2ebb30250aa027",
+      "bytes": 311812,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/wallet-kIuX5SXY.js",
+      "sha256": "51569badbb70d7c97625851554c2aad3becc89ea3a5e33fa203b5833cab8e6f7",
+      "bytes": 1000,
+      "routeCandidates": 0
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797",
+      "bytes": 37331651,
+      "routeCandidates": 1
+    },
+    {
+      "file": "chunks/window-COx4dq7s.js",
+      "sha256": "a3fd59930f8ef128e09c63a1c9d8b19085d98d5b1bac45ce773337989d22704f",
+      "bytes": 1371,
+      "routeCandidates": 0
+    }
+  ],
+  "routes": [
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1417806,
+      "end": 1417831,
+      "owner": "MarketSentiment",
+      "value": "/articles/:symbol?",
+      "element": "(0,bd.jsx)(SentimentPanel,{negative:P?.negative.articles,neutral:P?.neutral.articles,positive:P?.positive.articles,postType:AC.ARTICLE,trackClick:D})",
+      "conditions": [
+        "R?(0,bd.jsx)(\"div\",{className:\"mx-auto\",children:(0,bd.jsx)(de,{})}):(0,bd.jsxs)(\"div\",{className:\"flex flex-1 flex-col flex-grow-0 self-center bg-tw3-background-primary border bor"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1418007,
+      "end": 1418029,
+      "owner": "MarketSentiment",
+      "value": "/posts/:symbol?",
+      "element": "(0,bd.jsx)(SentimentPanel,{negative:P?.negative.posts,neutral:P?.neutral.posts,positive:P?.positive.posts,postType:AC.POST,trackClick:D})",
+      "conditions": [
+        "R?(0,bd.jsx)(\"div\",{className:\"mx-auto\",children:(0,bd.jsx)(de,{})}):(0,bd.jsxs)(\"div\",{className:\"flex flex-1 flex-col flex-grow-0 self-center bg-tw3-background-primary border bor"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491357,
+      "end": 1491373,
+      "owner": "App$5",
+      "value": "/:assetId",
+      "element": "(0,bd.jsx)(Prepare,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491422,
+      "end": 1491450,
+      "owner": "App$5",
+      "value": "/:collectionId/:nftId",
+      "element": "(0,bd.jsx)(Prepare,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491499,
+      "end": 1491528,
+      "owner": "App$5",
+      "value": "/:assetId/inscriptions",
+      "element": "(0,bd.jsx)(Inscriptions,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491582,
+      "end": 1491607,
+      "owner": "App$5",
+      "value": "/:assetId/inscribe",
+      "element": "(0,bd.jsx)(Inscribe,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491660,
+      "end": 1491674,
+      "owner": "App$5",
+      "value": "/bridge",
+      "element": "(0,bd.jsx)(Bridge,{})",
+      "conditions": [
+        "g&&(0,bd.jsx)(Ct,{path:\"/bridge\",element:(0,bd.jsx)(Bridge,{})})"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491722,
+      "end": 1491737,
+      "owner": "App$5",
+      "value": "/confirm",
+      "element": "(0,bd.jsx)(Confirm,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1504640,
+      "end": 1504667,
+      "owner": "Receive",
+      "value": "/chain/:blockchainId",
+      "element": "(0,bd.jsx)(ReceiveAsset,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1504721,
+      "end": 1504737,
+      "owner": "Receive",
+      "value": "/:assetId",
+      "element": "(0,bd.jsx)(ReceiveAsset,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1650705,
+      "end": 1650716,
+      "owner": "Fund",
+      "value": "/cex",
+      "element": "(0,bd.jsx)(CexFunding,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1650768,
+      "end": 1650791,
+      "owner": "Fund",
+      "value": "/cex/:providerId",
+      "element": "(0,bd.jsx)(CexFundingProvider,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1650851,
+      "end": 1650883,
+      "owner": "Fund",
+      "value": "/cex/:providerId/platform",
+      "element": "(0,bd.jsx)(CexFundingPlatform,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1650943,
+      "end": 1650973,
+      "owner": "Fund",
+      "value": "/cex/:providerId/assets",
+      "element": "(0,bd.jsx)(CexFundingAssets,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1651031,
+      "end": 1651070,
+      "owner": "Fund",
+      "value": "/cex/:providerId/platform/assets",
+      "element": "(0,bd.jsx)(CexFundingAssets,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1651128,
+      "end": 1651142,
+      "owner": "Fund",
+      "value": "/cex/qr",
+      "element": "(0,bd.jsx)(CexFundingQr,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855297,
+      "end": 1855312,
+      "owner": "App$2",
+      "value": "/staking",
+      "element": "(0,bd.jsx)(StakingList,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855365,
+      "end": 1855389,
+      "owner": "App$2",
+      "value": "/staking/:assetId",
+      "element": "(0,bd.jsx)(Staking,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855438,
+      "end": 1855483,
+      "owner": "App$2",
+      "value": "/stake/:assetId/:amount?/:validatorId?",
+      "element": "(0,bd.jsx)(Stake,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855530,
+      "end": 1855554,
+      "owner": "App$2",
+      "value": "/unstake/:assetId",
+      "element": "(0,bd.jsx)(Unstake,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855603,
+      "end": 1855630,
+      "owner": "App$2",
+      "value": "/redelegate/:assetId",
+      "element": "(0,bd.jsx)(Redelegate,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855682,
+      "end": 1855707,
+      "owner": "App$2",
+      "value": "/compound/:assetId",
+      "element": "(0,bd.jsx)(Compound,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1855757,
+      "end": 1855790,
+      "owner": "App$2",
+      "value": "/claim-delegation/:assetId",
+      "element": "(0,bd.jsx)(Claim,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048000,
+      "end": 2048012,
+      "owner": "App$1",
+      "value": "/help",
+      "element": "(0,bd.jsx)(Help,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048058,
+      "end": 2048074,
+      "owner": "App$1",
+      "value": "/language",
+      "element": "(0,bd.jsx)(Language,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048124,
+      "end": 2048140,
+      "owner": "App$1",
+      "value": "/currency",
+      "element": "(0,bd.jsx)(Currency,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048190,
+      "end": 2048208,
+      "owner": "App$1",
+      "value": "/color-mode",
+      "element": "(0,bd.jsx)(ColorMode,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048259,
+      "end": 2048278,
+      "owner": "App$1",
+      "value": "/preferences",
+      "element": "(0,bd.jsx)(Preferences,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048331,
+      "end": 2048351,
+      "owner": "App$1",
+      "value": "/address-book",
+      "element": "(0,bd.jsx)(AddressBook,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048404,
+      "end": 2048425,
+      "owner": "App$1",
+      "value": "/notifications",
+      "element": "(0,bd.jsx)(Notifications,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048480,
+      "end": 2048496,
+      "owner": "App$1",
+      "value": "/security",
+      "element": "(0,bd.jsx)(Security,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048546,
+      "end": 2048563,
+      "owner": "App$1",
+      "value": "/auto-lock",
+      "element": "(0,bd.jsx)(AutoLock,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048613,
+      "end": 2048650,
+      "owner": "App$1",
+      "value": "/security/select-source-wallet",
+      "element": "(0,bd.jsx)(MigrationRouteGuard,{children:(0,bd.jsx)(SelectSourceWallet,{})})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048753,
+      "end": 2048795,
+      "owner": "App$1",
+      "value": "/security/select-destination-wallet",
+      "element": "(0,bd.jsx)(MigrationRouteGuard,{children:(0,bd.jsx)(SelectDestinationWallet,{})})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2048903,
+      "end": 2048933,
+      "owner": "App$1",
+      "value": "/security/select-assets",
+      "element": "(0,bd.jsx)(MigrationRouteGuard,{children:(0,bd.jsx)(SelectAssets,{})})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049030,
+      "end": 2049049,
+      "owner": "App$1",
+      "value": "/connections",
+      "element": "(0,bd.jsx)(Connections,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049102,
+      "end": 2049131,
+      "owner": "App$1",
+      "value": "/connections-blacklist",
+      "element": "(0,bd.jsx)(ConnectionsBlacklist,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049193,
+      "end": 2049215,
+      "owner": "App$1",
+      "value": "/connection/:id",
+      "element": "(0,bd.jsx)(Connection,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049267,
+      "end": 2049282,
+      "owner": "App$1",
+      "value": "/wallets",
+      "element": "(0,bd.jsx)(Wallets,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049331,
+      "end": 2049349,
+      "owner": "App$1",
+      "value": "/wallet/:id",
+      "element": "(0,bd.jsx)(Wallet,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049397,
+      "end": 2049424,
+      "owner": "App$1",
+      "value": "/wallet/accounts/:id",
+      "element": "(0,bd.jsx)(Accounts,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049474,
+      "end": 2049517,
+      "owner": "App$1",
+      "value": "/wallet/account/:walletId/:accountId",
+      "element": "(0,bd.jsx)(Account,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049566,
+      "end": 2049583,
+      "owner": "App$1",
+      "value": "/developer",
+      "element": "(0,bd.jsx)(DeveloperSettings,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049642,
+      "end": 2049667,
+      "owner": "App$1",
+      "value": "/developer/faucets",
+      "element": "(0,bd.jsx)(Faucets,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2049716,
+      "end": 2049728,
+      "owner": "App$1",
+      "value": "/utxo",
+      "element": "(0,bd.jsx)(UtxoManagement,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135181,
+      "end": 2135198,
+      "owner": "App",
+      "value": "/network/*",
+      "element": "(0,bd.jsx)(PS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135242,
+      "end": 2135262,
+      "owner": "App",
+      "value": "/notification",
+      "element": "(0,bd.jsx)(RS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135306,
+      "end": 2135320,
+      "owner": "App",
+      "value": "/send/*",
+      "element": "withFlowBoundary(\"send\",(0,bd.jsx)(App$5,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135392,
+      "end": 2135409,
+      "owner": "App",
+      "value": "/receive/*",
+      "element": "(0,bd.jsx)(Receive,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135458,
+      "end": 2135472,
+      "owner": "App",
+      "value": "/swap/*",
+      "element": "withFlowBoundary(\"swap\",(0,bd.jsx)(App$3,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135544,
+      "end": 2135558,
+      "owner": "App",
+      "value": "/fund/*",
+      "element": "(0,bd.jsx)(Fund,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135604,
+      "end": 2135617,
+      "owner": "App",
+      "value": "/buy/*",
+      "element": "withFlowBoundary(\"buy\",(0,bd.jsx)(WS,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135685,
+      "end": 2135699,
+      "owner": "App",
+      "value": "/sell/*",
+      "element": "withFlowBoundary(\"sell\",(0,bd.jsx)(HS,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135768,
+      "end": 2135788,
+      "owner": "App",
+      "value": "/fiat-ramps/*",
+      "element": "(0,bd.jsx)(OS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135836,
+      "end": 2135850,
+      "owner": "App",
+      "value": "/earn/*",
+      "element": "withFlowBoundary(\"earn\",(0,bd.jsx)(App$2,{}))",
+      "conditions": [
+        "!g&&(0,bd.jsx)(Ct,{path:\"/earn/*\",element:withFlowBoundary(\"earn\",(0,bd.jsx)(App$2,{}))})"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135922,
+      "end": 2135940,
+      "owner": "App",
+      "value": "/settings/*",
+      "element": "(0,bd.jsx)(App$1,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2135987,
+      "end": 2136010,
+      "owner": "App",
+      "value": "/transaction/:id",
+      "element": "(0,bd.jsx)(KS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136054,
+      "end": 2136087,
+      "owner": "App",
+      "value": "/collections/:collectionId",
+      "element": "(0,bd.jsx)(zS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136131,
+      "end": 2136159,
+      "owner": "App",
+      "value": "/collections/reported",
+      "element": "(0,bd.jsx)(VS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136203,
+      "end": 2136248,
+      "owner": "App",
+      "value": "/collections/:collectionId/nfts/:nftId",
+      "element": "(0,bd.jsx)(BS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136292,
+      "end": 2136313,
+      "owner": "App",
+      "value": "/manage-crypto",
+      "element": "(0,bd.jsx)(FS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136357,
+      "end": 2136373,
+      "owner": "App",
+      "value": "/approval",
+      "element": "(0,bd.jsx)(NS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136417,
+      "end": 2136439,
+      "owner": "App",
+      "value": "/asset/:assetId",
+      "element": "(0,bd.jsx)(DS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136483,
+      "end": 2136511,
+      "owner": "App",
+      "value": "/gas-station/:assetId",
+      "element": "(0,bd.jsx)(jS,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136555,
+      "end": 2136577,
+      "owner": "App",
+      "value": "/custom-asset/*",
+      "element": "(0,bd.jsx)(_S,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136621,
+      "end": 2136636,
+      "owner": "App",
+      "value": "/history",
+      "element": "(0,bd.jsx)(History,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136685,
+      "end": 2136711,
+      "owner": "App",
+      "value": "/market-sentiment/*",
+      "element": "(0,bd.jsx)(MarketSentiment,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136768,
+      "end": 2136793,
+      "owner": "App",
+      "value": "/trending-tokens/*",
+      "element": "(0,bd.jsx)(Component,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136844,
+      "end": 2136852,
+      "owner": "App",
+      "value": "*",
+      "element": "(0,bd.jsx)(Home,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136901,
+      "end": 2136915,
+      "owner": "App",
+      "value": "/unlock",
+      "element": "withFlowBoundary(\"unlock\",(0,bd.jsx)(ZS,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2136986,
+      "end": 2137004,
+      "owner": "App",
+      "value": "/onboarding",
+      "element": "withFlowBoundary(\"onboarding\",(0,bd.jsx)(US,{}))",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48484,
+      "end": 48504,
+      "owner": "Buy",
+      "value": "/enter-amount",
+      "element": "(0,Pe.jsx)(BuyEnterAmount,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48559,
+      "end": 48578,
+      "owner": "Buy",
+      "value": "/select-fiat",
+      "element": "(0,Pe.jsx)(BuySelectFiat,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48632,
+      "end": 48653,
+      "owner": "Buy",
+      "value": "/select-crypto",
+      "element": "(0,Pe.jsx)(BuySelectCrypto,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48709,
+      "end": 48731,
+      "owner": "Buy",
+      "value": "/select-network",
+      "element": "(0,Pe.jsx)(BuySelectNetwork,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48788,
+      "end": 48811,
+      "owner": "Buy",
+      "value": "/select-provider",
+      "element": "(0,Pe.jsx)(BuySelectProvider,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48869,
+      "end": 48898,
+      "owner": "Buy",
+      "value": "/select-payment-method",
+      "element": "(0,Pe.jsx)(BuySelectPaymentMethod,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48961,
+      "end": 48984,
+      "owner": "Buy",
+      "value": "/recurring-setup",
+      "element": "(0,Pe.jsx)(RecurringBuySetup,{})",
+      "conditions": [
+        "a?(0,Pe.jsx)(BuyProvider,{mode:s,isRecurringFlow:r,children:(0,Pe.jsxs)(B,{children:[(0,Pe.jsx)(T,{index:!0,element:(0,Pe.jsx)(BuySelectCrypto,{})}),(0,Pe.jsx)(T,{path:\"/enter-amou"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/custom-asset-Bpl9EE2o.js",
+      "sha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8",
+      "offset": 34397,
+      "end": 34419,
+      "owner": "App",
+      "value": "/select-network",
+      "element": "(0,cs.jsx)(SelectNetwork,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/custom-asset-Bpl9EE2o.js",
+      "sha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8",
+      "offset": 34473,
+      "end": 34520,
+      "owner": "App",
+      "value": "/add-asset/:blockchainType/:blockchainId",
+      "element": "(0,cs.jsx)(AddAsset,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/custom-asset-Bpl9EE2o.js",
+      "sha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8",
+      "offset": 34569,
+      "end": 34641,
+      "owner": "App",
+      "value": "/add-asset/:blockchainType/:blockchainId/manual/:contractAddress?",
+      "element": "(0,cs.jsx)(AddAsset,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/fiat-ramps-BdoaGdC5.js",
+      "sha256": "4493cc5241c2e8c81797346713cc4c564438c9134258cdb670e919cf01bac076",
+      "offset": 172132,
+      "end": 172153,
+      "owner": "Page",
+      "value": "/buy/:assetId?",
+      "element": "(0,ot.jsx)(BuyCryptoTab,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/fiat-ramps-BdoaGdC5.js",
+      "sha256": "4493cc5241c2e8c81797346713cc4c564438c9134258cdb670e919cf01bac076",
+      "offset": 172206,
+      "end": 172228,
+      "owner": "Page",
+      "value": "/sell/:assetId?",
+      "element": "(0,ot.jsx)(SellCryptoTab,{})",
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/fp-DA8NAoIP.js",
+      "sha256": "51374fdb2d5bed25037b6750f77cacb3d8468d8c416af905574d49db1a783407",
+      "offset": 77605,
+      "end": 77615,
+      "owner": "en",
+      "value": "get",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "sha256": "d10102b2e88b0bb89f130a264d64f4dd9428bc2a6f1996ee0071361ae4a3fe02",
+      "offset": 544258,
+      "end": 544266,
+      "owner": "v",
+      "value": "m",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "sha256": "d10102b2e88b0bb89f130a264d64f4dd9428bc2a6f1996ee0071361ae4a3fe02",
+      "offset": 557945,
+      "end": 557953,
+      "owner": "I",
+      "value": "m",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "sha256": "e9ce8221bbe2f66ffbe19f181aa5cdf00f5ea441b1ed0f4b9b43a8ce853bb75f",
+      "offset": 179693,
+      "end": 179707,
+      "owner": "App",
+      "value": "/custom",
+      "element": "(0,Ot.jsx)(AddCustomNetwork,{})",
+      "conditions": [
+        "!e&&(0,Ot.jsx)(j,{path:\"/custom\",element:(0,Ot.jsx)(AddCustomNetwork,{})})"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "offset": 19231,
+      "end": 19251,
+      "owner": "Sell",
+      "value": "/enter-amount",
+      "element": "(0,je.jsx)(SellEnterAmount,{})",
+      "conditions": [
+        "e?(0,je.jsx)(SellProvider,{children:(0,je.jsxs)(w,{children:[(0,je.jsx)(C,{index:!0,element:(0,je.jsx)(SellSelectCrypto,{})}),(0,je.jsx)(C,{path:\"/enter-amount\",element:(0,je.jsx)("
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "offset": 19307,
+      "end": 19326,
+      "owner": "Sell",
+      "value": "/select-fiat",
+      "element": "(0,je.jsx)(SellSelectFiat,{})",
+      "conditions": [
+        "e?(0,je.jsx)(SellProvider,{children:(0,je.jsxs)(w,{children:[(0,je.jsx)(C,{index:!0,element:(0,je.jsx)(SellSelectCrypto,{})}),(0,je.jsx)(C,{path:\"/enter-amount\",element:(0,je.jsx)("
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "offset": 19381,
+      "end": 19404,
+      "owner": "Sell",
+      "value": "/select-provider",
+      "element": "(0,je.jsx)(SellSelectProvider,{})",
+      "conditions": [
+        "e?(0,je.jsx)(SellProvider,{children:(0,je.jsxs)(w,{children:[(0,je.jsx)(C,{index:!0,element:(0,je.jsx)(SellSelectCrypto,{})}),(0,je.jsx)(C,{path:\"/enter-amount\",element:(0,je.jsx)("
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "offset": 19463,
+      "end": 19485,
+      "owner": "Sell",
+      "value": "/select-network",
+      "element": "(0,je.jsx)(SellSelectNetwork,{})",
+      "conditions": [
+        "e?(0,je.jsx)(SellProvider,{children:(0,je.jsxs)(w,{children:[(0,je.jsx)(C,{index:!0,element:(0,je.jsx)(SellSelectCrypto,{})}),(0,je.jsx)(C,{path:\"/enter-amount\",element:(0,je.jsx)("
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797",
+      "offset": 13334301,
+      "end": 13334308,
+      "owner": "U",
+      "value": "",
+      "element": null,
+      "conditions": [
+        "ne||(ne=new Promise(function(ne,te){var re,oe=void 0!==ee?ee:{},ae=oe.onAbort;oe.onAbort=function(ee){te(new Error(ee)),ae&&ae(ee)},oe.postRun=oe.postRun||[],oe.postRun.push(functi"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    }
+  ],
+  "indexRoutes": [
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1491232,
+      "owner": "App$5",
+      "element": "(0,bd.jsx)(SelectAsset,{})"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1504578,
+      "owner": "Receive",
+      "element": "(0,bd.jsx)(SelectChain,{})"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1650640,
+      "owner": "Fund",
+      "element": "(0,bd.jsx)(FundingMethods,{})"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 2047941,
+      "owner": "App$1",
+      "element": "(0,bd.jsx)(Settings,{})"
+    },
+    {
+      "file": "chunks/Page-7xxhohWn.js",
+      "sha256": "b3eb599b7b13ee7631ec95cd67a4279ef925df6b50a476bd02e19d65a6799372",
+      "offset": 19994,
+      "owner": "o",
+      "element": "e.props.element"
+    },
+    {
+      "file": "chunks/buy-mUiKGiqX.js",
+      "sha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "offset": 48419,
+      "owner": "Buy",
+      "element": "(0,Pe.jsx)(BuySelectCrypto,{})"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 53530,
+      "owner": "G",
+      "element": "i"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 66846,
+      "owner": "getIntersectItems",
+      "element": "i"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 67400,
+      "owner": "getNearestCartesianItems",
+      "element": "i"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 67455,
+      "owner": "getNearestCartesianItems",
+      "element": "i"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 67874,
+      "owner": "getNearestItems",
+      "element": "t"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 68088,
+      "owner": "getAxisItems",
+      "element": "t"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 68505,
+      "owner": "J",
+      "element": "i"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 68830,
+      "owner": "J",
+      "element": "i[t]"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 123360,
+      "owner": "i",
+      "element": "i.data[e]"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "sha256": "e9ce8221bbe2f66ffbe19f181aa5cdf00f5ea441b1ed0f4b9b43a8ce853bb75f",
+      "offset": 179631,
+      "owner": "App",
+      "element": "(0,Ot.jsx)(Networks,{})"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "sha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "offset": 19165,
+      "owner": "Sell",
+      "element": "(0,je.jsx)(SellSelectCrypto,{})"
+    }
+  ],
+  "navigation": [
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1588865,
+      "end": 1588870,
+      "owner": "T",
+      "value": "",
+      "element": null,
+      "conditions": [
+        "g.needsApprovalStep&&g.isHardwareWallet?T.commit():(M.started(identityOf(I),z),R=!0,(g=>{const M=runAccount(g)??activeAccount();if(!M)return;const T={hash:bl(g.id),swapPressId:bl(g"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/App-D29UTaP5.js",
+      "sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "offset": 1709682,
+      "end": 1709700,
+      "owner": "Staking",
+      "value": "/earn/staking",
+      "element": null,
+      "conditions": [
+        "g&&M?(0,bd.jsx)(StakingContent,{asset:M}):(0,bd.jsx)(ht,{to:\"/earn/staking\",replace:!0})"
+      ],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/dist-B_ANQAOl.js",
+      "sha256": "23a73ef53ac11fbdb0fbdfa6ae21ae4493b8ce8ae2e2976d325355584f48ff61",
+      "offset": 18921,
+      "end": 18937,
+      "owner": "N",
+      "value": "transparent",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797",
+      "offset": 13363407,
+      "end": 13363412,
+      "owner": "Deflate",
+      "value": "",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797",
+      "offset": 13366054,
+      "end": 13366059,
+      "owner": "Inflate",
+      "value": "",
+      "element": null,
+      "conditions": [],
+      "status": "code-discovered",
+      "runtime": "unverified"
+    }
+  ],
+  "recoveryInputs": [
+    {
+      "file": "App-D29UTaP5-routes.js",
+      "original": "chunks/App-D29UTaP5.js",
+      "originalSha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+      "sha256": "329168f3df6a9594a4d3b018a3cfffc655158e4ac8c0ee8d07d0211a728757f7",
+      "ranges": [
+        {
+          "start": 1415269,
+          "end": 1418191,
+          "prefix": "",
+          "suffix": ";\n",
+          "sha256": "844c92d61fdf3a5b2149db2dd7d89036c5c32011fd0d8839a021985a26879682"
+        },
+        {
+          "start": 1491151,
+          "end": 1491777,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "481e741b4babc528e16d610f8aa042ce5c1791325f56d6fc39430891962924be"
+        },
+        {
+          "start": 1504526,
+          "end": 1504778,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "4700ae7c0b03848f1fab67376f612b5d41fc5e857532e29800d3111f396b8f34"
+        },
+        {
+          "start": 1650591,
+          "end": 1651183,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "0283a43b0067d894308414f6cee78322ae6a34df6b4478eae5b1b90e6f55945a"
+        },
+        {
+          "start": 1855246,
+          "end": 1855824,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "35b6fe0f03b85041feb7da2b28287958f556e8debe99f9a61cf39718693f5271"
+        },
+        {
+          "start": 2047891,
+          "end": 2049771,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "ace2f71b3e184b500ece82df5c4110a15b53483fc784706a2e31c960b2c33658"
+        },
+        {
+          "start": 2133918,
+          "end": 2137099,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "a0c6a9981440293099bb5a14cb0416207d15e826d091d982cf11dfe54c091efa"
+        }
+      ],
+      "bytes": 10081
+    },
+    {
+      "file": "buy-mUiKGiqX-routes.js",
+      "original": "chunks/buy-mUiKGiqX.js",
+      "originalSha256": "328411d1c5f3941ac7ba1abe6b4e8447e0ac34e5e8452587414dc65bbe84181c",
+      "sha256": "e82cc8377e470ece7c81bbddac4b3c6c9b33e9958abc3897f13fed05ab5e5781",
+      "ranges": [
+        {
+          "start": 48209,
+          "end": 49084,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "8af4526ac388e1d837dc3d58c82f4b38cffa8c429703011c52fcb3bd90864fc6"
+        }
+      ],
+      "bytes": 883
+    },
+    {
+      "file": "custom-asset-Bpl9EE2o-routes.js",
+      "original": "chunks/custom-asset-Bpl9EE2o.js",
+      "originalSha256": "3349878a244374eb307adfc3610e8e43c48c45a46266271dfbb75c70c96acca8",
+      "sha256": "7acccb6d582913ec506b5bd3cff5edcc6e4e4fe4a89c4007e68403895b13c894",
+      "ranges": [
+        {
+          "start": 34350,
+          "end": 34678,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "6a83a27ab8652dec69c126390f0c607ead82177b23e6c295f9e5db0abfecc49c"
+        }
+      ],
+      "bytes": 336
+    },
+    {
+      "file": "fiat-ramps-BdoaGdC5-routes.js",
+      "original": "chunks/fiat-ramps-BdoaGdC5.js",
+      "originalSha256": "4493cc5241c2e8c81797346713cc4c564438c9134258cdb670e919cf01bac076",
+      "sha256": "5366daae93f9e14727c0562bcf41166508ca9b0dc1014f3b731b2604a54155d5",
+      "ranges": [
+        {
+          "start": 170872,
+          "end": 172281,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "f243b5247e493c6042f542927a024a5f383dbfa938f245f6d2698b0b1920bf8a"
+        }
+      ],
+      "bytes": 1417
+    },
+    {
+      "file": "fp-DA8NAoIP-routes.js",
+      "original": "chunks/fp-DA8NAoIP.js",
+      "originalSha256": "51374fdb2d5bed25037b6750f77cacb3d8468d8c416af905574d49db1a783407",
+      "sha256": "ac9c8014f5af1879671fa1b3dcc1bc671797ea00647999ba37c04a80489b8543",
+      "ranges": [
+        {
+          "start": 76900,
+          "end": 83643,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "5f38e21adfcf248b16780b71e2bb59934fc5af8ec9e7cf83032911ab16346b3e"
+        }
+      ],
+      "bytes": 6751
+    },
+    {
+      "file": "ledger-9TVWcyBQ-routes.js",
+      "original": "chunks/ledger-9TVWcyBQ.js",
+      "originalSha256": "d10102b2e88b0bb89f130a264d64f4dd9428bc2a6f1996ee0071361ae4a3fe02",
+      "sha256": "103874d9cf256f56b694563d023c742c5b723356bf8cee094eb6db7cf91f3f7b",
+      "ranges": [
+        {
+          "start": 543674,
+          "end": 545296,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "34f259325fe28145a5b214d20a64e4d088e420345b10b21fe43b4de9ac48bc0c"
+        },
+        {
+          "start": 557288,
+          "end": 558850,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "9890c8fc51a866658d327424884936a3a259b83563c1fcfa54991f77dc67b73f"
+        }
+      ],
+      "bytes": 3200
+    },
+    {
+      "file": "network-BgRJPftY-routes.js",
+      "original": "chunks/network-BgRJPftY.js",
+      "originalSha256": "e9ce8221bbe2f66ffbe19f181aa5cdf00f5ea441b1ed0f4b9b43a8ce853bb75f",
+      "sha256": "6d35a3d75657f18d14d9b2b5943862fb9b631d0a8c8ca78ddd33678a9da5e43b",
+      "ranges": [
+        {
+          "start": 179541,
+          "end": 179753,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "1b2d8f1c47ab93285395870fd7f13943844d73be3022d6621016f4748fac40cb"
+        }
+      ],
+      "bytes": 220
+    },
+    {
+      "file": "sell-DEKcDK89-routes.js",
+      "original": "chunks/sell-DEKcDK89.js",
+      "originalSha256": "b0b91f5c29a16e9ea5cf58f54ccde0d911d94840f73ecfc971f0561262e1754f",
+      "sha256": "780089516dc0e124e7566cd92fa992df657fbd4b0b199307a0791429ba83d62a",
+      "ranges": [
+        {
+          "start": 19051,
+          "end": 19586,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "b2eab5a661c20941704c0bb9288618cb4dd48822f02a67eded8f68a1ebafd3e2"
+        }
+      ],
+      "bytes": 543
+    },
+    {
+      "file": "walletkit.service-C_NgWHzp-routes.js",
+      "original": "chunks/walletkit.service-C_NgWHzp.js",
+      "originalSha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797",
+      "sha256": "052350fbb7ecc1a1220c97407dfd72e3a0fcee05e9450510aeb4b037cf7d1a02",
+      "ranges": [
+        {
+          "start": 13311547,
+          "end": 13361109,
+          "prefix": "const ",
+          "suffix": ";\n",
+          "sha256": "9e893e358657c3d29e90fa92688d1d1115e60cd267ad48e03136a465d50663a9"
+        }
+      ],
+      "bytes": 49570
+    }
+  ],
+  "limitations": [
+    "Route candidates do not prove reachability or enabled behavior.",
+    "State machines, dialogs and dynamic destinations require recursive code and runtime investigation.",
+    "Background bundle is excluded from this pass."
+  ]
+}

@@ -1,0 +1,1 @@
+const App = ()=><I><C path="/select-network" element=<SelectNetwork/>/><C path="/add-asset/:blockchainType/:blockchainId" element=<AddAsset/>/><C path="/add-asset/:blockchainType/:blockchainId/manual/:contractAddress?" element=<AddAsset/>/></I>;

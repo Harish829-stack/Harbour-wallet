@@ -1,0 +1,131 @@
+{
+  "title": "Harbour Wallet",
+  "headings": [
+    {
+      "text": "Import a wallet",
+      "x": 75,
+      "y": 180,
+      "width": 305,
+      "height": 39,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "28px",
+      "fontWeight": "700",
+      "lineHeight": "39px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    },
+    {
+      "text": "Import with Secret Phrase or Private Key",
+      "x": 560,
+      "y": 178,
+      "width": 716,
+      "height": 30,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "34px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "‹\nBack",
+      "disabled": false,
+      "x": 560,
+      "y": 130,
+      "width": 50,
+      "height": 20,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "13.3333px",
+      "fontWeight": "500",
+      "lineHeight": "normal",
+      "color": "rgb(133, 136, 157)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    },
+    {
+      "text": "Show",
+      "disabled": false,
+      "x": 1244,
+      "y": 556,
+      "width": 32,
+      "height": 15,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "12px",
+      "fontWeight": "600",
+      "lineHeight": "normal",
+      "color": "rgb(5, 0, 255)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    },
+    {
+      "text": "Import",
+      "disabled": true,
+      "testid": "import-wallet-submit",
+      "x": 918,
+      "y": 804,
+      "width": 358,
+      "height": 56,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "16px",
+      "fontWeight": "600",
+      "lineHeight": "24px",
+      "color": "rgba(153, 156, 171, 0.5)",
+      "background": "rgba(153, 156, 171, 0.08)",
+      "radius": "999px"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "text",
+      "placeholder": "",
+      "testid": "wallet-name-input",
+      "x": 560,
+      "y": 256,
+      "width": 716,
+      "height": 56,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "16px",
+      "fontWeight": "500",
+      "lineHeight": "24px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "8px"
+    },
+    {
+      "type": "textarea",
+      "placeholder": "",
+      "x": 560,
+      "y": 394,
+      "width": 716,
+      "height": 150,
+      "fontFamily": "Inter, sans-serif",
+      "fontSize": "16px",
+      "fontWeight": "500",
+      "lineHeight": "24px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "8px"
+    }
+  ],
+  "bodyStyle": {
+    "x": 0,
+    "y": 0,
+    "width": 1365,
+    "height": 900,
+    "fontFamily": "system-ui, sans-serif",
+    "fontSize": "12px",
+    "fontWeight": "400",
+    "lineHeight": "normal",
+    "color": "rgb(0, 0, 0)",
+    "background": "rgba(0, 0, 0, 0)",
+    "radius": "0px"
+  },
+  "viewport": {
+    "width": 1365,
+    "height": 900
+  }
+}

@@ -1,0 +1,882 @@
+{
+ "trending_ave": {
+  "query": {
+   "version": "27",
+   "category_id": "trending_ave",
+   "currency": "USD",
+   "limit": "100",
+   "networks": "20000714,501,60,8453,10004663,10005042,10000999",
+   "sort_field": "volume_24h",
+   "sort_direction": "desc"
+  },
+  "response": {
+   "total": 100,
+   "docs": [
+    {
+     "asset": {
+      "name": "Doppler Finance",
+      "symbol": "XDP",
+      "type": "BASE",
+      "decimals": 18,
+      "network": 8453,
+      "asset_id": "c8453_t0x07b3D902783c3C12b077508c3B5c00113d1291D0",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/40953.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 190595535.75618958,
+      "circulating_supply": 0,
+      "total_supply": 10000000000,
+      "max_supply": 0,
+      "volume_24h": 107196580.6659993
+     },
+     "price": {
+      "price": 0.01905955357561896,
+      "percent_change_1h": -0.0091,
+      "percent_change_24h": 2.87,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Wrapped HYPE",
+      "symbol": "WHYPE",
+      "type": "HYPEREVM",
+      "decimals": 18,
+      "network": 10000999,
+      "asset_id": "c10000999_t0x5555555555555555555555555555555555555555",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/64x64/35881.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 273589726.4441188,
+      "circulating_supply": 0,
+      "total_supply": 3363754.98329312,
+      "max_supply": 0,
+      "volume_24h": 59259682.57069791
+     },
+     "price": {
+      "price": 81.33461795016774,
+      "percent_change_1h": 0.0036,
+      "percent_change_24h": 1.9800000000000002,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Canopy",
+      "symbol": "CNPY",
+      "type": "BEP20",
+      "decimals": 6,
+      "network": 20000714,
+      "asset_id": "c20000714_t0xC69B16CF18CEA1e5D0bb6a1a9db802097790dDD2",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/42011.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 8329657.942639663,
+      "circulating_supply": 0,
+      "total_supply": 31728809.157848,
+      "max_supply": 0,
+      "volume_24h": 51201364.14755017
+     },
+     "price": {
+      "price": 0.2625266489265436,
+      "percent_change_1h": -0.0076,
+      "percent_change_24h": 3.63,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Teller",
+      "symbol": "DEBIT",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0x66661c7229901F568F16BD1551b3bA826F83cE49",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/41911.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 152419844.29186457,
+      "circulating_supply": 0,
+      "total_supply": 99999476.42267373,
+      "max_supply": 0,
+      "volume_24h": 37681237.703946985
+     },
+     "price": {
+      "price": 1.5242064233178838,
+      "percent_change_1h": -0.0037,
+      "percent_change_24h": 2.98,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Alaya Governance Token",
+      "symbol": "AGT",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0x5dBde81fcE337FF4bcaaEe4Ca3466C00aeCaE274",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/36195.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 187064244.089129,
+      "circulating_supply": 0,
+      "total_supply": 5000000000,
+      "max_supply": 0,
+      "volume_24h": 36727738.430977724
+     },
+     "price": {
+      "price": 0.0374128488178258,
+      "percent_change_1h": 0.0348,
+      "percent_change_24h": 123.86999999999999,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    }
+   ]
+  }
+ },
+ "bstocks": {
+  "query": {
+   "version": "27",
+   "category_id": "bstocks",
+   "currency": "USD",
+   "limit": "100",
+   "networks": "20000714,501,60,8453,10004663,10005042,10000999",
+   "sort_field": "market_cap",
+   "sort_direction": "desc"
+  },
+  "response": {
+   "total": 95,
+   "docs": [
+    {
+     "asset": {
+      "name": "SpaceX Tokenized bStocks",
+      "symbol": "SPCXB",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/smartchain/assets/0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 135105176.2009661,
+      "circulating_supply": 0,
+      "total_supply": 887883.08866754,
+      "max_supply": 0,
+      "volume_24h": 7909221.040311288
+     },
+     "price": {
+      "price": 152.16550233400721,
+      "percent_change_1h": -0.0037,
+      "percent_change_24h": 2.04,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Circle Internet Group Tokenized bStocks",
+      "symbol": "CRCLB",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0x80f3D493EBCe97e343c53D29a137942416B4ffC0",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/smartchain/assets/0x80f3D493EBCe97e343c53D29a137942416B4ffC0/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 153312544.89460304,
+      "circulating_supply": 0,
+      "total_supply": 1799403.67743046,
+      "max_supply": 0,
+      "volume_24h": 2460062.779780073
+     },
+     "price": {
+      "price": 85.20186260457832,
+      "percent_change_1h": 0.0013,
+      "percent_change_24h": 10.780000000000001,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Strategy Tokenized bStocks",
+      "symbol": "MSTRB",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0xE87afb3076AeB0f9B14E368DE8145ae6a2826A14",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/smartchain/assets/0xE87afb3076AeB0f9B14E368DE8145ae6a2826A14/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 98505365.39211772,
+      "circulating_supply": 0,
+      "total_supply": 669049.40952841,
+      "max_supply": 0,
+      "volume_24h": 373735.6132542526
+     },
+     "price": {
+      "price": 147.23261474311454,
+      "percent_change_1h": -0.001,
+      "percent_change_24h": 4.9,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Invesco QQQ Trust Tokenized bStocks",
+      "symbol": "QQQB",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0x205812CdBed920aFf76C6580abD681a46D11efc7",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/40593.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 90767562.6050325,
+      "circulating_supply": 0,
+      "total_supply": 125030.95767423611,
+      "max_supply": 0,
+      "volume_24h": 6662398.630823658
+     },
+     "price": {
+      "price": 725.9607083993093,
+      "percent_change_1h": -0.0036,
+      "percent_change_24h": 0.72,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "SanDisk Tokenized bStocks",
+      "symbol": "SNDKB",
+      "type": "BEP20",
+      "decimals": 18,
+      "network": 20000714,
+      "asset_id": "c20000714_t0x3eE4dF61bd4F867E349BEaE8bFE07bc31b4850fb",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/smartchain/assets/0x3eE4dF61bd4F867E349BEaE8bFE07bc31b4850fb/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 61760919.44461832,
+      "circulating_supply": 0,
+      "total_supply": 44549.21291212,
+      "max_supply": 0,
+      "volume_24h": 146622.75851972445
+     },
+     "price": {
+      "price": 1386.3526515373233,
+      "percent_change_1h": 0.0079,
+      "percent_change_24h": 3.45,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    }
+   ]
+  }
+ },
+ "trending": {
+  "query": {
+   "version": "27",
+   "category_id": "trending",
+   "currency": "USD",
+   "limit": "30",
+   "networks": "60",
+   "sort_field": "volume_24h",
+   "sort_direction": "desc"
+  },
+  "response": {
+   "total": 30,
+   "docs": [
+    {
+     "asset": {
+      "name": "Tether Gold",
+      "symbol": "XAUt",
+      "type": "ERC20",
+      "decimals": 6,
+      "network": 60,
+      "asset_id": "c60_t0x68749665FF8D2d112Fa859AA293F07A622782F38",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0x68749665FF8D2d112Fa859AA293F07A622782F38/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 3452169328.4199967,
+      "circulating_supply": 0,
+      "total_supply": 827417.63,
+      "max_supply": 0,
+      "volume_24h": 7032048.341859144
+     },
+     "price": {
+      "price": 4172.221141118297,
+      "percent_change_1h": 0.007,
+      "percent_change_24h": 0.8500000000000001,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Chainlink",
+      "symbol": "LINK",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0x514910771AF9Ca656af840dff83E8264EcF986CA",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0x514910771AF9Ca656af840dff83E8264EcF986CA/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 12518161527.907038,
+      "circulating_supply": 0,
+      "total_supply": 1000000000,
+      "max_supply": 0,
+      "volume_24h": 2440835.780099019
+     },
+     "price": {
+      "price": 12.518161527907038,
+      "percent_change_1h": 0.005,
+      "percent_change_24h": 3.8,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "PAX Gold",
+      "symbol": "PAXG",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0x45804880De22913dAFE09f4980848ECE6EcbAf78",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0x45804880De22913dAFE09f4980848ECE6EcbAf78/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 1828551099.668966,
+      "circulating_supply": 0,
+      "total_supply": 437573.050394,
+      "max_supply": 0,
+      "volume_24h": 2291397.923764877
+     },
+     "price": {
+      "price": 4178.847618751886,
+      "percent_change_1h": 0.0018,
+      "percent_change_24h": 0.86,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Quant",
+      "symbol": "QNT",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0x4a220E6096B25EADb88358cb44068A3248254675",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0x4a220E6096B25EADb88358cb44068A3248254675/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 9407106630.55915,
+      "circulating_supply": 0,
+      "total_supply": 45467000,
+      "max_supply": 0,
+      "volume_24h": 2118493.5821274384
+     },
+     "price": {
+      "price": 206.89965536673083,
+      "percent_change_1h": -0.0007,
+      "percent_change_24h": 5.62,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Identity.md",
+      "symbol": "IMD",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7",
+      "icon_url": "https://www.iconaves.com/token_icon/eth/0xd34a99bc0f67ae1bbd63c660e6d0b0dd03e263b7.webp",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 28817528.807963468,
+      "circulating_supply": 0,
+      "total_supply": 4174603.880607,
+      "max_supply": 0,
+      "volume_24h": 1873874.9892561748
+     },
+     "price": {
+      "price": 6.903057064128756,
+      "percent_change_1h": 0.0005,
+      "percent_change_24h": 11.24,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    }
+   ]
+  }
+ },
+ "solana-ecosystem": {
+  "query": {
+   "version": "27",
+   "category_id": "solana-ecosystem",
+   "currency": "USD",
+   "limit": "30",
+   "networks": "501",
+   "sort_field": "volume_24h",
+   "sort_direction": "desc"
+  },
+  "response": {
+   "total": 30,
+   "docs": [
+    {
+     "asset": {
+      "name": "Solana",
+      "symbol": "SOL",
+      "type": "coin",
+      "decimals": 9,
+      "network": 501,
+      "asset_id": "c501",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/info/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 62622747440.96405,
+      "circulating_supply": 589324504.2282107,
+      "total_supply": 635906232.02454,
+      "max_supply": 0,
+      "volume_24h": 2913261852.579248
+     },
+     "price": {
+      "price": 106.26191002014392,
+      "percent_change_1h": 0.39392111,
+      "percent_change_24h": 3.82441593,
+      "percent_change_7d": -3.80430411,
+      "percent_change_30d": 9.43707473,
+      "percent_change_60d": 40.28007829,
+      "percent_change_90d": 41.84900099
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Wrapped SOL",
+      "symbol": "WSOL",
+      "type": "SPL",
+      "decimals": 9,
+      "network": 501,
+      "asset_id": "c501_tSo11111111111111111111111111111111111111112",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/assets/So11111111111111111111111111111111111111112/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 1744409571.779274,
+      "circulating_supply": 0,
+      "total_supply": 0,
+      "max_supply": 0,
+      "volume_24h": 215754709.8383701
+     },
+     "price": {
+      "price": 106.21845670457338,
+      "percent_change_1h": 0.0033,
+      "percent_change_24h": 3.82,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "OFFICIAL TRUMP",
+      "symbol": "TRUMP",
+      "type": "SPL",
+      "decimals": 6,
+      "network": 501,
+      "asset_id": "c501_t6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/assets/6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 1884677929.3385704,
+      "circulating_supply": 0,
+      "total_supply": 999998882.51678,
+      "max_supply": 0,
+      "volume_24h": 26346408.04283929
+     },
+     "price": {
+      "price": 1.884680035436885,
+      "percent_change_1h": 0.0085,
+      "percent_change_24h": 5.050000000000001,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Pump",
+      "symbol": "PUMP",
+      "type": "SPL",
+      "decimals": 6,
+      "network": 501,
+      "asset_id": "c501_tpumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/assets/pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 3751757313.575835,
+      "circulating_supply": 0,
+      "total_supply": 827749617855.2092,
+      "max_supply": 0,
+      "volume_24h": 16562585.844762826
+     },
+     "price": {
+      "price": 0.004532478460451668,
+      "percent_change_1h": 0.002,
+      "percent_change_24h": 5.970000000000001,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "SpaceX - Backpack Securities",
+      "symbol": "SPCX",
+      "type": "SPL",
+      "decimals": 6,
+      "network": 501,
+      "asset_id": "c501_tSPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/assets/SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 9042138.519779399,
+      "circulating_supply": 0,
+      "total_supply": 59242.758628,
+      "max_supply": 0,
+      "volume_24h": 14099701.846677553
+     },
+     "price": {
+      "price": 152.62858666925408,
+      "percent_change_1h": 0.0029,
+      "percent_change_24h": 2.39,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    }
+   ]
+  }
+ },
+ "ai": {
+  "query": {
+   "version": "27",
+   "category_id": "ai",
+   "currency": "ETH",
+   "limit": "100",
+   "networks": "20000714,501,60,8453,10004663,10005042,10000999",
+   "sort_field": "market_cap",
+   "sort_direction": "desc"
+  },
+  "response": {
+   "total": 72,
+   "docs": [
+    {
+     "asset": {
+      "name": "Helix AI",
+      "symbol": "HLX",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0x28D4e499C4CdE621e1Cea7c9CBf9D43bf75a9525",
+      "icon_url": "https://s2.coinmarketcap.com/static/img/coins/200x200/40587.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 1972146.5173945425,
+      "circulating_supply": 0,
+      "total_supply": 100000000000,
+      "max_supply": 0,
+      "volume_24h": 154.71340219358677
+     },
+     "price": {
+      "price": 1.9721465173945424e-05,
+      "percent_change_1h": 0.0038,
+      "percent_change_24h": -0.45374510000000035,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Venice",
+      "symbol": "VVV",
+      "type": "BASE",
+      "decimals": 18,
+      "network": 8453,
+      "asset_id": "c8453_t0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/base/assets/0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 1152609.6127672985,
+      "circulating_supply": 0,
+      "total_supply": 115047652.12867521,
+      "max_supply": 0,
+      "volume_24h": 5192.344986050638
+     },
+     "price": {
+      "price": 0.010018541148691029,
+      "percent_change_1h": 0.0026,
+      "percent_change_24h": 7.8262549,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Render",
+      "symbol": "RNDR",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0x6De037ef9aD2725EB40118Bb1702EBb27e4Aeb24",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0x6De037ef9aD2725EB40118Bb1702EBb27e4Aeb24/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 444441.7771152295,
+      "circulating_supply": 0,
+      "total_supply": 533536414.5626915,
+      "max_supply": 0,
+      "volume_24h": 62.66053229216056
+     },
+     "price": {
+      "price": 0.0008330111403539576,
+      "percent_change_1h": 0.0038,
+      "percent_change_24h": 4.4262549,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Injective",
+      "symbol": "INJ",
+      "type": "ERC20",
+      "decimals": 18,
+      "network": 60,
+      "asset_id": "c60_t0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/ethereum/assets/0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 377049.4652159371,
+      "circulating_supply": 0,
+      "total_supply": 100000000,
+      "max_supply": 0,
+      "volume_24h": 220.853886555518
+     },
+     "price": {
+      "price": 0.003770494652159371,
+      "percent_change_1h": 0.0006,
+      "percent_change_24h": 25.1162549,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    },
+    {
+     "asset": {
+      "name": "Grass",
+      "symbol": "Grass",
+      "type": "SPL",
+      "decimals": 9,
+      "network": 501,
+      "asset_id": "c501_tGrass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs",
+      "icon_url": "https://assets-cdn.trustwallet.com/blockchains/solana/assets/Grass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs/logo.png",
+      "is_verified": true,
+      "is_pre_ipo": false,
+      "is_rwa": false,
+      "is_scaled_ui_amount": false
+     },
+     "market": {
+      "market_cap": 281019.69601391914,
+      "circulating_supply": 0,
+      "total_supply": 999992781.1619136,
+      "max_supply": 0,
+      "volume_24h": 311.6021729153455
+     },
+     "price": {
+      "price": 0.00028102172466424826,
+      "percent_change_1h": 0.0146,
+      "percent_change_24h": 5.896254900000001,
+      "percent_change_7d": 0,
+      "percent_change_30d": 0,
+      "percent_change_60d": 0,
+      "percent_change_90d": 0
+     },
+     "four_meme_meta": null
+    }
+   ]
+  }
+ }
+}

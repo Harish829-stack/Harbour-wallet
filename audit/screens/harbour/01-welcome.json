@@ -1,0 +1,27 @@
+{
+  "text": "H\nHARBOUR\nWALLET\nJoin 200M users in\nsecuring their financial future\nI have read and agree to the Terms of Use and Privacy Policy\nI already have a wallet\nCreate new wallet\n\nHave the Trust Wallet mobile app?\n\nScan QR to sync",
+  "buttons": [
+    {
+      "text": "I already have a wallet",
+      "disabled": true
+    },
+    {
+      "text": "Create new wallet",
+      "disabled": true
+    },
+    {
+      "text": "Scan QR to sync",
+      "disabled": false
+    }
+  ],
+  "inputs": [
+    {
+      "type": "checkbox",
+      "placeholder": ""
+    }
+  ],
+  "viewport": {
+    "width": 1365,
+    "height": 900
+  }
+}

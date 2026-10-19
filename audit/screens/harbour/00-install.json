@@ -1,0 +1,8 @@
+{
+  "expected_url": "chrome-extension://iekomdbhcbjbjfhkdeimidcclgcccfef/src/popup/index.html#/onboarding",
+  "automatic_onboarding_tabs": 1,
+  "chromium": "141.0.7390.37",
+  "profile": "new disposable profile",
+  "manual_navigation": false,
+  "wallet_created": false
+}

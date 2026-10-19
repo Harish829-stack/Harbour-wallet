@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-15",
+  "kind": "summary of observed tool results, not raw test output",
+  "harbour_tests": {
+    "command": "npm test",
+    "result": "pass",
+    "tests": 3,
+    "scope": "2 sender authorization tests and 1 dependency test"
+  },
+  "harbour_build": {
+    "command": "npm run build",
+    "result": "pass",
+    "wasm_matches_pinned_dependency": true
+  },
+  "reference_install_capture": "audit/screens/reference/00-install.json",
+  "reference_onboarding_captures": "audit/screens/reference/",
+  "harbour_onboarding_captures": "audit/screens/harbour/",
+  "rea_exact_install_evidence": "ev_a13180a7e6eb023cb2aa10adc16d7550a0b9c2d436adc075c054cae62fd17a1b",
+  "full_wallet_equivalence": "NOT ESTABLISHED",
+  "full_UI_parity": "NOT ESTABLISHED",
+  "new_secrets_recorded": false,
+  "git_commit": null
+}

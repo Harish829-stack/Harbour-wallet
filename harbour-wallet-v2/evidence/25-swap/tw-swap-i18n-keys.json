@@ -1,0 +1,6 @@
+{
+ "swap.toast.swapped": "failed",
+ "swap.toast.failed": "swap.toast.swapping",
+ "swap-domains-stale": "swap-domains-error",
+ "swap-domains-stale-retry": "swap-domains-retry"
+}

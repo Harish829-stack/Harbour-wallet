@@ -1,0 +1,330 @@
+{
+ "1": {
+  "rpc": [
+   "https://ethereum.reth.rs/rpc"
+  ],
+  "explorer": "https://etherscan.io",
+  "name": "Ethereum"
+ },
+ "10": {
+  "rpc": [
+   "https://mainnet.optimism.io"
+  ],
+  "explorer": "https://optimistic.etherscan.io",
+  "name": "OP Mainnet"
+ },
+ "25": {
+  "rpc": [
+   "https://evm.cronos.org"
+  ],
+  "explorer": "https://explorer.cronos.org",
+  "name": "Cronos Mainnet"
+ },
+ "56": {
+  "rpc": [
+   "https://56.rpc.thirdweb.com"
+  ],
+  "explorer": "https://bscscan.com",
+  "name": "BNB Smart Chain"
+ },
+ "60": {
+  "rpc": [
+   "https://rpc.gochain.io"
+  ],
+  "explorer": "https://explorer.gochain.io",
+  "name": "GoChain"
+ },
+ "61": {
+  "rpc": [
+   "https://etc.rivet.link"
+  ],
+  "explorer": "https://blockscout.com/etc/mainnet",
+  "name": "Ethereum Classic"
+ },
+ "88": {
+  "rpc": [
+   "https://rpc.viction.xyz"
+  ],
+  "explorer": "https://vicscan.xyz",
+  "name": "Viction"
+ },
+ "100": {
+  "rpc": [
+   "https://rpc.gnosischain.com"
+  ],
+  "explorer": "https://gnosisscan.io",
+  "name": "Gnosis"
+ },
+ "108": {
+  "rpc": [
+   "https://mainnet-rpc.thundercore.com"
+  ],
+  "explorer": "https://explorer-mainnet.thundercore.com",
+  "name": "ThunderCore Mainnet"
+ },
+ "137": {
+  "rpc": [
+   "https://polygon.drpc.org"
+  ],
+  "explorer": "https://polygonscan.com",
+  "name": "Polygon"
+ },
+ "143": {
+  "rpc": [
+   "https://rpc.monad.xyz",
+   "https://rpc1.monad.xyz"
+  ],
+  "explorer": "https://monadscan.com",
+  "name": "Monad"
+ },
+ "146": {
+  "rpc": [
+   "https://rpc.soniclabs.com"
+  ],
+  "explorer": "https://sonicscan.org",
+  "name": "Sonic"
+ },
+ "169": {
+  "rpc": [
+   "https://pacific-rpc.manta.network/http"
+  ],
+  "explorer": "https://pacific-explorer.manta.network",
+  "name": "Manta Pacific Mainnet"
+ },
+ "204": {
+  "rpc": [
+   "https://opbnb-mainnet-rpc.bnbchain.org"
+  ],
+  "explorer": "https://opbnb.bscscan.com",
+  "name": "opBNB"
+ },
+ "250": {
+  "rpc": [
+   "https://250.rpc.thirdweb.com"
+  ],
+  "explorer": "https://ftmscan.com",
+  "name": "Fantom"
+ },
+ "288": {
+  "rpc": [
+   "https://mainnet.boba.network"
+  ],
+  "explorer": "https://bobascan.com",
+  "name": "Boba Network"
+ },
+ "321": {
+  "rpc": [
+   "https://kcc-rpc.com"
+  ],
+  "explorer": "https://explorer.kcc.io",
+  "name": "KCC Mainnet"
+ },
+ "324": {
+  "rpc": [
+   "https://mainnet.era.zksync.io"
+  ],
+  "explorer": "https://explorer.zksync.io/",
+  "name": "ZKsync Era"
+ },
+ "888": {
+  "rpc": [
+   "https://gwan-ssl.wandevs.org:56891",
+   "https://gwan2-ssl.wandevs.org"
+  ],
+  "explorer": "https://wanscan.org",
+  "name": "Wanchain"
+ },
+ "999": {
+  "rpc": [
+   "https://testnet.rpc.zora.energy"
+  ],
+  "explorer": "https://testnet.explorer.zora.energy",
+  "name": "Zora Goerli Testnet"
+ },
+ "1030": {
+  "rpc": [
+   "https://evm.confluxrpc.com"
+  ],
+  "explorer": "https://evm.confluxscan.org",
+  "name": "Conflux eSpace"
+ },
+ "1088": {
+  "rpc": [
+   "https://metis.rpc.hypersync.xyz",
+   "https://metis-pokt.nodies.app",
+   "https://api.blockeden.xyz/metis/67nCBdZQSH9z3YqDDjdm",
+   "https://metis-andromeda.rpc.thirdweb.com",
+   "https://metis-andromeda.gateway.tenderly.co",
+   "https://metis.api.onfinality.io/public",
+   "https://andromeda.metis.io/?owner=1088",
+   "https://metis-mainnet.public.blastapi.io"
+  ],
+  "explorer": "https://explorer.metis.io",
+  "name": "Metis"
+ },
+ "1284": {
+  "rpc": [
+   "https://rpc.api.moonbeam.network"
+  ],
+  "explorer": "https://moonscan.io",
+  "name": "Moonbeam"
+ },
+ "1285": {
+  "rpc": [
+   "https://rpc.api.moonriver.moonbeam.network"
+  ],
+  "explorer": "https://moonriver.moonscan.io",
+  "name": "Moonriver"
+ },
+ "2020": {
+  "rpc": [
+   "https://api.roninchain.com/rpc"
+  ],
+  "explorer": "https://app.roninchain.com",
+  "name": "Ronin"
+ },
+ "2222": {
+  "rpc": [
+   "https://evm.kava.io"
+  ],
+  "explorer": "https://kavascan.com",
+  "name": "Kava EVM"
+ },
+ "4200": {
+  "rpc": [
+   "https://rpc.merlinchain.io"
+  ],
+  "explorer": "https://scan.merlinchain.io",
+  "name": "Merlin"
+ },
+ "4326": {
+  "rpc": [
+   "https://mainnet.megaeth.com/rpc"
+  ],
+  "explorer": "https://mega.etherscan.io",
+  "name": "MegaETH"
+ },
+ "4663": {
+  "rpc": [
+   "https://rpc.mainnet.chain.robinhood.com",
+   "https://rpc.ordofi.network"
+  ],
+  "explorer": "https://robinhoodchain.blockscout.com",
+  "name": "Robinhood Chain"
+ },
+ "4689": {
+  "rpc": [
+   "https://babel-api.mainnet.iotex.io"
+  ],
+  "explorer": "https://iotexscan.io",
+  "name": "IoTeX"
+ },
+ "5000": {
+  "rpc": [
+   "https://rpc.mantle.xyz"
+  ],
+  "explorer": "https://mantlescan.xyz/",
+  "name": "Mantle"
+ },
+ "5042": {
+  "rpc": [
+   "https://rpc.mainnet.arc.io",
+   "https://rpc.blockdaemon.mainnet.arc.io",
+   "https://rpc.drpc.mainnet.arc.io",
+   "https://rpc.quicknode.mainnet.arc.io"
+  ],
+  "explorer": "https://explorer.arc.io",
+  "name": "Arc"
+ },
+ "6001": {
+  "rpc": [
+   "https://fullnode-mainnet.bouncebitapi.com"
+  ],
+  "explorer": "https://bbscan.io",
+  "name": "BounceBit Mainnet"
+ },
+ "8217": {
+  "rpc": [
+   "https://public-en-cypress.klaytn.net"
+  ],
+  "explorer": "https://scope.klaytn.com",
+  "name": "Klaytn"
+ },
+ "8453": {
+  "rpc": [
+   "https://mainnet-preconf.base.org"
+  ],
+  "explorer": "https://basescan.org",
+  "name": "Base"
+ },
+ "9745": {
+  "rpc": [
+   "https://rpc.plasma.to"
+  ],
+  "explorer": "https://plasmascan.to",
+  "name": "Plasma"
+ },
+ "42161": {
+  "rpc": [
+   "https://arb1.arbitrum.io/rpc"
+  ],
+  "explorer": "https://arbiscan.io",
+  "name": "Arbitrum One"
+ },
+ "42220": {
+  "rpc": [
+   "https://forno.celo.org"
+  ],
+  "explorer": "https://celoscan.io",
+  "name": "Celo"
+ },
+ "43114": {
+  "rpc": [
+   "https://api.avax.network/ext/bc/C/rpc"
+  ],
+  "explorer": "https://snowtrace.io",
+  "name": "Avalanche"
+ },
+ "59144": {
+  "rpc": [
+   "https://rpc.linea.build"
+  ],
+  "explorer": "https://lineascan.build",
+  "name": "Linea Mainnet"
+ },
+ "81457": {
+  "rpc": [
+   "https://rpc.blast.io"
+  ],
+  "explorer": "https://blastscan.io",
+  "name": "Blast"
+ },
+ "534352": {
+  "rpc": [
+   "https://rpc.scroll.io"
+  ],
+  "explorer": "https://scrollscan.com",
+  "name": "Scroll"
+ },
+ "810180": {
+  "rpc": [
+   "https://rpc.zklink.io"
+  ],
+  "explorer": "https://explorer.zklink.io",
+  "name": "zkLink Nova"
+ },
+ "245022934": {
+  "rpc": [
+   "https://neon-proxy-mainnet.solana.p2p.org"
+  ],
+  "explorer": "https://neonscan.org",
+  "name": "Neon EVM MainNet"
+ },
+ "1313161554": {
+  "rpc": [
+   "https://mainnet.aurora.dev"
+  ],
+  "explorer": "https://aurorascan.dev",
+  "name": "Aurora"
+ }
+}

@@ -1,0 +1,16 @@
+
+wallet-core.wasm:	file format wasm 0x1
+
+Sections:
+
+     Type start=0x0000000b end=0x000004a6 (size=0x0000049b) count: 139
+   Import start=0x000004a9 end=0x0000099f (size=0x000004f6) count: 45
+ Function start=0x000009a3 end=0x00005a1b (size=0x00005078) count: 20586
+    Table start=0x00005a1d end=0x00005a24 (size=0x00000007) count: 1
+   Memory start=0x00005a26 end=0x00005a2d (size=0x00000007) count: 1
+   Global start=0x00005a2f end=0x00005a42 (size=0x00000013) count: 3
+   Export start=0x00005a45 end=0x00005bd4 (size=0x0000018f) count: 20
+     Elem start=0x00005bd8 end=0x0000bd0f (size=0x00006137) count: 1
+DataCount start=0x0000bd11 end=0x0000bd13 (size=0x00000002) count: 1650
+     Code start=0x0000bd18 end=0x007c8292 (size=0x007bc57a) count: 20586
+     Data start=0x007c8297 end=0x009e1c90 (size=0x002199f9) count: 1650

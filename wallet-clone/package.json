@@ -1,0 +1,13 @@
+{
+  "name": "wallet-clone-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RE-backed secure-core wallet (Trust Wallet-compatible); own branding",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@trustwallet/wallet-core": "4.8.2"
+  }
+}

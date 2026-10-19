@@ -1,0 +1,35 @@
+{
+  "name": "harbour-wallet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Harbour Wallet — MV3 crypto wallet (RE-aligned with Trust Wallet; wallet-core crypto)",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/prepare-wasm.mjs && tsc --noEmit && vite build",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "2.2.7",
+    "@trustwallet/wallet-core": "4.8.2",
+    "lottie-web": "5.13.0",
+    "qrcode": "1.5.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-redux": "9.1.2",
+    "viem": "2.21.19",
+    "webextension-polyfill": "0.12.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "2.0.0-beta.26",
+    "@types/chrome": "0.0.270",
+    "@types/node": "^22.5.5",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "18.3.5",
+    "@types/react-dom": "18.3.0",
+    "@types/webextension-polyfill": "^0.12.1",
+    "@vitejs/plugin-react": "4.3.1",
+    "typescript": "5.5.4",
+    "vite": "5.4.6"
+  }
+}

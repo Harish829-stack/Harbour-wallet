@@ -1,0 +1,129 @@
+{
+  "source": {
+    "path": "/output/wallet-onboarding-calls.js",
+    "snapshot_path": "/tmp/rea-wakaru-6Sc9MA/inputs/output/wallet-onboarding-calls.js",
+    "sha256": "da238e637ba6580c5891d32f0715bc9301e566d88b5eef2e61c031ccdcab57d5",
+    "bytes": 6784,
+    "published_copy": {
+      "path": "/output/call-recovery/inputs/output/wallet-onboarding-calls.js",
+      "sha256": "da238e637ba6580c5891d32f0715bc9301e566d88b5eef2e61c031ccdcab57d5",
+      "bytes": 6784
+    }
+  },
+  "additional_sources": [
+    {
+      "path": "/chunks/window-COx4dq7s.js",
+      "snapshot_path": "/tmp/rea-wakaru-6Sc9MA/inputs/chunks/window-COx4dq7s.js",
+      "sha256": "a3fd59930f8ef128e09c63a1c9d8b19085d98d5b1bac45ce773337989d22704f",
+      "bytes": 1371,
+      "published_copy": {
+        "path": "/output/call-recovery/inputs/chunks/window-COx4dq7s.js",
+        "sha256": "a3fd59930f8ef128e09c63a1c9d8b19085d98d5b1bac45ce773337989d22704f",
+        "bytes": 1371
+      }
+    }
+  ],
+  "engine": {
+    "id": "wakaru",
+    "version": "1.14.0",
+    "executable": {
+      "path": "/opt/rea/node_modules/@wakaru/cli-linux-x64/wakaru",
+      "sha256": "664fa06782a61eda7ed15885134b52525fd565dd77607e642062ceb6cd927c38",
+      "bytes": 26793296
+    },
+    "audited_source_revision": "8219bf5016a063d7fb215101a8c45d5959ec733f",
+    "executed_source_revision": null
+  },
+  "options": {
+    "extraction_mode": "structural",
+    "rewrite_level": "standard"
+  },
+  "status": "complete",
+  "detected_formats": [],
+  "reported_safety": "normal",
+  "reported_strategy": "structural",
+  "reported_format": "unknown",
+  "total": 2,
+  "failed": 0,
+  "modules": [
+    {
+      "reported_filename": "output/wallet-onboarding-calls.js",
+      "reported_status": "decompiled",
+      "artifact": {
+        "path": "/output/call-recovery/modules/output/wallet-onboarding-calls.js",
+        "sha256": "5535a18c7c44bd2323f3cb74b5a3b8bb7dcf1445e7d16c1370b9920cdda7652e",
+        "bytes": 9405
+      },
+      "source_map": {
+        "path": "/output/call-recovery/modules/output/wallet-onboarding-calls.js.map",
+        "sha256": "c86b68da40f45245936722e0a262dabc280af78f695f5535c52b893563b3cf51",
+        "bytes": 7974
+      },
+      "provenance": {
+        "reported_input": "/tmp/rea-wakaru-6Sc9MA/inputs/output/wallet-onboarding-calls.js",
+        "original_path": "/output/wallet-onboarding-calls.js",
+        "original_sha256": "da238e637ba6580c5891d32f0715bc9301e566d88b5eef2e61c031ccdcab57d5",
+        "extraction": "structural",
+        "byte_ranges": [
+          {
+            "start": 0,
+            "end": 6784
+          }
+        ],
+        "context_byte_ranges": [],
+        "range_semantics": "half-open-utf8-bytes"
+      }
+    },
+    {
+      "reported_filename": "chunks/window-COx4dq7s.js",
+      "reported_status": "decompiled",
+      "artifact": {
+        "path": "/output/call-recovery/modules/chunks/window-COx4dq7s.js",
+        "sha256": "72abcf09f213bfcb57e5fd0424a546b709056370b7b97fc5576cd956565fd16e",
+        "bytes": 1869
+      },
+      "source_map": {
+        "path": "/output/call-recovery/modules/chunks/window-COx4dq7s.js.map",
+        "sha256": "80b21d5ddbc569b50955c594e20fb73fe6985ee86c64bd455d7a1c15406a1c39",
+        "bytes": 1402
+      },
+      "provenance": {
+        "reported_input": "/tmp/rea-wakaru-6Sc9MA/inputs/chunks/window-COx4dq7s.js",
+        "original_path": "/chunks/window-COx4dq7s.js",
+        "original_sha256": "a3fd59930f8ef128e09c63a1c9d8b19085d98d5b1bac45ce773337989d22704f",
+        "extraction": "structural",
+        "byte_ranges": [
+          {
+            "start": 0,
+            "end": 1371
+          }
+        ],
+        "context_byte_ranges": [],
+        "range_semantics": "half-open-utf8-bytes"
+      }
+    }
+  ],
+  "warnings": [],
+  "report": {
+    "path": "/output/call-recovery/reports/stdout.json",
+    "sha256": "d3831068fcbb4c49e0e22d91842b94acadc0dcae9c00146c891ffceeef60fc76",
+    "bytes": 280
+  },
+  "provenance": {
+    "path": "/output/call-recovery/reports/provenance.json",
+    "sha256": "31bd48a77a083f16f748726f8e27b8263f878caf1dc1eb2f730987ccecfbc6ba",
+    "bytes": 395
+  },
+  "analysis_input": {
+    "input_path": "/output/call-recovery/modules",
+    "format": "directory"
+  },
+  "runtime_equivalence": "unknown",
+  "limitations": [
+    "Recovered sources are derived artifacts; original variable names and runtime equivalence are not established.",
+    "Extraction ranges refer to half-open UTF-8 byte offsets in the original input, not rewritten line positions or whole-bundle coverage.",
+    "Emitted source maps are preserved as reported by the engine; their mapping accuracy is not independently established.",
+    "Inspection mode may produce non-executable regions. No input or recovered application code is executed.",
+    "Linux adapter: one worker, 1 GiB address-space ceiling, 120-second deadline, 64 MiB total input, 128 MiB output, 10000 output entries and 8 MiB per diagnostic/report stream. Resource limits are per operation, not aggregate host containment."
+  ]
+}

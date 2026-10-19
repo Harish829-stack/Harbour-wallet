@@ -1,0 +1,394 @@
+{
+ "amber.models.ApiErrorMetadata": [
+  "minAmount",
+  "assets",
+  "change_src_asset",
+  "change_dst_asset",
+  "opensAt",
+  "reason",
+  "symbol"
+ ],
+ "amber.models.AmberErrorAsset.Metadata": [
+  "symbol",
+  "logo_url"
+ ],
+ "amber.models.AmberErrorAsset": [
+  "address",
+  "domain_id",
+  "metadata"
+ ],
+ "amber.models.AmberTimestamp": [
+  "seconds",
+  "nanos"
+ ],
+ "amber.models.AmberApiError": [
+  "code",
+  "message",
+  "traceId",
+  "metadata"
+ ],
+ "amber.models.rpc.AmberCreateTransactionResponse": [
+  "ok"
+ ],
+ "amber.models.rpc.AmberCreateTransactionRequest": [
+  "srcTxHash",
+  "stepId"
+ ],
+ "amber.models.rpc.AmberDiscountResponse": [
+  "originalAmount",
+  "totalPercentage",
+  "vipTierLevel",
+  "promotions"
+ ],
+ "amber.models.rpc.AmberDomainResponse.Domain": [
+  "id",
+  "name",
+  "type",
+  "finalityTime",
+  "chainId",
+  "bridgeDirection",
+  "dex"
+ ],
+ "amber.models.rpc.AmberDomainResponse": [
+  "domains"
+ ],
+ "amber.models.rpc.AmberFindTransactionResponse.TransactionStatus": [
+  "txHash",
+  "txStatus"
+ ],
+ "amber.models.rpc.AmberFindTransactionResponse": [
+  "step",
+  "src",
+  "dst"
+ ],
+ "amber.models.rpc.AmberProvidersResponse.AmberProvider": [
+  "id",
+  "name",
+  "logoUrl",
+  "rank",
+  "disabled",
+  "type"
+ ],
+ "amber.models.rpc.AmberProvidersResponse": [
+  "providers"
+ ],
+ "amber.models.rpc.AmberBridgeProviderResponse": [
+  "bridge"
+ ],
+ "amber.models.rpc.AmberDexProviderResponse": [
+  "dex"
+ ],
+ "amber.models.rpc.AmberRouteRequest.Thorchain": [
+  "streaming"
+ ],
+ "amber.models.rpc.AmberRouteRequest": [
+  "fromAsset",
+  "fromAddress",
+  "fromDomain",
+  "amount",
+  "slippage",
+  "toAsset",
+  "toAddress",
+  "toDomain",
+  "sortBy",
+  "preferredProviders",
+  "ignoredProviders",
+  "contractCall",
+  "thorchain",
+  "eip712",
+  "tonMultiTx",
+  "supportsSubmissionV1",
+  "gasless_submission",
+  "native_transfer_trx_swap",
+  "frontend_source"
+ ],
+ "amber.models.rpc.AmberRoutesResponse.AmberRoute": [
+  "id",
+  "expirationDate",
+  "steps",
+  "warnings",
+  "quoteWarnings"
+ ],
+ "amber.models.rpc.AmberRoutesResponse.AmberRouteConfig": [
+  "refreshInterval"
+ ],
+ "amber.models.rpc.AmberRoutesResponse.AmberQuoteWarning": [
+  "code",
+  "message"
+ ],
+ "amber.models.rpc.AmberRoutesResponse": [
+  "routes",
+  "config"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.Direction": [
+  "asset",
+  "address",
+  "amount",
+  "minAmountOut"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.Asset.Metadata": [
+  "name",
+  "symbol",
+  "decimals",
+  "logoUrl",
+  "buyTax",
+  "sellTax",
+  "isNative"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.Asset": [
+  "address",
+  "domainId",
+  "metadata"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.ProviderFee": [
+  "asset",
+  "name",
+  "amount",
+  "description",
+  "provider",
+  "discount"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.NetworkFee": [
+  "asset",
+  "amount",
+  "gasLimit",
+  "name",
+  "type",
+  "description"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.Approval": [
+  "asset",
+  "operatorAddress",
+  "minAmount"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse.Slippage": [
+  "userSelectedSlippage",
+  "suggestedSlippage",
+  "medium_level",
+  "high_level"
+ ],
+ "amber.models.rpc.AmberRouteStepResponse": [
+  "id",
+  "type",
+  "from",
+  "to",
+  "slippage",
+  "priceImpact",
+  "gaslessSubmission",
+  "provider",
+  "providerFees",
+  "networkFee",
+  "approval"
+ ],
+ "amber.models.rpc.AmberStepRequest": [
+  "stepId"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.ApprovalUnsignedTx": [
+  "encodedTx"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.ApprovalTx.Asset": [
+  "address",
+  "domainId"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.ApprovalTx": [
+  "asset",
+  "operatorAddress",
+  "minAmount",
+  "type"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.TonV2Tx": [
+  "message"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.EvmTx": [
+  "from",
+  "to",
+  "value",
+  "data"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.SolanaTx": [
+  "from",
+  "serializedMessage"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.TronTx.TronTxParameter": [
+  "type",
+  "value"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.TronTx.TronTxOptions": [
+  "feeLimit",
+  "callValue"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.TronTx": [
+  "from",
+  "to",
+  "value",
+  "data",
+  "functionName",
+  "parameters",
+  "options",
+  "memo"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.TonTx": [
+  "address",
+  "payload",
+  "amount"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.BtcTx": [
+  "psbt"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.Message": [
+  "type",
+  "messageSend",
+  "messageDeposit"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.SendMessage.Amount": [
+  "denom",
+  "amount"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.SendMessage": [
+  "fromAddress",
+  "toAddress",
+  "amount"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.DepositMessage.Coin.Asset": [
+  "chain",
+  "ticker",
+  "symbol"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.DepositMessage.Coin": [
+  "amount",
+  "asset"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx.DepositMessage": [
+  "signer",
+  "coins"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.CosmosTx": [
+  "memo",
+  "messages"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.XrplTx": [
+  "txPayload"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.SuiTx": [
+  "serializedTx"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.Eip712Tx.TypedData.TypeEntry": [
+  "name",
+  "type"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.Eip712Tx.TypedData.Domain": [
+  "name",
+  "version",
+  "chainId",
+  "verifyingContract"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.Eip712Tx.TypedData": [
+  "primaryType",
+  "types",
+  "domain",
+  "message"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction.Eip712Tx": [
+  "extension",
+  "orderHash",
+  "typedData"
+ ],
+ "amber.models.rpc.AmberStepResponse.Transaction": [
+  "domainId",
+  "provider",
+  "type",
+  "fromAmount",
+  "slippage",
+  "minAmountOut",
+  "toAmount",
+  "providerFees",
+  "networkFee",
+  "evmTx",
+  "solanaTx",
+  "tronTx",
+  "tonTx",
+  "tonV2Tx",
+  "btcTx",
+  "cosmosTx",
+  "xrplTx",
+  "suiTx",
+  "eip712Tx",
+  "returnSignedTx",
+  "gaslessSubmission",
+  "approvalUnsignedTx",
+  "approvalTx"
+ ],
+ "amber.models.rpc.AmberStepResponse.AmberStepConfig": [
+  "refreshInterval"
+ ],
+ "amber.models.rpc.AmberStepResponse": [
+  "stepId",
+  "transaction",
+  "expirationDate",
+  "config"
+ ],
+ "amber.models.rpc.AmberSubmitTransactionResponse": [
+  "srcTxHash"
+ ],
+ "amber.models.rpc.SignedTx": [
+  "encodedTx",
+  "signature"
+ ],
+ "amber.models.rpc.AmberSubmitTransactionRequest": [
+  "stepId",
+  "signedTransaction",
+  "swapTx",
+  "approvalTx"
+ ],
+ "swap.models.SwapResponse.FeeSwap": [
+  "asset_id",
+  "amount",
+  "name",
+  "description"
+ ],
+ "swap.models.SwapResponse.Tx": [
+  "type",
+  "metadata"
+ ],
+ "swap.models.SwapResponse.Metadata": [
+  "contract_address",
+  "value",
+  "data",
+  "serialized_message"
+ ],
+ "swap.models.SwapResponse": [
+  "from_token_amount",
+  "to_token_amount",
+  "min_amount_out",
+  "provider_fee",
+  "fee",
+  "slippage",
+  "provider",
+  "tx"
+ ],
+ "swap.models.SwapQuoteResponse.Fee": [
+  "asset_id",
+  "amount"
+ ],
+ "swap.models.SwapQuoteResponse.Approve": [
+  "contract_address",
+  "data"
+ ],
+ "swap.models.SwapQuoteResponse": [
+  "provider",
+  "to_token_amount",
+  "from_token_amount",
+  "price_impact",
+  "slippage",
+  "estimated_gas",
+  "fee",
+  "provider_fee",
+  "approve",
+  "warnings"
+ ],
+ "swap.models.Provider": [
+  "name",
+  "url",
+  "icon"
+ ]
+}

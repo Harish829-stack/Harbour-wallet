@@ -1,0 +1,58 @@
+[
+  {
+    "name": "background-popup",
+    "source": "artifacts/reference-26.41.0/background.js",
+    "source_sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44",
+    "source_byte_start": 1467147,
+    "source_byte_end_exclusive": 1474152,
+    "prefix": "",
+    "suffix": ";",
+    "input_sha256": "ef679e26ab0d96cceb6b3aec2e0b67807e189bd08c15b93fe7bc11fef9526faa"
+  },
+  {
+    "name": "notification-ui",
+    "source": "artifacts/reference-26.41.0/chunks/App-D29UTaP5.js",
+    "source_sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+    "source_byte_start": 1315212,
+    "source_byte_end_exclusive": 1322372,
+    "prefix": "var ",
+    "suffix": "};",
+    "input_sha256": "9c7b03b683f8dc28894e2479ee536cee8f6ea471ce3b3c41f988462d051f8002"
+  },
+  {
+    "name": "connect-ui",
+    "source": "artifacts/reference-26.41.0/chunks/App-D29UTaP5.js",
+    "source_sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+    "source_byte_start": 135758,
+    "source_byte_end_exclusive": 142016,
+    "prefix": "var ",
+    "suffix": "};",
+    "input_sha256": "af5f98466950f70bed0329f3a29b3d3b93bd46ddbac6dfb254358995c12e9e33"
+  },
+  {
+    "name": "connections-ui",
+    "source": "artifacts/reference-26.41.0/chunks/App-D29UTaP5.js",
+    "source_sha256": "6f8f9e9c42f87902521d5f4a7384a1bce91567fa93511f870f59df49fc16bcb5",
+    "source_byte_start": 1857638,
+    "source_byte_end_exclusive": 1863910,
+    "prefix": "var ",
+    "suffix": ";",
+    "input_sha256": "51d150b7c26b6415f95b48c98051021a8ee563eb8ced31c9d21d0028ba274361"
+  },
+  {
+    "name": "notification-C0DFw0BI.js",
+    "source": "artifacts/reference-26.41.0/chunks/notification-C0DFw0BI.js",
+    "source_sha256": "b270e2ee14798a168d040fd8b6983ba1f37382f971e3cfb8ef4638e0f7a95caf",
+    "source_byte_start": 0,
+    "source_byte_end_exclusive": 488,
+    "input_sha256": "b270e2ee14798a168d040fd8b6983ba1f37382f971e3cfb8ef4638e0f7a95caf"
+  },
+  {
+    "name": "approval-detail-CuYqbU-I.js",
+    "source": "artifacts/reference-26.41.0/chunks/approval-detail-CuYqbU-I.js",
+    "source_sha256": "94a6545d4a11e689510eb350354f15c075f21dd6a0e086fd960bee468bb735d4",
+    "source_byte_start": 0,
+    "source_byte_end_exclusive": 7105,
+    "input_sha256": "94a6545d4a11e689510eb350354f15c075f21dd6a0e086fd960bee468bb735d4"
+  }
+]
