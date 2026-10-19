@@ -50,3 +50,6 @@ npm-debug.log*
 .idea/
 .vscode/
 *.swp
+/samples
+# ---- third-party reverse-engineering inputs (never commit) ----
+samples/
