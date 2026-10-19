@@ -359,3 +359,6 @@ Source of truth per area: `harbour-wallet-v2/evidence/NN-*/STATUS.md`. Gate: tsc
 - 38 Onboarding/settings/theme: import branches, QR import, passkey/backup flows, wallet management, developer settings, faucets, notifications (prefs only); theme tokenised light/dark. Gaps: dark-mode visual audit, hardware-wallet route placeholder, migration params must be honoured by Send.
 - Unassigned: Ledger (stub only).
 - 2026-10-19 WalletConnect v2: BUILT (not Chrome-verified, no live relay): Settings › Connections › WalletConnect screen (`walletConnect`: paste/scan `wc:` link, project ID entry, session list + Disconnect); session-proposal approval in the standard approval window (kind `wcSession`); requests reuse the injected-dApp approval screens. TW 26.41.0 has no such screen (see evidence/16 addendum), so there is no capture to compare against.
+
+
+> **2026-10-19 (cleanup):** older sections above are historical. Current status is in `FEATURE-MATRIX.md`. Stale items removed from the tree: root `content.js`, unused `public/` (build uses `public-production/`), empty `src/popup/provider/`.

@@ -110,3 +110,6 @@ Honest gaps (highest risk first)
 - The device shell cannot delete files without permission. The device network allowlist blocks `gateway.us.trustwallet.com` (proxy 403).
 - Bash in the cloud container cannot call TW's private gateway. A live attempt was denied by the safety classifier, and that denial must not be bypassed.
 - Memory notes live under the Project "REA-TESTing" (`areas/harbour-wallet.md`, `areas/trust-wallet-re.md`).
+
+
+> **UPDATED 2026-10-19 (cleanup):** read `FEATURE-MATRIX.md` first. Build inputs live in `harbour-wallet-v2/public-production/` (the old `public/` was removed).

@@ -12,7 +12,7 @@ That's it — `dist/` is a complete, built MV3 extension (includes wallet-core w
 Requires Node 18+.
 ```
 npm install
-cp node_modules/@trustwallet/wallet-core/dist/lib/wallet-core.wasm public/
+cp node_modules/@trustwallet/wallet-core/dist/lib/wallet-core.wasm public-production/
 npm run build        # outputs dist/
 ```
 Then Load unpacked → select `dist/` (steps above).

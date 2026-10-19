@@ -1,4 +1,4 @@
-// Bundles the page provider (src/inpage) into public/inpage.js, a single classic script with no imports. The extension registers it with
+// Bundles the page provider (src/inpage) into public-production/inpage.js, a single classic script with no imports. The extension registers it with
 // chrome.scripting.registerContentScripts({ world: 'MAIN', runAt: 'document_start' }) (see src/background/provider/index.ts), exactly like Trust Wallet's `inpage.js`.
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';

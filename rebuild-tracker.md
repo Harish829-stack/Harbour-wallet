@@ -164,3 +164,7 @@ New research items opened by the build (each to be recovered with REA before/whi
 ## 2026-10-19 — UI-only session checkpoint
 
 The latest user request restricts this session to UI/UX on already present screens. No REA recovery or target implementation claim was added; all numbered research statuses and chronological gates above remain unchanged. Built-extension visual evidence and remaining screen gaps are recorded in `UI-PARITY.md` (2026-10-19 UI-only rendered pass). The build journal is `harbour-wallet-v2/BUILD-LOG.md`. Resume detailed feature research at the earliest unfinished gate only when feature implementation is back in scope.
+
+
+## 2026-10-19 cleanup snapshot
+See `FEATURE-MATRIX.md`. WalletConnect v2 now implemented (Reown, needs project ID). Ledger still a stub. 349/349 tests, tsc clean, build OK. All network paths live-unverified.
