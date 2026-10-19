@@ -101,7 +101,7 @@ flowchart TB
 | UTXO handling: `FETCH_UTXOS`, `UTXO_ACTION`, `UtxoBackgroundService`, PSBT sign/push events | CONFIRMED | router, class list |
 | Gas and fee polling: `START_POLL_GAS_FEES` / `STOP_POLL_GAS_FEES`, gas station and gas status features | CONFIRMED | router |
 | Transaction history: `FETCH_ASSET_TRANSACTION_HISTORY`, `..._HISTORY_WALK`, `FETCH_MISSING_TRANSACTIONS`, status updates `UPDATE_TRANSACTION_STATUS`, `TransactionHistoryService` | CONFIRMED | router, class list |
-| Transaction simulation / pre-sign security scanning with an external scanner | UNKNOWN: no Blockaid or similar scanner name was found in the worker; strings containing "simulat" (118) need to be read in the UI chunks to see whether they are fee simulation or security simulation |
+| Transaction simulation / pre-sign security scanning with an external scanner | CONFIRMED ABSENT in worker and WalletKit: the only `/v1/transactions/simulate` is Aptos fee simulation (see phase 6); no scanner client was found |
 
 ## Worked example: send 10 USDT on Ethereum
 
@@ -120,5 +120,5 @@ flowchart TB
 | MEV protection with public fallback | CONFIRMED |
 | Active-account guard before signing | CONFIRMED |
 | Solana FlexGas, EIP-7702, sponsored gas, account-abstraction fees | CONFIRMED |
-| Security simulation before signing | UNKNOWN |
+| Security simulation before signing | CONFIRMED ABSENT (no scanner client found; only Aptos fee simulation) |
 | WalletKit internals (per-chain builders, node lists) | UNKNOWN until phase 6 reads `walletkit.service` |
