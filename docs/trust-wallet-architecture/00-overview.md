@@ -33,6 +33,7 @@ flowchart TB
 | 08 | State and storage | Strong for keys, UNKNOWN for sqlite use |
 | 09 | Security model | Strong per control, end-to-end INFERRED |
 | 10 | Comparison with Harbour | Depends on Harbour matrix |
+| 11 | End-to-end Harbour parity plan (architecture, free providers, phases) | Plan |
 | 99 | Unknowns and next steps | - |
 
 ## Five takeaways
