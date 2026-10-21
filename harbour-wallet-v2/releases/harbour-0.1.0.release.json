@@ -6,7 +6,7 @@
   "signature": "dUnvBxxVyjd+QQV61BtEM2yR7j3i7VvBR93XiAWlNU4Jt/akqPcpPEcEnjVsSHVys2kCNECZMqNMVv4gVflnBA==",
   "signer": "o9LU42tlcJAGxCZBpJKHglR7KMZuvLJfunJbkyB6jyc=",
   "algorithm": "Ed25519 over the zip bytes",
-  "commit": "eaaee89a1848016ee8f8f339b5be4ac69eb4d041",
+  "commit": "a99c7f0ebaf280f110beea8e3b11b0e719743250",
   "node": "v22.23.2",
   "files": [
     {
