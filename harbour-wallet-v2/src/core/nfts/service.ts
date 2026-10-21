@@ -4,8 +4,9 @@ import type { NftCollection, NftItem, NftReportState } from './types';
 import { BLOCKSCOUT_HOSTS, fetchBlockscoutCollections, fetchBlockscoutOwned } from './blockscout';
 import { fetchDas, fetchMagicEden } from './solana';
 import { alchemyAvailable, fetchAlchemyCollections } from './alchemy';
+import { fillMissingMetadata } from './onchain';
 
-export interface NftEnv { f: Fetcher; solUrls: () => string[] }
+export interface NftEnv { f: Fetcher; solUrls: () => string[]; /** EVM RPCs for the on-chain metadata fallback (optional). */ rpcUrls?: (chainId: string) => string[] }
 /** Mainnet chains queried by default (testnets only when asked). */
 export const NFT_CHAINS: string[] = [...Object.keys(BLOCKSCOUT_HOSTS).filter((c) => c !== 'sepolia'), 'solana'];
 export interface CollectionsResult { collections: NftCollection[]; errors: Array<{ chainId: string; error: string }>; sources: Record<string, string> }
@@ -22,10 +23,15 @@ export async function loadCollections(env: NftEnv, addressOf: (chainId: string) 
         if (chainId === 'solana') {
           try { res.collections.push(...(await fetchDas(env.solUrls(), addr, env.f))); res.sources[chainId] = 'Solana DAS'; }
           catch { res.collections.push(...(await fetchMagicEden(addr, env.f))); res.sources[chainId] = 'Magic Eden'; }
-        } else if (alchemyAvailable(chainId)) {
-          try { res.collections.push(...(await fetchAlchemyCollections(chainId, addr, env.f))); res.sources[chainId] = 'Alchemy'; }
-          catch { res.collections.push(...(await fetchBlockscoutCollections(chainId, addr, env.f))); res.sources[chainId] = 'Blockscout'; }
-        } else { res.collections.push(...(await fetchBlockscoutCollections(chainId, addr, env.f))); res.sources[chainId] = 'Blockscout'; }
+        } else {
+          let cols: NftCollection[];
+          if (alchemyAvailable(chainId)) {
+            try { cols = await fetchAlchemyCollections(chainId, addr, env.f); res.sources[chainId] = 'Alchemy'; }
+            catch { cols = await fetchBlockscoutCollections(chainId, addr, env.f); res.sources[chainId] = 'Blockscout'; }
+          } else { cols = await fetchBlockscoutCollections(chainId, addr, env.f); res.sources[chainId] = 'Blockscout'; }
+          if (env.rpcUrls) await fillMissingMetadata(cols, env.rpcUrls(chainId), env.f); // indexer had no metadata yet
+          res.collections.push(...cols);
+        }
       } catch (e: any) { res.errors.push({ chainId, error: String(e?.message ?? 'failed').slice(0, 160) }); }
     }
   };
@@ -38,7 +44,12 @@ export async function loadCollections(env: NftEnv, addressOf: (chainId: string) 
 export async function loadCollectionItems(env: NftEnv, c: Pick<NftCollection, 'chainId' | 'contract' | 'items'>, owner: string): Promise<NftItem[]> {
   if (c.chainId === 'solana') return c.items;
   const all = await fetchBlockscoutOwned(c.chainId, owner, c.contract, env.f);
-  return all.length ? all : c.items;
+  if (!all.length) return c.items;
+  // keep metadata already resolved on-chain for the list, then resolve the rest
+  const known = new Map(c.items.map((i) => [i.id, i]));
+  const merged = all.map((i) => (i.image || !known.get(i.id)?.image ? i : { ...i, ...known.get(i.id)! }));
+  if (env.rpcUrls) await fillMissingMetadata([{ ...(c as NftCollection), items: merged }], env.rpcUrls(c.chainId), env.f, 24);
+  return merged;
 }
 
 export const isHidden = (c: Pick<NftCollection, 'id' | 'suspicious'>, s: NftReportState): boolean => s.hidden.includes(c.id) || (c.suspicious && !s.shown.includes(c.id));

@@ -19,7 +19,7 @@ import { blockscoutInstanceUrl } from '../../core/nfts/blockscout';
 import { evmNftTransfer, signSolanaNft } from '../../core/nfts/transfer';
 
 const REPORTS_KEY = 'nfts:reports:v1'; const TTL = 5 * 60_000;
-const env = (): NftEnv => ({ f: fetch.bind(globalThis) as typeof fetch, solUrls: () => [solanaRpcUrl(), ...(chainById('solana')?.endpoints ?? [])].filter((u, i, a) => a.indexOf(u) === i) });
+const env = (): NftEnv => ({ f: fetch.bind(globalThis) as typeof fetch, solUrls: () => [solanaRpcUrl(), ...(chainById('solana')?.endpoints ?? [])].filter((u, i, a) => a.indexOf(u) === i), rpcUrls: (id) => { const c = chainById(id); return c && c.kind === 'evm' ? getRpcUrls(c) : []; } });
 const fail = (error: string, code = 'error') => ({ ok: false as const, error, code });
 const errOf = (e: any) => fail(String(e?.shortMessage ?? e?.message ?? 'Request failed').slice(0, 300), e?.code ?? 'error');
 const bad = (m: string, code = 'bad_request') => Object.assign(new Error(m), { code });
@@ -55,9 +55,20 @@ const nftList: Handler = async (msg, ctx) => {
   } catch (e: any) { return errOf(e); }
 };
 
+// The list may have been loaded for a network filter (e.g. testnets) or the service worker may have restarted since:
+// look in the cached list first, otherwise reload only the collection's own chain (ids are `<chainId>:<contract>`).
 async function findCollection(ctx: HandlerCtx, id: string) {
-  const r = await collections(ctx, false); const c = r.res.collections.find((x) => x.id === id);
-  if (!c) throw bad('Collection not found (refresh the list)', 'not_found'); return { ...r, c };
+  const info = await activeInfo(ctx); if (!info) throw bad('No wallet found', 'no_wallet');
+  const scope = `${info.walletId}:${info.derivationIndex}`;
+  const cached = mem && mem.scope === scope && Date.now() - mem.at < TTL ? mem.res.collections.find((x) => x.id === id) : undefined;
+  if (cached) return { info, c: cached };
+  const chainId = id.slice(0, id.indexOf(':')); const chain = chainById(chainId);
+  if (!chain) throw bad('Collection not found (refresh the list)', 'not_found');
+  const res = await loadCollections(env(), (cid) => { const c = chainById(cid); return c ? addressFor(c, info.addresses) : ''; }, [chainId]);
+  const c = res.collections.find((x) => x.id === id);
+  if (!c) throw bad(res.errors[0]?.error ? `Couldn't reach the NFT indexer: ${res.errors[0].error}` : 'Collection not found (refresh the list)', 'not_found');
+  if (mem && mem.scope === scope) mem.res.collections.push(c); // keep it for the item / send screens
+  return { info, c };
 }
 async function itemsOf(ctx: HandlerCtx, c: NftCollection, owner: string): Promise<NftItem[]> {
   const hit = itemCache.get(c.id); if (hit && Date.now() - hit.at < TTL) return hit.items;
