@@ -2,8 +2,6 @@
 import type { HandlerMap } from './types';
 import { refreshConfig, EMPTY_CONFIG } from '../../kit/remoteConfig';
 import { checkToken, checkAddress, simulateCall } from '../../kit/clients/securityClient';
-import { hlMeta, hlMids, hlState, hlOpenOrders } from '../../kit/providers/hyperliquid';
-import { pmMarkets } from '../../kit/providers/polymarket';
 import { isKilled } from '../../kit/failover';
 const getStore = () => import('../store'); // lazy: keeps the handler map importable outside the extension runtime
 import { rpcUrl } from '../../core/rpc';
@@ -43,21 +41,5 @@ export const handlers: HandlerMap = {
     const url = rpcUrl(msg.chainId);
     const r = url ? await simulateCall(url, { from: msg.from, to: msg.to, data: typeof msg.data === 'string' ? msg.data : undefined, value: typeof msg.value === 'string' ? msg.value : undefined }) : null;
     return { ok: true, supported: r !== null, result: r };
-  },
-  // Perps / predictions are read-only and flag-gated (regulatory risk: plan section 8).
-  async perpsMarkets() {
-    if (!(await flagOn('perps')) || isKilled('hyperliquid')) return off;
-    const [meta, mids] = await Promise.all([hlMeta(), hlMids()]);
-    return { ok: true, markets: meta.universe.map((u) => ({ coin: u.name, maxLeverage: u.maxLeverage, mid: Number(mids[u.name] ?? 0) })) };
-  },
-  async perpsAccount(msg) {
-    if (!(await flagOn('perps')) || isKilled('hyperliquid')) return off;
-    if (!isHexAddr(msg.address)) return { ok: false, error: 'INVALID_REQUEST' };
-    const [state, orders] = await Promise.all([hlState(msg.address), hlOpenOrders(msg.address)]);
-    return { ok: true, state, orders };
-  },
-  async predictionMarkets() {
-    if (!(await flagOn('predictions')) || isKilled('polymarket')) return off;
-    return { ok: true, markets: await pmMarkets(20) };
   },
 };

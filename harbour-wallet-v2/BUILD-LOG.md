@@ -689,3 +689,48 @@ Mainnet test with small amounts before release.
 **Not tested live**
 - GeckoTerminal, DefiLlama, CoinGecko trending, FCM delivery and the gateway cron.
 - The exit check ("a test transfer triggers a push") needs a deployed gateway with a Firebase project.
+
+## Phase 7 — perps, predictions, Ledger (2026-10-21)
+
+**Perps (Hyperliquid)**: `core/perps/hyperliquid.ts`, `background/handlers/perps.ts`, `popup/wallet/features/perps.tsx`. Behind the remote flag `perps`.
+- **Signing**:
+  - L1 agent signing (msgpack action hash, phantom-agent EIP-712) and user-signed actions (approveAgent, approveBuilderFee, withdraw3) both reproduce the official Python SDK test vectors exactly.
+  - The agent key is generated on the device, encrypted with the wallet password, and cannot withdraw.
+- **Flows**:
+  - Enable trading: approve the agent and the optional builder fee.
+  - Deposit Arbitrum USDC to Bridge2 (minimum 5 USDC); withdraw to self (1 USDC fee).
+  - Market (IOC ±5%) or limit (GTC) orders with a leverage update; cancel; close at market.
+- **Screens**: account, positions with PnL and liquidation price, open orders, recent fills (realized PnL after fees), markets by volume.
+- **Wire format**: float_to_wire, 5 significant figures, lot-size rounding.
+- **Builder code**: `VITE_HB_HL_BUILDER`, `VITE_HB_HL_BUILDER_FEE`.
+
+**Predictions (Polymarket, CLOB V2)**: `core/predictions/polymarket.ts`, `background/handlers/predictions.ts`, `features/predictions.tsx`. Behind the flag `predictions` and Polymarket's own `/api/geoblock` check; an unknown region means no trading.
+- **Read**: markets (Gamma), market detail with books, portfolio (Data API positions and activity), pUSD and USDC.e balances.
+- **Trade (EOA)**:
+  - Wrap USDC.e to pUSD via the CollateralOnramp.
+  - Approve the exchange (pUSD) or the CTF operator (sells).
+  - L1 ClobAuth derives or creates API credentials (stored encrypted).
+  - V2 order struct signed for the CTF or Neg Risk exchange (domain version "2"), sent with L2 HMAC headers, fill-or-kill at the best price.
+- **Limits**:
+  - Books that report `version: "v2"` (traded by positionId on the V2 exchange) are read-only, with a link to polymarket.com.
+  - The builder code is a public bytes32 (`VITE_HB_PM_BUILDER_CODE`).
+
+**Ledger (WebHID)**: `popup/ledger/device.ts` (`@ledgerhq/hw-transport-webhid` 6.36.0, `hw-app-eth` 7.10.0, `hw-app-btc` 11.6.0, `hw-app-solana` 7.12.0).
+- **Connect your Ledger** (Add wallet) reads the Ethereum (44'/60'/0'/0/0), Bitcoin native-segwit (84'/0'/0'/0/0) and Solana (44'/501'/0') addresses and adds a `ledger` wallet that holds public addresses and paths only.
+- **Sending** goes through `chainSend.ledgerSendPrepare` and `ledgerSendSubmit`:
+  - EVM: the unsigned serialized transaction is signed on the device with Ledger's clear-signing resolution. The background recovers the signer and refuses a mismatch.
+  - Bitcoin: wallet-core coin selection, previous transactions fetched from Esplora, `createPaymentTransaction` (segwit, bech32). The background checks that the signed transaction pays exactly the prepared outputs.
+- Solana is receive-only for now.
+- The Ledger libraries load lazily in the popup, with a `Buffer` shim.
+
+**Other**
+- `.env.example` documents the public build settings.
+- Mobile sync: the existing QR sync is unchanged.
+
+**Results**
+- Tests: 399 pass (new `phase7.test.js`, including the SDK signature vectors). `verify.mjs` passes.
+- Real Chrome: the service worker starts, perps and predictions report `FEATURE_DISABLED` while their flags are off, and there are no regressions.
+
+**Not tested live**
+- Hyperliquid exchange calls and Polymarket CLOB orders: the sandbox has no egress, so the plan's exit test is pending.
+- Ledger signing: there is no device here.

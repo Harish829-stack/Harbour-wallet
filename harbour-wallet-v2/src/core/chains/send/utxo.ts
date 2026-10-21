@@ -48,6 +48,15 @@ function planFor(env: SendEnv, p: SendParams, utxos: Utxo[], lock: Uint8Array, r
   return { input, plan: TW.Bitcoin.Proto.TransactionPlan.decode(AnySigner.plan(TW.Bitcoin.Proto.SigningInput.encode(input).finish(), coin)) };
 }
 
+/** Coin selection for hardware signing: the UTXOs wallet-core picks, and the outputs (recipient, change, optional OP_RETURN memo). */
+export function utxoSelection(env: SendEnv, p: SendParams, q: SendQuote, tier: FeeTierId): { inputs: Utxo[]; amount: bigint; change: bigint; fee: bigint } {
+  const c: Ctx = q.ctx; const total = c.utxos.reduce((s, u) => s + u.value, 0); const max = !!p.isMax;
+  const { plan } = planFor(env, p, c.utxos, c.lockScript, c.rates[tier], max ? total : Number(p.amount), max);
+  if (Number(plan.error) !== 0) throw new SendError('insufficient-funds', MSG.insufficientFunds);
+  const picked = (plan.utxos ?? []).map((u: any) => ({ txid: bytesToHex(Uint8Array.from(u.outPoint.hash)).match(/../g)!.reverse().join(''), vout: Number(u.outPoint.index), value: Number(u.amount) }));
+  return { inputs: picked, amount: BigInt(plan.amount.toString()), change: BigInt(plan.change.toString()), fee: BigInt(plan.fee.toString()) };
+}
+
 export const utxoFamily: SendFamily = {
   kinds: ['utxo'], memo: 'none', tokens: false,
   async quote(env, p): Promise<SendQuote> {

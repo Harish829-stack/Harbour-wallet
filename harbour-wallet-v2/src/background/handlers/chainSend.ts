@@ -13,7 +13,10 @@ import { addressFor } from '../../core/chains/adapters';
 import { SEND_FAMILIES, sendSupport, familyOf, quoteToWire, signAndBroadcast, txStatus, parseUnits, validateMemo, memoKindOf, SendError, evmRpcs, quoteNftTransfer, buildNftTransfer, broadcastNftTransfer } from '../../core/chains/send';
 import type { SendAsset, SendParams, SendQuote, FeeTierId, SendEnv, NftTransferParams } from '../../core/chains/send';
 import { SENT_TX_KEY, assessRecipient, nameService, readSent, resolveEns, resolveSendChain, resolveSns, sanitizeTokenSpec, upsertSent, type SentTx } from '../../core/sendService';
-import { jpost } from '../../core/chains/send/util';
+import { jpost, firstOf, trimUrl } from '../../core/chains/send/util';
+import { evmSendCall, evmTxRequest } from '../../core/chains/send/evm';
+import { utxoSelection } from '../../core/chains/send/utxo';
+import { serializeTransaction, recoverTransactionAddress, keccak256 } from 'viem';
 
 const TIERS = new Set(['slow', 'average', 'fast']);
 const env = (core: any): SendEnv => ({ core, fetch: (...a: Parameters<typeof fetch>) => fetch(...a) });
@@ -63,6 +66,20 @@ const recordOf = (pr: Prepared, p: SendParams, q: SendQuote, tier: FeeTierId, ha
   feeEst: (q.tiers.find((t) => t.id === tier)?.fee ?? 0n).toString(), feeSymbol: q.feeSymbol, feeDecimals: q.feeDecimals, hash, ts: Date.now(), state: 'pending', tier, memo: p.memo, kind: 'send', replace: meta, ...extra,
 });
 
+// ---------------------------------------------------------------- hardware (Ledger) sends
+// The background prepares the exact transaction (same quote/fee rules as a local send) and keeps it for 5 minutes; the popup has
+// the device sign it over WebHID and returns only the signature (EVM) or the signed transaction (BTC). Before broadcasting, the
+// background checks that the signature belongs to the account (EVM) or that the outputs are exactly the prepared ones (BTC).
+const LEDGER_TTL = 5 * 60_000;
+const ledgerPending = new Map<string, { at: number; pr: Prepared; params: SendParams; quote: SendQuote; tier: FeeTierId; evm?: any; btc?: { outputs: Array<{ value: string; script: string }> } }>();
+async function hwPath(ctx: HandlerCtx, ct: string): Promise<string> {
+  const acc = await activeAccount(ctx); const a = ensureAccounts(acc.wallet)[acc.wallet.activeAccount ?? 0] as any;
+  if (acc.wallet.type !== 'ledger') throw new Error('This wallet is not a hardware wallet');
+  const path = a?.hw?.[ct] ?? (ct !== 'bitcoin' && ct !== 'solana' ? a?.hw?.ethereum : undefined);
+  if (!path) throw new Error('This Ledger account has no address for this network');
+  return path;
+}
+const be = (hex: string) => hex.match(/../g)!.reverse().join('');
 export const handlers: HandlerMap = {
   /** Which chains can send, and with what memo kind / token support (SelectAsset greys out the rest with the documented reason). */
   async sendSupport() {
@@ -109,6 +126,63 @@ export const handlers: HandlerMap = {
       return { ok: true, hash: res.hash, id: rec.id };
     } catch (e: any) { return err(e); }
     finally { try { key?.fill(0); } catch { /* */ } try { keys?.dispose(); } catch { /* */ } }
+  },
+  /** Ledger: build the unsigned transaction for the current quote (EVM: serialized unsigned tx; BTC: inputs with their previous txs + outputs). */
+  async ledgerSendPrepare(msg, ctx) {
+    try {
+      for (const [k, v] of ledgerPending) if (Date.now() - v.at > LEDGER_TTL) ledgerPending.delete(k);
+      const pr = await prepare(ctx, msg); if (pr.placeholder) throw new Error('Enter a recipient address');
+      const { params, quote, tier } = await quoteFor(ctx, msg, pr);
+      const blocking = quote.issues.find((i) => i.blocking); if (blocking) throw new SendError(blocking.code, blocking.message);
+      const id = crypto.randomUUID();
+      if (pr.chain.kind === 'evm') {
+        const path = await hwPath(ctx, 'ethereum');
+        const t = evmTxRequest(pr.chain, quote.ctx, tier, evmSendCall(params, quote, tier));
+        ledgerPending.set(id, { at: Date.now(), pr, params, quote, tier, evm: t });
+        return { ok: true, id, kind: 'evm', path, unsignedTx: serializeTransaction(t), chainId: pr.chain.evmChainId, fee: (quote.tiers.find((x) => x.id === tier)?.fee ?? 0n).toString() };
+      }
+      if (pr.chain.kind === 'utxo' && pr.chain.ct === 'bitcoin') {
+        const path = await hwPath(ctx, 'bitcoin');
+        const sel = utxoSelection(env(ctx.core), params, quote, tier);
+        const script = (addr: string) => Array.from(ctx.core.BitcoinScript.lockScriptForAddress(addr, ctx.core.CoinType.bitcoin).data() as Uint8Array, (b) => b.toString(16).padStart(2, '0')).join('');
+        const outputs = [{ value: sel.amount.toString(), script: script(params.to) }, ...(sel.change > 0n ? [{ value: sel.change.toString(), script: script(pr.from) }] : [])];
+        const eps = (pr.chain.endpoints ?? []).map(trimUrl);
+        const inputs = await Promise.all(sel.inputs.map(async (u) => ({ ...u, prevHex: await firstOf(eps, async (e) => { const r = await fetch(`${e}/tx/${u.txid}/hex`, { signal: AbortSignal.timeout(12000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return (await r.text()).trim(); }) })));
+        ledgerPending.set(id, { at: Date.now(), pr, params, quote, tier, btc: { outputs } });
+        return { ok: true, id, kind: 'btc', path, inputs, outputs, fee: sel.fee.toString() };
+      }
+      throw new Error(`Sending from a Ledger is supported on EVM networks and Bitcoin; ${pr.chain.name} is not supported yet`);
+    } catch (e: any) { return err(e); }
+  },
+  /** Ledger: verify and broadcast what the device signed. */
+  async ledgerSendSubmit(msg, ctx) {
+    try {
+      const p = ledgerPending.get(String(msg.id ?? '')); if (!p || Date.now() - p.at > LEDGER_TTL) throw new Error('This transaction expired. Review it again.');
+      ledgerPending.delete(String(msg.id));
+      let raw: string; let hash: string;
+      if (p.evm) {
+        const sig = msg.signature ?? {}; const r = String(sig.r ?? ''); const s2 = String(sig.s ?? ''); const v = BigInt('0x' + String(sig.v ?? '0').replace(/^0x/, ''));
+        if (!/^(0x)?[0-9a-fA-F]{64}$/.test(r) || !/^(0x)?[0-9a-fA-F]{64}$/.test(s2)) throw new Error('Invalid signature from the device');
+        const rr = `0x${r.replace(/^0x/, '')}` as `0x${string}`; const ss = `0x${s2.replace(/^0x/, '')}` as `0x${string}`;
+        // legacy: EIP-155 v as returned by the device; typed (EIP-1559): v is the y-parity (0/1, or 27/28 on old firmware)
+        const signature: any = p.evm.type === 'legacy' ? { r: rr, s: ss, v } : { r: rr, s: ss, yParity: Number((v >= 27n ? v - 27n : v) % 2n) };
+        raw = serializeTransaction(p.evm, signature);
+        const signer = await recoverTransactionAddress({ serializedTransaction: raw as any });
+        if (signer.toLowerCase() !== p.pr.from.toLowerCase()) throw new Error('The device signed with a different account');
+        hash = await familyOf(p.pr.chain).broadcast(env(ctx.core), p.pr.chain, { raw, hash: keccak256(raw as `0x${string}`) });
+      } else if (p.btc) {
+        raw = String(msg.signedTx ?? '').trim(); if (!/^[0-9a-fA-F]{100,}$/.test(raw)) throw new Error('Invalid transaction from the device');
+        // the signed transaction must pay exactly the prepared outputs
+        for (const o of p.btc.outputs) {
+          const v = BigInt(o.value).toString(16).padStart(16, '0'); const needle = be(v) + (o.script.length / 2).toString(16).padStart(2, '0') + o.script;
+          if (!raw.toLowerCase().includes(needle.toLowerCase())) throw new Error('The signed transaction does not match the prepared outputs');
+        }
+        hash = await familyOf(p.pr.chain).broadcast(env(ctx.core), p.pr.chain, { raw });
+      } else throw new Error('Unsupported');
+      const rec = recordOf(p.pr, p.params, p.quote, p.tier, hash, {});
+      await saveRecord(rec);
+      return { ok: true, hash, id: rec.id };
+    } catch (e: any) { return err(e); }
   },
   /** NFT transfer for the NFT feature: `nft` = { chainId, standard, contract, tokenId, amount?, to }. */
   async sendNftQuote(msg, ctx) {

@@ -10,6 +10,25 @@ import { money, getSettingsState } from '../../settingsStore';
 import { chainById } from '../../../core/chains/index';
 
 /** Documented assumption: TW shows no value threshold publicly; 1,000 USD-equivalent triggers the extra review step. */
+// Hardware wallets: the background prepares the exact transaction, the Ledger signs it over WebHID, the background verifies + broadcasts.
+async function isLedgerWallet(c: any): Promise<boolean> {
+  const w = await c.bg({ type: 'listWallets' }).catch(() => null);
+  return w?.ok && w.wallets?.find((x: any) => x.id === w.activeWalletId)?.type === 'ledger';
+}
+async function sendWithLedger(c: any, req: any, note: (m: string) => void): Promise<any> {
+  const p = await c.bg({ type: 'ledgerSendPrepare', ...req });
+  if (!p?.ok) return p;
+  const L = await import('../../ledger/device');
+  let t: any = null;
+  try {
+    note('Confirm the transaction on your Ledger.');
+    t = await L.open(false);
+    if (p.kind === 'evm') return await c.bg({ type: 'ledgerSendSubmit', id: p.id, signature: await L.ethSign(t, p.path, p.unsignedTx) });
+    return await c.bg({ type: 'ledgerSendSubmit', id: p.id, signedTx: await L.btcSign(t, p.path, p.inputs, p.outputs) });
+  } catch (e: any) { return { ok: false, error: L.ledgerError(e) }; }
+  finally { note(''); await L.close(t); }
+}
+
 export const HIGH_VALUE_USD = 1000;
 const Line: React.FC<{ k: string; children: React.ReactNode; testid?: string }> = ({ k, children, testid }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '11px 0', borderBottom: `1px solid ${T.border}` }}>
@@ -49,7 +68,7 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
     if (busy.current || !req) return; busy.current = true; setGuard(false); setPhase('sending'); setFail('');
     try {
       const cap = base ? ((base.fee * 125n) / 100n + 1n).toString() : undefined;
-      const r = await c.bg({ type: 'sendSubmit', ...req, feeCap: cap });
+      const r = (await isLedgerWallet(c)) ? await sendWithLedger(c, req, setFail) : await c.bg({ type: 'sendSubmit', ...req, feeCap: cap });
       if (r?.ok) { setRes({ id: r.id, hash: r.hash }); setPhase('done'); c.refresh?.(); } else { setFail(r?.error ?? 'The transaction was not sent.'); setPhase('failed'); busy.current = false; }
     } catch (e: any) { setFail(e?.message ?? 'The transaction was not sent.'); setPhase('failed'); busy.current = false; }
   };

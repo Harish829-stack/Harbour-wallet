@@ -214,6 +214,9 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
     bg({ type: 'getTrending', categoryId: mode.clientSort ? 'trending' : mode.id, networkCoinId: net?.coinId }).then((r) => { if (!cancel) setData(r?.ok ? (r.list ?? []) : []); }).catch(() => { if (!cancel) setData([]); });
     return () => { cancel = true; };
   }, [net, mode]);
+  // Perps / predictions entry points follow the signed remote-config flags
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
+  useEffect(() => { bg({ type: 'getRemoteConfig' }).then((r) => { if (r?.ok) setFlags(r.flags ?? {}); }).catch(() => {}); }, []);
   // Networks ordered by DeFi TVL (DefiLlama) when available, so the busiest networks come first in the filter
   const [tvl, setTvl] = useState<Record<string, number>>({});
   useEffect(() => { bg({ type: 'getTrendingNetworks' }).then((r) => { if (r?.ok) setTvl(Object.fromEntries((r.list ?? []).map((n: any) => [n.chainId, n.tvl]))); }).catch(() => {}); }, []);
@@ -236,6 +239,10 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   return (
     <>
       <h2 style={{ fontSize: 22, margin: '8px 0 12px', textAlign: 'center' }}>Trending</h2>
+      {(flags.perps || flags.predictions) && <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        {flags.perps && <button type="button" data-testid="open-perps" className="hb-tap" onClick={() => nav.push('perpsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Perps</button>}
+        {flags.predictions && <button type="button" data-testid="open-predictions" className="hb-tap" onClick={() => nav.push('predictionsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Predictions</button>}
+      </div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 10 }}>
         <Ic d={ICON.search} size={18} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Token name or contract address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
       </div>

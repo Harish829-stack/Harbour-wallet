@@ -72,13 +72,26 @@ export const evmTierFees = (c: Ctx, id: FeeTierId) => {
   return { fee: c.gas * expPer + c.l1Fee, feeMax: c.gas * maxPer + c.l1Fee, maxPer, detail: `${(() => { const g = Number(maxPer) / 1e9; return g >= 1 ? g.toFixed(2) : g.toPrecision(2); })()} gwei` };
 };
 /** Sign a transaction with the prepared nonce / fee market. */
-export async function signEvmTx(chain: ChainInfo, key: Uint8Array, from: string, c: Ctx, tier: FeeTierId, tx: { to: string; value: bigint; data?: Hex; gas: bigint }): Promise<BuiltTx> {
+/** The unsigned transaction object (viem shape) a tier produces; shared by local signing and hardware (Ledger) signing. */
+export function evmTxRequest(chain: ChainInfo, c: Ctx, tier: FeeTierId, tx: { to: string; value: bigint; data?: Hex; gas: bigint }): any {
   if (!chain.evmChainId) throw new Error('Missing chain id');
-  const account = privateKeyToAccount(('0x' + bytesToHex(key)) as Hex);
-  if (account.address.toLowerCase() !== from.toLowerCase()) throw new Error('Signing key does not match the account address');
   const t: any = { chainId: chain.evmChainId, nonce: c.nonce, gas: tx.gas, to: getAddress(tx.to.toLowerCase()), value: tx.value, ...(tx.data ? { data: tx.data } : {}) };
   if (c.legacy) { t.type = 'legacy'; t.gasPrice = scale(c.gasPrice, LEGACY_MULT[tier]); }
   else { t.type = 'eip1559'; t.maxPriorityFeePerGas = c.prio[tier]; t.maxFeePerGas = scale(c.base, TIER_MULT[tier]) + c.prio[tier]; }
+  return t;
+}
+/** Transfer call for a send (native value or ERC-20 transfer), with the same gas rule as build(). */
+export function evmSendCall(p: SendParams, q: SendQuote, tier: FeeTierId): { to: string; value: bigint; data?: Hex; gas: bigint } {
+  const c: Ctx = q.ctx; const isToken = p.asset.kind === 'token'; const to = getAddress(p.to.toLowerCase());
+  const t = q.tiers.find((x) => x.id === tier) ?? q.tiers[1];
+  const gas = c.gas === 21000n && !isToken && !q.recipientIsContract ? 21000n : (c.gas * 12n) / 10n;
+  const amount = p.isMax ? t.max : p.amount;
+  return isToken ? { to: p.asset.contract!, value: 0n, data: evmTransferData(to, amount), gas } : { to, value: amount, gas };
+}
+export async function signEvmTx(chain: ChainInfo, key: Uint8Array, from: string, c: Ctx, tier: FeeTierId, tx: { to: string; value: bigint; data?: Hex; gas: bigint }): Promise<BuiltTx> {
+  const account = privateKeyToAccount(('0x' + bytesToHex(key)) as Hex);
+  if (account.address.toLowerCase() !== from.toLowerCase()) throw new Error('Signing key does not match the account address');
+  const t = evmTxRequest(chain, c, tier, tx);
   const raw = await account.signTransaction(t);
   return { raw, hash: keccak256(raw), meta: { nonce: c.nonce, to: t.to, value: t.value.toString(), data: t.data ?? '0x', gas: tx.gas.toString(), type: t.type, maxFeePerGas: t.maxFeePerGas?.toString(), maxPriorityFeePerGas: t.maxPriorityFeePerGas?.toString(), gasPrice: t.gasPrice?.toString() } };
 }
@@ -111,11 +124,7 @@ export const evmFamily: SendFamily = {
     return { tiers, defaultTier: 'average', feeSymbol: chain.symbol, feeDecimals: chain.decimals, nativeBalance: nativeBalance.toString(), assetBalance: assetBalance.toString(), issues, recipientIsContract: isContract, ctx: prep.ctx };
   },
   async build(_env, p, key, q, tier): Promise<BuiltTx> {
-    const c: Ctx = q.ctx; const isToken = p.asset.kind === 'token'; const to = getAddress(p.to.toLowerCase());
-    const t = q.tiers.find((x) => x.id === tier) ?? q.tiers[1];
-    const gas = c.gas === 21000n && !isToken && !q.recipientIsContract ? 21000n : (c.gas * 12n) / 10n;
-    const amount = p.isMax ? t.max : p.amount;
-    return signEvmTx(p.chain, key, p.from, c, tier, isToken ? { to: p.asset.contract!, value: 0n, data: evmTransferData(to, amount), gas } : { to, value: amount, gas });
+    return signEvmTx(p.chain, key, p.from, q.ctx, tier, evmSendCall(p, q, tier));
   },
   broadcast: (env, chain, tx) => broadcastEvm(env, chain, tx.raw),
   status: (env, chain, hash) => statusEvm(env, chain, hash),
