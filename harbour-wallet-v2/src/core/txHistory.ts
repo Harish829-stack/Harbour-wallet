@@ -11,6 +11,7 @@ import type { ChainInfo } from './chains/types';
 import { chainById, explorerTxUrl } from './chains/index';
 import { NON_EVM_HISTORY, HISTORY_UNSUPPORTED_REASON } from './chains/adapters/history';
 import { firstOf } from './chains/adapters/types';
+import { GATEWAY_URL } from '../kit/endpoints';
 export type TxKind = 'send' | 'receive' | 'self' | 'contract';
 export interface HistoryItem {
   id: string; assetId: string; kind: TxKind; status: 'confirmed' | 'failed' | 'pending';
@@ -95,6 +96,24 @@ export function mapEsplora(body: any, address: string): HistoryItem[] {
   return out;
 }
 
+// ---- Blockbook v2 address?details=txs: { transactions:[{ txid, blockTime, confirmations, vin:[{addresses,value,isAddress}], vout:[{addresses,value,isAddress}] }] }
+export function mapBlockbook(body: any, address: string, assetId: string, symbol: string, decimals: number): HistoryItem[] {
+  const out: HistoryItem[] = [];
+  const has = (x: any) => Array.isArray(x?.addresses) && x.addresses.includes(address);
+  for (const t of Array.isArray(body?.transactions) ? body.transactions : []) {
+    if (!t?.txid) continue;
+    let inMine = 0n, outMine = 0n, outOthers = 0n; let cp: string | undefined;
+    for (const i of t.vin ?? []) if (has(i)) inMine += big(i.value);
+    for (const o of t.vout ?? []) { if (has(o)) outMine += big(o.value); else { outOthers += big(o.value); cp ??= o.addresses?.[0]; } }
+    let kind: TxKind; let amt: bigint;
+    if (inMine > 0n && outOthers === 0n) { kind = 'self'; amt = outMine; }
+    else if (inMine > 0n) { kind = 'send'; amt = outOthers; }
+    else { kind = 'receive'; amt = outMine; cp = (t.vin ?? [])[0]?.addresses?.[0]; }
+    out.push({ id: String(t.txid), assetId, kind, status: Number(t.confirmations) > 0 ? 'confirmed' : 'pending', timestamp: t.blockTime > 0 ? Number(t.blockTime) * 1000 : 0, amount: fmtUnits(amt, decimals), symbol, counterparty: cp, url: EXPLORER_TX[assetId] ? EXPLORER_TX[assetId] + String(t.txid) : undefined });
+  }
+  return out;
+}
+
 // ---- Solana getSignaturesForAddress: { result: [{ signature, blockTime, err, confirmationStatus }] }
 export function mapSolanaSignatures(body: any): HistoryItem[] {
   const out: HistoryItem[] = [];
@@ -161,16 +180,19 @@ export const historyUnsupportedReason = (chain: ChainInfo): string => HISTORY_UN
 async function evmHistory(chain: ChainInfo, address: string, f: F): Promise<HistoryItem[]> {
   const id = chain.id; let native: HistoryItem[] | null = null; let tokens: HistoryItem[] | null = null; let err: unknown;
   const bs = blockscoutHost(id); const rs = routescanId(id);
+  // Etherscan V2 through the gateway: Ethereum mainnet only (other chains need a paid plan), used when Blockscout fails.
+  const esV2 = (action: string) => `${GATEWAY_URL}/etherscan/v2?chainid=1&module=account&action=${action}&address=${address}&sort=desc&page=1&offset=50`;
+  const esFallback = GATEWAY_URL !== '' && id === 'ethereum';
   const nat = async () => { try {
     if (bs) { const b = await get(`${bs}/api/v2/addresses/${address}/transactions`, f); native = mapBlockscout(b, id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
       // Blockscout reports the exchange rate valid at the transaction's block when it has one; today's rate is never used.
       for (const t of Array.isArray(b?.items) ? b.items : []) { const r = Number(t?.historic_exchange_rate); const x = native.find((n) => n.id === t.hash); if (x && Number.isFinite(r) && r > 0 && Number(x.amount) > 0) x.usd = Number(x.amount) * r; } }
     else if (rs) native = mapEtherscanLike(await get(`https://api.routescan.io/v2/network/mainnet/evm/${rs}/etherscan/api?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50`, f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
-  } catch (e) { err = e; } };
+  } catch (e) { err = e; if (esFallback) { try { native = mapEtherscanLike(await get(esV2('txlist'), f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) })); err = undefined; } catch { /* keep first error */ } } } };
   const tok = async () => { try {
     if (bs) tokens = mapBlockscoutTokens(await get(`${bs}/api/v2/addresses/${address}/token-transfers?type=ERC-20`, f), id, address);
     else if (rs) tokens = mapEtherscanTokens(await get(`https://api.routescan.io/v2/network/mainnet/evm/${rs}/etherscan/api?module=account&action=tokentx&address=${address}&sort=desc&page=1&offset=50`, f), id, address);
-  } catch (e) { err ??= e; } };
+  } catch (e) { err ??= e; if (esFallback) { try { tokens = mapEtherscanTokens(await get(esV2('tokentx'), f), id, address); } catch { /* keep first error */ } } } };
   await Promise.all([nat(), tok()]);
   if (native === null && tokens === null) throw err ?? new Error('no source');
   const tk: HistoryItem[] = tokens ?? []; const tokenHashes = new Set(tk.map((x) => x.id.split(':')[0]));
@@ -187,6 +209,7 @@ export async function fetchHistory(chainOrId: ChainInfo | string, address: strin
   try {
     let items: HistoryItem[];
     if (chain.kind === 'evm') items = await evmHistory(chain, address, f);
+    else if (chain.kind === 'utxo' && chain.api === 'blockbook') items = await firstOf((chain.endpoints ?? []).map((u) => u.replace(/\/+$/, '')), async (u) => mapBlockbook(await get(`${u}/api/v2/address/${address}?details=txs&pageSize=50`, f), address, chain.id, chain.symbol, chain.decimals));
     else if (chain.kind === 'utxo') items = await firstOf((chain.endpoints ?? ['https://blockstream.info/api']).map((u) => u.replace(/\/+$/, '')), async (u) => mapEsplora(await get(`${u}/address/${address}/txs`, f), address));
     else items = await NON_EVM_HISTORY[chain.kind](chain, address, f);
     items.sort((a, b) => b.timestamp - a.timestamp);

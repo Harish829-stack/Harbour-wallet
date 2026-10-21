@@ -17,6 +17,7 @@ import { activeEntry } from '../walletState';
 import { evmNetwork, evmNetworks } from './networks';
 import { makeRpc } from './rpc';
 import { createSigner } from './signer';
+import { multiBackend } from './multiBuild';
 import { ProviderService, type DeliverTarget } from './service';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
@@ -73,7 +74,7 @@ export function getProvider(): ProviderService {
     networks: { list: () => evmNetworks(), get: (id) => evmNetwork(id) },
     vaultStatus: async () => { await ensureCtx(); const v = ctxCache!.vault; return { hasVault: await v.exists(), unlocked: await v.isUnlocked() }; },
     openApproval: () => approvalWindow.open(), closeApprovalIfIdle: () => approvalWindow.closeIfIdle(),
-    deliver, emit, wc: wc.host,
+    deliver, emit, wc: wc.host, multi: multiBackend,
     probeChainId: async (url) => { const r = await probeRpcChainId(url); if (!r.ok) throw new Error(r.error); return r.chainId; },
     saveCustomNetwork: async (n) => {
       // A second approval may have added this ID while the first RPC probe ran.
@@ -100,6 +101,7 @@ function wrapSigner() {
     accounts: () => w(() => signer.accounts()), accountOf: (a: string, b: number) => w(() => signer.accountOf(a, b)),
     signMessage: (...a: Parameters<typeof signer.signMessage>) => w(() => signer.signMessage(...a)), signTypedData: (...a: Parameters<typeof signer.signTypedData>) => w(() => signer.signTypedData(...a)),
     sendTransaction: (...a: Parameters<typeof signer.sendTransaction>) => w(() => signer.sendTransaction(...a)), solSign: (...a: Parameters<typeof signer.solSign>) => w(() => signer.solSign(...a)),
+    multiKey: (...a: Parameters<typeof signer.multiKey>) => w(() => signer.multiKey(...a)), multiSign: (...a: Parameters<typeof signer.multiSign>) => w(() => signer.multiSign(...a)),
   };
 }
 async function solRpc(method: string, params: unknown[]): Promise<any> {
@@ -194,7 +196,7 @@ export async function disconnectOrigin(origin: string, ns?: Namespace): Promise<
   if (!ns) void wc.onOriginDisconnected(origin).catch(() => {});
   const c = await perms.disconnect(origin, ns); if (!c) return;
   const spaces: Namespace[] = ns ? [ns] : c.namespaces;
-  for (const n of spaces) { if (n === 'evm') { emit(origin, 'evm', 'accountsChanged', []); emit(origin, 'evm', 'disconnect', { code: ERR.DISCONNECTED, message: 'Disconnected by the user.' }); } else emit(origin, 'solana', 'disconnect'); }
+  for (const n of spaces) { if (n === 'evm') { emit(origin, 'evm', 'accountsChanged', []); emit(origin, 'evm', 'disconnect', { code: ERR.DISCONNECTED, message: 'Disconnected by the user.' }); } else emit(origin, n, 'disconnect'); }
 }
 
 export function viewDeps(): ViewDeps {

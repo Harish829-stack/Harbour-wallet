@@ -520,3 +520,172 @@ Home header shows the active tab's connected site (icon + green dot) beside the 
 
 ## 2026-10-19 — Cleanup
 Removed stale `content.js`, `public/`, empty `src/popup/provider/`; fixed path comment in `scripts/build-inpage.mjs`. Unreferenced-module scan found no other dead files. Added `FEATURE-MATRIX.md`. Gate: tsc clean, 349/349, build OK.
+
+## 2026-10-21 — Backend reverse-engineering documentation (no build change)
+
+User scope: use REA on supplied Trust Wallet v26.41.0 for backend, DB, stack and
+end-to-end API documentation. Deliverables: root `TRUST-WALLET-BACKEND.md` and
+`evidence/40-backend-api/2026-10-21/` with 73 recovered ApiService methods,
+historical HTTP/RPC shape catalogues, exact local SQL/storage and bounded auth,
+streaming, WebSocket/device evidence. Actual server DB/framework remain UNKNOWN;
+a proposed equivalent architecture is explicitly separated from recovered facts.
+
+Verification: 238 JS files parsed; source-range/input/recovery digests and document
+links checked; 6 controlled synthetic auth-function checks pass. Pinned offline
+REA 6.5.0/Wakaru 1.14.0; no new tools installed. No app source changes, app tests,
+Chrome execution, live API calls or backend deployment in this documentation pass.
+No implementation, integration or parity status upgraded. See the evidence README
+for capture truncation, redactions, exact evidence IDs and unresolved requirements.
+
+## 2026-10-21 — Harbour parity plan (doc 11), first implementation pass
+Done: kernel (event registry, INTERNAL_/PUBLIC_ namespaces, boot loop, persisted queue, self-heal guard), `wallet:store` migrations (pre/post), worker RTK store with the 16 TW slice names + `harbour-ui` port (snapshot/patch) + popup `useWorkerState`, Harbour Kit (HttpClient, NodeRepository, failover/race, gateway client, Ed25519-signed remote config, CoinGecko/DefiLlama price chain, GoPlus checks, eth_simulateV1 preview, Hyperliquid + Polymarket read-only, all flag-gated), `gateway/` Cloudflare Worker (keys server-side), LI.FI key removed from the bundle, swap quotes carry token-risk warnings.
+Verified: tsc clean; vite build OK; no API-key strings in bundle; 330/330 unit tests (2 only pass outside the read-only mount: they unlink temp files); real Chromium smoke test of the built extension (boot, migrations, port snapshot, events, store persisted as [1,0,state]).
+Not done / needs live resources: gateway deploy + keys, Relay/THORChain swap execution (unverified API shapes, signs funds), Hyperliquid/Polymarket trading, new provider families (Cosmos/Aptos/Sui/TON/Tron/BTC), chain registry 86->168, Ledger WebHID, push, perps/prediction signing, UI screenshot parity, mainnet QA.
+
+## 2026-10-21 (later) — gateway live
+Deployed `harbour-gateway` (workers.dev). `scripts/check-gateway.mjs`: all 15 route checks PASS (health, signed config, prices, Helius, Alchemy x5 chains, Etherscan chain 1, TronGrid, LI.FI, Jupiter, allowlist rejections). Extension routes Solana RPC via Helius and EVM RPC via Alchemy when VITE_HB_GATEWAY_URL is set; Alchemy NFT primary (Blockscout fallback); Etherscan V2 history fallback for Ethereum. Production bundle: gateway URL embedded, 0 secret values present.
+Known provider limits: Etherscan free plan covers Ethereum only; Toncenter key is testnet-only (needs a mainnet key); Polymarket host unreachable on this network (feature stays off).
+
+## 2026-10-21 (Phase 1/2 completion)
+Old 600-line router split into modules/{wallet,market,swap,tokens,send,settingsCore}.ts (58 events, all named INTERNAL_*); index.ts is 69 lines. Real-Chromium smoke: create wallet -> lock -> bad/good unlock, store slices follow. Added tests: boundaries (popup may not import vault/keys/wallet-core/storage/background), migrations (old profile, rerun no-op, crash resume). Kit: NodeRepository now drives viem fallback transport (swap + send) with rank tiers; `npm run verify` (tsc, gateway tsc, tests, prebuild, build, secret scan) + .github/workflows/harbour-ci.yml.
+Not done: popup screens still use their own stores rather than the worker mirror; opt-in telemetry (needs a Sentry DSN); earn/naming/ramp Kit clients (existing core modules already cover them).
+
+## Phase 3 — chain breadth (partial)
+- 13 extra wallet-core chains in `registry.extra.json` (10 EVM + LTC/DOGE/DASH via Blockbook), hidden until listed in `extra-enabled.json`.
+- UTXO adapters (balance, send/fee/broadcast/status, history) now speak Blockbook (`chain.api === 'blockbook'`).
+- `node scripts/check-chains.mjs --write` probes endpoints live and enables only passing chains. tsc clean, 353 tests pass.
+
+## Phase 4 — dApp provider families (partial)
+- New generic namespace `multi` (core/provider/multi.ts, inpage/multi.ts): Cosmos (Keplr API: enable/getKey/signAmino/signDirect/signArbitrary/offline signers, 11 chains), Sui (Wallet Standard connect + signPersonalMessage), Aptos (Petra-style window.aptos: connect/account/signMessage/signTransaction of built RawTransaction), Tron (TronLink request + tronWeb sign/signMessageV2; txID must equal sha256(raw_data)), Bitcoin (accounts + BIP-137 message signing).
+- Same approval queue, per-origin Connection.others, binding check (account change invalidates pending), approval screen shows decoded Cosmos msg types / Tron contract / message text.
+- Not done: TON Connect, Sui/Aptos transaction *building* (needs SDKs), Bitcoin PSBT signing, SIWS, biometric approval, per-load handshake nonce, test-dApp suite in Chrome. 363 tests pass; verify.mjs green.
+
+## 2026-10-21 — Upload archive root repair
+
+Inspected `/Users/jatinsharma/Desktop/Harbour.zip`: extension manifest was at
+`dist/manifest.json`, with a `dist/` wrapper and macOS metadata. Created
+`harbour-wallet-v2/releases/Harbour-root-fixed.zip` by stripping that wrapper and
+omitting hidden metadata; retained runtime bytes are identical to the uploaded
+archive. Root manifest, ZIP CRC and manifest file references pass. Hashes and
+checks: `harbour-wallet-v2/releases/Harbour-root-fixed.validation.json`.
+This repackages the October 19 archive; it does not rebuild current source.
+Firefox compatibility remains incomplete (Chromium service worker/side panel);
+no AMO upload, signing or Firefox runtime verification performed.
+
+## Phase 4 — gap closing (2026-10-21)
+
+Closed the Phase 4 gaps before Phase 5:
+- TON Connect (`window.harbourTon`): wallet v4r2 identity, `ton_addr` + `ton_proof`, `sendTransaction` via toncenter. `signData` is not supported.
+- Sui and Aptos transaction building, simulation and submission (`signTransaction` / `signAndExecute` / `signAndSubmit`) on mainnet.
+- Bitcoin `signPsbt`: P2WPKH inputs, SIGHASH_ALL, BIP-143, optional finalize.
+- SIWS (`solana:signIn`): message parsing, plus origin, domain and expiry warnings on the approval screen.
+- Opt-in biometric approval (Connections → toggle): a single-use proof that lasts 60 s and is bound to one pending request.
+- Per-load nonce handshake between the inpage script and the content script.
+
+Service-worker fixes found by the real-Chrome e2e run:
+- `build.modulePreload:false`: Vite's preload helper touches `document`.
+- No dynamic `import()` in the background, because MV3 forbids it in service workers. Chain SDKs are now static imports in `multiBuild.ts`.
+- `src/background/globalShims.ts` sets the `Buffer` global and must stay the first import of the entry file. Without it, registration fails with status 15.
+- A minimal `window.crypto` shim is applied only around the TON SDK calls.
+
+Results:
+- Chrome e2e passes for connect and sign on Cosmos, Sui, Aptos, Tron and Bitcoin, plus TON connect with `ton_proof`.
+- Unit tests: 371 pass. `verify.mjs` passes.
+
+Still not tested:
+- Live Sui and Aptos transactions and TON send: the sandbox has no access to those RPCs.
+- Real third-party dApps such as the Keplr, Sui and TON Connect demos.
+
+## Phase 5 — money features (2026-10-21)
+
+**Swap**
+- Quote racing (`core/swap/engine.ts`): LI.FI, Relay, Jupiter and THORChain are queried in parallel, each capped at 12 s. Failed providers are dropped while any provider answers. The best output is tagged "Best" in the provider sheet. If all providers fail, the user-fixable error (amount, pair) wins over network errors.
+- Relay (`relay.ts`, gateway `/relay/*` with `RELAY_API_KEY`): EVM-source swaps and bridges, including EVM to Solana. At submit time Harbour re-quotes, and only signs approve and deposit items that match the confirmed quote: same chain, our address, the confirmed spender, value capped, and output within slippage. Signature-type steps are refused. Settlement is polled via `/intents/status/v2`.
+- THORChain (`thorchain.ts`, public THORNode via Liquify/Ninerealms, or gateway `/thornode/*`): BTC to and from ETH, BNB, Base natives and ERC-20s. There is a new `bitcoin` swap domain.
+  - BTC sends to the vault with the memo in an OP_RETURN (wallet-core `outputOpReturn`).
+  - EVM sources call `router.depositWithExpiry`; ERC-20 sells approve the router first.
+  - Harbour fetches a fresh quote before sending and requires the memo's payout address to be our own.
+  - Settlement is read from `/thorchain/tx/status`; a REFUND outbound counts as failed.
+- LI.FI Solana-source bridge legs are now signable when we are the sole signer and fee payer.
+- Payouts always go to our own account address, never to an address carried in the route.
+- Dust cleaner (Swap settings → "Clean up small balances"): curated and recent tokens on the current network worth $0.01–$5, converted to the native coin one swap at a time.
+
+**Gasless (beta)** (`core/swap/gasless.ts`): EIP-7702 delegation to the Ethereum Foundation's Simple7702Account (EntryPoint v0.8, audited by Spearbit), plus a Pimlico-sponsored UserOperation through gateway `/pimlico/<chainId>` with `PIMLICO_API_KEY`.
+- Supported chains: Ethereum, BNB Chain, Polygon, Arbitrum, Base.
+- Off unless the remote flag `gasless7702` is on AND the user enables "Gasless swaps (beta)".
+- Approve and swap are batched in one user operation.
+- Safety checks:
+  - accounts delegated elsewhere are refused;
+  - the delegate's `entryPoint()` is checked before signing an authorisation;
+  - any unavailability falls back to normal transactions.
+
+**Earn**
+- TRON (Stake 2.0): freeze, vote all TRON Power, claim, unfreeze (14 days), withdraw expired, redelegate votes.
+- Tezos (TzKT and node RPC): baker delegation, undelegation, redelegation; the reveal operation is added when needed.
+- Cardano (Koios): register the stake key (2 ADA deposit), delegate, redelegate, claim, unstake.
+  - Claim adds a DRep "always abstain" vote delegation, which reward withdrawals require since the Plomin hard fork.
+  - Unstake withdraws rewards and deregisters the stake key.
+  - Cardano is a new extra chain (balance, send, staking). It stays off until `node scripts/check-chains.mjs --write` passes it.
+- Polkadot nomination pools on Asset Hub, via `@polkadot/api` 16.5.6 (live metadata) and an ed25519 raw signer: join, bond extra, claim, compound, unbond (28 days), withdraw.
+- Rocket Pool (rETH) is offered next to Lido for ETH. Deposits respect the deposit-pool maximum. Unstaking burns rETH when the protocol has collateral; otherwise the user is told to swap.
+- Earn UI: compound for Cosmos and Polkadot; claim wherever rewards are claimable; no amount field for whole-balance delegation (Tezos, Cardano).
+
+**NFTs**
+- EVM collection floor price from Alchemy's OpenSea metadata, shown on the collection screen.
+- Report/hide, the spam filter and Solana DAS already existed.
+
+**Ramps**
+- Buy, sell, recurring buys, P2P, CEX funding and the trusted-address guard already existed (no change).
+
+**Gateway**
+- New routes: `/relay/*`, `/thornode/*`, `/pimlico/<chainId>` (method allowlist).
+- `deploy-gateway.mjs` pushes `RELAY_API_KEY` and `PIMLICO_API_KEY`.
+- `config.json` adds the `gasless7702: false` flag.
+
+**Results**
+- Tests: 384 pass (new: `swap-providers`, `staking-phase5`, `gasless`). `verify.mjs` passes.
+- Real Chrome: the service worker starts, there are no Phase 4 regressions, and `swapState` reports `gasless:false` by default.
+
+**Not tested live** (the sandbox cannot reach these APIs):
+- Relay, THORNode and Pimlico responses;
+- TronGrid staking contracts, TzKT, Koios and Polkadot Asset Hub;
+- Rocket Pool contract reads.
+
+Mainnet test with small amounts before release.
+
+## Phase 6 — markets, discover, notifications (2026-10-21)
+
+**Market data fallbacks** (`core/marketData.ts`)
+- Each lookup tries, in order: gateway `/v2/market/charts`, then `/info` (CoinGecko with the server key, cached in KV), then CoinGecko direct, then DefiLlama (`coins.llama.fi` chart, or price only for info).
+- Native coins resolve through the registry `cg` id, so every mainnet chain gets a chart, not only the 7 curated ones.
+- Tokens (`token:<chainId>:<address>`) use GeckoTerminal: the top pool's OHLCV for charts, plus token price, FDV and volume. The custom-token detail screen now shows a DEX price chart (1H–1Y).
+- Trending lists use gateway `/v2/market/tickers`, then CoinGecko.
+
+**Trending**
+- New modes: "Hot tokens" (CoinGecko `/search/trending`, via gateway `/v2/market/trending`) and "Hot on DEXs" (GeckoTerminal trending pools on chains Harbour supports; the network filter applies).
+- The network filter is ordered by DefiLlama DeFi TVL.
+
+**Sentiment and announcements**
+- RSS feeds (CoinDesk, Cointelegraph, Decrypt and now The Block) come through gateway `/rss/<source>`, cached for 10 minutes, with direct fetch as the fallback.
+- Signed remote-config announcements are stored on each config sync and shown in Help, merged with the user's own feed. New announcements are notified once each when the "Product announcements" topic is on.
+
+**Notifications** (`background/notify.ts`)
+- **Local watcher** (no server): a 5-minute alarm reads recent history for the active account on Ethereum, Bitcoin, BNB Chain, Solana, Polygon, Arbitrum, Base and TRON. It notifies new confirmed incoming transfers (at most 3 per run) and opens the explorer on click. The first look only records existing history, so enabling it doesn't flood. It follows Settings › Notifications.
+- **Server push**:
+  - `gcm` permission; `chrome.instanceID` FCM token, registered with gateway `/push/register` (unregistered when push is turned off). Messages arrive on `chrome.gcm.onMessage`.
+  - The gateway (`gateway/push.ts`) keeps registrations in KV. A cron every 5 minutes checks a rotating slice of addresses within the free plan's 50-subrequest budget: Etherscan v2 transfers and token transfers, TronGrid, Helius signatures, mempool.space.
+  - It sends FCM HTTP v1 data messages, authenticated with an RS256 service-account JWT, and deletes registrations whose token is gone.
+  - While server push is registered, the local watcher stands down.
+- The Notifications screen shows which delivery path is active and has "Send a test notification".
+
+**Deploy**
+- `deploy-gateway.mjs` creates and binds the `CACHE` KV namespace (prices, market data and push), pushes `FCM_SERVICE_ACCOUNT` (or `FCM_SERVICE_ACCOUNT_FILE`), and prints `VITE_HB_FCM_SENDER_ID`.
+- `wrangler.toml` has `[triggers] crons = ["*/5 * * * *"]`.
+
+**Results**
+- Tests: 390 pass (new `phase6.test.js`: fallbacks, GeckoTerminal, hot tokens, the notification rule, push registration, the watcher cursor, FCM JWT signature verification and dead-token cleanup). `verify.mjs` passes.
+- Real Chrome: the activity alarm is scheduled, a test notification displays, and `getHot`/`getTrendingNetworks` respond (empty in the sandbox because there is no egress). No Phase 4/5 regressions.
+
+**Not tested live**
+- GeckoTerminal, DefiLlama, CoinGecko trending, FCM delivery and the gateway cron.
+- The exit check ("a test transfer triggers a push") needs a deployed gateway with a Firebase project.

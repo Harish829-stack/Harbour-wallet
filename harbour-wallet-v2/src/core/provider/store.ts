@@ -17,14 +17,16 @@ export interface Connection {
   id: string; origin: string; title: string; icon?: string;
   walletId: string; walletName: string; accountIndex: number; accountName: string;
   evmAddress?: string; solanaAddress?: string;
+  /** Cosmos/Sui/Aptos/Tron/Bitcoin accounts, by registry chain id (namespace 'multi'). */
+  others?: Record<string, { address: string; publicKey: string }>;
   chainId: number;                 // EVM chain this origin currently sees (Harbour: per-origin; TW: wallet-global)
   namespaces: Namespace[];
   connectedAt: number; lastUsedAt: number;
 }
 export interface BlacklistItem { id: string; origin: string; title?: string; icon?: string; addedAt: number }
 export interface TrackedApproval { id: string; chainId: number; token: string; spender: string; owner: string; origin: string; txHash?: string; amount: string; unlimited: boolean; at: number }
-export interface ProviderPrefs { defaultWallet: boolean }
-export const DEFAULT_PREFS: ProviderPrefs = { defaultWallet: false };
+export interface ProviderPrefs { defaultWallet: boolean; /** Require a fresh biometric check before signing/sending requests from sites (needs biometrics set up). */ biometricApproval: boolean }
+export const DEFAULT_PREFS: ProviderPrefs = { defaultWallet: false, biometricApproval: false };
 const MAX_CONNECTIONS = 200; const MAX_BLACKLIST = 500; const MAX_APPROVALS = 300;
 
 const cleanText = (s: unknown, n: number): string => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n) : '');
@@ -45,7 +47,8 @@ export class PermissionStore {
       if (!prev && Object.keys(m).length >= MAX_CONNECTIONS) { const oldest = Object.values(m).sort((a, b) => a.lastUsedAt - b.lastUsedAt)[0]; delete m[oldest.origin]; }
       const t = this.now();
       const c: Connection = { ...input, title: cleanText(input.title, 80) || hostnameOf(input.origin), icon: safeIcon(input.icon), id: prev?.id ?? newId(), connectedAt: prev?.connectedAt ?? t, lastUsedAt: t,
-        namespaces: Array.from(new Set([...(prev?.namespaces ?? []), ...input.namespaces])) };
+        namespaces: Array.from(new Set([...(prev?.namespaces ?? []), ...input.namespaces])),
+        ...(prev?.others || input.others ? { others: { ...(prev?.others ?? {}), ...(input.others ?? {}) } } : {}) };
       m[input.origin] = c; await this.kv.set(PKEYS.CONNECTIONS, m); return c;
     });
   }
@@ -62,7 +65,7 @@ export class PermissionStore {
       const m = (await this.kv.get<Record<string, Connection>>(PKEYS.CONNECTIONS)) ?? {};
       if (!Object.prototype.hasOwnProperty.call(m, origin)) return undefined;
       const c = m[origin];
-      if (ns) { c.namespaces = c.namespaces.filter((x) => x !== ns); if (ns === 'evm') delete c.evmAddress; if (ns === 'solana') delete c.solanaAddress; }
+      if (ns) { c.namespaces = c.namespaces.filter((x) => x !== ns); if (ns === 'evm') delete c.evmAddress; if (ns === 'solana') delete c.solanaAddress; if (ns === 'multi') delete c.others; }
       if (!ns || c.namespaces.length === 0) delete m[origin]; else m[origin] = c;
       await this.kv.set(PKEYS.CONNECTIONS, m); return c;
     });
@@ -70,7 +73,7 @@ export class PermissionStore {
   disconnectAll(): Promise<Connection[]> { return this.lock.run(async () => { const all = Object.values((await this.kv.get<Record<string, Connection>>(PKEYS.CONNECTIONS)) ?? {}); await this.kv.set(PKEYS.CONNECTIONS, {}); return all; }); }
   /** Throttled "last used" bookkeeping (never rewrites more than once a minute per origin). */
   async touch(origin: string): Promise<void> { const c = await this.get(origin); if (c && this.now() - c.lastUsedAt > 60_000) await this.update(origin, { lastUsedAt: this.now() }); }
-  async isConnected(origin: string, ns: Namespace): Promise<Connection | undefined> { const c = await this.get(origin); return c && c.namespaces.includes(ns) && (ns === 'evm' ? !!c.evmAddress : !!c.solanaAddress) ? c : undefined; }
+  async isConnected(origin: string, ns: Namespace): Promise<Connection | undefined> { const c = await this.get(origin); return c && c.namespaces.includes(ns) && (ns === 'evm' ? !!c.evmAddress : ns === 'solana' ? !!c.solanaAddress : !!c.others && Object.keys(c.others).length > 0) ? c : undefined; }
 
   // ---- blacklist (matched by hostname, so any scheme/port of a blocked host is blocked)
   async blacklist(): Promise<BlacklistItem[]> { return ((await this.kv.get<BlacklistItem[]>(PKEYS.BLACKLIST)) ?? []).slice().sort((a, b) => b.addedAt - a.addedAt); }
@@ -102,11 +105,11 @@ export class PermissionStore {
   untrackApproval(id: string): Promise<void> { return this.lock.run(async () => { const list = (await this.kv.get<TrackedApproval[]>(PKEYS.APPROVALS)) ?? []; await this.kv.set(PKEYS.APPROVALS, list.filter((x) => x.id !== id)); }); }
 
   async prefs(): Promise<ProviderPrefs> { return { ...DEFAULT_PREFS, ...((await this.kv.get<ProviderPrefs>(PKEYS.PREFS)) ?? {}) }; }
-  async setPrefs(p: Partial<ProviderPrefs>): Promise<ProviderPrefs> { const next = { ...(await this.prefs()), ...(typeof p.defaultWallet === 'boolean' ? { defaultWallet: p.defaultWallet } : {}) }; await this.kv.set(PKEYS.PREFS, next); return next; }
+  async setPrefs(p: Partial<ProviderPrefs>): Promise<ProviderPrefs> { const next = { ...(await this.prefs()), ...(typeof p.defaultWallet === 'boolean' ? { defaultWallet: p.defaultWallet } : {}), ...(typeof p.biometricApproval === 'boolean' ? { biometricApproval: p.biometricApproval } : {}) }; await this.kv.set(PKEYS.PREFS, next); return next; }
 }
 
 // ------------------------------------------------------------------ pending requests (survive service-worker restarts: stored in storage.session)
-export type PendingKind = 'connect' | 'permissions' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset' | 'solConnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'wcSession';
+export type PendingKind = 'connect' | 'permissions' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset' | 'solConnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'wcSession' | 'multiConnect' | 'multiSign';
 export interface PendingRequest {
   id: string;                 // internal id shown to the approval UI
   key: string;                // `${tabId}:${frameId}:${page request id}` — de-duplicates a content-script resend after a worker restart
@@ -115,7 +118,7 @@ export interface PendingRequest {
   origin: string; topOrigin: string; isTopFrame: boolean; tabId: number; frameId: number; documentId?: string;
   title?: string; icon?: string; createdAt: number; expiresAt: number;
   stage?: 'executing';      // durable claim: never replay signing/broadcast after an interrupted worker
-  binding?: Pick<Connection, 'id' | 'walletId' | 'accountIndex' | 'chainId' | 'evmAddress' | 'solanaAddress'>;
+  binding?: Pick<Connection, 'id' | 'walletId' | 'accountIndex' | 'chainId' | 'evmAddress' | 'solanaAddress' | 'others'>;
   internal?: boolean;         // raised by the extension UI itself (e.g. revoke approval)
 }
 export type Outcome = { result: unknown } | { error: { code: number; message: string; data?: unknown } };

@@ -3,7 +3,7 @@
 import { ERR, ProviderError, serializeError } from '../../core/provider/errors';
 import type { InitState, Namespace, PageRequest, SenderInfo } from '../../core/provider/protocol';
 import { senderKey } from '../../core/provider/protocol';
-import { EVM_METHODS, UNSUPPORTED_EVM, isHexData, normalizeAddChain, normalizeEthSign, normalizePersonalSign, normalizeSendTx, normalizeSolMessage, normalizeSolTx, normalizeSwitchChain, normalizeTypedData, normalizeWatchAsset, parseChainIdHex, sameAddress, specFor, toHexQuantity, type TxRequest, hexToBytes } from '../../core/provider/methods';
+import { EVM_METHODS, UNSUPPORTED_EVM, isHexData, normalizeAddChain, normalizeEthSign, normalizePersonalSign, normalizeSendTx, normalizeSolMessage, normalizeSolTx, normalizeSwitchChain, normalizeTypedData, normalizeWatchAsset, parseChainIdHex, sameAddress, specFor, toHexQuantity, type TxRequest, hexToBytes, bytesToHex } from '../../core/provider/methods';
 import { MAX_PENDING_PER_ORIGIN, MAX_PENDING_TOTAL, type Connection, type Outcome, type PendingKind, type PendingRequest, type PendingStore, type PermissionStore } from '../../core/provider/store';
 import { RateLimiter } from '../../core/provider/ratelimit';
 import { b58encode, b64ToBytes, bytesToB64 } from '../../core/provider/base58';
@@ -17,6 +17,9 @@ import type { RpcCall } from './rpc';
 import type { FeeValues } from './fees';
 import type { AccountEntry, ConnRef, WalletAccounts } from './wallet';
 import { negotiate, type SupportedNamespace } from '../../core/walletconnect';
+import { tonProofHash } from './tonProof';
+import { applySignatures, decodePsbt, planPsbtSigning, psbtToB64, psbtToHex } from '../../core/provider/psbt';
+import { isMultiChain, normalizeMultiSign, signPlan, MULTI_CHAINS, type Scheme, type MultiRequest } from '../../core/provider/multi';
 
 export interface Signer {
   accounts(): Promise<WalletAccounts | null>;
@@ -25,6 +28,9 @@ export interface Signer {
   signTypedData(c: ConnRef, td: TypedDataLike): Promise<string>;
   sendTransaction(c: ConnRef, net: EvmNetwork, tx: TxRequest, opts: { gas?: bigint; fee?: FeeValues }): Promise<string>;
   solSign(c: ConnRef, messages: Uint8Array[]): Promise<Uint8Array[]>;
+  /** Address + public key of a non-EVM chain account (used at connect time, before a connection exists). */
+  multiKey(c: ConnRef, chain: string): Promise<{ address: string; publicKey: Uint8Array }>;
+  multiSign(c: ConnRef, chain: string, scheme: Scheme, data: Uint8Array): Promise<Uint8Array>;
 }
 export interface DeliverTarget { tabId: number; frameId: number; documentId?: string }
 export interface ServiceDeps {
@@ -39,7 +45,21 @@ export interface ServiceDeps {
   addToken(t: { walletId: string; chainId: number; address: string; name: string; symbol: string; decimals: number }): Promise<{ ok: boolean; error?: string }>;
   /** WalletConnect transport (optional: absent in unit tests that do not exercise it). */
   wc?: WcHost;
+  /** Sui / Aptos / TON SDK backend (optional: absent in unit tests that do not exercise it). */
+  multi?: MultiBackend;
   now?: () => number; version?: string;
+}
+export interface TonMsg { address: string; friendly: string; amount: string; payload?: string; stateInit?: string; bounce: boolean }
+/** Chain-SDK work for Sui / Aptos / TON (real implementation: ./multiBuild.ts; injected so the router stays unit-testable). */
+export interface MultiBackend {
+  sui?: { build(json: string, sender: string): Promise<{ bytes: Uint8Array; detail: Record<string, string> }>; execute(bytes: Uint8Array, signatureB64: string): Promise<unknown> };
+  aptos?: { build(payload: any, sender: string, pub: Uint8Array): Promise<{ bytes: Uint8Array; detail: Record<string, string> }>; submit(raw: Uint8Array, pub: Uint8Array, sig: Uint8Array): Promise<{ hash: string }> };
+  ton?: {
+    identity(pub: Uint8Array): Promise<{ friendly: string; raw: string; hash: Uint8Array; workchain: number; stateInit: string }>;
+    sameAddress(a: string, b: string): Promise<boolean>;
+    normalize(raw: unknown): Promise<{ messages: TonMsg[]; validUntil: number }>;
+    send(pub: Uint8Array, messages: TonMsg[], validUntil: number, signHash: (h: Uint8Array) => Promise<Uint8Array>): Promise<string>;
+  };
 }
 export interface WcHost {
   approve(proposalId: number, namespaces: Record<string, SupportedNamespace>, meta: { origin: string; title?: string; icon?: string; chains: string[] }): Promise<string>;
@@ -52,7 +72,7 @@ const hex = (n: number) => '0x' + n.toString(16);
 const ok = (result: unknown): HandleResult => ({ done: true, outcome: { result } });
 const fail = (e: unknown): HandleResult => ({ done: true, outcome: { error: serializeError(e) } });
 export const DEFAULT_CHAIN = 1;
-const KIND_OF: Record<string, PendingKind> = { connect: 'connect', permissionsRequest: 'permissions', sign: 'sign', typed: 'typed', tx: 'tx', switchChain: 'switchChain', addChain: 'addChain', watchAsset: 'watchAsset', solConnect: 'solConnect', solSignMessage: 'solSignMessage', solSignTx: 'solSignTx', solSignAll: 'solSignAll', solSignSend: 'solSignSend' };
+const KIND_OF: Record<string, PendingKind> = { connect: 'connect', permissionsRequest: 'permissions', sign: 'sign', typed: 'typed', tx: 'tx', switchChain: 'switchChain', addChain: 'addChain', watchAsset: 'watchAsset', solConnect: 'solConnect', solSignMessage: 'solSignMessage', solSignTx: 'solSignTx', solSignAll: 'solSignAll', solSignSend: 'solSignSend', multiConnect: 'multiConnect', multiSign: 'multiSign' };
 
 export class ProviderService {
   private readLimiter: RateLimiter; private approvalLimiter: RateLimiter;
@@ -68,7 +88,7 @@ export class ProviderService {
     const c = await this.d.perms.get(origin); const prefs = await this.d.perms.prefs();
     const chainId = c?.chainId ?? DEFAULT_CHAIN;
     const st = await this.d.vaultStatus(); const visible = st.hasVault && st.unlocked && !(await this.d.perms.isBlacklisted(origin));
-    return { evm: { chainId: hex(chainId), networkVersion: String(chainId), accounts: visible && c?.evmAddress && c.namespaces.includes('evm') ? [c.evmAddress] : [], connected: true }, solana: { publicKey: visible && c?.solanaAddress && c.namespaces.includes('solana') ? c.solanaAddress : null }, prefs: { defaultWallet: prefs.defaultWallet } };
+    return { evm: { chainId: hex(chainId), networkVersion: String(chainId), accounts: visible && c?.evmAddress && c.namespaces.includes('evm') ? [c.evmAddress] : [], connected: true }, solana: { publicKey: visible && c?.solanaAddress && c.namespaces.includes('solana') ? c.solanaAddress : null }, multi: visible && c?.others && c.namespaces.includes('multi') ? c.others : {}, prefs: { defaultWallet: prefs.defaultWallet } };
   }
 
   // ------------------------------------------------------------------ request router
@@ -154,6 +174,41 @@ export class ProviderService {
       }
     }
 
+    // ---- Cosmos / Sui / Aptos / Tron / Bitcoin
+    if (req.ns === 'multi') {
+      const p = (req.params && typeof req.params === 'object' && !Array.isArray(req.params) ? req.params : {}) as Record<string, any>;
+      if (!isMultiChain(p.chain)) throw new ProviderError(ERR.INVALID_PARAMS, 'Unsupported chain.');
+      const chain = p.chain as string; const have = conn?.namespaces.includes('multi') ? conn.others?.[chain] : undefined;
+      switch (spec.kind) {
+        case 'multiConnect': {
+          const proof = chain === 'ton' && typeof p.proofPayload === 'string' ? p.proofPayload.slice(0, 256) : undefined; // a proof is a signature: always asks
+          if (have && !proof && (await this.d.vaultStatus()).unlocked) return ok(chain === 'ton' ? await this.tonResult(have, undefined, s.origin, conn!) : have);
+          if (p.onlyIfTrusted === true) throw new ProviderError(ERR.UNAUTHORIZED, 'The site is not trusted yet.');
+          return this.queue(s, req, 'multiConnect', { chain, ...(proof ? { proofPayload: proof } : {}) });
+        }
+        case 'multiDisconnect': {
+          if (conn && have) { const others = { ...conn.others }; delete others[chain]; if (Object.keys(others).length) await this.d.perms.update(s.origin, { others }); else await this.d.perms.disconnect(s.origin, 'multi'); this.d.emit(s.origin, 'multi', 'disconnect', { chain }); }
+          return ok(null);
+        }
+        default: break;
+      }
+      if (!conn || !have) throw new ProviderError(ERR.UNAUTHORIZED);
+      const fam = MULTI_CHAINS[chain].family; const mb = this.d.multi; let detail: Record<string, string> | undefined; let params: any = req.params;
+      const wantsTx = req.method === 'signTransaction' || req.method === 'signAndSend';
+      try {
+        if (fam === 'ton') {
+          if (req.method !== 'sendTransaction' || !mb?.ton) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Unsupported TON method.');
+          const t = await mb.ton.normalize(p.txJson); const total = t.messages.reduce((a, m) => a + BigInt(m.amount), 0n);
+          const n: MultiRequest = { chain, op: 'send', method: req.method, data: { ton: t }, summary: { kind: 'tonTx', detail: { ...Object.fromEntries(t.messages.map((m, i) => [`To #${i + 1}`, `${m.friendly} — ${m.amount} nanoTON${m.payload ? ' (with payload)' : ''}${m.stateInit ? ' (deploys contract)' : ''}`])), 'Total': `${total} nanoTON`, 'Valid until': new Date(t.validUntil * 1000).toISOString() } } };
+          return this.queue(s, req, 'multiSign', n, conn);
+        }
+        if (fam === 'sui' && wantsTx && typeof p.txJson === 'string') { if (!mb?.sui) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Sui transactions are unavailable.'); const b = await mb.sui.build(p.txJson, have.address); detail = b.detail; params = { chain, txB64: bytesToB64(b.bytes) }; }
+        if (fam === 'aptos' && wantsTx && p.payload && typeof p.payload === 'object') { if (!mb?.aptos) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Aptos transactions are unavailable.'); const b = await mb.aptos.build(p.payload, have.address, hexToBytes('0x' + have.publicKey)); detail = b.detail; params = { chain, txB64: bytesToB64(b.bytes) }; }
+      } catch (e) { if (e instanceof ProviderError) throw e; throw new ProviderError(ERR.INVALID_PARAMS, String((e as Error)?.message ?? 'Could not prepare this transaction.').slice(0, 200)); }
+      const n = normalizeMultiSign(req.method, params, { address: have.address, publicKey: have.publicKey, detail });
+      return this.queue(s, req, 'multiSign', n, conn);
+    }
+
     // ---- Solana
     switch (spec.kind) {
       case 'solConnect': {
@@ -206,9 +261,9 @@ export class ProviderService {
     if (!this.approvalLimiter.take(s.origin)) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many requests from this site. Wait a moment and try again.');
     const all = await this.d.pending.list();
     if (all.length >= MAX_PENDING_TOTAL || all.filter((p) => p.origin === s.origin).length >= MAX_PENDING_PER_ORIGIN) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many pending requests.');
-    if ((kind === 'connect' || kind === 'permissions' || kind === 'solConnect') && all.some((p) => p.origin === s.origin && p.kind === kind)) throw new ProviderError(ERR.RESOURCE_UNAVAILABLE);
+    if ((kind === 'connect' || kind === 'permissions' || kind === 'solConnect' || kind === 'multiConnect') && all.some((p) => p.origin === s.origin && p.kind === kind)) throw new ProviderError(ERR.RESOURCE_UNAVAILABLE);
     const c = bound;
-    const binding = c ? { id: c.id, walletId: c.walletId, accountIndex: c.accountIndex, chainId: c.chainId, evmAddress: c.evmAddress, solanaAddress: c.solanaAddress } : undefined;
+    const binding = c ? { id: c.id, walletId: c.walletId, accountIndex: c.accountIndex, chainId: c.chainId, evmAddress: c.evmAddress, solanaAddress: c.solanaAddress, others: c.others } : undefined;
     await this.d.pending.add({ binding, key, reqId: req.id, ns: req.ns, method: req.method, kind, params, origin: s.origin, topOrigin: s.topOrigin, isTopFrame: s.isTopFrame, tabId: s.tabId, frameId: s.frameId, documentId: s.documentId, title: s.title, icon: s.icon });
     await this.d.openApproval().catch(() => {});
     return { done: false };
@@ -285,6 +340,45 @@ export class ProviderService {
         if (!existing || existing.chainId !== chainId) this.d.emit(p.origin, 'evm', 'chainChanged', hex(chainId));
         this.d.emit(p.origin, 'evm', 'connect', { chainId: hex(chainId) });
         return p.kind === 'permissions' ? [permission(conn, p.origin)] : [a.evm];
+      }
+      case 'multiConnect': {
+        const chain = p.params.chain as string;
+        const accts = await this.d.signer.accounts(); if (!accts) throw new ProviderError(ERR.UNAUTHORIZED, 'No wallet available.');
+        let existing = await perms.get(p.origin);
+        if (existing && existing.walletId !== accts.walletId) { await perms.disconnect(p.origin); existing = undefined; }
+        const index = existing ? existing.accountIndex : dec.accountIndex ?? accts.activeAccount;
+        const a = accts.accounts[index]; if (!a) throw new ProviderError(ERR.INVALID_PARAMS, 'Unknown account.');
+        if (!a.multi?.[chain]) throw new ProviderError(ERR.UNAUTHORIZED, 'This account has no address on this chain.');
+        const k = await this.d.signer.multiKey({ walletId: accts.walletId, accountIndex: index }, chain);
+        if (chain === 'ton') { const same = await this.d.multi?.ton?.sameAddress(k.address, a.multi[chain]) ?? k.address === a.multi[chain]; if (!same) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.'); }
+        else if (k.address !== a.multi[chain]) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.');
+        const entry = { address: k.address, publicKey: bytesToHex(k.publicKey).slice(2) };
+        const conn = await perms.connect({ origin: p.origin, title: p.title, icon: p.icon, walletId: accts.walletId, walletName: accts.walletName, accountIndex: index, accountName: a.name, chainId: existing?.chainId ?? DEFAULT_CHAIN, namespaces: ['multi'], others: { ...(existing?.others ?? {}), [chain]: entry },
+          ...(existing?.evmAddress ? { evmAddress: existing.evmAddress } : {}), ...(existing?.solanaAddress ? { solanaAddress: existing.solanaAddress } : {}) });
+        this.d.emit(p.origin, 'multi', 'connect', { chain, ...entry });
+        return chain === 'ton' ? this.tonResult(entry, p.params.proofPayload, p.origin, conn, { walletId: accts.walletId, accountIndex: index }) : entry;
+      }
+      case 'multiSign': {
+        const conn = await this.needConn(p, 'multi'); const n = p.params as ReturnType<typeof normalizeMultiSign>; const mine = conn.others?.[n.chain]; if (!mine) throw new ProviderError(ERR.UNAUTHORIZED, 'The site is no longer connected.');
+        const pub = hexToBytes('0x' + mine.publicKey); const mb = this.d.multi;
+        if (MULTI_CHAINS[n.chain].family === 'ton') {
+          if (!mb?.ton) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'TON is unavailable.');
+          const boc = await mb.ton.send(pub, n.data.ton.messages, n.data.ton.validUntil, (h) => this.d.signer.multiSign(conn, n.chain, 'ed25519', h));
+          return { boc };
+        }
+        if (n.op === 'psbt') {
+          const plan = planPsbtSigning(decodePsbt(n.data.psbt), pub, n.data.only ?? undefined); const sigs: Uint8Array[] = [];
+          for (const x of plan.inputs) sigs.push((await this.d.signer.multiSign(conn, n.chain, 'secp256k1', x.digest)).slice(0, 64));
+          const signed = applySignatures(plan, pub, sigs, n.data.finalize === true); return { psbtHex: psbtToHex(signed), psbtBase64: psbtToB64(signed) };
+        }
+        const plan = signPlan(n, mine.address);
+        const sig = await this.d.signer.multiSign(conn, n.chain, plan.scheme, plan.data);
+        const out: any = plan.encode(sig, pub, { address: mine.address });
+        if (n.op !== 'send') return out;
+        const fam = MULTI_CHAINS[n.chain].family;
+        if (fam === 'sui' && mb?.sui) return { ...out, ...(await mb.sui.execute(b64ToBytes(n.data.txB64), out.signature) as object) };
+        if (fam === 'aptos' && mb?.aptos) return mb.aptos.submit(b64ToBytes(n.data.txB64), pub, sig);
+        throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Submitting is unavailable.');
       }
       case 'wcSession': {
         const wc = this.d.wc; if (!wc) throw new ProviderError(ERR.INTERNAL, 'WalletConnect is not available.');
@@ -367,10 +461,22 @@ export class ProviderService {
       default: throw new ProviderError(ERR.METHOD_NOT_FOUND);
     }
   }
+  /** TON Connect `connect` payload: raw address, wallet v4r2 stateInit, and (when asked) a ton_proof signed for THIS origin's host. */
+  private async tonResult(entry: { address: string; publicKey: string }, proofPayload: string | undefined, origin: string, conn: Connection | ConnRef, ref?: ConnRef): Promise<unknown> {
+    const ton = this.d.multi?.ton; if (!ton) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'TON is unavailable.');
+    const id = await ton.identity(hexToBytes('0x' + entry.publicKey));
+    const out: any = { address: id.raw, friendly: entry.address, publicKey: entry.publicKey, walletStateInit: id.stateInit };
+    if (proofPayload) {
+      const host = new URL(origin).host; const timestamp = Math.floor(this.now() / 1000);
+      const sig = await this.d.signer.multiSign((ref ?? conn) as ConnRef, 'ton', 'ed25519', tonProofHash({ workchain: id.workchain, addressHash: id.hash, domain: host, timestamp, payload: proofPayload }));
+      out.proof = { timestamp, domain: host, payload: proofPayload, signature: bytesToB64(sig) };
+    }
+    return out;
+  }
   private async needConn(p: PendingRequest, ns: Namespace): Promise<Connection> {
     const c = await this.d.perms.isConnected(p.origin, ns); if (!c) throw new ProviderError(ERR.UNAUTHORIZED, 'The site is no longer connected.');
     const b = p.binding;
-    if (!b || c.id !== b.id || c.walletId !== b.walletId || c.accountIndex !== b.accountIndex || c.chainId !== b.chainId || c.evmAddress !== b.evmAddress || c.solanaAddress !== b.solanaAddress) throw new ProviderError(ERR.UNAUTHORIZED, 'The connection changed while this request was pending. Request again for the current account and chain.');
+    if (!b || c.id !== b.id || c.walletId !== b.walletId || c.accountIndex !== b.accountIndex || c.chainId !== b.chainId || c.evmAddress !== b.evmAddress || c.solanaAddress !== b.solanaAddress || JSON.stringify(c.others ?? null) !== JSON.stringify(b.others ?? null)) throw new ProviderError(ERR.UNAUTHORIZED, 'The connection changed while this request was pending. Request again for the current account and chain.');
     return c;
   }
   /** Token metadata straight from the contract (symbol(), decimals(), name()). Never trusts dApp-supplied values. */

@@ -1,5 +1,6 @@
 import type { ChainInfo } from './types';
 import { rpcOverride } from '../networkRegistry';
+import { gatewayRpc } from '../rpc';
 /** Ordered JSON-RPC URLs for an EVM chain: user override / custom network first, then env override, then the registry's public list. */
 export function getRpcUrls(chain: ChainInfo): string[] {
   const out: string[] = [];
@@ -8,6 +9,7 @@ export function getRpcUrls(chain: ChainInfo): string[] {
     const o = rpcOverride(id); if (o) out.push(o);
     const env = (import.meta as any).env?.[`VITE_RPC_${id}`]; if (typeof env === 'string' && env) out.push(env);
   }
+  const gw = id != null ? gatewayRpc(id) : undefined; if (gw && !out.includes(gw)) out.push(gw); // keyed Alchemy via the gateway, ahead of the public list
   for (const u of chain.rpcs ?? []) if (!out.includes(u)) out.push(u);
   return out;
 }

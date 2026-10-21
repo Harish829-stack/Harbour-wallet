@@ -32,6 +32,8 @@ export interface NftCollection {
   standard: NftStandard;
   /** Heuristic spam flag (see spam.ts); drives the default "hidden" bucket, never a deletion. */
   suspicious: boolean;
+  /** Collection floor in the chain's native coin (Alchemy's OpenSea metadata); absent when unknown. */
+  floorPrice?: number;
   items: NftItem[];
 }
 export interface NftReportState { hidden: string[]; shown: string[] }

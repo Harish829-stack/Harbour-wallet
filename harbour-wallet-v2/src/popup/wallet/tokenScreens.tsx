@@ -4,7 +4,9 @@ import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Spinner } from './ui'
 import { tokenNetworks, networkByChainId } from '../../core/customTokens';
 import { syncNetworks } from './networkStore';
 import { explorerAddress, explorerAddressById, assetOf } from './data';
-import { chainById } from '../../core/chains/index';
+import { chainById, chainByEvmId } from '../../core/chains/index';
+import { useChart, PriceChart } from './tokenData';
+import type { ChartRange } from '../../core/marketData';
 import { validTokenAddress, TOKEN_CHAINS } from '../../core/chains/adapters/tokens';
 import { refreshTokens, tokenItem, useTokenItems } from './tokensStore';
 import { money, moneyPrice, fmtNumber } from '../settingsStore';
@@ -135,6 +137,10 @@ export const CustomTokenDetailScreen: React.FC<Ctx> = (c) => {
   const items = useTokenItems().items; const it = items.find((i: any) => i.token.id === a.id) ?? tokenItem(a.id);
   const [confirm, setConfirm] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [copied, setCopied] = useState(false);
   const bal = it ? Number(it.formatted) : 0;
+  // DEX price chart (GeckoTerminal top pool) for tokens CoinGecko may not list
+  const chainKey = nonEvm ?? chainByEvmId(t.chainId)?.id ?? '';
+  const [range, setRange] = useState<ChartRange>('1D');
+  const chart = useChart(c.bg, `token:${chainKey}:${t.address}`, range);
   const remove = async () => {
     setBusy(true); const r = await c.bg({ type: nonEvm ? 'chainDataTokenRemove' : 'tokenRemove', id: a.id }).catch(() => null); setBusy(false);
     if (r?.ok) { await refreshTokens(c.bg); c.refresh?.(); c.nav.home(); } else { setConfirm(false); setErr(r?.error || 'Could not remove the token'); }
@@ -160,6 +166,10 @@ export const CustomTokenDetailScreen: React.FC<Ctx> = (c) => {
               {link && <a href={link} target="_blank" rel="noreferrer" style={{ color: T.accent, fontWeight: 700 }}>View on explorer ↗</a>}
             </div></div>
         </div>
+        {chart.data && chart.data.points.length > 1 && <div data-testid="token-chart" style={{ marginTop: 18 }}>
+          <PriceChart points={chart.data.points} up={(chart.data.changePct ?? 0) >= 0} range={range} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>{(['1H', '1D', '1W', '1M', '1Y'] as ChartRange[]).map((r) => <button key={r} type="button" onClick={() => setRange(r)} style={{ background: r === range ? T.accentSoft : 'transparent', color: r === range ? T.accent : T.sub, border: 'none', borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{r}</button>)}</div>
+        </div>}
         {err && <div role="alert" style={{ color: T.error, fontSize: 13, marginTop: 12 }}>{err}</div>}
         <div style={{ marginTop: 20 }}><Btn variant="ghost" onClick={() => setConfirm(true)}>Remove token</Btn></div>
       </div>

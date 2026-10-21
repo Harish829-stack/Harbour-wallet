@@ -170,8 +170,10 @@ const TF: Array<{ key: '1H' | '24H' | '7D' | '1M'; field: 'change1h' | 'change24
   { key: '1H', field: 'change1h' }, { key: '24H', field: 'change24h' }, { key: '7D', field: 'change7d' }, { key: '1M', field: 'change30d' },
 ];
 // Categories + network coin ids come from the real TW capture (src/core/twTaxonomy.ts).
-const MODES: Array<{ id: string; name: string; clientSort?: 'gain' | 'lose' }> = [
+const MODES: Array<{ id: string; name: string; clientSort?: 'gain' | 'lose'; hot?: 'tokens' | 'dex' }> = [
   ...TW_CATEGORIES.map((c) => ({ id: c.id, name: c.name })),
+  { id: 'hot', name: 'Hot tokens', hot: 'tokens' },
+  { id: 'hotdex', name: 'Hot on DEXs', hot: 'dex' },
   { id: 'gainers', name: 'Top Gainers', clientSort: 'gain' },
   { id: 'losers', name: 'Top Losers', clientSort: 'lose' },
 ];
@@ -199,9 +201,22 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
 
   useEffect(() => {
     let cancel = false; setData(null);
+    if (mode.hot) {
+      // CoinGecko trending / GeckoTerminal trending pools (24h change only); the network filter applies to DEX pools
+      bg({ type: 'getHot' }).then((r) => {
+        if (cancel) return;
+        const list: any[] = r?.ok ? (mode.hot === 'dex' ? r.dex : r.tokens) ?? [] : [];
+        const chain = net ? chainByTwId(net.coinId)?.id : undefined;
+        setData(list.filter((t) => mode.hot !== 'dex' || !chain || t.chainId === chain).map((t) => ({ ...t, change1h: null, change7d: null, change30d: null, marketCap: t.volume24h ?? 0, hot: true })));
+      }).catch(() => { if (!cancel) setData([]); });
+      return () => { cancel = true; };
+    }
     bg({ type: 'getTrending', categoryId: mode.clientSort ? 'trending' : mode.id, networkCoinId: net?.coinId }).then((r) => { if (!cancel) setData(r?.ok ? (r.list ?? []) : []); }).catch(() => { if (!cancel) setData([]); });
     return () => { cancel = true; };
   }, [net, mode]);
+  // Networks ordered by DeFi TVL (DefiLlama) when available, so the busiest networks come first in the filter
+  const [tvl, setTvl] = useState<Record<string, number>>({});
+  useEffect(() => { bg({ type: 'getTrendingNetworks' }).then((r) => { if (r?.ok) setTvl(Object.fromEntries((r.list ?? []).map((n: any) => [n.chainId, n.tvl]))); }).catch(() => {}); }, []);
 
   const base = (data ?? []).filter((t) => {
     const s2 = q.trim().toLowerCase();
@@ -215,7 +230,8 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   const Head: React.FC<{ col: 'price' | 'market'; label: string }> = ({ col, label }) => (
     <div onClick={() => toggleSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, cursor: 'pointer', fontSize: 12, color: T.sub, fontWeight: 600 }}>{label}<span style={{ fontSize: 9, opacity: sort?.col === col ? 1 : 0.4 }}>{sort?.col === col && sort.dir === 'asc' ? '▲' : '▼'}</span></div>
   );
-  const netFiltered = TW_NETWORKS.filter((n) => n.cgCategory && (!netQ || n.name.toLowerCase().includes(netQ.toLowerCase())));
+  const netFiltered = TW_NETWORKS.filter((n) => n.cgCategory && (!netQ || n.name.toLowerCase().includes(netQ.toLowerCase())))
+    .sort((a, b) => (tvl[chainByTwId(b.coinId)?.id ?? ''] ?? 0) - (tvl[chainByTwId(a.coinId)?.id ?? ''] ?? 0));
 
   return (
     <>

@@ -1,5 +1,6 @@
 // Screens for feature "settings": developer settings, faucets, notifications, wallet management, security migration.
 import React, { useEffect, useState } from 'react';
+import { T } from '../../theme';
 import type { Ctx } from '../screens';
 import { Screen, Skeleton } from '../ui';
 import { Group, NavRow, SwitchRow, ErrorLine, Note, SectionLabel } from '../settingsScreens';
@@ -57,6 +58,14 @@ export const FaucetsScreen: React.FC<Ctx> = (c) => (
   </Screen>
 );
 
+const NotifyStatus: React.FC<{ bg: Ctx['bg']; on: boolean }> = ({ bg, on }) => {
+  const [st, setSt] = useState<{ remote: boolean; remoteConfigured: boolean } | null>(null); const [sent, setSent] = useState(false);
+  useEffect(() => { bg({ type: 'notifyStatus' }).then((r: any) => { if (r?.ok) setSt(r); }).catch(() => {}); }, [bg, on]);
+  return (<>
+    <Note>{!on ? 'Notifications are off.' : st?.remote ? 'Push is active: Harbour\'s gateway watches your addresses and notifies incoming transfers, even while the extension is idle.' : 'Harbour checks your main accounts every 5 minutes for incoming transfers (Ethereum, Bitcoin, BNB Chain, Solana, Polygon, Arbitrum, Base, TRON) and shows a system notification.' + (st && !st.remoteConfigured ? ' Server push is not configured in this build.' : '')}</Note>
+    {on && <div style={{ padding: '0 16px' }}><button type="button" data-testid="notif-test" onClick={() => { void bg({ type: 'notifyTest' }).then(() => setSent(true)); }} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: '8px 0' }}>{sent ? 'Test notification sent' : 'Send a test notification'}</button></div>}
+  </>);
+};
 export const NotificationsScreen: React.FC<Ctx> = (c) => {
   const { settings } = useSettingsState(); const p = settings.pushNotifications; const [err, setErr] = useState('');
   const save = async (patch: Record<string, unknown>) => { setErr(''); const r = await updateSettings(c.bg, { pushNotifications: patch }); if (!r.ok) setErr(r.error); };
@@ -68,7 +77,7 @@ export const NotificationsScreen: React.FC<Ctx> = (c) => {
         <SwitchRow label="Product announcements" on={p.isPushEnabled && p.topics.product_announcement !== false} onToggle={() => { void save({ isPushEnabled: true, topics: { product_announcement: p.topics.product_announcement === false } }); }} testid="notif-announcements"/>
       </Group>
       <ErrorLine msg={err}/>
-      <Note>Harbour saves these choices on this device. It has no push server, so nothing is delivered yet; the choices apply once delivery is available.</Note>
+      <NotifyStatus bg={c.bg} on={p.isPushEnabled} />
     </Screen>
   );
 };

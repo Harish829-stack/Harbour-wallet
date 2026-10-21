@@ -1,0 +1,296 @@
+[
+ {
+  "twId": 137,
+  "id": "rootstock",
+  "name": "Rootstock",
+  "wcId": "rootstock",
+  "ct": "rootstock",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "RBTC",
+  "decimals": 18,
+  "evmChainId": 30,
+  "rpcs": [
+   "https://public-node.rsk.co"
+  ],
+  "explorer": "https://explorer.rsk.co",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/137'/0'/0/0",
+  "cg": "rootstock",
+  "extra": true
+ },
+ {
+  "twId": 361,
+  "id": "tfuelevm",
+  "name": "Theta Fuel",
+  "wcId": "tfuelevm",
+  "ct": "thetaFuel",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "TFUEL",
+  "decimals": 18,
+  "evmChainId": 361,
+  "rpcs": [
+   "https://eth-rpc-api.thetatoken.org/rpc"
+  ],
+  "explorer": "https://explorer.thetatoken.org",
+  "txPath": "/tx/",
+  "accountPath": "/account/",
+  "path": "m/44'/500'/0'/0/0",
+  "cg": "theta-fuel",
+  "extra": true
+ },
+ {
+  "twId": 820,
+  "id": "callisto",
+  "name": "Callisto",
+  "wcId": "callisto",
+  "ct": "callisto",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "CLO",
+  "decimals": 18,
+  "evmChainId": 820,
+  "rpcs": [
+   "https://rpc.callisto.network"
+  ],
+  "explorer": "https://explorer.callistodao.org",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/820'/0'/0/0",
+  "cg": "callisto",
+  "extra": true
+ },
+ {
+  "twId": 1329,
+  "id": "seievm",
+  "name": "Sei EVM",
+  "wcId": "seievm",
+  "ct": "seiEVM",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "SEI",
+  "decimals": 18,
+  "evmChainId": 1329,
+  "rpcs": [
+   "https://evm-rpc.sei-apis.com"
+  ],
+  "explorer": "https://seiscan.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "sei-network",
+  "extra": true
+ },
+ {
+  "twId": 1890,
+  "id": "lightlink",
+  "name": "Lightlink",
+  "wcId": "lightlink",
+  "ct": "lightlink",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "ETH",
+  "decimals": 18,
+  "evmChainId": 1890,
+  "rpcs": [
+   "https://replicator.phoenix.lightlink.io/rpc/v1"
+  ],
+  "explorer": "https://phoenix.lightlink.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "ethereum",
+  "extra": true
+ },
+ {
+  "twId": 18000,
+  "id": "meter",
+  "name": "Meter",
+  "wcId": "meter",
+  "ct": "meter",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "MTR",
+  "decimals": 18,
+  "evmChainId": 82,
+  "rpcs": [
+   "https://rpc.meter.io"
+  ],
+  "explorer": "https://scan.meter.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "meter",
+  "extra": true
+ },
+ {
+  "twId": 10000787,
+  "id": "acalaevm",
+  "name": "Acala EVM",
+  "wcId": "acalaevm",
+  "ct": "acalaEVM",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "ACA",
+  "decimals": 18,
+  "evmChainId": 787,
+  "rpcs": [
+   "https://eth-rpc-acala.aca-api.network"
+  ],
+  "explorer": "https://blockscout.acala.network",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "acala",
+  "extra": true
+ },
+ {
+  "twId": 10001101,
+  "id": "polygonzkevm",
+  "name": "Polygon zkEVM",
+  "wcId": "polygonzkevm",
+  "ct": "polygonzkEVM",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "ETH",
+  "decimals": 18,
+  "evmChainId": 1101,
+  "rpcs": [
+   "https://zkevm-rpc.com"
+  ],
+  "explorer": "https://zkevm.polygonscan.com",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "ethereum",
+  "extra": true
+ },
+ {
+  "twId": 10042170,
+  "id": "arbitrumnova",
+  "name": "Arbitrum Nova",
+  "wcId": "arbitrumnova",
+  "ct": "arbitrumNova",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "ETH",
+  "decimals": 18,
+  "evmChainId": 42170,
+  "rpcs": [
+   "https://nova.arbitrum.io/rpc"
+  ],
+  "explorer": "https://nova.arbiscan.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "ethereum",
+  "extra": true
+ },
+ {
+  "twId": 20007000,
+  "id": "zetaevm",
+  "name": "Zeta EVM",
+  "wcId": "zetaevm",
+  "ct": "zetaEVM",
+  "kind": "evm",
+  "blockchain": "Ethereum",
+  "symbol": "ZETA",
+  "decimals": 18,
+  "evmChainId": 7000,
+  "rpcs": [
+   "https://zetachain-evm.blockpi.network/v1/rpc/public"
+  ],
+  "explorer": "https://explorer.zetachain.com",
+  "txPath": "/evm/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/60'/0'/0/0",
+  "cg": "zetachain",
+  "extra": true
+ },
+ {
+  "twId": 2,
+  "id": "litecoin",
+  "name": "Litecoin",
+  "wcId": "litecoin",
+  "ct": "litecoin",
+  "kind": "utxo",
+  "api": "blockbook",
+  "blockchain": "Bitcoin",
+  "symbol": "LTC",
+  "decimals": 8,
+  "endpoints": [
+   "https://ltc1.trezor.io"
+  ],
+  "explorer": "https://ltc1.trezor.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/84'/2'/0'/0/0",
+  "cg": "litecoin",
+  "hrp": "ltc",
+  "extra": true
+ },
+ {
+  "twId": 3,
+  "id": "dogecoin",
+  "name": "Dogecoin",
+  "wcId": "doge",
+  "ct": "dogecoin",
+  "kind": "utxo",
+  "api": "blockbook",
+  "blockchain": "Bitcoin",
+  "symbol": "DOGE",
+  "decimals": 8,
+  "endpoints": [
+   "https://doge1.trezor.io"
+  ],
+  "explorer": "https://doge1.trezor.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/3'/0'/0/0",
+  "cg": "dogecoin",
+  "extra": true
+ },
+ {
+  "twId": 5,
+  "id": "dash",
+  "name": "Dash",
+  "wcId": "dash",
+  "ct": "dash",
+  "kind": "utxo",
+  "api": "blockbook",
+  "blockchain": "Bitcoin",
+  "symbol": "DASH",
+  "decimals": 8,
+  "endpoints": [
+   "https://dash1.trezor.io"
+  ],
+  "explorer": "https://dash1.trezor.io",
+  "txPath": "/tx/",
+  "accountPath": "/address/",
+  "path": "m/44'/5'/0'/0/0",
+  "cg": "dash",
+  "extra": true
+ },
+ {
+  "twId": 1815,
+  "id": "cardano",
+  "name": "Cardano",
+  "wcId": "cardano",
+  "ct": "cardano",
+  "kind": "cardano",
+  "blockchain": "Cardano",
+  "symbol": "ADA",
+  "decimals": 6,
+  "endpoints": [
+   "https://api.koios.rest/api/v1"
+  ],
+  "explorer": "https://cardanoscan.io",
+  "txPath": "/transaction/",
+  "accountPath": "/address/",
+  "path": "m/1852'/1815'/0'/0/0",
+  "cg": "cardano",
+  "extra": true
+ }
+]

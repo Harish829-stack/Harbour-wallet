@@ -43,12 +43,15 @@ export const handlers: HandlerMap = {
   },
   // Announcements feed (TW GET /v2/announcements has no public equivalent): reads the user-configured https JSON feed, if any.
   announcements: async () => {
+    // signed remote config announcements (always available) + the user's own feed when configured
+    const fromConfig = parseAnnouncements((await local.get<unknown[]>('wallet:config:announcements')) ?? []);
     const cfg = normalizeHelp(await local.get(HELP_STORAGE));
-    if (!cfg.announcementsUrl) return { ok: true, configured: false, items: [] };
+    if (!cfg.announcementsUrl) return { ok: true, configured: fromConfig.length > 0, items: fromConfig };
     try {
       const r = await fetch(cfg.announcementsUrl, { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return { ok: true, configured: true, items: parseAnnouncements(await r.json()) };
-    } catch (e: any) { return { ok: false, configured: true, error: String(e?.message ?? 'Feed unavailable').slice(0, 100) }; }
+      const mine = parseAnnouncements(await r.json());
+      return { ok: true, configured: true, items: [...fromConfig, ...mine.filter((m) => !fromConfig.some((c) => c.id === m.id))].sort((a, b) => b.at - a.at) };
+    } catch (e: any) { return fromConfig.length ? { ok: true, configured: true, items: fromConfig } : { ok: false, configured: true, error: String(e?.message ?? 'Feed unavailable').slice(0, 100) }; }
   },
 };

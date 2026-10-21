@@ -3,6 +3,7 @@ import type { Fetcher } from '../chains/adapters/types';
 import type { NftCollection, NftItem, NftReportState } from './types';
 import { BLOCKSCOUT_HOSTS, fetchBlockscoutCollections, fetchBlockscoutOwned } from './blockscout';
 import { fetchDas, fetchMagicEden } from './solana';
+import { alchemyAvailable, fetchAlchemyCollections } from './alchemy';
 
 export interface NftEnv { f: Fetcher; solUrls: () => string[] }
 /** Mainnet chains queried by default (testnets only when asked). */
@@ -21,6 +22,9 @@ export async function loadCollections(env: NftEnv, addressOf: (chainId: string) 
         if (chainId === 'solana') {
           try { res.collections.push(...(await fetchDas(env.solUrls(), addr, env.f))); res.sources[chainId] = 'Solana DAS'; }
           catch { res.collections.push(...(await fetchMagicEden(addr, env.f))); res.sources[chainId] = 'Magic Eden'; }
+        } else if (alchemyAvailable(chainId)) {
+          try { res.collections.push(...(await fetchAlchemyCollections(chainId, addr, env.f))); res.sources[chainId] = 'Alchemy'; }
+          catch { res.collections.push(...(await fetchBlockscoutCollections(chainId, addr, env.f))); res.sources[chainId] = 'Blockscout'; }
         } else { res.collections.push(...(await fetchBlockscoutCollections(chainId, addr, env.f))); res.sources[chainId] = 'Blockscout'; }
       } catch (e: any) { res.errors.push({ chainId, error: String(e?.message ?? 'failed').slice(0, 160) }); }
     }

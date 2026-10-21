@@ -5,7 +5,9 @@ import type { PendingRequest, PermissionStore, KV } from '../../core/provider/st
 import { decodeCalldata, decodeString, encodeBalanceCall, isUnlimited, SEL, type DecodedCall } from '../../core/provider/decode';
 import { summarizeTypedData } from '../../core/provider/typed';
 import { parseSiwe, siweIssues } from '../../core/provider/siwe';
+import { parseSiws, siwsIssues } from '../../core/provider/siws';
 import { describeSolTx } from '../../core/provider/solanaTx';
+import { MULTI_CHAINS } from '../../core/provider/multi';
 import { b64ToBytes } from '../../core/provider/base58';
 import { displayHost, hostnameOf, isInsecureOrigin, isPunycodeHost } from '../../core/provider/origin';
 import { negotiate, summarizeProposal } from '../../core/walletconnect';
@@ -30,11 +32,12 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
   };
   const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? 1; const net = d.networks.get(chainId);
   base.chain = net ? netView(net) : { chainId, name: `Chain ${chainId}`, symbol: '', testnet: false, custom: false, explorer: null };
-  base.account = conn ? { name: conn.accountName, evm: conn.evmAddress ?? null, solana: conn.solanaAddress ?? null, walletName: conn.walletName } : null;
+  base.account = conn ? { name: conn.accountName, evm: conn.evmAddress ?? null, solana: conn.solanaAddress ?? null, multi: Object.fromEntries(Object.entries(conn.others ?? {}).map(([k, v]) => [k, v.address])), walletName: conn.walletName } : null;
+  if (p.ns === 'multi') { const cid = p.params?.chain as string; base.chain = { id: cid, chainId: cid, name: MULTI_CHAINS[cid]?.name ?? cid, symbol: '', testnet: false, custom: false, explorer: null }; }
   switch (p.kind) {
-    case 'connect': case 'permissions': case 'solConnect': {
+    case 'connect': case 'permissions': case 'solConnect': case 'multiConnect': {
       const w = await d.signer.accounts();
-      return { ...base, walletName: w?.walletName ?? '', accounts: (w?.accounts ?? []).map((a) => ({ index: a.index, name: a.name, evm: a.evm ?? null, solana: a.solana ?? null })), activeAccount: w?.activeAccount ?? 0,
+      return { ...base, multiChain: p.kind === 'multiConnect' ? p.params.chain : undefined, walletName: w?.walletName ?? '', accounts: (w?.accounts ?? []).map((a) => ({ index: a.index, name: a.name, evm: a.evm ?? null, solana: a.solana ?? null, multi: a.multi ?? {} })), activeAccount: w?.activeAccount ?? 0,
         lockedIndex: conn && w && conn.walletId === w.walletId ? conn.accountIndex : null, networks: d.networks.list().map(netView), selectedChainId: chainId, requested: p.ns };
     }
     case 'wcSession': {
@@ -67,9 +70,11 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
       return { ...base, chain: d.networks.get(cid) ? netView(d.networks.get(cid)!) : base.chain, token: { address: asset.address, ...(meta ?? { symbol: '', name: '', decimals: 0 }), verified: !!meta, requestedSymbol: asset.symbol ?? null, requestedDecimals: asset.decimals ?? null, image: asset.image ?? null } };
     }
     case 'tx': return { ...base, ...(await txView(p, d)) };
+    case 'multiSign': { const s = p.params.summary; return { ...base, multi: s, ...(s.kind === 'message' ? { message: { utf8: s.text ?? null, hex: s.hex, bytes: (s.hex.length - 2) / 2 } } : {}) }; }
     case 'solSignMessage': {
       const bytes = b64ToBytes(p.params.messageB64); const text = tryUtf8(bytes);
-      return { ...base, message: { utf8: text, hex: bytesToHex(bytes), bytes: bytes.length } };
+      const siws = text ? parseSiws(text) : null;
+      return { ...base, message: { utf8: text, hex: bytesToHex(bytes), bytes: bytes.length }, siwe: siws ? { ...siws, issues: siwsIssues(siws, { host, address: conn?.solanaAddress ?? '' }) } : null };
     }
     case 'solSignTx': case 'solSignAll': case 'solSignSend': {
       const me = conn?.solanaAddress ?? '';

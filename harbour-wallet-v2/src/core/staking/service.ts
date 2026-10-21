@@ -9,14 +9,20 @@ import { loadValidatorList } from './validators';
 import { fetchCosmosOverview } from './cosmos';
 import { fetchSolanaOverview } from './solana';
 import { fetchLidoOverview, fetchBscOverview } from './evm';
+import { fetchTronOverview } from './tron';
+import { fetchTezosOverview } from './tezos';
+import { fetchCardanoOverview } from './cardano';
+import { fetchPolkadotOverview, poolsApi } from './polkadot';
 
 export interface StakeEnv {
   f: Fetcher;
   /** EVM JSON-RPC urls for a chain (user override first). */
   rpcUrls: (chain: ChainInfo) => string[];
   solUrls: () => string[];
+  /** Polkadot staking api (tests inject a fake). */
+  dotApi?: () => Promise<any>;
 }
-export interface StakeDetails { overview: StakeOverview; validators: Validator[]; validatorsSource: 'network' | 'snapshot' | 'protocol'; bondDenom?: string }
+export interface StakeDetails { overview: StakeOverview; validators: Validator[]; validatorsSource: 'network' | 'snapshot' | 'protocol'; bondDenom?: string; minJoin?: string }
 
 export async function loadDetails(env: StakeEnv, chainId: string, address: string): Promise<StakeDetails> {
   const def = stakingAsset(chainId); const chain = chainById(chainId);
@@ -28,6 +34,10 @@ export async function loadDetails(env: StakeEnv, chainId: string, address: strin
     case 'solana': { const r = await fetchSolanaOverview(env.solUrls(), address, env.f, meta.list); return { ...r, validatorsSource: meta.source }; }
     case 'lido': { const r = await fetchLidoOverview(env.f, env.rpcUrls(chain), address); return { ...r, validatorsSource: 'protocol' }; }
     case 'bsc': { const r = await fetchBscOverview(env.f, env.rpcUrls(chain), address, meta.list); return { ...r, validatorsSource: meta.source }; }
+    case 'tron': { const r = await fetchTronOverview(chain, address, env.f, meta.list); return { ...r, validatorsSource: meta.list.length ? meta.source : 'network' }; }
+    case 'tezos': { const r = await fetchTezosOverview(chain, address, env.f, meta.list); return { ...r, validatorsSource: meta.list.length ? meta.source : 'network' }; }
+    case 'cardano': { const r = await fetchCardanoOverview(chain, address, env.f); return { ...r, validatorsSource: 'network' }; }
+    case 'polkadot': { const r = await fetchPolkadotOverview(await (env.dotApi ?? poolsApi)(), address); return { overview: r.overview, validators: r.validators, validatorsSource: 'network', minJoin: r.minJoin.toString() }; }
   }
 }
 

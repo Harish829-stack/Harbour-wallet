@@ -5,6 +5,6 @@ import manifest from './manifest.config';
 export default defineConfig({
   publicDir: 'public-production',
   plugins: [react(), crx({ manifest })],
-  build: { target: 'esnext', rollupOptions: { input: { popup: 'src/popup/index.html' } } },
+  build: { target: 'esnext', modulePreload: false, rollupOptions: { input: { popup: 'src/popup/index.html' } } },
   server: { port: 5173 },
 });

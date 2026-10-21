@@ -1,0 +1,412 @@
+import browser from 'webextension-polyfill';
+import { getCore } from '../../core/walletCore';
+import { VaultService } from '../../core/vaultService';
+import { WalletService } from '../../core/walletService';
+import { local, session, KEYS } from '../../core/storage';
+import { validatePassword } from '../../core/passwordPolicy';
+import { ALL_CHAINS, TESTNET_CHAINS, chainById, chainByEvmId, DEFAULT_HOME_CHAINS } from '../../core/chains/index';
+import { getRpcUrls } from '../../core/chains/rpcUrls';
+import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
+import { fetchNativePrices, fetchTrending } from '../../core/priceService';
+import { createWalletClient, http, parseEther, defineChain } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { rpcUrl, solanaRpcUrl } from '../../core/rpc';
+import { CHART_RANGES, fetchChart, fetchInfo, type ChartRange } from '../../core/marketData';
+import { fetchHistory } from '../../core/txHistory';
+import * as swapSvc from '../swapService';
+import { loadSettings, saveSettings, armLockTimer, clearLockTimer, applySidePanel, sidePanelSupported, cachedRate, rateStore, LOCK_ALARM } from '../settingsService';
+import { getRate, CURRENCY_CODES } from '../../core/fiat';
+import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
+import { probeToken, clientFor, tokenBalance, formatTokenAmount } from '../../core/erc20';
+import { readTokens, sanitizeToken, upsertToken, removeToken, networkByChainId, type CustomToken } from '../../core/customTokens';
+import { fetchTokenPrices } from '../../core/tokenPrice';
+import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
+import { setNetworkState, getNetworkState, customNetwork, customNetworks } from '../../core/networkRegistry';
+import { validateNetwork, checkNetwork, isBuiltinChain, normalizeUrl, BUILTIN_EVM } from '../../core/networks';
+import { verifyPasskeySecret } from '../../core/passkeyService';
+import { estimateSend, buildTransfer, validRecipient, resolveSendChain, customChainInfo } from '../../core/sendService';
+import { nativeSymbol } from '../../core/balanceService';
+import { readEntries, sanitizeEntry, upsertEntry, removeEntry, type AddressBookCoin } from '../../core/addressBook';
+import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
+import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
+import type { HandlerMap } from '../handlers/types';
+import { defaultHiddenAssets, saveNetworks } from './shared';
+import { dispatchEvent } from '../kernel/events';
+
+let creatingWallet = false;
+export const handlers: HandlerMap = {
+  status: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+      return { hasVault: await vault.exists(), unlocked: await vault.isUnlocked() };
+  },
+  generateMnemonic: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+      return { mnemonic: await wallet.generateMnemonic() };
+  },
+  validateMnemonic: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+      return { valid: wallet.isValidMnemonic(msg.mnemonic) };
+  },
+  createWallet: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      const newlyGenerated = msg.newlyGenerated === true;
+      if (typeof msg.password !== 'string' || !validatePassword(msg.password).valid ||
+          (!newlyGenerated && (typeof msg.mnemonic !== 'string' || !wallet.isValidMnemonic(msg.mnemonic)))) {
+        return { ok: false, error: 'INVALID_WALLET_INPUT' };
+      }
+      if (creatingWallet) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
+      creatingWallet = true;
+      try {
+        // Target order: SavePassword → GenerateHDWallet (create only) → import.
+        await removePasskey(); // a brand-new vault must never inherit an old biometric seal
+        await vault.create(msg.password, { wallets: {}, createdAt: Date.now() });
+        const mnemonic = newlyGenerated ? await wallet.generateMnemonic() : msg.mnemonic;
+        const name = typeof msg.name === 'string' ? msg.name : 'Main wallet';
+        const sk = await wallet.buildStoredKey(mnemonic, name, newlyGenerated);
+        let keystore: Record<string, unknown>;
+        let walletId: string;
+        try { walletId = sk.identifier(); keystore = JSON.parse(new TextDecoder().decode(sk.exportJSON())); }
+        finally { sk.delete(); }
+        const addresses = wallet.deriveAddresses(mnemonic, newlyGenerated);
+        const vaultId = (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))!.vaultId;
+        await local.set(walletId, keystore);
+        await local.set(KEYS.wallets(vaultId), [walletId]);
+        await vault.persist({ vaultId, activeWalletId: walletId, wallets: { [walletId]: { name, label: name, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated } }, createdAt: Date.now() });
+        await armLockTimer().catch(() => {});
+        return { ok: true, addresses };
+      } catch (cause) {
+        return { ok: false, error: cause instanceof Error ? cause.message : 'WALLET_CREATION_FAILED' };
+      } finally { creatingWallet = false; }
+    }
+  },
+  unlock: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try { const state = await vault.unlock(msg.password); await armLockTimer().catch(() => {}); return { ok: true, state }; }
+      catch (e: any) { return { ok: false, error: e.message }; }
+    }
+  },
+  passkeyStatus: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      const m = await passkeyMeta();
+      return { ok: true, enabled: !!m, credentialId: m?.credentialId ?? null, isPasswordGenerated: !!m?.isPasswordGenerated };
+    }
+  },
+  passkeyEnroll: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Wallet must be unlocked: the unlock material being sealed is the live session's.
+      try {
+        if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
+        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), msg.isPasswordGenerated === true);
+        return { ok: true };
+      } catch (e: any) { return { ok: false, error: e.message }; }
+    }
+  },
+  passkeyUnlock: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        if (!(await passkeyMeta())) return { ok: false, error: 'BIOMETRICS_NOT_SET_UP' };
+        await unlockWithPasskey(String(msg.secret ?? ''), (k) => vault.verifyUnlockKey(k));
+        await armLockTimer().catch(() => {});
+        return { ok: true };
+      } catch (e: any) { return { ok: false, error: e.message }; }
+    }
+  },
+  passkeyDisable: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Turning biometrics off needs an unlocked wallet; a generated-password wallet cannot (its password is unknown).
+      if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
+      const m = await passkeyMeta();
+      if (m?.isPasswordGenerated) return { ok: false, error: 'This wallet has no password; biometrics are its only way to unlock.' };
+      await removePasskey(); return { ok: true };
+    }
+  },
+  lock: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ await vault.lock(); await session.remove(KEYS.REVEAL); await clearLockTimer().catch(() => {}); return { ok: true };
+  },
+  activity: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // UI activity ping (TW: react-idle-timer onAction -> RESET_TIMER). Only counts while unlocked.
+      if (await vault.isUnlocked()) await armLockTimer().catch(() => {});
+      return { ok: true };
+    }
+  },
+  getAccounts: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Public addresses for the ACTIVE account of the active wallet (requires unlock).
+      try {
+        const st: any = await vault.getState();
+        const entry = activeEntry(st);
+        if (!entry) return { ok: true, addresses: {}, accounts: [], activeAccount: 0, backupRequired: false };
+        const w = entry[1];
+        const accounts = ensureAccounts(w);
+        const active = accounts[w.activeAccount] ?? accounts[0];
+        return { ok: true, addresses: active?.addresses ?? w.addresses ?? {}, accounts, activeAccount: w.activeAccount ?? 0, backupRequired: !!w?.seedPhraseBackupRequired };
+      } catch (e: any) { return { ok: false, error: e.message }; }
+    }
+  },
+  addAccount: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Derive the next account from the same seed (TW: last path component + 1), persist, activate.
+      try {
+        const passwordKey = await session.get<string>(KEYS.PASSWORD);
+        if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
+        const state: any = await vault.getState();
+        const entry = activeEntry(state);
+        if (!entry) return { ok: false, error: 'No wallet found' };
+        const [walletId, w] = entry;
+        if ((w.type ?? 'mnemonic') !== 'mnemonic') return { ok: false, error: 'This wallet type has a single account' };
+        const accounts = ensureAccounts(w);
+        const nextIndex = accounts.reduce((m, a) => Math.max(m, a.derivationIndex), -1) + 1;
+        const ks = await local.get<any>(walletId);
+        if (!ks) return { ok: false, error: 'No wallet found' };
+        const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));
+        const hd = sk.wallet(new TextEncoder().encode(passwordKey));
+        let addresses: Record<string, string>;
+        try { addresses = wallet.deriveAddressesWithWallet(hd, nextIndex); }
+        finally { hd.delete(); sk.delete(); }
+        const account: Acct = { derivationIndex: nextIndex, name: `Account ${nextIndex + 1}`, addresses };
+        accounts.push(account);
+        w.activeAccount = accounts.length - 1;
+        w.addresses = addresses; // keep the top-level mirror on the active account
+        await vault.persist(state);
+        return { ok: true, account, accounts, activeAccount: w.activeAccount, addresses };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Add account failed' }; }
+    }
+  },
+  switchAccount: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        const idx = Number(msg.index);
+        const state: any = await vault.getState();
+        const entry = activeEntry(state);
+        if (!entry) return { ok: false, error: 'No wallet found' };
+        const [, w] = entry;
+        const accounts = ensureAccounts(w);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= accounts.length) return { ok: false, error: 'Invalid account' };
+        w.activeAccount = idx;
+        w.addresses = accounts[idx].addresses;
+        await vault.persist(state);
+        return { ok: true, activeAccount: idx, addresses: accounts[idx].addresses, accounts };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Switch failed' }; }
+    }
+  },
+  qrSyncImport: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Decrypt wallets exported by the mobile app with the 6-character one-time code, then add each seed phrase like `addWallet`.
+      // msg.dryRun only verifies the code. Only mnemonic wallets are imported; others are counted as skipped.
+      try {
+        if (!(await vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
+        const code = String(msg.code ?? ''); const keys = Array.isArray(msg.storedKeys) ? msg.storedKeys : [];
+        if (!ONE_TIME_CODE.test(code)) return { ok: false, error: 'INCORRECT_CODE' };
+        if (!keys.length || keys.length > 100) return { ok: false, error: 'Unexpected QR contents' };
+        const mnemonics: string[] = []; let skipped = 0; let wrong = 0;
+        for (const k of keys) {
+          if (!isWellFormedKey(k) || k.type !== 'mnemonic') { skipped++; continue; }
+          if (!(await codeMatchesKey(k, code))) { wrong++; continue; }
+          let sk: any;
+          try { sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(k))); } catch { skipped++; continue; }
+          try { if (sk.isMnemonic()) mnemonics.push(sk.decryptMnemonic(new TextEncoder().encode(code))); else skipped++; }
+          catch { wrong++; }
+          finally { sk.delete(); }
+        }
+        if (!mnemonics.length) return { ok: false, error: wrong ? 'INCORRECT_CODE' : 'No seed-phrase wallets in this QR code', skipped };
+        if (msg.dryRun) return { ok: true, count: mnemonics.length, skipped };
+        let imported = 0, duplicates = 0; let lastErr = '';
+        for (const m of mnemonics) {
+          const r: any = await dispatchEvent('INTERNAL', 'addWallet', { type: 'addWallet', mnemonic: m }, { sender });
+          if (r?.ok) imported++; else if (r?.error === 'This wallet already exists') duplicates++; else lastErr = r?.error || 'Import failed';
+        }
+        if (!imported && !duplicates) return { ok: false, error: lastErr || 'Import failed' };
+        return { ok: true, imported, duplicates, skipped };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Import failed' }; }
+    }
+  },
+  addWallet: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Create (generate) or import an ADDITIONAL seed-phrase wallet. Vault already unlocked.
+      if (creatingWallet) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
+      creatingWallet = true;
+      try {
+        const passwordKey = await session.get<string>(KEYS.PASSWORD);
+        if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
+        { const cur: any = await vault.getState(); if (!canCreateWallet(Object.keys(cur.wallets ?? {}).length)) return { ok: false, error: WALLET_LIMIT_ERROR }; }
+        const importing = typeof msg.mnemonic === 'string' && msg.mnemonic.trim().length > 0;
+        if (importing && !wallet.isValidMnemonic(msg.mnemonic.trim())) return { ok: false, error: 'Invalid secret phrase' };
+        const mnemonic = importing ? msg.mnemonic.trim() : await wallet.generateMnemonic();
+        const newlyGenerated = !importing;
+        const state: any = await vault.getState();
+        const label = nextSeedLabel(state);
+        const addresses = wallet.deriveAddresses(mnemonic, newlyGenerated);
+        // Dedupe by the ethereum address (TW: MNEMONIC_ALREADY_EXISTS).
+        const dup = Object.values(state.wallets ?? {}).some((w: any) =>
+          (Array.isArray(w?.accounts) ? w.accounts : [{ addresses: w?.addresses }])
+            .some((a: any) => a?.addresses?.ethereum && a.addresses.ethereum === addresses.ethereum));
+        if (dup) return { ok: false, error: 'This wallet already exists' };
+        const sk = await wallet.buildStoredKey(mnemonic, label, newlyGenerated);
+        let keystore: Record<string, unknown>; let walletId: string;
+        try { walletId = sk.identifier(); keystore = JSON.parse(new TextDecoder().decode(sk.exportJSON())); }
+        finally { sk.delete(); }
+        await local.set(walletId, keystore);
+        const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))!.vaultId;
+        const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? Object.keys(state.wallets ?? {});
+        if (!list.includes(walletId)) list.push(walletId);
+        await local.set(KEYS.wallets(vaultId), list);
+        state.wallets = state.wallets ?? {};
+        state.wallets[walletId] = { name: label, label, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated };
+        state.activeWalletId = walletId;
+        await vault.persist(state);
+        return { ok: true, walletId, label, addresses, newlyGenerated, mnemonic: newlyGenerated ? mnemonic : undefined };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Add wallet failed' }; }
+      finally { creatingWallet = false; }
+    }
+  },
+  switchWallet: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        const id = String(msg.walletId ?? '');
+        const state: any = await vault.getState();
+        if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
+        state.activeWalletId = id;
+        const w = state.wallets[id]; const accounts = ensureAccounts(w);
+        const active = accounts[w.activeAccount] ?? accounts[0];
+        await vault.persist(state);
+        return { ok: true, walletId: id, addresses: active?.addresses ?? w.addresses ?? {}, activeAccount: w.activeAccount ?? 0 };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Switch failed' }; }
+    }
+  },
+  listWallets: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // All seed-phrase wallets with their accounts (for the selector + manage-wallets screen).
+      try {
+        const st: any = await vault.getState();
+        const e = activeEntry(st);
+        const wallets = Object.entries(st.wallets ?? {}).map(([id, w]: [string, any], i) => {
+          const accounts = ensureAccounts(w);
+          return { id, label: w.label ?? `Seed Phrase ${i + 1}`, type: w.type ?? 'mnemonic',
+            activeAccount: w.activeAccount ?? 0, backupRequired: !!w.seedPhraseBackupRequired,
+            accounts: accounts.map((a: any) => ({ derivationIndex: a.derivationIndex, name: a.name, addresses: a.addresses })) };
+        });
+        return { ok: true, wallets, activeWalletId: e?.[0] };
+      } catch (e: any) { return { ok: false, error: e?.message || 'List failed' }; }
+    }
+  },
+  revealAuth: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Re-authenticate before the secret phrase can be shown. Grants a one-shot, 2-minute permission held in session storage.
+      try {
+        if (!(await vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
+        if (msg.method === 'passkey') await verifyPasskeySecret(String(msg.secret ?? ''));
+        else await vault.checkPassword(String(msg.password ?? ''));
+        await session.set(KEYS.REVEAL, Date.now() + 120_000);
+        return { ok: true };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Verification failed' }; }
+    }
+  },
+  revealMnemonic: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Return a wallet's secret phrase for the backup flow (requires an unlocked session).
+      try {
+        const passwordKey = await session.get<string>(KEYS.PASSWORD);
+        if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
+        const grant = await session.get<number>(KEYS.REVEAL);
+        await session.remove(KEYS.REVEAL); // one-shot
+        if (!grant || grant < Date.now()) return { ok: false, error: 'AUTH_REQUIRED' };
+        const st: any = await vault.getState();
+        const id = String(msg.walletId ?? activeEntry(st)?.[0] ?? '');
+        const ks = id ? await local.get<any>(id) : undefined;
+        if (!ks) return { ok: false, error: 'Wallet not found' };
+        if ((st.wallets?.[id]?.type ?? 'mnemonic') !== 'mnemonic') return { ok: false, error: 'This wallet has no secret phrase' };
+        const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));
+        try { const hd = sk.wallet(new TextEncoder().encode(passwordKey)); try { return { ok: true, mnemonic: hd.mnemonic() }; } finally { hd.delete(); } }
+        finally { sk.delete(); }
+      } catch (e: any) { return { ok: false, error: e?.message || 'Reveal failed' }; }
+    }
+  },
+  renameWallet: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        const id = String(msg.walletId ?? '');
+        const name = String(msg.name ?? '').trim();
+        if (!name) return { ok: false, error: 'Name required' };
+        const state: any = await vault.getState();
+        if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
+        state.wallets[id].label = name;
+        await vault.persist(state);
+        return { ok: true, walletId: id, label: name };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Rename failed' }; }
+    }
+  },
+  removeWallet: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      // Delete keystore + drop from vault; re-point active wallet (TW removeWallet). Vault unlocked.
+      try {
+        const id = String(msg.walletId ?? '');
+        const state: any = await vault.getState();
+        if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
+        if (Object.keys(state.wallets).length <= 1) return { ok: false, error: 'Cannot remove your only wallet' };
+        delete state.wallets[id];
+        await local.remove(id); // keystore lives at local[walletId]
+        const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
+        if (vaultId) {
+          const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? [];
+          await local.set(KEYS.wallets(vaultId), list.filter((x) => x !== id));
+        }
+        if (state.activeWalletId === id) state.activeWalletId = Object.keys(state.wallets)[0];
+        await vault.persist(state);
+        const active = state.wallets[state.activeWalletId];
+        return { ok: true, activeWalletId: state.activeWalletId, addresses: active?.addresses ?? {} };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Remove failed' }; }
+    }
+  },
+  renameAccount: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        const name = String(msg.name ?? '').trim();
+        const idx = Number(msg.index);
+        if (!name) return { ok: false, error: 'Name required' };
+        const state: any = await vault.getState();
+        const id = String(msg.walletId ?? activeEntry(state)?.[0] ?? '');
+        const w = state.wallets?.[id];
+        if (!w) return { ok: false, error: 'Wallet not found' };
+        const accounts = ensureAccounts(w);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= accounts.length) return { ok: false, error: 'Invalid account' };
+        accounts[idx].name = name;
+        await vault.persist(state);
+        return { ok: true, walletId: id, index: idx, name };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Rename failed' }; }
+    }
+  },
+  markBackedUp: async (msg, ctx) => {
+    const { core, vault, wallet, sender } = ctx as any;
+ {
+      try {
+        const state: any = await vault.getState();
+        const id = String(msg.walletId ?? activeEntry(state)?.[0] ?? '');
+        if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
+        state.wallets[id].seedPhraseBackupRequired = false;
+        await vault.persist(state);
+        return { ok: true, walletId: id };
+      } catch (e: any) { return { ok: false, error: e?.message || 'Update failed' }; }
+    }
+  },
+};

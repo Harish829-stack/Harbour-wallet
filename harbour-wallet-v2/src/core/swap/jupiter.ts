@@ -5,7 +5,8 @@ import { domainById } from './domains';
 import { classifyAggregatorError, swapError } from './errors';
 import { QUOTE_REFRESH_SECONDS } from './rules';
 
-export const JUP_BASE = 'https://lite-api.jup.ag/swap/v1';
+import { GATEWAY_URL } from '../../kit/endpoints';
+export const JUP_BASE = GATEWAY_URL ? `${GATEWAY_URL}/jup/swap/v1` : 'https://lite-api.jup.ag/swap/v1';
 export const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 type F = typeof fetch;
 export const jupMint = (a: { address: string }) => (a.address === 'native' ? WSOL_MINT : a.address);

@@ -3,6 +3,7 @@
 import { Emitter, ProviderRpcError } from './emitter';
 import type { Bridge, BridgeEvent } from './bridge';
 import { b58decode, b58encode, b64ToBytes, bytesToB64 } from '../core/provider/base58';
+import { createSiwsMessage } from '../core/provider/siws';
 
 /** Minimal PublicKey look-alike (dApps usually only call toBase58/toString/toBytes/equals). Signature slots are filled using the dApp's own PublicKey class, see attach(). */
 export class SolPublicKey {
@@ -75,7 +76,7 @@ const ICON = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/
 export const HARBOUR_ICON = ICON;
 export function registerWalletStandard(p: HarbourSolana) {
   const chains = ['solana:mainnet', 'solana:devnet', 'solana:testnet'] as const;
-  const feats = ['standard:connect', 'standard:disconnect', 'standard:events', 'solana:signMessage', 'solana:signTransaction', 'solana:signAndSendTransaction'] as const;
+  const feats = ['standard:connect', 'standard:disconnect', 'standard:events', 'solana:signIn', 'solana:signMessage', 'solana:signTransaction', 'solana:signAndSendTransaction'] as const;
   const listeners = new Set<(c: { accounts?: unknown[] }) => void>();
   const account = () => (p.publicKey ? [Object.freeze({ address: p.publicKey.toBase58(), publicKey: p.publicKey.toBytes(), chains: [...chains], features: [...feats] })] : []);
   p.on('connect', () => listeners.forEach((l) => l({ accounts: account() }))); p.on('disconnect', () => listeners.forEach((l) => l({ accounts: account() })));
@@ -87,6 +88,17 @@ export function registerWalletStandard(p: HarbourSolana) {
       'standard:connect': { version: '1.0.0', connect: async (input?: { silent?: boolean }) => { if (input?.silent && !p.publicKey) { try { await p.connect({ onlyIfTrusted: true }); } catch { /* not trusted */ } } else if (!p.publicKey) await p.connect(); return { accounts: account() }; } },
       'standard:disconnect': { version: '1.0.0', disconnect: () => p.disconnect() },
       'standard:events': { version: '1.0.0', on: (ev: string, l: (c: { accounts?: unknown[] }) => void) => { if (ev !== 'change') return () => {}; listeners.add(l); return () => listeners.delete(l); } },
+      'solana:signIn': { version: '1.0.0', signIn: async (...inputs: Array<Record<string, any>>) => {
+        const out = [];
+        for (const i of inputs.length ? inputs : [{}]) {
+          if (!p.publicKey) await p.connect(); const address = p.publicKey!.toBase58();
+          if (i.address && i.address !== address) throw new ProviderRpcError(-32602, 'The requested account is not the connected account.');
+          const text = createSiwsMessage({ domain: String(i.domain ?? location.host), address, statement: i.statement, uri: i.uri ?? location.origin, version: i.version ?? '1', chainId: i.chainId, nonce: i.nonce, issuedAt: i.issuedAt ?? new Date().toISOString(), expirationTime: i.expirationTime, notBefore: i.notBefore, requestId: i.requestId, resources: i.resources });
+          const bytes = new TextEncoder().encode(text); const r = await p.signMessage(bytes);
+          out.push({ account: account()[0], signedMessage: bytes, signature: r.signature, signatureType: 'ed25519' as const });
+        }
+        return out;
+      } },
       'solana:signMessage': { version: '1.1.0', signMessage: async (...inputs: Array<{ message: Uint8Array }>) => { const out = []; for (const i of inputs) { const r = await p.signMessage(i.message); out.push({ signedMessage: i.message, signature: r.signature }); } return out; } },
       'solana:signTransaction': { version: '1.0.0', supportedTransactionVersions: versions, signTransaction: async (...inputs: Array<{ transaction: Uint8Array }>) => { const out = []; for (const i of inputs) out.push({ signedTransaction: await p.signTransactionBytes(i.transaction) }); return out; } },
       'solana:signAndSendTransaction': { version: '1.0.0', supportedTransactionVersions: versions, signAndSendTransaction: async (...inputs: Array<{ transaction: Uint8Array; options?: any }>) => { const out = []; for (const i of inputs) { const r = await p.signAndSendTransaction(i.transaction, i.options); out.push({ signature: b58decode(r.signature) }); } return out; } },

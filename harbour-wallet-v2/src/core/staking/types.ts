@@ -1,5 +1,5 @@
 // Native staking domain types (pure; no DOM / chrome APIs). Amounts are smallest-unit decimal strings.
-export type StakeFamily = 'cosmos' | 'solana' | 'lido' | 'bsc';
+export type StakeFamily = 'cosmos' | 'solana' | 'lido' | 'bsc' | 'tron' | 'tezos' | 'cardano' | 'polkadot';
 export type StakeAction = 'stake' | 'unstake' | 'redelegate' | 'compound' | 'claim' | 'withdraw';
 
 export interface StakeAssetDef {

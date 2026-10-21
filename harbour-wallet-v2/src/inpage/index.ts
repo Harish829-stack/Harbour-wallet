@@ -4,6 +4,7 @@ import { Bridge } from './bridge';
 import { HarbourEthereum } from './ethereum';
 import { HarbourSolana, HARBOUR_ICON, registerWalletStandard } from './solana';
 import { isBlockedDomain } from '../core/provider/origin';
+import { HarbourKeplr, HarbourAptos, HarbourTron, HarbourBitcoin, HarbourTon, registerSuiWallet } from './multi';
 
 function define(name: string, value: unknown, writable = true) {
   try { Object.defineProperty(window, name, { configurable: true, enumerable: true, writable, value }); } catch { try { (window as any)[name] = value; } catch { /* page froze window */ } }
@@ -16,9 +17,10 @@ function uuid(): string { try { if (crypto.randomUUID) return crypto.randomUUID(
   const bridge = new Bridge();
   const eth = new HarbourEthereum(bridge);
   const sol = new HarbourSolana(bridge);
+  const keplr = new HarbourKeplr(bridge); const aptos = new HarbourAptos(bridge); const tron = new HarbourTron(bridge); const btc = new HarbourBitcoin(bridge); const ton = new HarbourTon(bridge, HARBOUR_ICON);
 
   // window.trustwallet: TW exposes the Ethereum provider's API plus per-chain providers on this namespace.
-  const tw: any = { isHarbour: true, isTrust: true, isTrustWallet: true, request: eth.request, send: eth.send, sendAsync: eth.sendAsync, on: (e: string, f: any) => eth.on(e, f), off: (e: string, f: any) => eth.off(e, f), removeListener: (e: string, f: any) => eth.removeListener(e, f), removeAllListeners: (e?: string) => eth.removeAllListeners(e), enable: eth.enable, solana: sol, ethereum: eth };
+  const tw: any = { isHarbour: true, isTrust: true, isTrustWallet: true, request: eth.request, send: eth.send, sendAsync: eth.sendAsync, on: (e: string, f: any) => eth.on(e, f), off: (e: string, f: any) => eth.off(e, f), removeListener: (e: string, f: any) => eth.removeListener(e, f), removeAllListeners: (e?: string) => eth.removeAllListeners(e), enable: eth.enable, solana: sol, ethereum: eth, cosmos: keplr, aptos, tron, bitcoin: btc, ton };
   const twProxy = new Proxy(tw, { get(t, k, r) { switch (k) { case 'chainId': return eth.getChainId; case 'networkVersion': return eth.getNetworkVersion; case 'address': return eth.getAddress; } return Reflect.get(t, k, r); } });
   define('trustwallet', twProxy); define('trustWallet', twProxy); define('harbour', twProxy);
 
@@ -28,6 +30,11 @@ function uuid(): string { try { if (crypto.randomUUID) return crypto.randomUUID(
   else (window as any).original = existing;
   bridge.onInit((s) => { if ((window as any).ethereum && (window as any).ethereum !== eth && s.prefs.defaultWallet) { (window as any).original = (window as any).ethereum; define('ethereum', eth); } });
   if (!(window as any).solana) define('solana', sol);
+  define('harbourTon', ton);
+  if (!(window as any).keplr) define('keplr', keplr);
+  if (!(window as any).aptos) define('aptos', aptos);
+  if (!(window as any).tronLink) define('tronLink', tron);
+  if (!(window as any).unisat) define('harbourBitcoin', btc);
   try { window.dispatchEvent(new Event('ethereum#initialized')); } catch { /* ignore */ }
 
   // EIP-6963 multi-wallet discovery
@@ -35,4 +42,5 @@ function uuid(): string { try { if (crypto.randomUUID) return crypto.randomUUID(
   const announce = () => { try { window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: Object.freeze({ info, provider: eth }) })); } catch { /* ignore */ } };
   window.addEventListener('eip6963:requestProvider', announce); announce();
   registerWalletStandard(sol);
+  registerSuiWallet(bridge, HARBOUR_ICON);
 })();

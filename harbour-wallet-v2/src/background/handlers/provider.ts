@@ -8,6 +8,17 @@ import { evmNetwork } from '../provider/networks';
 import { normalizeOrigin, displayHost } from '../../core/provider/origin';
 import { decodeString, encodeAllowanceCall, encodeApprove, isUnlimited, SEL } from '../../core/provider/decode';
 import { ERR, serializeError, ProviderError } from '../../core/provider/errors';
+import { passkeyMeta, verifyPasskeySecret } from '../../core/passkeyService';
+import { session } from '../../core/storage';
+
+// Biometric approval: a verified proof is bound to ONE pending request and expires in 60 s; connect-type requests never need it.
+const BIO_KEY = 'wallet:provider:bioProof'; const BIO_TTL = 60_000;
+const NEEDS_BIO = new Set(['sign', 'typed', 'tx', 'solSignMessage', 'solSignTx', 'solSignAll', 'solSignSend', 'multiSign', 'tonSend', 'tonProof']);
+async function bioRequirement(kind: string, params?: any): Promise<{ required: boolean; credentialId: string | null }> {
+  const needs = NEEDS_BIO.has(kind) || (kind === 'multiConnect' && typeof params?.proofPayload === 'string'); // a TON ton_proof is a signature
+  if (!needs || !(await perms.prefs()).biometricApproval) return { required: false, credentialId: null };
+  const meta = await passkeyMeta(); return { required: !!meta, credentialId: meta?.credentialId ?? null };
+}
 
 const conView = (c: any) => ({ id: c.id, origin: c.origin, host: displayHost(c.origin), title: c.title, icon: c.icon ?? null, walletName: c.walletName, accountName: c.accountName, accountIndex: c.accountIndex, walletId: c.walletId, evmAddress: c.evmAddress ?? null, solanaAddress: c.solanaAddress ?? null, chainId: c.chainId, chainName: evmNetwork(c.chainId)?.name ?? `Chain ${c.chainId}`, namespaces: c.namespaces, connectedAt: c.connectedAt, lastUsedAt: c.lastUsedAt });
 const bad = (error: string) => ({ ok: false, error });
@@ -25,14 +36,29 @@ export const handlers: HandlerMap = {
   async providerView(m, ctx) {
     const p = await pending.get(String(m.id ?? '')); if (!p) return { ok: false, gone: true, error: 'This request is no longer pending.' };
     if (!(await ctx.vault.isUnlocked())) return { ok: true, locked: true, summary: { id: p.id, kind: p.kind, host: displayHost(p.origin), title: p.title ?? displayHost(p.origin), icon: p.icon ?? null } };
-    try { return { ok: true, view: await buildView(p, viewDeps()) }; } catch (e) { return { ok: false, error: serializeError(e).message }; }
+    try { return { ok: true, view: { ...(await buildView(p, viewDeps())), bio: await bioRequirement(p.kind, p.params) } }; } catch (e) { return { ok: false, error: serializeError(e).message }; }
   },
   async providerResolve(m) {
     const d = m.decision ?? {};
     const decision = { approve: d.approve === true, accountIndex: Number.isInteger(d.accountIndex) ? d.accountIndex : undefined, chainId: Number.isSafeInteger(d.chainId) ? d.chainId : undefined,
       gasLimit: typeof d.gasLimit === 'string' && /^\d{1,20}$/.test(d.gasLimit) ? d.gasLimit : undefined, feeLevel: ['safe', 'average', 'fast'].includes(d.feeLevel) ? d.feeLevel : undefined,
       fee: d.fee && typeof d.fee === 'object' ? Object.fromEntries(['maxFeePerGas', 'maxPriorityFeePerGas', 'gasPrice'].filter((k) => typeof d.fee[k] === 'string' && /^\d{1,30}$/.test(d.fee[k])).map((k) => [k, d.fee[k]])) : undefined };
-    return getProvider().resolve(String(m.id ?? ''), decision);
+    const id = String(m.id ?? '');
+    if (decision.approve) {
+      const p = await pending.get(id);
+      if (p && (await bioRequirement(p.kind, p.params)).required) {
+        const proof = await session.get<{ id: string; until: number }>(BIO_KEY);
+        if (!proof || proof.id !== id || proof.until < Date.now()) return { ok: false, needsBio: true, error: 'Biometric confirmation is required.' };
+        await session.remove(BIO_KEY); // single use
+      }
+    }
+    return getProvider().resolve(id, decision);
+  },
+  /** The approval window ran the OS biometric prompt and sends the secret it unsealed; only a secret that opens the sealed vault key counts. */
+  async providerBioProof(m) {
+    const id = String(m.id ?? ''); if (!(await pending.get(id))) return bad('This request is no longer pending.');
+    try { await verifyPasskeySecret(String(m.secret ?? '')); } catch (e: any) { return bad(e?.message === 'INVALID_PASSKEY_SECRET' ? 'Biometric verification failed' : String(e?.message ?? 'Biometric verification failed')); }
+    await session.set(BIO_KEY, { id, until: Date.now() + BIO_TTL }); return { ok: true };
   },
 
   // ---- Settings > Connections (TW: /settings/connections, /settings/connection/:id)
@@ -65,7 +91,7 @@ export const handlers: HandlerMap = {
     return { ok: true };
   },
   async providerBlacklistRemove(m) { return { ok: await perms.removeBlacklist(String(m.id ?? '')) }; },
-  async providerPrefs(m) { const prefs = typeof m.defaultWallet === 'boolean' ? await perms.setPrefs({ defaultWallet: m.defaultWallet }) : await perms.prefs(); return { ok: true, prefs }; },
+  async providerPrefs(m) { const prefs = typeof m.defaultWallet === 'boolean' || typeof m.biometricApproval === 'boolean' ? await perms.setPrefs({ ...(typeof m.defaultWallet === 'boolean' ? { defaultWallet: m.defaultWallet } : {}), ...(typeof m.biometricApproval === 'boolean' ? { biometricApproval: m.biometricApproval } : {}) }) : await perms.prefs(); return { ok: true, prefs }; },
 
   // ---- Home > Approvals (token allowances granted through Harbour, re-verified on chain)
   async providerApprovals() {

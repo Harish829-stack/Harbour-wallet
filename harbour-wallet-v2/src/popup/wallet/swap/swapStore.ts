@@ -7,6 +7,8 @@ import { nativeAsset, sameAsset } from '../../../core/swap/tokens';
 export interface SwapState {
   from: SwapAsset | null; to: SwapAsset | null; amount: string;
   settings: SwapSettings; balances: Record<string, string>; history: SwapHistoryItem[];
+  /** Remote flag + gateway bundler present: the Gasless swaps setting is shown. */
+  gaslessAvailable?: boolean;
   ack: boolean;            // user accepted the high price impact
 }
 const initial = (): SwapState => ({ from: nativeAsset('ethereum'), to: null, amount: '', settings: DEFAULT_SWAP_SETTINGS, balances: {}, history: [], ack: false });

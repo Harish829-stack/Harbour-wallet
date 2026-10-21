@@ -34,7 +34,7 @@ async function loadReports(walletId: string): Promise<NftReportState> {
 async function saveReports(walletId: string, s: NftReportState) {
   const all = (await local.get<Record<string, unknown>>(REPORTS_KEY)) ?? {}; all[walletId] = s; await local.set(REPORTS_KEY, all);
 }
-const summary = (c: NftCollection) => ({ id: c.id, chainId: c.chainId, contract: c.contract, name: c.name, symbol: c.symbol, image: c.image, owned: c.owned, standard: c.standard, suspicious: c.suspicious, preview: c.items.slice(0, 3).map((i) => i.image).filter(Boolean) });
+const summary = (c: NftCollection) => ({ id: c.id, chainId: c.chainId, contract: c.contract, name: c.name, symbol: c.symbol, image: c.image, owned: c.owned, standard: c.standard, suspicious: c.suspicious, floorPrice: c.floorPrice, preview: c.items.slice(0, 3).map((i) => i.image).filter(Boolean) });
 
 async function collections(ctx: HandlerCtx, refresh: boolean, chainIds?: string[]) {
   const info = await activeInfo(ctx); if (!info) throw bad('No wallet found', 'no_wallet');

@@ -11,16 +11,30 @@ const DEFAULT_RPC: Record<number, string> = {
 };
 
 import { rpcOverride } from './networkRegistry';
+import { GATEWAY_URL } from '../kit/endpoints';
+// Chains the gateway proxies through its server-held Alchemy key (see gateway/worker.ts ALCHEMY_HOSTS).
+export const GATEWAY_EVM_CHAINS = new Set([1, 56, 137, 42161, 8453, 10]);
+export const gatewayRpc = (chainId: number): string | undefined => (GATEWAY_URL && GATEWAY_EVM_CHAINS.has(chainId) ? `${GATEWAY_URL}/alchemy/${chainId}/rpc` : undefined);
 export function rpcUrl(chainId: number): string | undefined {
   const o = rpcOverride(chainId); if (o) return o;
   const env = (import.meta as any).env?.[`VITE_RPC_${chainId}`];
-  return (typeof env === 'string' && env) || DEFAULT_RPC[chainId];
+  return (typeof env === 'string' && env) || gatewayRpc(chainId) || DEFAULT_RPC[chainId];
+}
+
+/** Ordered RPC URLs for a chain: user override / env, then the gateway (keyed Alchemy), then the public default. */
+export function rpcUrlList(chainId: number): string[] {
+  const out: string[] = [];
+  const o = rpcOverride(chainId); if (o) out.push(o);
+  const env = (import.meta as any).env?.[`VITE_RPC_${chainId}`]; if (typeof env === 'string' && env) out.push(env);
+  const gw = gatewayRpc(chainId); if (gw) out.push(gw);
+  if (DEFAULT_RPC[chainId]) out.push(DEFAULT_RPC[chainId]);
+  return [...new Set(out)];
 }
 
 // Solana JSON-RPC (public default; override with VITE_RPC_SOLANA, e.g. a user's Helius/QuickNode URL).
 export function solanaRpcUrl(): string {
   const env = (import.meta as any).env?.VITE_RPC_SOLANA;
-  return (typeof env === 'string' && env) || 'https://api.mainnet-beta.solana.com';
+  return (typeof env === 'string' && env) || (GATEWAY_URL ? `${GATEWAY_URL}/helius/rpc` : 'https://api.mainnet-beta.solana.com');
 }
 // MEV-protected broadcast endpoints (TW "Best price execution" / "MEV protection" setting).
 // How TW itself implements this is UNKNOWN (it submits through its own backend); Harbour broadcasts

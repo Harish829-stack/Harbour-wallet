@@ -71,9 +71,10 @@ const MAX_INFLIGHT = 200;
   window.addEventListener('message', (e: MessageEvent) => {
     if (e.source !== window || !e.data || e.data.type !== HELLO || e.ports.length !== 1) return;
     if (location.origin !== 'null' && e.origin !== location.origin) return;
+    if (typeof e.data.nonce !== 'string' || !/^[0-9a-f]{32}$/.test(e.data.nonce)) return; // handshake must carry the page load's nonce
     if (page) return; // first channel wins (the provider keeps offering new ones until it is acknowledged)
     page = e.ports[0]; page.onmessage = onPageMessage;
-    try { page.postMessage({ t: 'ack' }); } catch { /* ignore */ }
+    try { page.postMessage({ t: 'ack', nonce: e.data.nonce }); } catch { /* ignore */ }
     if (lastInit) toPage(lastInit);
     connect();
   });

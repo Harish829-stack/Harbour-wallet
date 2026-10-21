@@ -12,8 +12,10 @@ import { handlers as onboardingExtra } from './onboardingExtra';
 import { handlers as settingsExtra } from './settingsExtra';
 import { handlers as walletconnect } from './walletconnect';
 import { handlers as ledger } from './ledger';
+import { handlers as kitEvents } from './kitEvents';
 
-const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...earn, ...nfts, ...ramps, ...discover, ...onboardingExtra, ...settingsExtra, ...walletconnect, ...ledger };
+const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...earn, ...nfts, ...ramps, ...discover, ...onboardingExtra, ...settingsExtra, ...walletconnect, ...ledger, ...kitEvents };
+export const allExtraHandlers = (): HandlerMap => ALL;
 export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
   const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;
   if (!h) return { error: 'unknown_message' };

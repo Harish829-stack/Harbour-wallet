@@ -9,6 +9,7 @@ import { utxoBalance } from './utxo';
 import { cosmosBalance } from './cosmos';
 import { substrateAdapter } from './substrate';
 import * as O from './others';
+import { cardanoBalance } from './cardano';
 
 export const BALANCE_ADAPTERS: Partial<Record<ChainKind, BalanceAdapter>> = {
   evm: evmBalance,
@@ -18,7 +19,7 @@ export const BALANCE_ADAPTERS: Partial<Record<ChainKind, BalanceAdapter>> = {
   ripple: O.rippleBalance, stellar: O.stellarBalance, tezos: O.tezosBalance, filecoin: O.filecoinBalance, waves: O.wavesBalance,
   vechain: O.vechainBalance, harmony: O.harmonyBalance, icon: O.iconBalance, zilliqa: O.zilliqaBalance, multiversx: O.multiversxBalance,
   theta: O.thetaBalance, iotex: O.iotexBalance, icp: O.icpBalance, fio: O.fioBalance, ontology: O.ontologyBalance,
-  nimiq: O.nimiqBalance, aion: O.aionBalance,
+  nimiq: O.nimiqBalance, aion: O.aionBalance, cardano: cardanoBalance,
   // Registered by core/chains/adapters/<kind>.ts as they are implemented (see evidence/30-chain-registry/ADAPTERS.md):
   // utxo, cosmos, tron, ton, aptos, sui, near, algorand, ripple, stellar, substrate, tezos, filecoin, waves, vechain, harmony, icon, zilliqa, …
 };

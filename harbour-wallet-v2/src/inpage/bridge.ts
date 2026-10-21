@@ -13,6 +13,9 @@ export class Bridge {
   private seq = 0;
   private initWaiters: Array<(s: InitState) => void> = [];
   state: InitState | null = null;
+  /** Accounts connected in THIS page before the next state refresh arrives (the refresh is asynchronous, a connect() must be usable straight away). */
+  private multiLocal: Record<string, { address: string; publicKey: string; at: number }> = {};
+  multi(chain: string): { address: string; publicKey: string } | undefined { const s = this.state?.multi?.[chain]; if (s) return s; const l = this.multiLocal[chain]; return l && Date.now() - l.at < 5000 ? l : undefined; }
   private listeners = new Set<(e: BridgeEvent) => void>(); private initListeners = new Set<(s: InitState, first: boolean) => void>();
   private rid = Math.random().toString(36).slice(2, 10);
 
@@ -20,6 +23,8 @@ export class Bridge {
   private hello() {
     // The content script may load after this script: keep offering fresh channels (a transferred port cannot be re-sent) until one is acknowledged.
     let tries = 0; let done = false;
+    // Per-load nonce: the content script must echo it in its ack, so a script that merely replays/forges a handshake cannot take over the channel.
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, '0')).join('');
     const target = location.origin && location.origin !== 'null' ? location.origin : '*';
     const attempt = () => {
       if (done || ++tries > 200) { clearInterval(timer); return; }
@@ -27,9 +32,9 @@ export class Bridge {
       ch.port1.onmessage = (ev) => {
         const m = ev.data;
         if (done) { if (this.port === ch.port1) this.onMessage(m); return; }
-        if (m && typeof m === 'object' && m.t === 'ack') { done = true; this.port = ch.port1; clearInterval(timer); }
+        if (m && typeof m === 'object' && m.t === 'ack' && m.nonce === nonce) { done = true; this.port = ch.port1; clearInterval(timer); }
       };
-      try { window.postMessage({ type: HELLO, v: 1 }, target, [ch.port2]); } catch { /* retry on the next tick */ }
+      try { window.postMessage({ type: HELLO, v: 1, nonce }, target, [ch.port2]); } catch { /* retry on the next tick */ }
     };
     const timer: any = setInterval(attempt, 50); attempt();
   }
@@ -54,6 +59,7 @@ export class Bridge {
   async request(ns: Namespace, method: string, params?: unknown): Promise<any> {
     await this.ready();
     const id = `h${this.rid}${(++this.seq).toString(36)}`;
-    return new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject }); try { this.port!.postMessage({ t: 'req', id, ns, method, ...(params !== undefined ? { params } : {}) }); } catch (e) { this.pending.delete(id); reject(new ProviderRpcError(-32603, 'Could not reach Harbour.')); } });
+    const track = (r: any) => { if (ns !== 'multi' || !params || typeof (params as any).chain !== 'string') return r; const chain = (params as any).chain as string; if (method === 'connect' && r && typeof r.publicKey === 'string') this.multiLocal[chain] = { address: String(r.friendly ?? r.address), publicKey: r.publicKey, at: Date.now() }; else if (method === 'disconnect') delete this.multiLocal[chain]; return r; };
+    return new Promise((resolve, reject) => { this.pending.set(id, { resolve: (r) => resolve(track(r)), reject }); try { this.port!.postMessage({ t: 'req', id, ns, method, ...(params !== undefined ? { params } : {}) }); } catch (e) { this.pending.delete(id); reject(new ProviderRpcError(-32603, 'Could not reach Harbour.')); } });
   }
 }

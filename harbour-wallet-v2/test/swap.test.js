@@ -182,5 +182,6 @@ test('asset ids follow the TW convention and natives are per-domain', () => {
   assert.equal(M.nativeAsset('solana').assetId, 'c501');
   assert.match(M.makeToken('ethereum', USDC, 'USDC', 'USD Coin', 6).assetId, /^c60_t0x/i);
   assert.ok(M.popularAssets('base').every((a) => a.domainId === 'base'));
-  assert.equal(M.SWAP_DOMAINS.some((d) => d.id === 'bitcoin' || d.id === 'sepolia'), false);
+  assert.equal(M.SWAP_DOMAINS.some((d) => d.id === 'sepolia'), false); // bitcoin swaps go through THORChain
+  assert.equal(M.nativeAsset('bitcoin').assetId, 'c0');
 });

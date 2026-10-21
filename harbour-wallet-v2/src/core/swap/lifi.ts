@@ -9,15 +9,15 @@ import { assetId, logoFor } from './tokens';
 import { classifyAggregatorError, swapError } from './errors';
 import { QUOTE_REFRESH_SECONDS } from './rules';
 
-export const LIFI_BASE = 'https://li.quest/v1';
+import { GATEWAY_URL } from '../../kit/endpoints';
+// Keys are held by harbour-gateway; without a gateway the keyless public endpoint is used (rate-limited).
+export const LIFI_BASE = GATEWAY_URL ? `${GATEWAY_URL}/lifi/v1` : 'https://li.quest/v1';
 export const EVM_NATIVE = '0x0000000000000000000000000000000000000000';
 export const SOL_NATIVE = '11111111111111111111111111111111';
 type F = typeof fetch;
 
 const headers = (): Record<string, string> => {
   const h: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json' };
-  const key = (import.meta as any)?.env?.VITE_LIFI_API_KEY;
-  if (typeof key === 'string' && key) h['x-lifi-api-key'] = key;
   return h;
 };
 

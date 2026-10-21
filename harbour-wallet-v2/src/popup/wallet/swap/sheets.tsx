@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Sheet, Ic, ICON } from '../ui';
-import type { SwapRoute, SwapSettings, SwapSortBy } from '../../../core/swap/types';
+import type { SwapAsset, SwapRoute, SwapSettings, SwapSortBy } from '../../../core/swap/types';
 import { SLIPPAGE_PRESETS, stepSlippage, normalizeSlippage, acceptSlippageInput, isHighSlippage, SLIPPAGE_STEP } from '../../../core/swap/rules';
 import { fromAtomic, fmtToken } from '../../../core/swap/amount';
 import { setSwap, useSwapStore } from './swapStore';
@@ -26,8 +26,8 @@ const Row: React.FC<{ title: string; desc: string; on: boolean; onChange: (v: bo
 
 // TW SettingsModal: slippage stepper (±0.1, ≤30), presets 0.1/0.5/1.0/2.5, >5% warning, plus the
 // swap settings flags (mev, solanaTurboSwaps, unlimitedAllowance).
-export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: string }> = ({ onClose }) => {
-  const { settings } = useSwapStore();
+export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: string }> = ({ onClose, fromDomainId }) => {
+  const { settings, gaslessAvailable } = useSwapStore();
   const [draft, setDraft] = useState(settings.slippage);
   const commit = (v: string) => { const n = normalizeSlippage(v); setDraft(n); if (n !== settings.slippage) void save({ slippage: n }); };
   return (
@@ -62,9 +62,61 @@ export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: s
       <Row testid="setting-unlimited-allowance" title="Unlimited allowance" on={settings.unlimitedAllowance} onChange={(v) => save({ unlimitedAllowance: v })}
         desc="Approve a token once and swap any amount later. Off is safer: each swap approves only the amount it spends."
         warn="Unlimited approval is not safe unless you fully trust the contract" />
+      {gaslessAvailable && <Row testid="setting-gasless" title="Gasless swaps (beta)" on={settings.gasless} onChange={(v) => save({ gasless: v })}
+        desc="Network fees are sponsored on Ethereum, BNB Chain, Polygon, Arbitrum and Base. The first gasless swap upgrades your account with EIP-7702 to the audited Simple7702Account; you can keep using it as a normal account."
+        warn="Gasless swaps are in beta. If sponsorship is unavailable, the swap is sent as a normal transaction and you pay the fee." />}
+      <DustPanel domainId={fromDomainId && domainById(fromDomainId)?.kind !== 'utxo' ? fromDomainId : 'ethereum'} />
     </Sheet>
   );
 };
+// Dust cleaner: small token balances on the current network, converted into its native coin one swap at a time.
+type Dust = { asset: SwapAsset; balance: string; usd: number };
+const DustPanel: React.FC<{ domainId: string }> = ({ domainId }) => {
+  const [items, setItems] = useState<Dust[] | null>(null);
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState<'scan' | 'convert' | null>(null);
+  const [note, setNote] = useState('');
+  const d = domainById(domainId);
+  const scan = async () => {
+    setBusy('scan'); setNote('');
+    const r = await bg({ type: 'swapDustScan', domainId }).catch(() => null);
+    setBusy(null);
+    if (!r?.ok) { setNote(r?.error ?? 'Couldn’t check balances'); return; }
+    setItems(r.items); setSel(Object.fromEntries(r.items.map((i: Dust) => [i.asset.assetId, true])));
+    if (!r.items.length) setNote('No small balances found on this network.');
+  };
+  const convert = async () => {
+    const assets = (items ?? []).filter((i) => sel[i.asset.assetId]).map((i) => i.asset);
+    if (!assets.length) return;
+    setBusy('convert'); setNote('');
+    const r = await bg({ type: 'swapDustConvert', assets }).catch(() => null);
+    setBusy(null);
+    const ok = (r?.results ?? []).filter((x: any) => x.ok).length; const failed = (r?.results ?? []).filter((x: any) => !x.ok);
+    setNote(`${ok} of ${assets.length} converted to ${d?.nativeSymbol ?? 'native'}.${failed.length ? ` Failed: ${failed.map((x: any) => x.error).join('; ')}` : ''}`);
+    if (ok) setItems((prev) => (prev ?? []).filter((i) => !(r.results as any[]).some((x) => x.ok && x.assetId === i.asset.assetId)));
+  };
+  return (
+    <div style={{ padding: '12px 0', borderTop: `1px solid ${T.border}` }} data-testid="dust-panel">
+      <div style={{ fontWeight: 700, fontSize: 14 }}>Clean up small balances</div>
+      <div style={{ fontSize: 12, color: T.sub, marginTop: 2, lineHeight: 1.4 }}>Convert tokens worth under $5 on {d?.name ?? 'this network'} into {d?.nativeSymbol ?? 'the native coin'}. Each conversion is a separate swap with its own network fee.</div>
+      {items && items.map((i) => (
+        <label key={i.asset.assetId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!sel[i.asset.assetId]} onChange={(e) => setSel((p) => ({ ...p, [i.asset.assetId]: e.target.checked }))} data-testid="dust-item" />
+          <AssetLogo asset={i.asset} />
+          <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{i.asset.symbol}</span>
+          <span style={{ fontSize: 12.5, color: T.sub }}>{fmtToken(fromAtomic(i.balance, i.asset.decimals), 6)} · ${i.usd.toFixed(2)}</span>
+        </label>
+      ))}
+      {note && <div style={{ fontSize: 12, color: T.sub, marginTop: 8 }} data-testid="dust-note">{note}</div>}
+      <button type="button" data-testid={items?.length ? 'dust-convert' : 'dust-scan'} disabled={!!busy || (!!items?.length && !Object.values(sel).some(Boolean))}
+        onClick={() => (items?.length ? convert() : scan())}
+        style={{ marginTop: 10, width: '100%', padding: '10px 0', borderRadius: 999, border: 'none', cursor: busy ? 'default' : 'pointer', fontWeight: 700, fontSize: 13, background: T.accentSoft, color: T.accent, opacity: busy ? 0.6 : 1 }}>
+        {busy === 'scan' ? 'Checking…' : busy === 'convert' ? 'Converting…' : items?.length ? `Convert to ${d?.nativeSymbol ?? 'native'}` : 'Find small balances'}
+      </button>
+    </div>
+  );
+};
+
 const stepBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 999, border: 'none', background: T.bgAlt, color: T.text, fontSize: 18, fontWeight: 600, cursor: 'pointer', lineHeight: 1 };
 
 const SORTS: Array<[SwapSortBy, string]> = [['quantity', 'Best price'], ['latency', 'Fastest'], ['security', 'Most secure'], ['outcome', 'Recommended']];
@@ -82,8 +134,8 @@ export const ProvidersSheet: React.FC<{ routes: SwapRoute[]; selectedId?: string
             style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '12px', marginBottom: 8, borderRadius: 14, cursor: 'pointer', border: `1.5px solid ${sel ? T.accent : T.border}`, background: T.bg, color: T.text }}>
             {st.provider.logoUrl ? <img src={st.provider.logoUrl} width={30} height={30} alt="" style={{ borderRadius: 8 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} /> : <AssetLogo asset={st.to.asset} size={30} />}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{st.provider.name}</div>
-              <div style={{ fontSize: 11.5, color: T.sub }}>{[domainById(st.fromDomainId) !== domainById(st.toDomainId) ? 'Cross-chain' : 'Same chain', r.totalSeconds ? `~${r.totalSeconds < 60 ? r.totalSeconds + 's' : Math.round(r.totalSeconds / 60) + ' min'}` : '', ...r.tags.slice(0, 2).map((t) => t[0] + t.slice(1).toLowerCase())].filter(Boolean).join(' · ')}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>{st.provider.name}{r.tags.includes('BEST_RETURN') && <span data-testid="provider-best" style={{ fontSize: 10.5, fontWeight: 700, color: T.accent, background: T.accentSoft, borderRadius: 6, padding: '1px 6px' }}>Best</span>}</div>
+              <div style={{ fontSize: 11.5, color: T.sub }}>{[domainById(st.fromDomainId) !== domainById(st.toDomainId) ? 'Cross-chain' : 'Same chain', r.totalSeconds ? `~${r.totalSeconds < 60 ? r.totalSeconds + 's' : Math.round(r.totalSeconds / 60) + ' min'}` : '', ...r.tags.filter((t) => t !== 'BEST_RETURN').slice(0, 2).map((t) => t[0] + t.slice(1).toLowerCase())].filter(Boolean).join(' · ')}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{fmtToken(fromAtomic(st.to.amount, st.to.asset.decimals), 6)}</div>

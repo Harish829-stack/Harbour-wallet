@@ -1,7 +1,7 @@
 // EVM staking through public contracts: Lido (Ethereum, stETH + WithdrawalQueueERC721) and BNB Chain StakeHub (native BNB
 // delegation). Read paths are `eth_call` over the chain's public RPC list (injectable fetch); write paths are plain
 // call plans ({to,data,value}) signed by the background (viem) — nothing here touches keys.
-import { encodeFunctionData, decodeFunctionResult, parseAbi, isAddress, getAddress } from 'viem';
+import { encodeFunctionData, decodeFunctionResult, parseAbi, isAddress, getAddress, keccak256, encodePacked } from 'viem';
 import type { Fetcher } from '../chains/adapters/types';
 import { firstOf, jsonPost } from '../chains/adapters/types';
 import type { Position, StakeAction, StakeOverview, Validator, ValidatorMeta } from './types';
@@ -90,7 +90,7 @@ export async function fetchLidoOverview(f: Fetcher, urls: string[], owner: strin
   const ids = [...(decodeFunctionResult({ abi: queueAbi, functionName: 'getWithdrawalRequests', data: idsRaw }) as readonly bigint[])];
   const positions: Position[] = [];
   if (bal > 0n) positions.push({ id: 'steth', validatorId: 'lido', validatorName: 'Lido', amount: bal.toString(), status: 'active', apr });
-  let unbonding = 0n, claimable = 0n;
+  let unbonding = 0n, claimable = 0n; let rocketStaked = 0n;
   if (ids.length) {
     const recent = ids.slice(-50);
     const stRaw = await ethCall(f, urls, LIDO.queue, encodeFunctionData({ abi: queueAbi, functionName: 'getWithdrawalStatus', args: [recent] }));
@@ -102,7 +102,65 @@ export async function fetchLidoOverview(f: Fetcher, urls: string[], owner: strin
     });
   }
   const validators: Validator[] = [{ id: 'lido', name: 'Lido', description: 'Liquid staking pool (stETH)', website: 'https://lido.fi', apr, commission: 10, active: true }];
-  return { overview: { chainId: 'ethereum', symbol: 'ETH', decimals: 18, staked: bal.toString(), rewards: '0', unbonding: unbonding.toString(), claimable: claimable.toString(), apr, positions, lockDays: null }, validators };
+  // Rocket Pool is offered next to Lido (fallback when Lido is paused or the user prefers rETH). Its failure never hides Lido.
+  try {
+    const [rp, rpApr] = await Promise.all([rocketPosition(f, urls, owner), rocketApr(f)]);
+    validators.push({ id: 'rocketpool', name: 'Rocket Pool', description: 'Decentralised liquid staking (rETH)', website: 'https://rocketpool.net', apr: rpApr, commission: 14, active: true });
+    if (rp.reth > 0n) positions.push({ id: 'reth', validatorId: 'rocketpool', validatorName: 'Rocket Pool', amount: rp.eth.toString(), status: 'active', apr: rpApr });
+    rocketStaked = rp.eth;
+  } catch { /* Rocket Pool unreachable: Lido only */ }
+  return { overview: { chainId: 'ethereum', symbol: 'ETH', decimals: 18, staked: (bal + rocketStaked).toString(), rewards: '0', unbonding: unbonding.toString(), claimable: claimable.toString(), apr, positions, lockDays: null }, validators };
+}
+
+// ======================================================= Rocket Pool (Ethereum, rETH) — Lido fallback
+// rETH is non-rebasing: its ETH value grows. Deposits go to RocketDepositPool (resolved from RocketStorage, it is upgradable);
+// unstaking burns rETH against the protocol's collateral, which can be short — then the user swaps rETH instead.
+export const ROCKET = {
+  storage: '0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46' as const,
+  rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393' as const,
+  aprUrl: 'https://api.rocketpool.net/mainnet/reth/apr',
+  minDeposit: 10n ** 16n, // 0.01 ETH
+};
+export const rocketStorageAbi = parseAbi(['function getAddress(bytes32 _key) view returns (address)']);
+export const rocketDepositAbi = parseAbi(['function deposit() payable', 'function getMaximumDepositAmount() view returns (uint256)']);
+export const rethAbi = parseAbi(['function balanceOf(address) view returns (uint256)', 'function getEthValue(uint256 _rethAmount) view returns (uint256)', 'function getRethValue(uint256 _ethAmount) view returns (uint256)', 'function getTotalCollateral() view returns (uint256)', 'function burn(uint256 _rethAmount)']);
+export const rocketKey = (name: string) => keccak256(encodePacked(['string', 'string'], ['contract.address', name]));
+export async function rocketDepositPool(f: Fetcher, urls: string[]): Promise<`0x${string}`> {
+  const raw = await ethCall(f, urls, ROCKET.storage, encodeFunctionData({ abi: rocketStorageAbi, functionName: 'getAddress', args: [rocketKey('rocketDepositPool')] }));
+  const a = decodeFunctionResult({ abi: rocketStorageAbi, functionName: 'getAddress', data: raw }) as `0x${string}`;
+  if (!isEvmAddress(a) || a === ZERO) throw stakeError('unavailable', 'Rocket Pool deposit pool not found');
+  return a;
+}
+const readR = async (f: Fetcher, urls: string[], fn: 'balanceOf' | 'getEthValue' | 'getRethValue' | 'getTotalCollateral', args: readonly unknown[]) =>
+  decodeFunctionResult({ abi: rethAbi, functionName: fn, data: await ethCall(f, urls, ROCKET.rETH, encodeFunctionData({ abi: rethAbi, functionName: fn, args } as any)) }) as bigint;
+export async function rocketApr(f: Fetcher): Promise<number | null> {
+  try {
+    const res = await f(ROCKET.aprUrl, { signal: AbortSignal.timeout(8000) }); if (!res.ok) return null;
+    const v = Number((await res.json())?.yearlyAPR);
+    return Number.isFinite(v) && v > 0 && v < 100 ? Math.round(v * 100) / 100 : null;
+  } catch { return null; }
+}
+/** rETH balance and its ETH value. */
+export async function rocketPosition(f: Fetcher, urls: string[], owner: string): Promise<{ reth: bigint; eth: bigint }> {
+  const reth = await readR(f, urls, 'balanceOf', [addr(owner)]);
+  return { reth, eth: reth > 0n ? await readR(f, urls, 'getEthValue', [reth]) : 0n };
+}
+export async function rocketStakePlan(f: Fetcher, urls: string[], amount: bigint): Promise<CallPlan[]> {
+  if (amount < ROCKET.minDeposit) throw stakeError('bad_amount', 'Rocket Pool accepts deposits from 0.01 ETH');
+  const pool = await rocketDepositPool(f, urls);
+  const max = decodeFunctionResult({ abi: rocketDepositAbi, functionName: 'getMaximumDepositAmount', data: await ethCall(f, urls, pool, encodeFunctionData({ abi: rocketDepositAbi, functionName: 'getMaximumDepositAmount' })) }) as bigint;
+  if (amount > max) throw stakeError('pool_full', 'The Rocket Pool deposit pool is full right now; try Lido or a smaller amount');
+  return [{ to: pool, data: encodeFunctionData({ abi: rocketDepositAbi, functionName: 'deposit' }), value: amount, label: 'Stake ETH (Rocket Pool deposit)', gasFallback: 250_000n }];
+}
+/** Burn rETH worth `ethAmount` (or the whole balance when `all`). */
+export async function rocketUnstakePlan(f: Fetcher, urls: string[], owner: string, ethAmount: bigint, all: boolean): Promise<{ plan: CallPlan[]; eth: bigint }> {
+  const pos = await rocketPosition(f, urls, owner);
+  const reth = all ? pos.reth : await readR(f, urls, 'getRethValue', [ethAmount]);
+  if (reth <= 0n || reth > pos.reth) throw stakeError('bad_amount', 'Amount exceeds your rETH balance');
+  const eth = all ? pos.eth : ethAmount;
+  const collateral = await readR(f, urls, 'getTotalCollateral', []);
+  if (collateral < eth) throw stakeError('no_liquidity', 'Rocket Pool does not have enough ETH to redeem this right now; swap rETH to ETH instead');
+  return { plan: [{ to: ROCKET.rETH, data: encodeFunctionData({ abi: rethAbi, functionName: 'burn', args: [reth] }), value: 0n, label: 'Redeem rETH for ETH', gasFallback: 120_000n }], eth };
 }
 
 // ======================================================= BNB Chain StakeHub

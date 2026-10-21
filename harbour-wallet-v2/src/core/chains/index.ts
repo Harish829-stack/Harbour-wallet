@@ -1,4 +1,6 @@
 import raw from './registry.json';
+import extraRaw from './registry.extra.json';
+import extraEnabled from './extra-enabled.json';
 import type { ChainInfo } from './types';
 export type { ChainInfo, ChainKind } from './types';
 
@@ -7,7 +9,9 @@ const SEPOLIA: ChainInfo = {
   twId: 60, id: 'sepolia', name: 'Sepolia', wcId: 'ethereum', ct: 'ethereum', kind: 'evm', blockchain: 'Ethereum', symbol: 'ETH', decimals: 18, evmChainId: 11155111,
   rpcs: ['https://ethereum-sepolia-rpc.publicnode.com'], explorer: 'https://sepolia.etherscan.io', txPath: '/tx/{id}', accountPath: '/address/{address}', testnet: true, cg: 'ethereum',
 };
-export const ALL_CHAINS: ChainInfo[] = raw as ChainInfo[];
+// Trust Wallet's 86 visible chains, plus any extra wallet-core chains explicitly enabled after a live probe (tools/check-chains.mjs).
+export const EXTRA_CHAINS: ChainInfo[] = extraRaw as ChainInfo[];
+export const ALL_CHAINS: ChainInfo[] = [...(raw as ChainInfo[]), ...EXTRA_CHAINS.filter((c) => (extraEnabled as string[]).includes(c.id))];
 export const TESTNET_CHAINS: ChainInfo[] = [SEPOLIA];
 const byId = new Map<string, ChainInfo>([...ALL_CHAINS, ...TESTNET_CHAINS].map((c) => [c.id, c]));
 const byTw = new Map<number, ChainInfo>(ALL_CHAINS.map((c) => [c.twId, c]));

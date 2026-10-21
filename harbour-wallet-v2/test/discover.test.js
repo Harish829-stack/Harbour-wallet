@@ -125,7 +125,7 @@ test('fetchSentiment aggregates sources, buckets items, tolerates failing source
   assert.equal(r.symbol, 'BTC'); assert.equal(r.at, 123);
   assert.equal(r.positive.articles.length, 1); assert.equal(r.negative.articles.length, 1); assert.equal(r.positive.posts.length, 1); assert.equal(r.neutral.articles.length, 0);
   assert.deepEqual(r.counts, { positive: 2, neutral: 0, negative: 1 }); assert.equal(r.score, 67);
-  const bad = r.sources.filter((s) => !s.ok).map((s) => s.name).sort(); assert.deepEqual(bad, ['Cointelegraph', 'StockTwits']);
+  const bad = r.sources.filter((s) => !s.ok).map((s) => s.name).sort(); assert.deepEqual(bad, ['Cointelegraph', 'StockTwits', 'The Block']); // The Block feed is not mocked here
   await assert.rejects(S.fetchSentiment('BTC/../x', f), /Invalid/);
   const empty = await S.fetchSentiment('BTC', async () => { throw new Error('offline'); }); assert.equal(empty.score, null); assert.ok(empty.sources.every((s) => !s.ok));
 });

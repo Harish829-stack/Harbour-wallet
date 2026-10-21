@@ -24,13 +24,14 @@ import { iconFamily } from './icon';
 import { zilliqaFamily } from './zilliqa';
 import { multiversxFamily } from './multiversx';
 import { thetaFamily } from './theta';
+import { cardanoFamily } from '../cardano';
 export * from './types';
 export { parseUnits, formatUnits } from './util';
 
 export const SEND_FAMILIES: Partial<Record<ChainKind, SendFamily>> = {
   evm: evmFamily, utxo: utxoFamily, solana: solanaFamily, tron: tronFamily, cosmos: cosmosFamily, ton: tonFamily, aptos: aptosFamily, sui: suiFamily, near: nearFamily,
   algorand: algorandFamily, ripple: rippleFamily, stellar: stellarFamily, tezos: tezosFamily, filecoin: filecoinFamily, substrate: polkadotFamily, waves: wavesFamily,
-  vechain: vechainFamily, harmony: harmonyFamily, icon: iconFamily, zilliqa: zilliqaFamily, multiversx: multiversxFamily, theta: thetaFamily, iotex: iotexFamily,
+  vechain: vechainFamily, harmony: harmonyFamily, icon: iconFamily, zilliqa: zilliqaFamily, multiversx: multiversxFamily, theta: thetaFamily, iotex: iotexFamily, cardano: cardanoFamily,
 };
 /** Why a family cannot send yet (shown verbatim in the Send screen). */
 export const UNSUPPORTED_REASON: Partial<Record<ChainKind, string>> = {

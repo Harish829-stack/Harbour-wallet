@@ -5,7 +5,7 @@ import type { Namespace } from './protocol';
 
 export type MethodKind =
   | 'local' | 'rpc' | 'connect' | 'permissionsRequest' | 'permissionsRevoke' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset'
-  | 'solConnect' | 'solDisconnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend';
+  | 'solConnect' | 'solDisconnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'multiConnect' | 'multiDisconnect' | 'multiSign';
 export interface MethodSpec { kind: MethodKind; needsConnection?: boolean; approval?: boolean }
 
 const L: MethodSpec = { kind: 'local' };
@@ -40,11 +40,22 @@ export const SOLANA_METHODS: Readonly<Record<string, MethodSpec>> = Object.freez
   signAllTransactions: { kind: 'solSignAll', needsConnection: true, approval: true },
   signAndSendTransaction: { kind: 'solSignSend', needsConnection: true, approval: true },
 });
+export const MULTI_METHODS: Readonly<Record<string, MethodSpec>> = Object.freeze({
+  connect: { kind: 'multiConnect', approval: true },
+  disconnect: { kind: 'multiDisconnect' },
+  signMessage: { kind: 'multiSign', needsConnection: true, approval: true },
+  signTransaction: { kind: 'multiSign', needsConnection: true, approval: true },
+  signAmino: { kind: 'multiSign', needsConnection: true, approval: true },
+  signDirect: { kind: 'multiSign', needsConnection: true, approval: true },
+  signAndSend: { kind: 'multiSign', needsConnection: true, approval: true },
+  sendTransaction: { kind: 'multiSign', needsConnection: true, approval: true },
+  signPsbt: { kind: 'multiSign', needsConnection: true, approval: true },
+});
 /** Explicitly unsupported (TW: UNIMPLEMENTED_WALLET_METHODS + filters/subscriptions). They answer 4200 and never reach a handler. */
 export const UNSUPPORTED_EVM = new Set(['wallet_getCapabilities', 'wallet_sendCalls', 'wallet_getCallsStatus', 'wallet_showCallsStatus', 'eth_newFilter', 'eth_newBlockFilter', 'eth_newPendingTransactionFilter', 'eth_uninstallFilter', 'eth_subscribe', 'eth_unsubscribe', 'eth_signTransaction', 'eth_decrypt', 'eth_getEncryptionPublicKey', 'eth_getFilterChanges', 'eth_getFilterLogs']);
 
 export function specFor(ns: Namespace, method: string): MethodSpec | null {
-  const table = ns === 'evm' ? EVM_METHODS : SOLANA_METHODS;
+  const table = ns === 'evm' ? EVM_METHODS : ns === 'multi' ? MULTI_METHODS : SOLANA_METHODS;
   return Object.prototype.hasOwnProperty.call(table, method) ? table[method] : null;
 }
 /** Names TW's page guard refuses to forward because they collide with the extension's own bridge events. */

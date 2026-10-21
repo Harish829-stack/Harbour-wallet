@@ -520,6 +520,7 @@
   "symbol": "SOL",
   "decimals": 9,
   "endpoints": [
+   "https://solana-rpc.publicnode.com",
    "https://api.mainnet-beta.solana.com"
   ],
   "explorer": "https://solscan.io",

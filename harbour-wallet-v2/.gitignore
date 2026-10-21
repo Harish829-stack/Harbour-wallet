@@ -28,3 +28,6 @@ coverage/
 .idea/
 .vscode/
 *.swp
+
+# local e2e build artifacts
+.e2e/

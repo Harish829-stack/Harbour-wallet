@@ -14,6 +14,6 @@ export default defineManifest({
   background: { service_worker: 'src/background/index.ts', type: 'module' },
   side_panel: { default_path: 'src/popup/index.html' },
   content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" },
-  permissions: ['alarms', 'tabs', 'storage', 'clipboardWrite', 'notifications', 'scripting', 'sidePanel'],
+  permissions: ['alarms', 'tabs', 'storage', 'clipboardWrite', 'notifications', 'scripting', 'sidePanel', 'gcm'],
   host_permissions: ['https://*/*', 'http://localhost/*', 'http://127.0.0.1/*'],
 });

@@ -12,7 +12,20 @@ interface Ctx { utxos: Utxo[]; rates: Record<FeeTierId, number>; lockScript: Uin
 const DUST_PLACEHOLDER = 1000;
 const endpoints = (c: ChainInfo) => (c.endpoints ?? []).map(trimUrl);
 
+/** Blockbook estimatefee returns coin-per-kB for a confirmation target; -1 means "no estimate" and is surfaced, never guessed. */
+async function blockbookRates(env: SendEnv, chain: ChainInfo): Promise<Record<FeeTierId, number>> {
+  return firstOf(endpoints(chain), async (u) => {
+    const at = async (blocks: number) => {
+      const r = await jget(env.fetch, `${u}/api/v2/estimatefee/${blocks}`); const coinPerKb = Number(r?.result);
+      if (!Number.isFinite(coinPerKb) || coinPerKb <= 0) throw new Error('no fee estimate');
+      return Math.max(1, Math.ceil((coinPerKb * 10 ** chain.decimals) / 1000)); // sat/vB
+    };
+    const [slow, average, fast] = await Promise.all([at(12), at(4), at(2)]);
+    return { slow: Math.min(slow, average), average, fast: Math.max(fast, average) };
+  });
+}
 export async function fetchRates(env: SendEnv, chain: ChainInfo): Promise<Record<FeeTierId, number>> {
+  if (chain.api === 'blockbook') return blockbookRates(env, chain);
   return firstOf(endpoints(chain), async (u) => {
     try {
       const r = await jget(env.fetch, `${u}/v1/fees/recommended`);
@@ -27,6 +40,8 @@ function planFor(env: SendEnv, p: SendParams, utxos: Utxo[], lock: Uint8Array, r
   const { AnySigner, CoinType, HexCoding } = env.core; const coin = CoinType[p.chain.ct];
   const input = TW.Bitcoin.Proto.SigningInput.create({
     hashType: 1, amount, byteFee: rate, toAddress: p.to, changeAddress: p.from, coinType: coin, useMaxAmount: max,
+    // memo-carrying deposits (THORChain swaps) put the memo in an OP_RETURN output; ordinary sends never set one
+    ...(p.memo ? { outputOpReturn: new TextEncoder().encode(p.memo) } : {}),
     utxo: utxos.map((u) => ({ outPoint: { hash: hexToBytes(u.txid).reverse(), index: u.vout, sequence: 0xffffffff }, script: lock, amount: u.value })),
   } as any);
   void HexCoding;
@@ -38,7 +53,7 @@ export const utxoFamily: SendFamily = {
   async quote(env, p): Promise<SendQuote> {
     const { chain } = p; const coin = env.core.CoinType[chain.ct];
     if (!env.core.AnyAddress.isValid(p.to, coin)) throw new SendError('invalid-recipient', 'Invalid recipient address');
-    const [utxosRaw, rates] = await Promise.all([firstOf(endpoints(chain), (u) => jget(env.fetch, `${u}/address/${p.from}/utxo`)), fetchRates(env, chain)]);
+    const [utxosRaw, rates] = await Promise.all([firstOf(endpoints(chain), (u) => jget(env.fetch, chain.api === 'blockbook' ? `${u}/api/v2/utxo/${p.from}` : `${u}/address/${p.from}/utxo`)), fetchRates(env, chain)]);
     const utxos: Utxo[] = (utxosRaw as any[]).map((u) => ({ txid: u.txid, vout: u.vout, value: Number(u.value) }));
     const total = utxos.reduce((s, u) => s + u.value, 0);
     const lock: Uint8Array = env.core.BitcoinScript.lockScriptForAddress(p.from, coin).data();
@@ -73,6 +88,12 @@ export const utxoFamily: SendFamily = {
     return { raw: bytesToHex(out.encoded), hash: out.transactionId, meta: { feeRate: c.rates[tier] } };
   },
   async broadcast(env, chain, tx) {
+    if (chain.api === 'blockbook') return firstOf(endpoints(chain), async (u) => {
+      const res = await env.fetch(`${u}/api/v2/sendtx/`, { method: 'POST', body: tx.raw, headers: { 'content-type': 'text/plain' }, signal: AbortSignal.timeout(15000) });
+      let j: any = null; try { j = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok || !j?.result) throw new Error(j?.error || `HTTP ${res.status}`);
+      return String(j.result);
+    });
     return firstOf(endpoints(chain), async (u) => {
       const res = await env.fetch(`${u}/tx`, { method: 'POST', body: tx.raw, headers: { 'content-type': 'text/plain' }, signal: AbortSignal.timeout(15000) });
       const t = (await res.text()).trim();
@@ -81,6 +102,12 @@ export const utxoFamily: SendFamily = {
     });
   },
   async status(env, chain, hash): Promise<TxStatus> {
+    if (chain.api === 'blockbook') {
+      const t = await firstOf(endpoints(chain), (u) => jget(env.fetch, `${u}/api/v2/tx/${hash}`).catch((e) => { if (e?.status === 404) return null; throw e; }));
+      if (!t) return { state: 'unknown' };
+      if (!(Number(t.confirmations) > 0)) return { state: 'pending', fee: t.fees != null ? String(t.fees) : undefined };
+      return { state: 'confirmed', block: String(t.blockHeight), confirmations: Number(t.confirmations), fee: t.fees != null ? String(t.fees) : undefined, timestamp: t.blockTime };
+    }
     const st = await firstOf(endpoints(chain), (u) => jget(env.fetch, `${u}/tx/${hash}`).catch((e) => { if (e?.status === 404) return null; throw e; }));
     if (!st) return { state: 'unknown' };
     if (!st.status?.confirmed) return { state: 'pending', fee: st.fee != null ? String(st.fee) : undefined };

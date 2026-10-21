@@ -2,8 +2,8 @@
 // The page is untrusted: everything arriving from it is re-validated at every hop (inpage -> content -> background).
 import { ERR, ProviderError } from './errors';
 
-export type Namespace = 'evm' | 'solana';
-export const NAMESPACES: readonly Namespace[] = ['evm', 'solana'];
+export type Namespace = 'evm' | 'solana' | 'multi';
+export const NAMESPACES: readonly Namespace[] = ['evm', 'solana', 'multi'];
 
 /** What a dApp may ask for. Only these four keys cross the bridge; the sender's identity comes from the browser, never from here. */
 export interface PageRequest { id: string; ns: Namespace; method: string; params?: unknown }
@@ -17,6 +17,8 @@ export type OutMessage =
 export interface InitState {
   evm: { chainId: string; networkVersion: string; accounts: string[]; connected: boolean };
   solana: { publicKey: string | null };
+  /** Cosmos/Sui/Aptos/Tron/Bitcoin accounts this origin may see, by registry chain id. */
+  multi: Record<string, { address: string; publicKey: string }>;
   prefs: { defaultWallet: boolean };
 }
 
@@ -24,6 +26,7 @@ export interface InitState {
 export const EVENT_ALLOWLIST: Record<Namespace, readonly string[]> = {
   evm: ['accountsChanged', 'chainChanged', 'connect', 'disconnect', 'networkChanged'],
   solana: ['connect', 'disconnect', 'accountChanged'],
+  multi: ['connect', 'disconnect'],
 };
 
 export const MAX_ID_LEN = 64;

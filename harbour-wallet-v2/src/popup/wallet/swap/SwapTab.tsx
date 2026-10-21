@@ -47,7 +47,7 @@ export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   const [now, setNow] = useState(Date.now());
 
   // initial load: persisted settings + history
-  useEffect(() => { bg({ type: 'swapState' }).then((r) => { if (r?.ok) setSwap({ settings: r.settings, history: r.history }); }).catch(() => {}); }, []);
+  useEffect(() => { bg({ type: 'swapState' }).then((r) => { if (r?.ok) setSwap({ settings: r.settings, history: r.history, gaslessAvailable: r.gaslessAvailable === true }); }).catch(() => {}); }, []);
   // balances for both sides + native gas token of the spend chain
   useEffect(() => {
     const list = [from, to, from ? nativeAsset(from.domainId) : null].filter(Boolean);
@@ -82,7 +82,9 @@ export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   const fee = step?.networkFee ? BigInt(step.networkFee.amount) : 0n;
   const nativeSell = from?.address === 'native';
   const feeNative = step?.networkFee?.isNative !== false;
-  const cannotCoverGas = !!step && !insufficientBalance && feeNative && nativeBal < fee + (nativeSell && atomic ? atomic : 0n);
+  // gasless (beta) EVM swaps get their fee sponsored; if sponsorship fails the background falls back and the chain rejects an unfunded tx
+  const sponsored = !!s.gaslessAvailable && s.settings.gasless && !!from && domainById(from.domainId)?.kind === 'evm';
+  const cannotCoverGas = !sponsored && !!step && !insufficientBalance && feeNative && nativeBal < fee + (nativeSell && atomic ? atomic : 0n);
   const feeSymbol = step?.networkFee?.symbol ?? (from ? domainById(from.domainId)?.nativeSymbol : '');
   const showsAllowance = step?.approval?.needed === true;
   const needsPriceImpactAck = severity === 'severe' && !s.ack;

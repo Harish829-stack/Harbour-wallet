@@ -9,7 +9,7 @@ import type { Ctx } from '../screens';
 import { chainById } from '../../../core/chains/index';
 import { fmtRaw, Notice } from './earnParts';
 
-interface CollectionView { id: string; chainId: string; contract: string; name: string; symbol: string; image: string; owned: number; standard: string; suspicious: boolean; preview: string[]; reason?: 'reported' | 'suspected' }
+interface CollectionView { id: string; chainId: string; contract: string; name: string; symbol: string; image: string; owned: number; standard: string; suspicious: boolean; floorPrice?: number; preview: string[]; reason?: 'reported' | 'suspected' }
 interface ItemView { id: string; collectionId: string; chainId: string; contract: string; name: string; description: string; image: string; animationUrl: string; attributes: Array<{ key: string; value: string }>; standard: string; balance: string; externalUrl: string; transferable: boolean }
 const subtle: React.CSSProperties = { fontSize: 12, color: T.sub };
 const short = (a?: string) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a ?? '');
@@ -82,7 +82,7 @@ const NftCollectionScreen: React.FC<Ctx> = (c) => {
       {!d && !err && <div role="status" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i}><Skeleton w="100%" h={96} r={12} /><div style={{ height: 6 }} /><Skeleton w={60} h={11} /></div>)}</div>}
       {d && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...subtle, marginBottom: 10 }}><Coin sym={chainById(d.collection.chainId)?.symbol ?? '?'} assetId={d.collection.chainId} size={18} />{netName(d.collection.chainId)} · {d.collection.standard} · {d.collection.owned} owned{d.hidden ? ` · Hidden${d.reason === 'suspected' ? ' (suspected spam)' : ''}` : ''}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...subtle, marginBottom: 10 }}><Coin sym={chainById(d.collection.chainId)?.symbol ?? '?'} assetId={d.collection.chainId} size={18} />{netName(d.collection.chainId)} · {d.collection.standard} · {d.collection.owned} owned{d.collection.floorPrice ? ` · Floor ${d.collection.floorPrice.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${chainById(d.collection.chainId)?.symbol ?? ''}` : ''}{d.hidden ? ` · Hidden${d.reason === 'suspected' ? ' (suspected spam)' : ''}` : ''}</div>
           {d.itemsError && <Notice>Showing a partial list: {d.itemsError}</Notice>}
           {d.items.length === 0
             ? <div><Empty title="You haven’t bought anything from this collection yet" icon="nft" /><div style={{ maxWidth: 220, margin: '0 auto' }}><Btn onClick={() => c.nav.push('receive')}>Receive</Btn></div></div>

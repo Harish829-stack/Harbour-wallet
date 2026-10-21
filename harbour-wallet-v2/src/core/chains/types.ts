@@ -3,7 +3,7 @@
 export type ChainKind =
   | 'evm' | 'utxo' | 'solana' | 'cosmos' | 'tron' | 'ton' | 'aptos' | 'sui' | 'near' | 'algorand' | 'ripple' | 'stellar' | 'substrate'
   | 'tezos' | 'filecoin' | 'icp' | 'waves' | 'vechain' | 'harmony' | 'icon' | 'zilliqa' | 'fio' | 'nimiq' | 'aion' | 'theta' | 'multiversx'
-  | 'ontology' | 'iotex';
+  | 'ontology' | 'iotex' | 'cardano';
 
 export interface ChainInfo {
   twId: number;            // wallet-core CoinType value == Trust Wallet coin id
@@ -24,4 +24,6 @@ export interface ChainInfo {
   hrp?: string;
   dbLookup?: boolean; ws?: boolean;
   testnet?: boolean;
+  api?: 'esplora' | 'blockbook'; // UTXO chains: which REST dialect `endpoints` speak (default esplora)
+  extra?: boolean;               // not one of Trust Wallet's 86 visible chains; hidden until listed in extra-enabled.json
 }

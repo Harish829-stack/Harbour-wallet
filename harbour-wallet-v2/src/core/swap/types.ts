@@ -2,7 +2,7 @@
 // (evidence/25-swap/serializer-schemas.json: Amber* route/step models, SwapQuoteResponse,
 // SwapSettingsState). Harbour fills them from PUBLIC aggregators (LI.FI, Jupiter), never from
 // TW's private gateway.
-export type SwapDomainKind = 'evm' | 'solana';
+export type SwapDomainKind = 'evm' | 'solana' | 'utxo';
 
 export interface SwapDomain {
   id: string;                 // Harbour chain id (matches src/core/chains.ts)
@@ -12,7 +12,7 @@ export interface SwapDomain {
   lifiChainId: number;        // LI.FI chain key
   nativeSymbol: string;
   nativeDecimals: number;
-  addressKey: 'ethereum' | 'solana'; // key into the account's address map
+  addressKey: 'ethereum' | 'solana' | 'bitcoin'; // key into the account's address map
   twCoinId: number;           // TW coin id (twTaxonomy / HAR)
   trustAssetsDir: string;     // folder in the public trustwallet/assets repo (logos)
   explorerTx: string;         // tx explorer URL prefix
@@ -65,9 +65,11 @@ export interface SwapStep {
 
 export interface QuoteWarning { code: string; message: string }
 
+export type SwapSource = 'lifi' | 'jupiter' | 'relay' | 'thorchain';
+
 export interface SwapRoute {
   id: string;
-  source: 'lifi' | 'jupiter';
+  source: SwapSource;
   expiresAt: number;          // ms epoch
   steps: SwapStep[];
   tags: string[];
@@ -97,12 +99,14 @@ export interface SwapSettings {
   mev: boolean;               // "Best price execution" / MEV protection
   solanaTurbo: boolean;       // "Solana turbo swaps"
   unlimitedAllowance: boolean;
+  /** Gasless swaps (beta): EIP-7702 + sponsored user operation. Only offered when the remote flag is on. */
+  gasless: boolean;
   sortBy: SwapSortBy;
   recentAssets: SwapAsset[];
 }
 
 export const DEFAULT_SWAP_SETTINGS: SwapSettings = {
-  slippage: '2', mev: false, solanaTurbo: false, unlimitedAllowance: false, sortBy: 'quantity', recentAssets: [],
+  slippage: '2', mev: false, solanaTurbo: false, unlimitedAllowance: false, gasless: false, sortBy: 'quantity', recentAssets: [],
 };
 
 export type SwapStatus = 'approving' | 'swapping' | 'bridging' | 'success' | 'failed' | 'timeout';
@@ -121,5 +125,9 @@ export interface SwapHistoryItem {
   txHash?: string;
   fromDomainId: string; toDomainId: string;
   bridge?: string;
+  /** Aggregator that built the route; picks the settlement-status API. Older items (no source) are LI.FI or Jupiter. */
+  source?: SwapSource;
+  /** Relay request id (status lookups). */
+  requestId?: string;
   error?: string;
 }

@@ -6,6 +6,7 @@
 // The classifier is a small transparent keyword lexicon (NOT a trained model) - see evidence/37-discover/SPEC.md for limits.
 import { safeHttpsLink } from '../ramps/guard';
 import { ALL_CHAINS } from '../chains/index';
+import { GATEWAY_URL } from '../../kit/endpoints';
 type F = typeof fetch;
 export type Label = 'positive' | 'neutral' | 'negative';
 export interface SentimentItem { id: string; kind: 'article' | 'post'; title: string; snippet: string; url: string; source: string; at: number; label: Label; labelBy: 'source' | 'lexicon' }
@@ -115,7 +116,12 @@ const NAME_ALIAS: Record<string, string> = { BTC: 'Bitcoin', ETH: 'Ethereum', SO
 export const assetName = (symbol: string) => NAME_ALIAS[symbol] ?? sentimentAssets().find((a) => a.symbol === symbol)?.name ?? symbol;
 
 // ------------------------------------------------------------ fetch
-const FEEDS: Array<[string, string]> = [['CoinDesk', 'https://www.coindesk.com/arc/outboundfeeds/rss/'], ['Cointelegraph', 'https://cointelegraph.com/rss'], ['Decrypt', 'https://decrypt.co/feed']];
+// [label, gateway slug, direct URL]: the gateway serves the same feed cached for 10 minutes (one fetch for all users).
+const FEEDS: Array<[string, string, string]> = [['CoinDesk', 'coindesk', 'https://www.coindesk.com/arc/outboundfeeds/rss/'], ['Cointelegraph', 'cointelegraph', 'https://cointelegraph.com/rss'], ['Decrypt', 'decrypt', 'https://decrypt.co/feed'], ['The Block', 'theblock', 'https://www.theblock.co/rss.xml']];
+async function feed(f: F, slug: string, direct: string): Promise<string> {
+  if (GATEWAY_URL) { try { return await get(f, `${GATEWAY_URL}/rss/${slug}`, true); } catch { /* direct below */ } }
+  return get(f, direct, true);
+}
 async function get(f: F, url: string, asText = false): Promise<any> {
   const r = await f(url, { signal: AbortSignal.timeout(10_000), headers: { accept: asText ? 'application/rss+xml, application/xml, text/xml, */*' : 'application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -126,7 +132,7 @@ export async function fetchSentiment(symbolIn: string, f: F, now = Date.now()): 
   const symbol = symbolIn.toUpperCase(); const name = assetName(symbol);
   const jobs: Array<{ name: string; kind: 'articles' | 'posts'; run: () => Promise<SentimentItem[]> }> = [
     { name: 'CryptoCompare', kind: 'articles', run: async () => parseCryptoCompare(await get(f, `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&categories=${encodeURIComponent(symbol)}`)) },
-    ...FEEDS.map(([n, u]) => ({ name: n, kind: 'articles' as const, run: async () => parseRss(await get(f, u, true), n).filter((i) => matchesAsset(`${i.title} ${i.snippet}`, symbol, name)) })),
+    ...FEEDS.map(([n, slug, u]) => ({ name: n, kind: 'articles' as const, run: async () => parseRss(await feed(f, slug, u), n).filter((i) => matchesAsset(`${i.title} ${i.snippet}`, symbol, name)) })),
     { name: 'Reddit', kind: 'posts', run: async () => parseReddit(await get(f, `https://www.reddit.com/search.json?q=${encodeURIComponent(`${name} OR ${symbol}`)}&sort=new&t=week&limit=40&raw_json=1`)).filter((i) => matchesAsset(`${i.title} ${i.snippet}`, symbol, name)) },
     { name: 'StockTwits', kind: 'posts', run: async () => parseStocktwits(await get(f, `https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(symbol)}.X.json`)) },
   ];

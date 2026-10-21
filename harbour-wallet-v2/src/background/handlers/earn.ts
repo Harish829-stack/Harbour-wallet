@@ -16,6 +16,12 @@ import { broadcastCosmos, cosmosFee, fetchCosmosBalance, fetchCosmosSigningConte
 import { isSolAddress, sendSolana, signSolanaStake, solRpc, solanaBlockhash } from '../../core/staking/solana';
 import { bscBalanceShares, bscCreditFor, bscPlan, bscSharesFor, ethCall, isEvmAddress, lidoAllowance, lidoClaimPlan, lidoStakePlan, lidoUnstakePlan, type CallPlan, LIDO, stethAbi } from '../../core/staking/evm';
 import { decodeFunctionResult, encodeFunctionData } from 'viem';
+import { rocketStakePlan, rocketUnstakePlan } from '../../core/staking/evm';
+import { fetchTronState, tronContracts, signTronContract, broadcastTron, tronPost } from '../../core/staking/tron';
+import { fetchTezosContext, tezosTarget, tezosFee, signTezosDelegation, injectTezos } from '../../core/staking/tezos';
+import { fetchCardanoState, cardanoStakeInput, cardanoTipSlot, STAKE_KEY_DEPOSIT } from '../../core/staking/cardano';
+import { cardanoPlan, cardanoSign, cardanoSubmit } from '../../core/chains/cardano';
+import { poolsApi, poolMember, polkadotCall, polkadotFee, polkadotSubmit } from '../../core/staking/polkadot';
 
 const env = (): StakeEnv => ({ f: fetch.bind(globalThis) as typeof fetch, rpcUrls: getRpcUrls, solUrls: () => [solanaRpcUrl(), ...(chainById('solana')?.endpoints ?? [])].filter((u, i, a) => a.indexOf(u) === i) });
 const LIST_KEY = 'earn:list:v1'; const LIST_TTL = 5 * 60_000;
@@ -146,13 +152,112 @@ async function buildPlan(ctx: HandlerCtx, req: Req): Promise<Plan> {
     } };
   }
 
+  // ------------------------------------------------------------ TRON (Stake 2.0)
+  if (def.family === 'tron') {
+    const st = await fetchTronState(chain, address, e.f); base.balance = st.balance.toString();
+    let action = req.action;
+    if (action === 'claim' && req.positionId?.startsWith('unfreeze:')) action = 'withdraw'; // expired unfreezes
+    const amount = action === 'stake' ? needAmount() : action === 'unstake' ? needAmount(st.frozen) : undefined;
+    const contracts = tronContracts(action, { owner: address, state: st, amount, validator: req.validator, toValidator: req.toValidator });
+    base.amount = (amount ?? (action === 'claim' ? st.reward : action === 'withdraw' ? st.unfreezing.filter((u) => u.expireAt <= Date.now()).reduce((n, u) => n + u.amount, 0n) : st.frozen)).toString();
+    base.validatorId = req.validator; base.validatorName = vname(req.validator); base.toValidatorId = req.toValidator; base.toValidatorName = vname(req.toValidator);
+    base.steps = contracts.length; base.fee = (BigInt(contracts.length) * 350_000n).toString(); base.feeExact = false;
+    base.notes.push('Usually free: TRON accounts get daily free bandwidth; otherwise about 0.35 TRX per transaction is burned.');
+    if (action === 'stake') base.notes.push('Your TRX is frozen for bandwidth and its TRON Power is voted for this Super Representative.', `Unfreezing takes ${days(def.lockDays)}.`);
+    if (action === 'unstake') base.notes.push(`Unfrozen TRX is available after ${days(def.lockDays)}; votes above your remaining TRON Power are removed.`);
+    if (action === 'claim') base.notes.push('Voting rewards can be claimed once every 24 hours.');
+    if (action === 'withdraw' && BigInt(base.amount) <= 0n) throw bad('Nothing is withdrawable yet', 'nothing_to_claim');
+    if (st.balance < (action === 'stake' ? amount! : 0n)) throw bad('Not enough TRX for this amount', 'insufficient_funds');
+    return { summary: base, run: async () => withCoinKey(ctx, chain.ct, async (key) => {
+      const out: string[] = [];
+      for (const c of contracts) {
+        const block = await tronPost(chain, e.f, '/wallet/getnowblock', {});
+        const signed = signTronContract(ctx.core, c, block, key);
+        out.push(await broadcastTron(chain, e.f, signed.json));
+      }
+      return out;
+    }) };
+  }
+
+  // ------------------------------------------------------------ Tezos (baker delegation)
+  if (def.family === 'tezos') {
+    const tctx = await fetchTezosContext(chain, address, e.f); base.balance = tctx.balance.toString();
+    const delegate = tezosTarget(req.action, { validator: req.validator, toValidator: req.toValidator, current: tctx.delegate });
+    const fee = tezosFee(tctx.revealed);
+    base.amount = tctx.balance.toString(); base.fee = fee.toString(); base.feeExact = true;
+    base.validatorId = req.action === 'redelegate' ? tctx.delegate : delegate || tctx.delegate; base.validatorName = vname(base.validatorId);
+    if (req.action === 'redelegate') { base.toValidatorId = delegate; base.toValidatorName = vname(delegate); }
+    base.notes.push(delegate ? 'Your whole XTZ balance is delegated; it stays in your wallet and can be spent any time.' : 'Delegation stops; your XTZ stays in your wallet.', 'Bakers pay rewards to your address directly, usually every cycle (about 3 days).');
+    if (!tctx.revealed) base.notes.push('This first operation also reveals your public key on Tezos.');
+    if (tctx.balance < fee) throw bad('Not enough XTZ to cover the network fee', 'insufficient_funds');
+    return { summary: base, run: async () => withCoinKey(ctx, chain.ct, async (key) => {
+      const fresh = await fetchTezosContext(chain, address, e.f);
+      return [await injectTezos(chain, e.f, signTezosDelegation(ctx.core, { source: address, ctx: fresh, delegate, key }))];
+    }) };
+  }
+
+  // ------------------------------------------------------------ Cardano (pool delegation)
+  if (def.family === 'cardano') {
+    const st = await fetchCardanoState(chain, address, e.f); base.balance = st.balance.toString();
+    const slot = await cardanoTipSlot(e.f, chain);
+    const pool = req.action === 'redelegate' ? req.toValidator : req.validator;
+    const input = cardanoStakeInput(req.action, st, slot, pool);
+    const plan = cardanoPlan(ctx.core, input);
+    if (plan.error) throw bad('Not enough ADA to cover this transaction, its fee and the 2 ADA deposit', 'insufficient_funds');
+    base.fee = plan.fee.toString(); base.feeExact = true;
+    base.amount = (req.action === 'claim' || req.action === 'compound' ? st.rewards : st.total).toString();
+    base.validatorId = req.action === 'redelegate' ? st.pool ?? undefined : pool ?? st.pool ?? undefined; base.validatorName = vname(base.validatorId);
+    if (req.action === 'redelegate') { base.toValidatorId = pool; base.toValidatorName = vname(pool); }
+    if (input.registerStakingKey) base.notes.push(`Registering your stake key takes a ${Number(STAKE_KEY_DEPOSIT) / 1e6} ADA deposit, returned when you stop staking.`);
+    if (input.deregisterStakingKey) base.notes.push(`Your ${Number(STAKE_KEY_DEPOSIT) / 1e6} ADA stake-key deposit is returned.`);
+    if (input.voteDelegation) base.notes.push('Withdrawing rewards requires a governance vote delegation; Harbour sets it to "Always abstain".');
+    base.notes.push('Your ADA never leaves your wallet and is not locked. Rewards start after 2 epochs (about 10 days).');
+    return { summary: base, run: async () => withCoinKey(ctx, chain.ct, async (key) => {
+      const fresh = await fetchCardanoState(chain, address, e.f);
+      const signed = cardanoSign(ctx.core, { ...cardanoStakeInput(req.action, fresh, await cardanoTipSlot(e.f, chain), pool), privateKey: [key] });
+      return [(await cardanoSubmit(e.f, signed.cbor, chain)) || signed.txId];
+    }) };
+  }
+
+  // ------------------------------------------------------------ Polkadot (nomination pools)
+  if (def.family === 'polkadot') {
+    const api = await poolsApi();
+    const [member, acct] = await Promise.all([poolMember(api, address), api.query.system.account(address)]);
+    const free = BigInt(acct.data.free.toString()); base.balance = free.toString();
+    let action = req.action;
+    if (action === 'claim' && req.positionId?.startsWith('unbond:')) action = 'withdraw';
+    const amount = action === 'stake' ? needAmount() : action === 'unstake' ? needAmount(BigInt(d.overview.staked)) : undefined;
+    const call = await polkadotCall(api, action, { address, member, amount, pool: req.validator, max: req.max, minJoin: BigInt(d.minJoin ?? def.minStake) });
+    const fee = await polkadotFee(api, call, address);
+    base.amount = (amount ?? (action === 'claim' || action === 'compound' ? BigInt(d.overview.rewards) : BigInt(d.overview.claimable))).toString();
+    base.fee = fee.toString(); base.feeExact = false; base.validatorId = member ? String(member.poolId) : req.validator; base.validatorName = vname(base.validatorId);
+    if (action === 'stake') base.notes.push(`Unbonding from a pool takes ${days(def.lockDays)}.`, 'Rewards accrue in the pool; claim them or compound them into your stake.');
+    if (action === 'unstake') base.notes.push(`Funds unbond for ${days(def.lockDays)} and earn no rewards meanwhile; then withdraw them here.`);
+    if (free < (action === 'stake' ? amount! : 0n) + fee) throw bad('Not enough DOT to cover the amount and network fee (keep 0.01 DOT for the existential deposit)', 'insufficient_funds');
+    return { summary: base, run: async () => withCoinKey(ctx, chain.ct, async (key) => {
+      const pk = ctx.core.PrivateKey.createWithData(key);
+      try {
+        const fresh = await polkadotCall(api, action, { address, member: await poolMember(api, address), amount, pool: req.validator, max: req.max, minJoin: BigInt(d.minJoin ?? def.minStake) });
+        return [await polkadotSubmit(api, fresh, address, (msg) => pk.sign(msg, ctx.core.Curve.ed25519))];
+      } finally { pk.delete(); }
+    }) };
+  }
+
   // ------------------------------------------------------------ EVM (Lido / BNB StakeHub)
   const urls = getRpcUrls(chain);
   const balance = await nativeBalance(def, address); base.balance = balance.toString();
   let plan: CallPlan[] = [];
   if (def.family === 'lido') {
     const owner = address;
-    if (req.action === 'stake') {
+    if (req.action === 'stake' && req.validator === 'rocketpool') {
+      const amt = needAmount(); base.amount = amt.toString(); base.validatorId = 'rocketpool'; base.validatorName = 'Rocket Pool'; plan = await rocketStakePlan(e.f, urls, amt);
+      base.notes.push('You receive rETH. It does not rebase: its ETH value grows as rewards accrue. You can redeem or swap it any time.');
+    } else if (req.action === 'unstake' && (req.validator === 'rocketpool' || req.positionId === 'reth')) {
+      const p = d.overview.positions.find((x) => x.id === 'reth'); if (!p) throw bad('You have no rETH to redeem');
+      const amt = needAmount(BigInt(p.amount)); const all = !!req.max || amt >= BigInt(p.amount);
+      const r = await rocketUnstakePlan(e.f, urls, address, amt, all); plan = r.plan; base.amount = r.eth.toString(); base.validatorId = 'rocketpool'; base.validatorName = 'Rocket Pool';
+      base.notes.push('rETH is burned for ETH immediately from the Rocket Pool deposit pool.');
+    } else if (req.action === 'stake') {
       const amt = needAmount(); base.amount = amt.toString(); base.validatorId = 'lido'; base.validatorName = 'Lido'; plan = lidoStakePlan(amt);
       base.notes.push('You receive stETH 1:1. It earns rewards through a daily balance rebase and can be swapped or withdrawn any time.');
     } else if (req.action === 'unstake') {
@@ -219,8 +324,8 @@ const earnDetails: Handler = async (msg, ctx) => {
     let balance = '0'; try { balance = (await nativeBalance(def, address, d.bondDenom)).toString(); } catch { /* shown as unknown */ }
     const { family, minStake, lockDays, claimableRewards, supportsRedelegate, protocol, symbol, decimals } = def;
     // Amount kept back by MAX when staking from the spendable balance (network fee headroom). Estimate, not a quote.
-    const reserve = family === 'cosmos' ? cosmosFee(def.chainId, d.bondDenom!, 'stake').amount : family === 'solana' ? '10000' : family === 'lido' ? '3000000000000000' : '1000000000000000';
-    return { ok: true, def: { chainId: def.chainId, family, minStake, lockDays: d.overview.lockDays ?? lockDays, claimableRewards, supportsRedelegate, protocol, symbol, decimals }, overview: d.overview, validators: d.validators, validatorsSource: d.validatorsSource, balance, reserve, address };
+    const reserve = family === 'cosmos' ? cosmosFee(def.chainId, d.bondDenom!, 'stake').amount : family === 'solana' ? '10000' : family === 'lido' ? '3000000000000000' : family === 'tron' ? '1000000' : family === 'tezos' ? '2300' : family === 'cardano' ? '2500000' : family === 'polkadot' ? '200000000' : '1000000000000000';
+    return { ok: true, def: { chainId: def.chainId, family, minStake: d.minJoin ?? minStake, lockDays: d.overview.lockDays ?? lockDays, claimableRewards, supportsRedelegate, protocol, symbol, decimals }, overview: d.overview, validators: d.validators, validatorsSource: d.validatorsSource, balance, reserve, address };
   } catch (e: any) { return errOf(e); }
 };
 const earnPrepare: Handler = async (msg, ctx) => { try { return { ok: true, summary: (await buildPlan(ctx, parse(msg))).summary }; } catch (e: any) { return errOf(e); } };

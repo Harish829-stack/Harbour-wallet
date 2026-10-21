@@ -107,7 +107,7 @@ const StakingDetailsScreen: React.FC<Ctx> = (c) => {
     const f = d.def.family; const out: Array<[StakeAction, string]> = [];
     if (p.status === 'active' || p.status === 'activating') {
       if (f === 'solana') out.push(['unstake', 'Unstake']); else { out.push(['unstake', 'Unstake']); if (d.def.supportsRedelegate && p.status === 'active') out.push(['redelegate', 'Redelegate']); }
-      if (f === 'cosmos' && has(p.rewards ?? '0')) { out.push(['claim', 'Claim rewards'], ['compound', 'Compound']); }
+      if (d.def.claimableRewards && has(p.rewards ?? '0')) { out.push(['claim', 'Claim rewards']); if (COMPOUNDS.includes(f)) out.push(['compound', 'Compound']); }
     } else if (p.status === 'inactive') out.push(['withdraw', 'Withdraw']);
     else if (p.status === 'claimable') out.push(['claim', 'Claim']);
     return out;
@@ -130,8 +130,8 @@ const StakingDetailsScreen: React.FC<Ctx> = (c) => {
         <ActionRow label="Stake" onClick={() => go('stake')} />
         {stakedPositions.length > 0 && <ActionRow label="Unstake" onClick={() => go('unstake')} />}
         {d.def.supportsRedelegate && stakedPositions.length > 0 && <ActionRow label="Redelegate" onClick={() => go('redelegate')} />}
-        {d.def.family === 'cosmos' && has(o.rewards) && <ActionRow label="Compound" onClick={() => go('compound')} />}
-        {d.def.family === 'cosmos' && has(o.rewards) && <ActionRow label="Claim" onClick={() => go('claim')} />}
+        {COMPOUNDS.includes(d.def.family) && has(o.rewards) && <ActionRow label="Compound" onClick={() => go('compound')} />}
+        {d.def.claimableRewards && has(o.rewards) && <ActionRow label="Claim" onClick={() => go('claim')} />}
         {withdrawables.length > 0 && <ActionRow label={d.def.family === 'solana' ? 'Withdraw' : 'Claim'} onClick={() => setSheet(withdrawables[0])} />}
       </div>
       <div style={{ fontWeight: 800, margin: '18px 0 4px' }}>Delegations</div>
@@ -164,7 +164,12 @@ const StakingDetailsScreen: React.FC<Ctx> = (c) => {
 };
 
 // ---------------------------------------------------------------- action form
-const NEEDS_AMOUNT = (family: string, a: StakeAction) => a === 'stake' || ((a === 'unstake' || a === 'redelegate') && family !== 'solana');
+// Families whose rewards can be restaked in one transaction.
+const COMPOUNDS = ['cosmos', 'polkadot'];
+// Delegation-style families (Tezos bakers, Cardano pools) move the whole balance: no amount. TRON redelegation moves all votes.
+const WHOLE_BALANCE = ['tezos', 'cardano'];
+const NEEDS_AMOUNT = (family: string, a: StakeAction) => a === 'stake' ? !WHOLE_BALANCE.includes(family)
+  : (a === 'unstake' || a === 'redelegate') && family !== 'solana' && !WHOLE_BALANCE.includes(family) && !(family === 'tron' && a === 'redelegate');
 const StakeActionScreen: React.FC<Ctx> = (c) => {
   const { chainId, action, validator: v0, positionId } = c.params as { chainId: string; action: StakeAction; validator?: string; positionId?: string }; const depth: number = c.params?.depth ?? 2;
   const fetched = useDetails(chainId, !!c.params?.details); const d: Details | null = (c.params?.details as Details | undefined) ?? fetched.d;
@@ -202,7 +207,7 @@ const StakeActionScreen: React.FC<Ctx> = (c) => {
     if (parts.length > 2 || (parts[1]?.length ?? 0) > dec) return; setMax(false); setErr(null); setAmount(clean);
   };
   const rewardsTotal = BigInt(d.overview.rewards || '0');
-  const needsValidator = action === 'stake' || ((action === 'unstake' || action === 'redelegate') && family !== 'solana');
+  const needsValidator = action === 'stake' || ((action === 'unstake' || action === 'redelegate') && family !== 'solana' && !(family === 'tron' && action === 'unstake'));
   const ready = (!needAmount || (Number(amount) > 0)) && (!needsValidator || !!validator) && (action !== 'redelegate' || !!toValidator) && (!(family === 'solana' && (action === 'unstake' || action === 'withdraw')) || !!position);
   const next = async () => {
     setBusy(true); setErr(null);
