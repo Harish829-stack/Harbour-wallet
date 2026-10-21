@@ -14,6 +14,8 @@ import { SEND_FAMILIES, sendSupport, familyOf, quoteToWire, signAndBroadcast, tx
 import type { SendAsset, SendParams, SendQuote, FeeTierId, SendEnv, NftTransferParams } from '../../core/chains/send';
 import { SENT_TX_KEY, assessRecipient, nameService, readSent, resolveEns, resolveSendChain, resolveSns, sanitizeTokenSpec, upsertSent, type SentTx } from '../../core/sendService';
 import { jpost, firstOf, trimUrl } from '../../core/chains/send/util';
+import { addressRisk } from '../../core/provider/phishing';
+import { checkAddress } from '../../kit/clients/securityClient';
 import { evmSendCall, evmTxRequest } from '../../core/chains/send/evm';
 import { utxoSelection } from '../../core/chains/send/utxo';
 import { serializeTransaction, recoverTransactionAddress, keccak256 } from 'viem';
@@ -106,7 +108,12 @@ export const handlers: HandlerMap = {
     try {
       const pr = await prepare(ctx, msg); const { params, quote, tier } = await quoteFor(ctx, msg, pr);
       const acc = await activeAccount(ctx); const sent = readSent(await local.get(SENT_TX_KEY));
-      const risk = pr.placeholder ? null : assessRecipient(pr.to, pr.from, sent, pr.chain.id, readEntries(acc.state.addressBook) as any, pr.chain.ct);
+      const risk: any = pr.placeholder ? null : assessRecipient(pr.to, pr.from, sent, pr.chain.id, readEntries(acc.state.addressBook) as any, pr.chain.ct);
+      // EVM recipients: ScamSniffer scam-address list + GoPlus address reputation (advisory; failures mean "no signal")
+      if (risk && pr.chain.kind === 'evm' && /^0x[0-9a-fA-F]{40}$/.test(pr.to)) {
+        const [scam, gp] = await Promise.all([addressRisk(pr.to, local as any).catch(() => 'unknown' as const), pr.chain.evmChainId ? checkAddress(pr.chain.evmChainId, pr.to).catch(() => null) : Promise.resolve(null)]);
+        risk.flagged = scam === 'scam' || !!gp?.risky; risk.flags = [...(scam === 'scam' ? ['scamsniffer'] : []), ...(gp?.flags ?? [])];
+      }
       return { ok: true, quote: quoteToWire(stripPlaceholder(quote, pr.placeholder)), tier, amountRaw: params.amount.toString(), from: pr.from, to: pr.placeholder ? '' : pr.to, memoKind: memoKindOf(pr.chain), symbol: pr.asset.symbol, decimals: pr.asset.decimals, assetKey: pr.assetKey, risk };
     } catch (e: any) { return err(e); }
   },

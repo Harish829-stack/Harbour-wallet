@@ -4,6 +4,33 @@ import type { KV } from './store';
 import { hostnameOf } from './origin';
 
 export const PHISHING_URL = 'https://raw.githubusercontent.com/MetaMask/eth-phishing-detect/master/src/config.json';
+// ScamSniffer's open database (GPL-3.0 data, published with a 7-day delay; fetched at runtime, never bundled): extra phishing domains
+// and scam addresses. Optional: if it cannot be fetched, MetaMask's list alone decides.
+export const SCAMSNIFFER_DOMAINS = 'https://raw.githubusercontent.com/scamsniffer/scam-database/main/blacklist/domains.json';
+export const SCAMSNIFFER_ADDRESSES = 'https://raw.githubusercontent.com/scamsniffer/scam-database/main/blacklist/address.json';
+const ADDR_KEY = 'wallet:provider:scamAddresses';
+/** Accepts a JSON array of strings or an object whose keys/values are lists; returns lowercase strings. */
+export function parseList(json: unknown): string[] {
+  const out: string[] = [];
+  const add = (v: unknown) => { if (typeof v === 'string' && v.length < 256) out.push(v.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')); else if (Array.isArray(v)) v.forEach(add); };
+  if (Array.isArray(json)) json.forEach(add); else if (json && typeof json === 'object') Object.values(json).forEach(add);
+  return out.filter(Boolean);
+}
+async function optionalList(f: typeof fetch, url: string): Promise<string[]> {
+  try { const r = await f(url, { signal: AbortSignal.timeout(8000) }); return r.ok ? parseList(await r.json()) : []; } catch { return []; }
+}
+let addrMem: { at: number; set: Set<string> } | null = null;
+/** Scam-address check (ScamSniffer). 'unknown' when the list is unavailable. */
+export async function addressRisk(address: string, kv: KV, f: typeof fetch = fetch, now: () => number = Date.now): Promise<'ok' | 'scam' | 'unknown'> {
+  try {
+    if (!addrMem || now() - addrMem.at > TTL) {
+      const cached = await kv.get<{ at: number; list: string }>(ADDR_KEY);
+      if (cached && now() - cached.at <= TTL) addrMem = { at: cached.at, set: new Set(cached.list.split('\n')) };
+      else { const list = await optionalList(f, SCAMSNIFFER_ADDRESSES); if (!list.length) return addrMem ? (addrMem.set.has(address.toLowerCase()) ? 'scam' : 'ok') : 'unknown'; addrMem = { at: now(), set: new Set(list) }; await kv.set(ADDR_KEY, { at: addrMem.at, list: list.join('\n') }).catch(() => {}); }
+    }
+    return addrMem.set.has(address.toLowerCase()) ? 'scam' : 'ok';
+  } catch { return 'unknown'; }
+}
 const KEY = 'wallet:provider:phishing'; const TTL = 24 * 3600_000;
 export type SiteRisk = { level: 'ok' } | { level: 'high'; reason: 'blocklist' } | { level: 'unavailable' };
 
@@ -35,6 +62,7 @@ export async function siteRisk(origin: string, kv: KV, f: typeof fetch = fetch, 
       else {
         const res = await f(PHISHING_URL, { signal: AbortSignal.timeout(6000) }); if (!res.ok) throw new Error('http ' + res.status);
         const cfg = parsePhishingConfig(await res.json()); if (!cfg) throw new Error('bad config');
+        cfg.blacklist.push(...(await optionalList(f, SCAMSNIFFER_DOMAINS)));
         mem = { at: now(), black: new Set(cfg.blacklist), white: new Set(cfg.whitelist) };
         await kv.set(KEY, { at: mem.at, black: cfg.blacklist.join('\n'), white: cfg.whitelist.join('\n') }).catch(() => {});
       }

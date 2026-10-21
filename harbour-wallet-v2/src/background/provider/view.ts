@@ -11,7 +11,9 @@ import { MULTI_CHAINS } from '../../core/provider/multi';
 import { b64ToBytes } from '../../core/provider/base58';
 import { displayHost, hostnameOf, isInsecureOrigin, isPunycodeHost } from '../../core/provider/origin';
 import { negotiate, summarizeProposal } from '../../core/walletconnect';
-import { siteRisk } from '../../core/provider/phishing';
+import { siteRisk, addressRisk } from '../../core/provider/phishing';
+import { readSimulation, simulateParams, NATIVE_PSEUDO } from '../../core/provider/simulate';
+import { checkAddress } from '../../kit/clients/securityClient';
 import { bytesToHex, hexToBytes, tryUtf8, type TxRequest } from '../../core/provider/methods';
 import { feePresets, maxFeeOf, type FeePresets } from './fees';
 import type { EvmNetwork } from './networks';
@@ -118,6 +120,23 @@ async function txView(p: PendingRequest, d: ViewDeps) {
   try { const est = BigInt(await d.rpc(chainId, 'eth_estimateGas', [{ from: tx.from, ...(tx.to ? { to: tx.to } : {}), value: tx.value, data: tx.data }])); out.gasEstimate = est.toString(); if (gas === null) gas = est + est / 5n; }
   catch (e: any) { sim = { ok: false, error: String(e?.message ?? 'Simulation failed').slice(0, 200) }; warnings.add('simulationFailed'); }
   out.simulation = sim; out.gasLimit = gas === null ? null : gas.toString();
+  // asset-change preview (eth_simulateV1 + traceTransfers) and address reputation (GoPlus) for the target and any approval spender
+  const [simV1, toRisk, spenderRisk] = await Promise.all([
+    d.rpc(chainId, 'eth_simulateV1', simulateParams({ from: tx.from, to: tx.to ?? undefined, value: tx.value, data: tx.data, gas: tx.gas })).then((r) => readSimulation(r, tx.from)).catch(() => null),
+    tx.to ? checkAddress(chainId, tx.to).catch(() => null) : Promise.resolve(null),
+    (decoded.kind === 'approve' || decoded.kind === 'setApprovalForAll' || decoded.kind === 'permit') && (decoded as any).spender ? checkAddress(chainId, (decoded as any).spender).catch(() => null)
+      : decoded.kind === 'setApprovalForAll' && (decoded as any).operator ? checkAddress(chainId, (decoded as any).operator).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (simV1) {
+    out.assetChanges = await Promise.all(simV1.changes.slice(0, 12).map(async (ch) => {
+      if (ch.kind === 'native' || ch.token === NATIVE_PSEUDO) return { ...ch, symbol: net.symbol, decimals: net.decimals, formatted: formatUnits(BigInt(ch.amount), net.decimals) };
+      const meta = ch.kind === 'erc20' ? await d.tokenMeta(chainId, ch.token).catch(() => null) : null;
+      return { ...ch, symbol: meta?.symbol ?? (ch.kind === 'nft' ? 'NFT' : ''), decimals: meta?.decimals ?? 0, formatted: meta ? formatUnits(BigInt(ch.amount), meta.decimals) : ch.amount };
+    }));
+    if (!simV1.ok) warnings.add('simulationFailed');
+  }
+  if (toRisk?.risky || (tx.to && (await addressRisk(tx.to, d.kv, d.fetch ?? fetch)) === 'scam')) { warnings.add('maliciousAddress'); out.addressFlags = toRisk?.flags ?? ['scamsniffer']; }
+  if (spenderRisk?.risky) { warnings.add('maliciousSpender'); out.spenderFlags = spenderRisk.flags; }
   let fees: FeePresets | null = null; try { fees = await feePresets(chainId, d.rpc); } catch { fees = null; }
   out.fees = fees && { eip1559: fees.eip1559, presets: Object.fromEntries(Object.entries(fees.presets).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).map(([a, b]) => [a, (b as bigint).toString()]))])) };
   if (fees && gas !== null) {

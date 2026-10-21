@@ -59,6 +59,7 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
   const feeFiat = (raw: string) => { const fp = priceUsd(c, chainId); return fp ? money(Number(fmtAmount(raw, quote?.feeDecimals ?? 18, 12)) * fp) : undefined; };
   const risks: string[] = [];
   if (issues.some((i) => i.code === 'smart-contract') || quote?.recipientIsContract) risks.push('The recipient is a smart contract. Sending to a contract that cannot handle this asset can permanently lock your funds.');
+  if (q.data?.risk?.flagged) risks.push(`Security warning: this address is flagged as malicious (${(q.data.risk.flags ?? []).slice(0, 3).join(', ') || 'scam list'}). Sending to it will very likely lose your funds.`);
   if (q.data?.risk?.newRecipient) risks.push('You have not sent to this address before. Check every character with the person or service you are paying.');
   if (q.data?.risk?.selfSend) risks.push('The recipient is your own address. You will only pay the network fee.');
   if (price && usdVal >= HIGH_VALUE_USD) risks.push(`This transfer is worth about ${money(usdVal)}. Transactions cannot be reversed.`);

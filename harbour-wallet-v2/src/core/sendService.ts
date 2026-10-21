@@ -87,7 +87,7 @@ export function upsertSent(list: SentTx[], rec: SentTx, max = MAX_SENT_TXS): Sen
 export const readSent = (raw: unknown): SentTx[] => (Array.isArray(raw) ? raw.filter((x) => x && typeof x.id === 'string' && typeof x.hash === 'string' && typeof x.chainId === 'string') : []);
 
 /** Recipient facts the Confirm screen turns into TW's guard sheet (send.confirmation.*). */
-export interface RecipientRisk { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean }
+export interface RecipientRisk { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean; /** Scam list / GoPlus hit (EVM). */ flagged?: boolean; flags?: string[] }
 export function assessRecipient(to: string, from: string, sent: SentTx[], chainId: string, book: Array<{ name: string; addresses: Record<string, string> }>, ct: string): RecipientRisk {
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const contact = book.find((e) => Object.values(e.addresses ?? {}).some((a) => typeof a === 'string' && same(a, to)) || (e.addresses?.[ct] && same(e.addresses[ct], to)));

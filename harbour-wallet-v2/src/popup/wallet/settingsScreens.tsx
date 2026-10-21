@@ -134,6 +134,7 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
       <Group>
         <NavRow first icon="lock" label="Auto-lock timer" value={autoLockLabel(settings.lockTimeInMinutes)} onClick={() => c.nav.push('settingsAutoLock')} testid="security-auto-lock" />
         <NavRow icon="wallet" label="Move assets between wallets" onClick={() => c.nav.push('migrationSelectSource')} testid="security-migration" />
+        <NavRow icon="shield" label="Token approvals" onClick={() => c.nav.push('tokenApprovals')} testid="security-approvals" />
         {bio.available && pk && <SwitchRow icon="shield" label={`Unlock with ${bio.name}`} sub={pk.enabled ? 'On. Your password still works as a fallback.' : 'Use your device biometrics instead of typing your password.'} on={pk.enabled} onToggle={toggle} testid="security-biometrics" />}
       </Group>
       <ErrorLine msg={err} />

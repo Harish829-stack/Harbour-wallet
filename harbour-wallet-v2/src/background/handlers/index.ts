@@ -15,8 +15,9 @@ import { handlers as ledger } from './ledger';
 import { handlers as kitEvents } from './kitEvents';
 import { handlers as perps } from './perps';
 import { handlers as predictions } from './predictions';
+import { handlers as approvals } from './approvals';
 
-const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...earn, ...nfts, ...ramps, ...discover, ...onboardingExtra, ...settingsExtra, ...walletconnect, ...ledger, ...kitEvents, ...perps, ...predictions };
+const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...earn, ...nfts, ...ramps, ...discover, ...onboardingExtra, ...settingsExtra, ...walletconnect, ...ledger, ...kitEvents, ...perps, ...predictions, ...approvals };
 export const allExtraHandlers = (): HandlerMap => ALL;
 export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
   const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;

@@ -453,7 +453,7 @@ test('site risk: blocklist hit, whitelist override, cache, and honest "unavailab
   assert.deepEqual(await M.siteRisk('https://scam.example', kv, f, now), { level: 'high', reason: 'blocklist' });
   assert.deepEqual(await M.siteRisk('https://login.scam.example', kv, f, now), { level: 'high', reason: 'blocklist' });
   assert.deepEqual(await M.siteRisk('https://ok.scam.example', kv, f, now), { level: 'ok' });
-  assert.deepEqual(await M.siteRisk('https://fine.example', kv, f, now), { level: 'ok' }); assert.equal(fetches, 1);
+  assert.deepEqual(await M.siteRisk('https://fine.example', kv, f, now), { level: 'ok' }); assert.equal(fetches, 2); // MetaMask list + ScamSniffer domains, once each (then cached)
   M.resetPhishingCache(); assert.deepEqual(await M.siteRisk('https://evil.io', kv, async () => { throw new Error('offline'); }, now), { level: 'high', reason: 'blocklist' });
   M.resetPhishingCache(); assert.deepEqual(await M.siteRisk('https://fine.example', new MemKV(), async () => { throw new Error('offline'); }, now), { level: 'unavailable' });
   assert.equal(M.parsePhishingConfig({ nope: 1 }), null);

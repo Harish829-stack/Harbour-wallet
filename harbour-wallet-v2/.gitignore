@@ -31,3 +31,6 @@ coverage/
 
 # local e2e build artifacts
 .e2e/
+
+# release archives (signed metadata stays tracked)
+releases/*.zip
