@@ -6,6 +6,7 @@ import { FEATURE_SCREENS } from './features';
 import { SETTINGS_SCREENS } from './settingsScreens';
 import { NETWORK_SCREENS } from './networkScreens';
 import { RevealGate } from './revealGate';
+import { SeedCanvas } from './SeedCanvas';
 import { TOKEN_SCREENS, CustomTokenDetailScreen } from './tokenScreens';
 import { refreshTokens, useTokenItems } from './tokensStore';
 import { networkByChainId } from '../../core/customTokens';
@@ -395,13 +396,7 @@ export const BackupScreen: React.FC<Ctx> = (c) => {
       {loading ? <div style={{ color: T.sub, textAlign: 'center', marginTop: 30 }}>Revealing…</div> :
         err ? <div style={{ color: T.error, marginTop: 16 }}>{err}</div> : <>
           <div style={{ position: 'relative' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, filter: shown ? 'none' : 'blur(6px)', transition: 'filter .2s', userSelect: shown ? 'text' : 'none' }}>
-              {words.map((w, i) => (
-                <div key={i} style={{ background: T.bgAlt, borderRadius: 10, padding: '10px 12px', fontSize: 14 }}>
-                  <span style={{ color: T.sub, marginRight: 6 }}>{i + 1}</span>{w}
-                </div>
-              ))}
-            </div>
+            <SeedCanvas words={words} revealed={shown} />
             {!shown && (
               <div onClick={() => setShown(true)} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--hb-scrim)', color: 'var(--hb-on-brand)', borderRadius: 999, padding: '8px 16px', fontWeight: 700, fontSize: 13 }}><Ic d={ICON.eye} size={16} /> Tap to reveal</span>

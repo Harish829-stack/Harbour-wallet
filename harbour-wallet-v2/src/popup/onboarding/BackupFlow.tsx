@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, ShieldAlert } from 'lucide-react';
 import { RevealGate } from '../wallet/revealGate';
+import { SeedCanvas } from '../wallet/SeedCanvas';
 import { chipWord, shuffleWords, verifySelection } from '../../core/backupVerify';
 
 type Phase = 'auth' | 'reveal' | 'verify' | 'done';
@@ -32,7 +33,7 @@ export const BackupFlow: React.FC<{ bg: (m: any) => Promise<any>; walletId?: str
       <div className="ob-banner"><ShieldAlert size={20} aria-hidden="true"/><span>Write these {words.length || 12} words on paper, in order, and never share them with anyone.</span></div>
       {loading ? <p className="ob-muted" role="status">Revealing...</p> : err ? <p className="ob-error" role="alert">{err}</p> : (
         <div className="ob-seed-wrap">
-          <ol className="ob-seed-grid" style={{ filter: shown ? 'none' : 'blur(7px)' }} aria-hidden={!shown}>{words.map((w, i) => <li key={i} className="ob-word"><small>{i + 1}</small> {w}</li>)}</ol>
+          <SeedCanvas words={words} revealed={shown}/>
           {!shown && <button type="button" className="ob-reveal-cover" onClick={() => setShown(true)} aria-label="Reveal secret phrase"><span><Eye size={16}/> Click to reveal</span></button>}
         </div>)}
       <div style={{ display: 'flex', gap: 12 }}><button className="ob-secondary" onClick={onCancel}>Cancel</button><button className="ob-primary" disabled={!shown || !words.length} onClick={() => setPhase('verify')} data-testid="backup-continue">Continue</button></div>

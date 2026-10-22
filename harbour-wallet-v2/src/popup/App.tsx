@@ -1,4 +1,5 @@
 import { NetworkBanner } from './NetworkBanner';
+import { SeedCanvas } from './wallet/SeedCanvas';
 import { SyncWithMobile } from './wallet/syncMobile';
 import { BackupScreen } from './wallet/screens';
 import React, { useEffect, useState } from 'react';
@@ -150,13 +151,7 @@ function WalletApp() {
   if (screen === 'backup') return <Shell>
     <h2 style={{ fontSize: 22, marginTop: 8 }}>Your secret phrase</h2>
     <p style={{ color: T.sub, fontSize: 14, marginTop: 4 }}>Write these 12 words down in order and keep them safe. Anyone with them controls your wallet.</p>
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-      {mnemonic.split(' ').map((w, i) => (
-        <div key={i} style={{ background: T.bgAlt, borderRadius: 10, padding: '10px 12px', fontSize: 14 }}>
-          <span style={{ color: T.sub, marginRight: 6 }}>{i + 1}</span>{w}
-        </div>
-      ))}
-    </div>
+    <div style={{ marginTop: 12 }}><SeedCanvas words={mnemonic.split(' ').filter(Boolean)} revealed /></div>
     <div style={{ marginTop: 16, background: T.accentSoft, borderRadius: 12, padding: 12 }}>
       <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Accounts created</div>
       {Object.entries(addrs).slice(0, 4).map(([k, v]) => <div key={k} style={{ fontSize: 12, fontFamily: 'monospace', marginTop: 2 }}>{k}: {v.slice(0, 8)}…{v.slice(-6)}</div>)}
