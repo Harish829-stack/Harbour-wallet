@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { T } from '../theme';
 import { Btn, Spinner } from './ui';
+import { Check } from 'lucide-react';
 import { createQrSyncReader, ONE_TIME_CODE } from '../../core/qrSync';
 
 // Sync with Mobile (TW: Settings > "Sync with Mobile" -> onboarding flow IMPORT_QR, 4 steps) [certain, bundle]:
@@ -20,24 +21,27 @@ export const SyncWithMobile: React.FC<{ bg: (m: any) => Promise<any>; onClose: (
   useEffect(() => { void QRCode.toDataURL(SYNC_LINK, { margin: 1, width: 220 }).then(setQr).catch(() => {}); }, []);
 
   if (step === 'intro') return (
-    <div data-testid="sync-intro" style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 12, color: T.sub }}>Step 1 of 3</div>
-      <h2 style={{ margin: '6px 0' }}>Connect to mobile</h2>
-      <div style={{ color: T.sub, fontSize: 14 }}>Scan this QR code with your phone camera. After the scan, continue in your Trust Wallet mobile app.</div>
-      <div style={{ display: 'inline-block', padding: 12, background: 'var(--hb-on-brand)', border: `1px solid ${T.border}`, borderRadius: 16, margin: '18px 0' }}>{qr ? <img src={qr} width={200} height={200} alt="Sync QR" /> : <Spinner size={28} />}</div>
-      <div style={{ color: T.sub, fontSize: 12, marginBottom: 14 }}>Only seed-phrase wallets are imported. Your phone keeps its own copy.</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}><Btn onClick={() => { setErr(''); setStep('scan'); }}>I completed the scan</Btn><Btn variant="ghost" onClick={onClose}>Cancel</Btn></div>
+    <div data-testid="sync-intro">
+      <p className="fx-lede">Step 1 of 3 · Scan this code with your phone camera, then continue in your Trust Wallet mobile app.</p>
+      <div className="fx-qr">
+        <div className="fx-qr-card"><span className="fx-corner"/>{qr ? <img src={qr} width={220} height={220} alt="Sync QR" /> : <div style={{ width: 220, height: 220, display: 'grid', placeItems: 'center' }}><Spinner size={28} /></div>}<i className="fx-qr-beam"/></div>
+        <ol className="fx-howto">
+          <li><span><b>Scan with your phone</b>Your camera opens the Trust Wallet export screen.</span></li>
+          <li><span><b>Show the animated code</b>Hold your phone up to this computer's camera.</span></li>
+          <li><span><b>Enter the one-time code</b>Type the 6 characters your app shows.</span></li>
+        </ol>
+      </div>
+      <div className="fx-row" style={{ marginTop: 28 }}><button className="ob-secondary" onClick={onClose}>Cancel</button><button className="ob-primary" onClick={() => { setErr(''); setStep('scan'); }}>I completed the scan</button></div>
     </div>
   );
   if (step === 'scan') return <Scan onKeys={(k) => { keysRef.current = k; setStep('code'); }} onBack={() => setStep('intro')} />;
   if (step === 'code') return <Code bg={bg} keysRef={keysRef} onBack={() => setStep('scan')} onDone={(r) => { setResult(r); setStep('done'); onImported?.(); }} />;
   return (
-    <div data-testid="sync-done" style={{ textAlign: 'center', paddingTop: 30 }}>
-      <h2>Wallet synced</h2>
-      <div style={{ color: T.sub, fontSize: 14, margin: '8px 0 20px' }}>
+    <div data-testid="sync-done">
+      <div className="fx-success"><span className="fx-success-ic"><Check size={26}/></span><div><b>Wallet synced</b><span>
         {result!.imported} wallet{result!.imported === 1 ? '' : 's'} imported{result!.duplicates ? `, ${result!.duplicates} already in Harbour` : ''}{result!.skipped ? `, ${result!.skipped} skipped (not a seed phrase)` : ''}.
-      </div>
-      <Btn onClick={onClose}>Done</Btn>
+      </span></div></div>
+      <button className="ob-primary" onClick={onClose}>Done</button>
     </div>
   );
 };

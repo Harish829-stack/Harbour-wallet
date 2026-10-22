@@ -3,9 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { bg } from '../api';
 import { validatePassword } from '../../core/passwordPolicy';
-import { Animation } from './Animation';
 import { Brand, PasswordField } from '../design/components';
-import { ChevronRight, ChevronLeft, ArrowLeft, Eye, LockKeyhole, Wallet, QrCode, Smartphone, CircleHelp, ArrowUpRight, Usb } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Eye, LockKeyhole, Wallet, QrCode, Smartphone, ArrowUpRight, Usb, KeyRound, Fingerprint, Plus, Download, CheckCircle2 } from 'lucide-react';
 import { registerBiometrics, useBiometricAvailability, BiometricEnroll, type EnrollStage } from '../biometricsUi';
 import { isUserCancel, toHex } from '../../core/passkey';
 import { classifySecret, validateWalletName, MAX_WALLETS, type PkNetworkOption } from '../../core/importKey';
@@ -13,6 +12,8 @@ import { createIdleGuard, restoreStep, serializeStep, STEP_KEY, type OnboardingF
 import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './ImportSecret';
 import { QrScanner, type StoredKeys } from './qrScanner';
 import { BackupFlow } from './BackupFlow';
+import { Landing } from './Landing';
+import { FlowFrame, StepArt, PasswordMeter, Confetti } from './FlowFrame';
 import { FEATURE_SCREENS } from '../wallet/features';
 import './onboarding.css';
 
@@ -35,9 +36,10 @@ const errorText = (code: string): string => ({
   LOCKED: 'The wallet is locked. Unlock it and try again.',
 }[code] ?? code);
 
-function Icon({ type }: { type: 'arrow' | 'eye' | 'lock' | 'wallet' | 'qr' | 'phone' | 'usb' }) { const Glyph = { arrow: ChevronRight, eye: Eye, lock: LockKeyhole, wallet: Wallet, qr: QrCode, phone: Smartphone, usb: Usb }[type]; return <Glyph size={24} strokeWidth={1.8} aria-hidden="true"/>; }
-function Choice({ children, icon = 'wallet', recommended, onClick, testid, disabled }: { children: React.ReactNode; icon?: 'lock' | 'wallet' | 'qr' | 'usb'; recommended?: boolean; onClick: () => void; testid?: string; disabled?: boolean }) {
-  return <button type="button" className="ob-choice" onClick={onClick} data-testid={testid} disabled={disabled}><span className="ob-choice-label"><Icon type={icon}/><span>{children}</span>{recommended && <small>Recommended</small>}</span><Icon type="arrow"/></button>;
+type IconType = 'arrow' | 'eye' | 'lock' | 'wallet' | 'qr' | 'phone' | 'usb' | 'key' | 'finger' | 'plus' | 'download';
+function Icon({ type }: { type: IconType }) { const Glyph = { arrow: ChevronRight, eye: Eye, lock: LockKeyhole, wallet: Wallet, qr: QrCode, phone: Smartphone, usb: Usb, key: KeyRound, finger: Fingerprint, plus: Plus, download: Download }[type]; return <Glyph size={24} strokeWidth={1.8} aria-hidden="true"/>; }
+function Choice({ children, desc, icon = 'wallet', recommended, onClick, testid, disabled }: { children: React.ReactNode; desc?: React.ReactNode; icon?: IconType; recommended?: boolean; onClick: () => void; testid?: string; disabled?: boolean }) {
+  return <button type="button" className="ob-choice" onClick={onClick} data-testid={testid} disabled={disabled}><span className="ob-choice-label"><span className="ob-choice-ic"><Icon type={icon}/></span><span className="ob-choice-text"><b>{children}{recommended && <small>Recommended</small>}</b>{desc && <span>{desc}</span>}</span></span><Icon type="arrow"/></button>;
 }
 function QRLink() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -55,14 +57,8 @@ function useIdleClose(paused: boolean) {
   }, [paused]);
 }
 
-const Shell: React.FC<{ heading: React.ReactNode; title?: React.ReactNode; step?: string; onBack?: () => void; busy?: boolean; animation?: string; sidebar?: React.ReactNode; children: React.ReactNode }> = ({ heading, title, step, onBack, busy, animation = 'security', sidebar, children }) => (
-  <main className="ob hb-design ob-layout">
-    <aside className="ob-sidebar"><div className="ob-sidebar-inner"><Brand/><div className="ob-step">{step}</div><h1 data-testid="onboarding-step-title">{heading}</h1>
-      {sidebar ?? <div className={`ob-illustration ${animation === 'security' ? 'ob-security' : ''}`}><Animation name={animation}/></div>}
-      <a className="ob-help" href="/legal.html#help" target="_blank" rel="noreferrer"><CircleHelp size={16}/> Help</a>
-    </div></aside>
-    <section className="ob-main"><div className="ob-topline">{onBack && <button className="ob-back" onClick={onBack} disabled={busy}><ArrowLeft size={16}/> Back</button>}</div>{title && <h2>{title}</h2>}{children}</section>
-  </main>
+const Shell: React.FC<{ heading: React.ReactNode; title?: React.ReactNode; step?: string; onBack?: () => void; busy?: boolean; animation?: string; sidebar?: React.ReactNode; children: React.ReactNode }> = ({ heading, title, onBack, busy, animation = 'security', sidebar, children }) => (
+  <FlowFrame heading={heading} title={title} onBack={onBack} busy={busy} art={animation} sidebar={sidebar}>{children}</FlowFrame>
 );
 
 /** Unlock gate used when onboarding is opened while a vault exists but is locked (additional wallet, backup, passkey flows). */
@@ -73,7 +69,7 @@ function UnlockGate({ onUnlocked }: { onUnlocked: () => void }) {
     try { const r = await bg({ type: 'unlock', password: pw }); if (!r?.ok) throw new Error(r?.error || 'Incorrect password'); setPw(''); onUnlocked(); }
     catch (x: any) { setErr(x?.message || 'Incorrect password'); } finally { setBusy(false); }
   };
-  return <Shell heading="Welcome back" title="Unlock your wallet to continue">
+  return <Shell heading={<>Welcome<br/>back</>} title="Unlock your wallet to continue">
     <form className="ob-password-form" onSubmit={submit}><PasswordField label="Password" value={pw} onChange={setPw} autoFocus disabled={busy} error={err || undefined} autoComplete="current-password"/>
       <button className="ob-primary ob-half" disabled={!pw || busy}>{busy ? 'Unlocking...' : 'Unlock'}</button></form>
   </Shell>;
@@ -260,8 +256,8 @@ export function Onboarding() {
     if (!status.unlocked) return <UnlockGate onUnlocked={() => void loadStatus()}/>;
     const done = () => { window.location.hash = '/'; window.close(); };
     return special === 'BACKUP_SEEDPHRASE'
-      ? <Shell heading="Back up your wallet" title="Back up your Secret Phrase"><BackupFlow bg={bg} walletId={query.get('wallet') ?? undefined} onDone={done} onCancel={done}/></Shell>
-      : <Shell heading="Secure your wallet" title="Set up biometrics" animation="security"><BiometricEnroll bg={bg} name={bio.name} onDone={done} onBack={done}/></Shell>;
+      ? <Shell heading={<>Back up your<br/>secret phrase</>} title="Back up your Secret Phrase" animation="backup"><BackupFlow bg={bg} walletId={query.get('wallet') ?? undefined} onDone={done} onCancel={done}/></Shell>
+      : <Shell heading="Secure your wallet" title="Set up biometrics" animation="biometrics"><BiometricEnroll bg={bg} name={bio.name} onDone={done} onBack={done}/></Shell>;
   }
   if (mode === 'locked') return <UnlockGate onUnlocked={() => { writeSaved(null); void loadStatus(); }}/>;
   if (mode === 'blocked') return <Shell heading="Wallet limit reached" title={`You have ${status.maxWallets} wallets`}><div className="ob-notice warn" role="status" data-testid="wallet-limit">You can have up to {status.maxWallets} wallets. Remove a wallet you no longer use from Settings, then add another.</div><button className="ob-primary ob-half" onClick={() => window.close()}>Close</button></Shell>;
@@ -272,53 +268,63 @@ export function Onboarding() {
       <Choice onClick={async () => { setBusy(true); const r = await bg({ type: 'resetEmptyVault' }); setBusy(false); if (r?.ok) { writeSaved(null); setResumeChoice(false); await loadStatus(); } else setError(r?.error || 'Could not reset'); }} disabled={busy}>Start over</Choice></div>
   </Shell>;
 
-  if (step === 'welcome') return <main className="ob hb-design ob-welcome">
-    <div className="ob-globe"><Brand/><div><p className="hb-eyebrow">A CLEARER VIEW OF YOUR CRYPTO</p><h1>Your assets.<br/>Your horizon.</h1><p className="ob-muted">A self-custody wallet, with you at the helm.</p></div><Animation name="globe" className="ob-globe-animation"/></div>
-    <div className="ob-welcome-right"><div className="ob-welcome-content"><Brand/>
-      <p className="hb-eyebrow">{additional ? 'ADD A WALLET' : 'GET STARTED'}</p>
-      <h1 data-testid="onboarding-step-title">{additional ? 'Add wallets and take charge of your journey' : 'Make yourself at home.'}</h1>
-      <p className="ob-intro">{additional ? <>You have {status.walletCount} of {status.maxWallets} wallets.<br/>Your keys stay on this device.</> : <>Bring your existing wallet or create a new one.<br/>Your keys stay on this device.</>}</p>
-      {!additional && <label className="ob-terms"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)}/><span>I have read and agree to the <a href="/legal.html#terms" target="_blank" rel="noreferrer">Terms of Use</a> and <a href="/legal.html#privacy" target="_blank" rel="noreferrer">Privacy Policy</a></span></label>}
+  // First install: full marketing-style landing page. Adding another wallet keeps the compact split welcome below.
+  if (step === 'welcome' && !additional) return <Landing terms={terms} setTerms={setTerms} busy={busy} error={error} onStart={start}/>;
+  if (step === 'welcome') return <main className="ob hb-design ob-welcome ob-add fx">
+    <div className="ob-add-deck"><Brand/><h2>Another wallet.<br/>Same harbour.</h2><p>Keep separate wallets for saving, trading and testing, and switch between them in one tap.</p><StepArt name="import"/></div>
+    <div className="ob-welcome-right"><div className="ob-welcome-content fx-stage">
+      <p className="hb-eyebrow">ADD A WALLET</p>
+      <h1 data-testid="onboarding-step-title">Add wallets and take charge of your journey</h1>
+      <div className="ob-capacity" role="status"><div><span>Wallets in Harbour</span><span><b>{status.walletCount}</b> of {status.maxWallets}</span></div><div className="bar"><span style={{ width: `${Math.min(100, (status.walletCount / Math.max(1, status.maxWallets)) * 100)}%` }}/></div></div>
       {error && <p className="ob-error" role="alert">{error}</p>}
-      <div className="ob-welcome-actions"><button className="ob-primary" disabled={(!additional && !terms) || busy} onClick={() => start('import')}>I already have a wallet</button><button className="ob-secondary" disabled={(!additional && !terms) || busy} onClick={() => start('create')}>{busy ? 'Creating...' : 'Create new wallet'}</button></div>
-      <div className="ob-mobile"><span/><p>Have the Trust Wallet mobile app? <Icon type="phone"/></p><span/></div>
-      <button className="ob-link ob-sync" disabled={!additional && !terms} onClick={() => start('qr')}><Icon type="qr"/>Scan QR to sync</button>
+      <div className="ob-choices">
+        <Choice icon="plus" desc="A fresh secret phrase, generated on this device." disabled={busy} onClick={() => start('create')}>{busy ? 'Creating…' : 'Create new wallet'}</Choice>
+        <Choice icon="download" desc="Use a secret phrase, private key or Ledger." disabled={busy} onClick={() => start('import')}>I already have a wallet</Choice>
+        <Choice icon="qr" desc="Bring wallets over from the Trust Wallet mobile app." disabled={busy} onClick={() => start('qr')}>Scan QR to sync</Choice>
+      </div>
+      <p className="ob-muted" style={{ fontSize: 13, marginTop: 20 }}>Your keys stay on this device.</p>
     </div></div>
   </main>;
 
   const heading = step === 'completed' ? <>Brilliant,<br/>your wallet is ready!</> : step === 'authentication' || step === 'password' || step === 'biometrics' ? 'Secure your wallet' : step === 'qr-mobile' || step === 'qr-scan' || step === 'qr-code' ? 'Connect to mobile' : step === 'ledger' ? 'Connect your Ledger' : additional ? 'Add a wallet' : 'Import a wallet';
   const title = step === 'authentication' ? 'Select an option' : step === 'password' ? 'Create password' : step === 'biometrics' ? 'Biometric authentication' : step === 'sources' ? 'Select your existing wallet' : step === 'trust-method' ? 'Select a method' : step === 'secret' ? 'Import with Secret Phrase or Private Key' : step === 'solana' ? 'Choose your Solana wallet' : step === 'qr-mobile' ? 'Scan this QR code with your mobile phone camera' : step === 'qr-scan' ? 'Scan the QR code shown in your mobile app' : step === 'qr-code' ? 'Enter the encryption code' : step === 'ledger' ? 'Import from a hardware wallet' : step === 'completed' ? 'Start exploring' : 'Integration requires further verification';
-  const total = additional ? 2 : flow === 'create' ? 2 : flow === 'qr' ? 4 : 3;
   const base = additional ? 0 : 1;
   const active = step === 'authentication' ? (flow === 'create' ? 0 : 1) : step === 'password' || step === 'biometrics' ? 1 : step === 'sources' || step === 'trust-method' || step === 'qr-mobile' ? base + 1 : step === 'secret' || step === 'solana' || step === 'qr-scan' || step === 'qr-code' || step === 'ledger' ? base + 2 : 0;
   const animation = step === 'completed' ? flow === 'create' ? 'empty-wallet' : 'wallet-created' : step === 'sources' || step === 'trust-method' || step === 'secret' || step === 'solana' || step === 'ledger' ? 'import' : step.startsWith('qr') ? 'qr-mobile' : 'security';
   const sidebar = step === 'secret' ? <ImportInstructions product={source === 'trust' ? 'trust-wallet' : 'other'}/> : undefined;
   const codeSlots = Array.from({ length: 6 }, (_, i) => code[i] ?? '');
   const LedgerScreen = FEATURE_SCREENS['importLedger'];
-  return <main className="ob hb-design ob-layout">
-    <aside className="ob-sidebar"><div className="ob-sidebar-inner"><Brand/><div className="ob-step">{active > 0 && `Step ${active} of ${total}`}</div><h1 data-testid="onboarding-step-title">{heading}</h1>
-      {sidebar ?? <div className={`ob-illustration ${animation === 'security' ? 'ob-security' : ''}`}><Animation name={animation}/></div>}
-      <a className="ob-help" href="/legal.html#help" target="_blank" rel="noreferrer"><CircleHelp size={16}/> Help</a>
-    </div></aside>
-    <section className="ob-main"><div className="ob-topline">{step !== 'completed' && <button className="ob-back" onClick={back} disabled={busy}><ArrowLeft size={16}/> Back</button>}</div><h2>{title}</h2>
+  const labels = additional ? ['Choose a source', 'Import your wallet'] : flow === 'create' ? ['Secure your wallet', 'Ready to explore'] : flow === 'qr' ? ['Secure your wallet', 'Connect to mobile', 'Scan the code', 'Enter the code'] : ['Secure your wallet', 'Choose a source', 'Import your wallet'];
+  const stepNo = flow === 'qr' && step === 'qr-code' && !additional ? 4 : active;
+  const lede: Partial<Record<Step, string>> = {
+    authentication: 'Choose how you will unlock Harbour on this device.',
+    password: 'This password unlocks Harbour on this device only. Harbour cannot recover it, so keep it somewhere safe.',
+    sources: 'Where is the wallet you want to bring over?',
+    'trust-method': 'Pick the quickest way to move your Trust Wallet over.',
+  };
+  return <FlowFrame heading={heading} title={title} labels={labels} active={stepNo} done={step === 'completed'} art={animation} sidebar={sidebar} stageKey={step} wide={step === 'completed' || step === 'qr-mobile'}
+    onBack={step !== 'completed' ? back : undefined} busy={busy} note={step === 'completed' ? 'Back up your secret phrase from Settings any time. It is the only way to recover this wallet.' : undefined}>
+      {step === 'completed' && <Confetti/>}
+      {lede[step] && <p className="fx-lede">{lede[step]}</p>}
       {step === 'authentication' && <div className="ob-choices">
-        {bio.available && <Choice icon="lock" recommended testid="onboarding-biometrics" onClick={() => { pendingPasskey.current = null; go('biometrics'); }}>{bio.name}</Choice>}
-        <Choice icon="lock" onClick={() => { pendingPasskey.current = null; go('password'); }}>Password</Choice>
+        {bio.available && <Choice icon="finger" recommended desc="Unlock with your device passkey. Fast and phishing-resistant." testid="onboarding-biometrics" onClick={() => { pendingPasskey.current = null; go('biometrics'); }}>{bio.name}</Choice>}
+        <Choice icon="lock" desc="Create a password to unlock Harbour on this device." onClick={() => { pendingPasskey.current = null; go('password'); }}>Password</Choice>
       </div>}
       {step === 'biometrics' && <div className="ob-password-form">
-        <p className="ob-muted">A secure and simple way to unlock your wallet with {bio.name}.</p>
+        <div className="fx-callout"><Fingerprint size={18}/><span><b>A secure and simple way to unlock your wallet with {bio.name}.</b> Your device creates a passkey; Harbour never sees your fingerprint or face.</span></div>
         {bioStage !== 'idle' && <p className="ob-muted" data-testid="biometric-stage" role="status">{bioStage === 'register' ? 'Registering biometrics...' : 'Verifying biometrics...'}</p>}
         {error && <div className="ob-error" role="alert">{error}</div>}
         <button className="ob-primary ob-half" data-testid="onboarding-set-biometrics" disabled={busy || bioStage !== 'idle'} onClick={runBiometricSetup}>{busy ? 'Creating wallet...' : `Set up ${bio.name}`}</button>
       </div>}
       {step === 'password' && <form className="ob-password-form" onSubmit={submitPassword}>
         <PasswordField label="Password" value={password} onChange={setPassword} placeholder="Min 8 characters" error={policy.error} autoFocus disabled={busy}/>
+        <PasswordMeter value={password}/>
         <PasswordField label="Confirm password" value={confirmation} onChange={setConfirmation} placeholder="Password" error={confirmationError} disabled={busy}/>
         {error && <div className="ob-error" role="alert">{error}</div>}
         <button className="ob-primary ob-half" disabled={!policy.valid || password !== confirmation || busy}>{busy ? 'Creating wallet...' : 'Continue'}</button>
       </form>}
-      {step === 'sources' && <div className="ob-choices"><Choice testid="onboarding-select-import-method-trust-wallet" onClick={() => { setSource('trust'); go('trust-method'); }}>Trust Wallet Mobile</Choice><Choice onClick={() => { setSource('other'); go('secret'); }}>Other mobile wallet or extension</Choice><p className="ob-muted ob-hardware">Hardware wallets</p><Choice icon="usb" testid="onboarding-import-ledger" onClick={() => { setFlow('ledger'); go('ledger'); }}>Connect your Ledger</Choice></div>}
-      {step === 'trust-method' && <div className="ob-choices"><Choice icon="qr" recommended onClick={() => { setFlow('qr'); go('qr-mobile'); }}>Import with QR Code from mobile</Choice><Choice onClick={() => { setFlow('import'); go('secret'); }}>Import with Secret Phrase or Private Key</Choice></div>}
+      {step === 'sources' && <div className="ob-choices"><Choice icon="phone" desc="Move wallets over from the Trust Wallet mobile app." testid="onboarding-select-import-method-trust-wallet" onClick={() => { setSource('trust'); go('trust-method'); }}>Trust Wallet Mobile</Choice><Choice icon="key" desc="Use a secret phrase or private key from any wallet." onClick={() => { setSource('other'); go('secret'); }}>Other mobile wallet or extension</Choice><p className="ob-muted ob-hardware">Hardware wallets</p><Choice icon="usb" desc="Keep keys on your Ledger and sign over USB." testid="onboarding-import-ledger" onClick={() => { setFlow('ledger'); go('ledger'); }}>Connect your Ledger</Choice></div>}
+      {step === 'trust-method' && <div className="ob-choices"><Choice icon="qr" recommended desc="Scan a code with your phone. No typing required." onClick={() => { setFlow('qr'); go('qr-mobile'); }}>Import with QR Code from mobile</Choice><Choice icon="key" desc="Type or paste your 12 to 24 word phrase, or a private key." onClick={() => { setFlow('import'); go('secret'); }}>Import with Secret Phrase or Private Key</Choice></div>}
       {step === 'secret' && <SecretForm name={name} onName={(v) => { setName(v); setError(''); }} nameError={nameError} product={source === 'trust' ? 'trust-wallet' : 'other'}
         secret={secret} onSecret={(v) => { setSecret(v); setError(''); }} kind={kind} check={check} network={network} onNetwork={setNetwork} error={error} busy={busy} canSubmit={canSubmit} onSubmit={submitSecret}/>}
       {step === 'solana' && <div className="ob-import-form" data-testid="solana-derivation">
@@ -331,11 +337,21 @@ export function Onboarding() {
         {error && <p className="ob-error" role="alert">{error}</p>}
         <button className="ob-primary ob-half" disabled={busy} onClick={submitSolana}>{busy ? 'Importing...' : 'Import'}</button>
       </div>}
-      {step === 'qr-mobile' && <div className="ob-qr-instructions"><button className="ob-link ob-qr-manual" onClick={() => { setFlow('import'); setSource('trust'); go('secret'); }}>Import with Secret Phrase or Private Key</button><p>After the scan, continue in your Trust Wallet mobile app</p><QRLink/><button className="ob-primary ob-qr-continue" onClick={() => go('qr-scan')}>I completed the scan</button></div>}
+      {step === 'qr-mobile' && <div className="ob-import-form" style={{ minHeight: 0 }}>
+        <div className="fx-qr">
+          <div className="fx-qr-card"><span className="fx-corner"/><QRLink/><i className="fx-qr-beam"/></div>
+          <ol className="fx-howto">
+            <li><span><b>Open your phone camera</b>Point it at this code to open Trust Wallet.</span></li>
+            <li><span><b>Follow the steps in the app</b>Choose the wallets you want to bring to Harbour.</span></li>
+            <li><span><b>Come back here</b>Select “I completed the scan” to continue.</span></li>
+          </ol>
+        </div>
+        <div className="fx-row" style={{ marginTop: 8 }}><button className="ob-secondary" onClick={() => { setFlow('import'); setSource('trust'); go('secret'); }}>Use secret phrase instead</button><button className="ob-primary" onClick={() => go('qr-scan')}>I completed the scan</button></div>
+      </div>}
       {step === 'qr-scan' && <div className="ob-qr-instructions"><QrScanner onKeys={(keys) => { setQrKeys(keys); go('qr-code'); }}/></div>}
       {step === 'qr-code' && <div className="ob-import-form" data-testid="qr-code-step">
         <p className="ob-muted">Enter the 6-character code shown in your mobile app to decrypt your wallets.</p>
-        <div className={`ob-code ${error ? 'bad' : ''}`} role="group" aria-label="Encryption code">{codeSlots.map((c, i) => <input key={i} aria-label={`Character ${i + 1}`} value={c} maxLength={1} disabled={busy} autoFocus={i === code.length || (i === 5 && code.length === 6)} autoComplete="off"
+        <div className={`ob-code ${error ? 'bad' : ''}`} role="group" aria-label="Encryption code">{codeSlots.map((c, i) => <input key={i} aria-label={`Character ${i + 1}`} value={c} placeholder=" " maxLength={1} disabled={busy} autoFocus={i === code.length || (i === 5 && code.length === 6)} autoComplete="off"
           onChange={(e) => { const v = e.target.value.replace(/[^a-z0-9]/gi, '').slice(-1).toUpperCase(); if (!v) return; const next = (code + v).slice(0, 6); setCode(next); setError(''); if (next.length === 6) void submitCode(next); }}
           onKeyDown={(e) => { if (e.key === 'Backspace') { setCode(code.slice(0, -1)); setError(''); } }}
           onPaste={(e) => { const v = e.clipboardData.getData('text').replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase(); if (v) { e.preventDefault(); setCode(v); if (v.length === 6) void submitCode(v); } }}/>)}</div>
@@ -347,13 +363,12 @@ export function Onboarding() {
         : <div className="ob-notice warn" role="status" data-testid="ledger-unavailable">Ledger import is not available in this build yet. Use a secret phrase or private key instead.</div>)}
       {step === 'boundary' && <div className="ob-error" role="status">This step is not available.</div>}
       {step === 'completed' && <>
-        {qrSummary && <p className="ob-muted" role="status">{qrSummary}</p>}
-        <div className="ob-explore"><div className="ob-explore-image">{slide === 0 ? <DappIllustration /> : slide === 1 ? <SidePanelIllustration /> : <ToolbarIllustration />}</div><div className="ob-explore-copy"><small>{['TOP APP RIGHT NOW','DID YOU KNOW','KEEP IT HANDY'][slide]}</small><h3>{[<>PancakeSwap</>,<>Extension<br/>- in a Side Panel</>,<>Pin us to<br/>your Toolbar</>][slide]}</h3><p>{['Trade, earn, and farm across chains','Interact without losing context','Access it instantly in one click'][slide]}</p><button className="ob-link" onClick={() => {if (slide === 0) window.open('https://pancakeswap.finance/','_blank','noopener,noreferrer'); else if (slide === 1) openSidePanel(); else setPinGuide(true);}}>{slide === 0 ? 'Go to app' : slide === 1 ? 'Open Side Panel' : pinned ? "It's pinned" : 'Guide me'} <ArrowUpRight size={16}/></button></div></div>
+        <div className="fx-success"><span className="fx-success-ic"><CheckCircle2 size={26}/></span><div><b>{flow === 'create' ? 'Your new wallet is ready' : 'Your wallet is imported'}</b><span>{qrSummary || 'Everything is encrypted and stored on this device.'}</span></div></div>
+        <div className="ob-explore" key={slide}><div className="ob-explore-image">{slide === 0 ? <DappIllustration /> : slide === 1 ? <SidePanelIllustration /> : <ToolbarIllustration />}</div><div className="ob-explore-copy"><small>{['TOP APP RIGHT NOW','DID YOU KNOW','KEEP IT HANDY'][slide]}</small><h3>{[<>PancakeSwap</>,<>Extension<br/>- in a Side Panel</>,<>Pin us to<br/>your Toolbar</>][slide]}</h3><p>{['Trade, earn, and farm across chains','Interact without losing context','Access it instantly in one click'][slide]}</p><button className="ob-link" onClick={() => {if (slide === 0) window.open('https://pancakeswap.finance/','_blank','noopener,noreferrer'); else if (slide === 1) openSidePanel(); else setPinGuide(true);}}>{slide === 0 ? 'Go to app' : slide === 1 ? 'Open Side Panel' : pinned ? "It's pinned" : 'Guide me'} <ArrowUpRight size={16}/></button></div></div>
         <div className="ob-carousel"><button aria-label="Previous slide" onClick={() => setSlide(i => (i + 2) % 3)}><ChevronLeft size={18}/></button>{[0,1,2].map(i => <button key={i} aria-label={`Slide ${i + 1}`} aria-current={slide === i} onClick={() => setSlide(i)} className={`ob-dot ${i === slide ? 'active' : ''}`}/>)}<button aria-label="Next slide" onClick={() => setSlide(i => (i + 1) % 3)}><ChevronRight size={18}/></button></div>
         {pinGuide && <div className="ob-pin-hint" role="dialog" aria-label="Pin Harbour"><button className="ob-link" onClick={() => setPinGuide(false)}>Close</button><p>Open your browser's Extensions menu and pin Harbour Wallet.</p></div>}
         {error && <p className="ob-error" role="alert">{error}</p>}
         <button className="ob-primary ob-open" onClick={openSidePanel}>Open my wallet</button>
       </>}
-    </section>
-  </main>;
+  </FlowFrame>;
 }
