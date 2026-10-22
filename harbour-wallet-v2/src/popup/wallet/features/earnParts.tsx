@@ -5,6 +5,7 @@ import { T } from '../../theme';
 import { Sheet, Ic, ICON, Empty } from '../ui';
 import { formatUnits } from '../../../core/chains/adapters/types';
 import { stakingAsset } from '../../../core/staking/registry';
+import { validatorLogoPath } from '../../../core/assetLogos';
 import { fmtNumber } from '../../settingsStore';
 
 /** Raw smallest-unit amount -> display string, truncated (never rounded up) to `maxFrac` digits. */
@@ -30,7 +31,7 @@ export function onEarnChanged(fn: () => void): () => void { window.addEventListe
 export const ValidatorAvatar: React.FC<{ chainId: string; id: string; name: string; size?: number }> = ({ chainId, id, name, size = 40 }) => {
   const [broken, setBroken] = useState(false);
   const list = stakingAsset(chainId)?.validatorsList;
-  const url = list && !broken && /^[\w.-]+$/.test(id) ? `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${list}/validators/assets/${id}/logo.png` : '';
+  const url = list && !broken ? validatorLogoPath(list, id) : '';
   const box: React.CSSProperties = { width: size, height: size, borderRadius: '50%', flexShrink: 0, background: T.bgAlt, color: T.sub, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: size * 0.4, overflow: 'hidden', border: `1px solid ${T.border}` };
   return url
     ? <span style={box}><img src={url} alt="" width={size} height={size} referrerPolicy="no-referrer" onError={() => setBroken(true)} style={{ width: size, height: size, objectFit: 'cover' }} /></span>

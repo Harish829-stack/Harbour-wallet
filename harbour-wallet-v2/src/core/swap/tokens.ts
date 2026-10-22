@@ -1,18 +1,18 @@
 import { getAddress } from 'viem';
 import type { SwapAsset } from './types';
 import { SWAP_DOMAINS, domainById } from './domains';
+import { tokenLogoPath } from '../assetLogos';
 
 // Asset id convention used by TW: c<coinId> for the native asset, c<coinId>_t<address> for tokens.
 export function assetId(domainId: string, address: string): string {
   const d = domainById(domainId)!;
   return address === 'native' ? `c${d.twCoinId}` : `c${d.twCoinId}_t${address}`;
 }
-// Logos come from the open-source trustwallet/assets repository (public, no auth).
+// Logos are bundled with the extension (public-production/chains + /tokens); a token without a bundled logo returns '' and the UI shows its fallback.
 export function logoFor(domainId: string, address: string): string {
   const d = domainById(domainId)!;
-  const base = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${d.trustAssetsDir}`;
-  if (address === 'native') return `${base}/info/logo.png`;
-  try { return `${base}/assets/${d.kind === 'evm' ? getAddress(address) : address}/logo.png`; } catch { return `${base}/info/logo.png`; }
+  if (address === 'native') return `/chains/${d.trustAssetsDir}.png`;
+  try { return tokenLogoPath(d.trustAssetsDir, d.kind === 'evm' ? getAddress(address) : address); } catch { return ''; }
 }
 export function nativeAsset(domainId: string): SwapAsset {
   const d = domainById(domainId)!;

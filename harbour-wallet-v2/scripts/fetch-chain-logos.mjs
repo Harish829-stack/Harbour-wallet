@@ -1,4 +1,4 @@
-// Downloads each chain's logo from the public trustwallet/assets repository into public-production/chains/<id>.png (bundled locally,
+// (Superseded by scripts/import-assets.py, which bundles logos from the local asset library.) Downloads each chain logo from the public asset repository into public-production/chains/<id>.png (bundled locally,
 // so the extension never hot-links images). Run once; commit the PNGs. Falls back to the wallet-core id folder.
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';

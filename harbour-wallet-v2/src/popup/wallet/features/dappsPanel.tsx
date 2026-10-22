@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { T } from '../../theme';
 import type { Ctx } from '../screens';
+import { dappLogoPath } from '../../../core/assetLogos';
 import { Sheet, Btn, Empty, Ic, ICON } from '../ui';
 import { Notice, Chip, ChipRow, SearchBox, Letter, ListSkeleton, ErrorBox, openHttps, useAsync, useDebounced, ago } from './rampKit';
 
@@ -13,7 +14,8 @@ const Pct: React.FC<{ v: number | null; label: string }> = ({ v, label }) => v =
 
 const Logo: React.FC<{ d: DappV; size?: number }> = ({ d, size = 44 }) => {
   const [bad, setBad] = useState(false);
-  return d.logo && !bad ? <img src={d.logo} alt="" width={size} height={size} loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} style={{ width: size, height: size, borderRadius: size / 3.2, objectFit: 'cover', background: T.bgAlt, flexShrink: 0 }} /> : <Letter name={d.name} size={size} />;
+  const src = dappLogoPath(d.url) || d.logo;
+  return src && !bad ? <img src={src} alt="" width={size} height={size} loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} style={{ width: size, height: size, borderRadius: size / 3.2, objectFit: 'cover', background: T.bgAlt, flexShrink: 0 }} /> : <Letter name={d.name} size={size} />;
 };
 
 export const DappRow: React.FC<{ d: DappV; onOpen: (d: DappV) => void }> = ({ d, onOpen }) => (

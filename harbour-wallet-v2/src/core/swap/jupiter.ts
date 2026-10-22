@@ -2,6 +2,7 @@
 // public docs and are UNVERIFIED live from this build environment (egress blocked).
 import type { SwapRoute, SwapRouteRequest, SwapStep, SwapFee } from './types';
 import { domainById } from './domains';
+import { tokenLogoPath } from '../assetLogos';
 import { classifyAggregatorError, swapError } from './errors';
 import { QUOTE_REFRESH_SECONDS } from './rules';
 
@@ -37,7 +38,7 @@ export function mapJupiterRoute(q: any, req: SwapRouteRequest, now = Date.now())
   const out = String(q?.outAmount ?? '0');
   const step: SwapStep = {
     id: `jupiter-${now}`, type: 'swap',
-    provider: { id: 'jupiter', name: 'Jupiter', logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN/logo.png' },
+    provider: { id: 'jupiter', name: 'Jupiter', logoUrl: tokenLogoPath('solana', 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN') },
     fromDomainId: 'solana', toDomainId: 'solana',
     from: { asset: req.from, amount: String(q?.inAmount ?? req.amount) },
     to: { asset: req.to, amount: out, minAmount: String(q?.otherAmountThreshold ?? out) },
