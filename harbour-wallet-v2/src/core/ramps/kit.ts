@@ -1,5 +1,5 @@
 // Shared provider-adapter kit: error type, descriptors, payment-category mapping, asset code tables, small fetch helpers.
-// Confidence (see evidence/36-ramps/SPEC.md): provider URL parameter names follow each provider's public integration docs [likely];
+// Confidence (see evidences/re-evidence/36-ramps/SPEC.md): provider URL parameter names follow each provider's public integration docs [likely];
 // quote response shapes follow public docs [likely]/[guessing] and are UNVERIFIED live (build sandbox egress is blocked).
 import type { Fetcher, PaymentCategoryId, RampAsset, RampMode, RampProviderId, RampQuote, QuoteRequest } from './types';
 import { chainById } from '../chains/index';

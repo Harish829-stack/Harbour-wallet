@@ -1,7 +1,7 @@
 // Build human-readable catalogues from inert AST observations and REA outputs.
 import fs from 'node:fs';import path from 'node:path';
 import {parse} from './toolchain/node_modules/@babel/parser/lib/index.js';
-const root=path.resolve(import.meta.dirname,'..'),out=path.join(root,'evidence/40-backend-api/2026-10-21');
+const root=path.resolve(import.meta.dirname,'..'),out=path.join(root,'evidences/re-evidence/40-backend-api/2026-10-21');
 const discovery=JSON.parse(fs.readFileSync(path.join(out,'discovery.json'))),har=JSON.parse(fs.readFileSync(path.join(out,'har-contracts.json')));
 const supplement=JSON.parse(fs.readFileSync(path.join(out,'static-supplement.json')));
 const locations=new Set(discovery.endpoints.map(x=>x.file+':'+x.start));

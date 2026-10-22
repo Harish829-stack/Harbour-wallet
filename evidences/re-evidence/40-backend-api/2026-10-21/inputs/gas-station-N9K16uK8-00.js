@@ -1,0 +1,1 @@
+var d=(0,Vt.jsx)("div",{className:"cursor-pointer",onClick:()=>k("https://support.trustwallet.com/en/support/solutions/articles/67000632070-what-are-network-fees-"),children:(0,Vt.jsx)(S,{height:16,width:16})});

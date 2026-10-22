@@ -1,5 +1,5 @@
-// Multi-chain data adapters (evidence/32-chain-data): balances, tokens, history, gas — all against a mocked fetch.
-// Request shapes follow each API's public docs; nothing here proves the live endpoints answer that way (see evidence/32-chain-data/STATUS.md).
+// Multi-chain data adapters (evidences/re-evidence/32-chain-data): balances, tokens, history, gas — all against a mocked fetch.
+// Request shapes follow each API's public docs; nothing here proves the live endpoints answer that way (see evidences/re-evidence/32-chain-data/STATUS.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';

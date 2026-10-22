@@ -1,0 +1,111 @@
+[
+  {
+    "output": "public/reference/globe.json",
+    "source": "chunks/Globe--aAbxHdG.js",
+    "source_sha256": "fc0b795f9037ec583d36710d1b4b1f82d3d8759b4d5efb0d9a1254855206f7ac",
+    "original_utf8_start": 515,
+    "original_utf8_end": 236767,
+    "output_sha256": "c95187493b5eeef8c6b302c3090a361403100af00da53c564b653a4ba098daf3",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/security.json",
+    "source": "chunks/Security-BkVC-Kss.js",
+    "source_sha256": "a52ad737d2391eeeedbf752256bdc2139c1022ba795bed882ad78e264f163369",
+    "original_utf8_start": 515,
+    "original_utf8_end": 90368,
+    "output_sha256": "c61a2be5c83ede943b7f41cd707b1033ed40b1cfe237a6f95319dcfb70df88b1",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/lock.json",
+    "source": "chunks/authentication-CGHHMXIG.js",
+    "source_sha256": "3bebfe5e21bd14989a8aab55c1d6809426464bfefc9ac39b28cba788f0bcba6c",
+    "original_utf8_start": 7136,
+    "original_utf8_end": 111067,
+    "output_sha256": "1f15bf68111bb4e087dabc82f9006235d12d7ac1e48c69d0d148aaaff253a9a6",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/import.json",
+    "source": "chunks/SelectImportMethod-ClL8FjcB.js",
+    "source_sha256": "2d4997f811411dbf31df8bdc91d3ae16c67e748fd88c37f4c537702b97b0c893",
+    "original_utf8_start": 3786,
+    "original_utf8_end": 164138,
+    "output_sha256": "530fe41db773294317b1844c71bcbf0dfb280d80ecafc8ba39a8d79ace29d183",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/empty-wallet.json",
+    "source": "chunks/Completed-5mEUoaUY.js",
+    "source_sha256": "1403884f1c1263b352ad8754c9d4655bab414780af661a2090a53f688a38afd9",
+    "original_utf8_start": 1192,
+    "original_utf8_end": 355589,
+    "output_sha256": "ef534d1a3c579bd2fb8f7dd0a14c557ad46d25ab77acb59647b1823eb4f4862b",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/confetti.json",
+    "source": "chunks/Completed-5mEUoaUY.js",
+    "source_sha256": "1403884f1c1263b352ad8754c9d4655bab414780af661a2090a53f688a38afd9",
+    "original_utf8_start": 355714,
+    "original_utf8_end": 426528,
+    "output_sha256": "255b1f417d0d8b01d054c9388d784288a3734da320d73048c60a736aef597913",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/wallet-created.json",
+    "source": "chunks/Completed-5mEUoaUY.js",
+    "source_sha256": "1403884f1c1263b352ad8754c9d4655bab414780af661a2090a53f688a38afd9",
+    "original_utf8_start": 436794,
+    "original_utf8_end": 520257,
+    "output_sha256": "fe21c128a12df67684cb4fe6840d3734b6265b77d0903c648382c8c1435cffef",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/qr-mobile.json",
+    "source": "chunks/import-qr-nu_XkZeU.js",
+    "source_sha256": "0f9b23a9397a3b4ef15a43933f3b4649b38f8e8f225a06c7b219bd88e71012eb",
+    "original_utf8_start": 657167,
+    "original_utf8_end": 830844,
+    "output_sha256": "14ba6e7bdf836e13b06378b4900d52a344bb297c5ec6119fa2cc09e30c79ffc1",
+    "transform": "AST literal serialization; no code execution"
+  },
+  {
+    "output": "public/reference/Inter-Regular-BpskOkD5.ttf",
+    "source": "assets/Inter-Regular-BpskOkD5.ttf",
+    "sha256": "3e5f90a0138b38de4cf4d779ad78391974ea1df776b9164842bdcbb60ce383c5",
+    "transform": "byte-identical copy"
+  },
+  {
+    "output": "public/reference/Inter-Medium-BtfNrkJj.ttf",
+    "source": "assets/Inter-Medium-BtfNrkJj.ttf",
+    "sha256": "7c7206c451a89a8fa8f38f3c217f67e60b830db9e21645e36155cc62cd1f9903",
+    "transform": "byte-identical copy"
+  },
+  {
+    "output": "public/reference/Inter-SemiBold-C9_sHzqi.ttf",
+    "source": "assets/Inter-SemiBold-C9_sHzqi.ttf",
+    "sha256": "a8b276e25bb13dfa39cface35cc92aff9a7d5f1b96143f0df8c66351ccfed2a4",
+    "transform": "byte-identical copy"
+  },
+  {
+    "output": "public/reference/Inter-Bold-BVTOCPiq.ttf",
+    "source": "assets/Inter-Bold-BVTOCPiq.ttf",
+    "sha256": "30a5c45ec23a594af2effe8d3b589ad22c2dede27441050a1604d00ff82fd0dc",
+    "transform": "byte-identical copy"
+  },
+  {
+    "output": "public/reference/pancakeswap-banner-DZpaafr7.png",
+    "source": "assets/pancakeswap-banner-DZpaafr7.png",
+    "sha256": "dae4dc9f262d065cd59ba81702b32d83f7b7e6f2929503faf8e25313a382abf1",
+    "transform": "byte-identical copy"
+  },
+  {
+    "output": "src/core/commonPasswords.json",
+    "source": "chunks/useValidatePassword-Dn2iwOd-.js",
+    "source_sha256": "c3f9917908023d0a79fba503207c2383fb9a75c0a6323b8a7268fe3e2c511257",
+    "output_sha256": "027a721a244bde60999d91e285ffbc34c76b98c0e499294154400c2a9bacac85",
+    "transform": "literal common-password policy data; not user credentials"
+  }
+]

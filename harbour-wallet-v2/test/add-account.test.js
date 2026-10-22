@@ -1,5 +1,5 @@
 // Verifies Harbour's multi-account derivation matches Trust Wallet's algorithm
-// (evidence/08-derivation: take the coin's default path, replace its LAST "0" with
+// (evidences/re-evidence/08-derivation: take the coin's default path, replace its LAST "0" with
 // the account index) AND cross-checks it against wallet-core's own structured
 // getDerivedKey(coin, account, change, address) so correctness needs no hard-coded vectors.
 import { test } from 'node:test';

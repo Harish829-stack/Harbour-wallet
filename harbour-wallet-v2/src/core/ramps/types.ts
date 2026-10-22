@@ -1,4 +1,4 @@
-// Fiat on/off-ramp domain types. Shapes mirror Trust Wallet's recovered buy flow (evidence/36-ramps/SPEC.md): a quote has
+// Fiat on/off-ramp domain types. Shapes mirror Trust Wallet's recovered buy flow (evidences/re-evidence/36-ramps/SPEC.md): a quote has
 // {id, provider{name,imageUrl}, paymentMethod{paymentMethod,categoryId,providerName}, digitalMoney{amount,currency}, fiatMoney{amount,currency},
 // isRecommended, badges[]}; quotes are grouped by payment category. Harbour fills them from public provider endpoints (never TW's gateway).
 export type RampMode = 'buy' | 'sell';

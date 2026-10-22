@@ -1,5 +1,5 @@
 // Solana provider (window.trustwallet.solana / window.solana) + Wallet Standard registration.
-// Trust Wallet parity: connect / disconnect / signMessage / signTransaction / signAllTransactions / signAndSendTransaction (evidence/12-dapp-provider, Solana adapter).
+// Trust Wallet parity: connect / disconnect / signMessage / signTransaction / signAllTransactions / signAndSendTransaction (evidences/re-evidence/12-dapp-provider, Solana adapter).
 import { Emitter, ProviderRpcError } from './emitter';
 import type { Bridge, BridgeEvent } from './bridge';
 import { b58decode, b58encode, b64ToBytes, bytesToB64 } from '../core/provider/base58';

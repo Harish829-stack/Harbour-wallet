@@ -1,7 +1,7 @@
 // A second inert AST pass: broader path strings and explicit HTTP construction.
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
 import {parse} from './toolchain/node_modules/@babel/parser/lib/index.js';
-const root=path.resolve(import.meta.dirname,'..'),target=path.join(root,'samples/trustwallet-extension/26.41.0_0/26.41.0_0'),out=path.join(root,'evidence/40-backend-api/2026-10-21');
+const root=path.resolve(import.meta.dirname,'..'),target=path.join(root,'evidences/extension/samples/trustwallet-extension/26.41.0_0/26.41.0_0'),out=path.join(root,'evidences/re-evidence/40-backend-api/2026-10-21');
 const files=JSON.parse(fs.readFileSync(path.join(out,'discovery.json'))).files.map(x=>x.file),paths=[],sinks=[];
 function clean(s){return s.replace(/(https?:\/\/)[^/@\s]+@/g,'$1{redactedUserInfo}@').replace(/([?&][^=&]+)=[^&]*/g,'$1={redactedValue}');}
 for(const file of files){const src=fs.readFileSync(path.join(target,file),'utf8'),ast=parse(src,{sourceType:'unambiguous'}),extra=[];let delta=0;

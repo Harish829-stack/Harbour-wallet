@@ -1,6 +1,6 @@
 // Cosmos-SDK staking: public LCD (REST) reads + wallet-core `AnySigner` message builders (MsgDelegate / MsgUndelegate /
 // MsgBeginRedelegate / MsgWithdrawDelegatorReward). Read paths are the standard Cosmos SDK gRPC-gateway routes; every
-// request is pure `fetch` (injectable). Live behaviour is UNVERIFIED in the build sandbox (egress blocked) — see evidence/34-staking.
+// request is pure `fetch` (injectable). Live behaviour is UNVERIFIED in the build sandbox (egress blocked) — see evidences/re-evidence/34-staking.
 import type { ChainInfo } from '../chains/types';
 import { TW } from '@trustwallet/wallet-core';
 import { firstOf, jsonGet } from '../chains/adapters/types';

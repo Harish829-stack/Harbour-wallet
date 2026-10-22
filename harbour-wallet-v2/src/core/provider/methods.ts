@@ -1,5 +1,5 @@
 // Method allowlist + parameter normalisation for dApp requests. Everything here is pure and unit-tested.
-// Evidence: Trust Wallet inpage `request()` switch (evidence/12-dapp-provider) — see evidence/31-dapp-provider/STATUS.md for the mapping.
+// Evidence: Trust Wallet inpage `request()` switch (evidences/re-evidence/12-dapp-provider) — see evidences/re-evidence/31-dapp-provider/STATUS.md for the mapping.
 import { ERR, ProviderError } from './errors';
 import type { Namespace } from './protocol';
 

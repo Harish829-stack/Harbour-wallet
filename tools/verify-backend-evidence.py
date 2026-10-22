@@ -1,8 +1,8 @@
 """Check the new handoff's exact-source mappings and REA output digests offline."""
 from pathlib import Path
 import hashlib,json,re
-ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'evidence/40-backend-api/2026-10-21'
-TARGET=ROOT/'samples/trustwallet-extension/26.41.0_0/26.41.0_0'
+ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'evidences/re-evidence/40-backend-api/2026-10-21'
+TARGET=ROOT/'evidences/extension/samples/trustwallet-extension/26.41.0_0/26.41.0_0'
 sha=lambda b:hashlib.sha256(b).hexdigest()
 records=[];inputs=[]
 for name in ['discovery.json','focus-ranges.json','focus-extra-ranges.json','transport-ranges.json','database-ranges.json']:
@@ -36,7 +36,7 @@ assert any(c['path']=='/v2/devices/fingerprint' for c in h['contracts'])
 old=json.loads((OUT/'har-rea-success.json').read_text());assert sha((OUT/'network-projection-before-fingerprint-correction.har').read_bytes())==old['normalized_result']['artifact']['sha256']
 fixture=json.loads((OUT/'auth-fixtures.json').read_text());assert len(fixture['checks'])==6 and all(x['result']=='pass' for x in fixture['checks'])
 errors=[]
-for p in [ROOT/'TRUST-WALLET-BACKEND.md',OUT/'README.md',OUT/'API-CATALOG.md',OUT/'CLIENT-CONTRACTS.md']:
+for p in [ROOT/'docs/re/TRUST-WALLET-BACKEND.md',OUT/'README.md',OUT/'API-CATALOG.md',OUT/'CLIENT-CONTRACTS.md']:
     if not p.exists():continue
     for target in re.findall(r'\]\(([^)]+)\)',p.read_text()):
         if '://' in target or target.startswith('#'):continue

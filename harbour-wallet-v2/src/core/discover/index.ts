@@ -1,7 +1,7 @@
 // dApp directory. TW's Discover/DApps tab is `FetchDappDiscovery` -> sections[{id,name,items[{id,name,description,url,image}]}] from its gateway
 // (GET /v1/discover/new, /v1/discover/group/<id>; auth-gated, not used). Harbour's public equivalent is DeFiLlama's open API
 // (https://api.llama.fi/protocols and /v2/chains, no key): real protocols with real websites, logos, TVL and category.
-// Section mapping (deviation, see evidence/37-discover/SPEC.md): Popular = top TVL; Latest = newest listings; Featured = large and growing.
+// Section mapping (deviation, see evidences/re-evidence/37-discover/SPEC.md): Popular = top TVL; Latest = newest listings; Featured = large and growing.
 import { safeHttpsLink } from '../ramps/guard';
 import { cleanText } from '../sentiment/index';
 import { ALL_CHAINS } from '../chains/index';

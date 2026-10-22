@@ -1,5 +1,5 @@
 // Collectibles screens: collections grid -> collection (items) -> NFT detail (+ send), Hidden collections. Flow follows TW v26.41.0
-// (evidence/35-nfts/SPEC.md). Data: public indexers via the background `nft*` messages. Images are sanitised in core/nfts/media.ts
+// (evidences/re-evidence/35-nfts/SPEC.md). Data: public indexers via the background `nft*` messages. Images are sanitised in core/nfts/media.ts
 // and rendered with referrerpolicy=no-referrer; nothing is hard-coded.
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';

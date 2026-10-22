@@ -2,7 +2,7 @@
 // router (POST /v1/route -> /v1/route/step -> /v1/transaction/submit). Same shape: a route is a
 // list of steps; each step's transaction is built only when it is about to be executed.
 // Response shapes below follow LI.FI's public docs and are UNVERIFIED against the live API from
-// this build environment (egress blocked) — see evidence/25-swap/SWAP-SPEC.md "Verification".
+// this build environment (egress blocked) — see evidences/re-evidence/25-swap/SWAP-SPEC.md "Verification".
 import type { SwapAsset, SwapRoute, SwapStep, SwapRouteRequest, SwapFee, SwapStepType } from './types';
 import { domainById, domainByLifiId } from './domains';
 import { assetId, logoFor } from './tokens';

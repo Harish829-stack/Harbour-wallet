@@ -2,8 +2,8 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import {parse} from './toolchain/node_modules/@babel/parser/lib/index.js';
-const original='artifacts/reference-26.41.0/chunks/import-qr-nu_XkZeU.js';
-const dir='evidence/02-onboarding-flow/2026-10-16-qr-reader';
+const original='evidences/extension/reference-26.41.0/chunks/import-qr-nu_XkZeU.js';
+const dir='evidences/re-evidence/02-onboarding-flow/2026-10-16-qr-reader';
 fs.mkdirSync(`${dir}/inputs`,{recursive:true});
 const source=fs.readFileSync(original,'utf8');
 const ast=parse(source,{sourceType:'module'});

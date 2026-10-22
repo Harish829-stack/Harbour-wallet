@@ -1,4 +1,4 @@
-// Earn / native staking screens. Flow follows Trust Wallet v26.41.0 (evidence/34-staking/SPEC.md): Staking list -> asset staking
+// Earn / native staking screens. Flow follows Trust Wallet v26.41.0 (evidences/re-evidence/34-staking/SPEC.md): Staking list -> asset staking
 // details (staked, APR, delegations, actions) -> Stake / Unstake / Redelegate / Compound / Claim -> confirm -> result.
 // Data: public validators lists + chain RPC via the background `earn*` messages. No static / sample values.
 import React, { useCallback, useEffect, useState } from 'react';

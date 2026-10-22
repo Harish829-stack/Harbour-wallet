@@ -1,5 +1,5 @@
 // Send engine: signing + quote tests per chain family. Everything uses mocked fetch; NOTHING is broadcast to a real network.
-// Signing correctness is checked structurally with independent code where possible (viem / noble / manual tx parsing); see evidence/33-send-receive/STATUS.md.
+// Signing correctness is checked structurally with independent code where possible (viem / noble / manual tx parsing); see evidences/re-evidence/33-send-receive/STATUS.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';

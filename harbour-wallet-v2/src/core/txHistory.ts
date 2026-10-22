@@ -157,7 +157,7 @@ export function mapEtherscanTokens(body: any, assetId: string, address: string):
 /** Explorer link for any registry chain (the legacy table first, then wallet-core's explorer template). */
 export function explorerTxFor(assetId: string, hash: string): string { return EXPLORER_TX[assetId] ? EXPLORER_TX[assetId] + hash : explorerTxUrl(chainById(assetId), hash); }
 
-// Additional public EVM history providers (hosts follow each project's public naming; live-unverified, see evidence/32-chain-data/STATUS.md).
+// Additional public EVM history providers (hosts follow each project's public naming; live-unverified, see evidences/re-evidence/32-chain-data/STATUS.md).
 const BLOCKSCOUT_MORE: Record<string, string> = {
   optimism: 'https://optimism.blockscout.com', xdai: 'https://gnosis.blockscout.com', zksync: 'https://zksync.blockscout.com', scroll: 'https://scroll.blockscout.com',
   blast: 'https://blast.blockscout.com', celo: 'https://celo.blockscout.com',

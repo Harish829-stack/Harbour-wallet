@@ -13,6 +13,6 @@ export const isPunycodeHost = (host: string): boolean => host.split('.').some((l
 /** Insecure = plain http to a non-local host (the content script is never injected there, but the check stays defensive). */
 export const isInsecureOrigin = (origin: string): boolean => { try { const u = new URL(origin); return u.protocol !== 'https:' && !isLocalOrigin(origin); } catch { return true; } };
 export const displayHost = (origin: string): string => { try { return new URL(origin).host; } catch { return origin; } };
-/** Domains the provider is never injected on (Trust Wallet's BLOCKED_DOMAINS, evidence/12-dapp-provider). */
+/** Domains the provider is never injected on (Trust Wallet's BLOCKED_DOMAINS, evidences/re-evidence/12-dapp-provider). */
 export const BLOCKED_DOMAINS = ['facebook.com', 'fb.com', 'messenger.com', 'instagram.com', 'threads.net', 'whatsapp.com', 'meta.com', 'workplace.com', 'twitter.com', 'x.com', 'tiktok.com', 'linkedin.com', 'snapchat.com', 'calendar.google.com', 'mail.google.com', 'docs.google.com', 'drive.google.com', 'meet.google.com', 'keep.google.com'];
 export const isBlockedDomain = (hostname: string): boolean => BLOCKED_DOMAINS.some((d) => hostname === d || hostname.endsWith('.' + d));

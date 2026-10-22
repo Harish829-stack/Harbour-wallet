@@ -1,14 +1,14 @@
 // Generates src/core/chains/registry.json — Trust Wallet's enabled-chain set (HAR /v1/balances/chains, 86 chains, v26.41.0)
 // joined with wallet-core's registry.json (symbol/decimals/explorer/rpc/derivation) and curated public endpoints.
-// Usage: node scripts/gen-chain-registry.mjs   (reads ../wallet-core/registry.json and evidence/30-chain-registry/*)
+// Usage: node scripts/gen-chain-registry.mjs   (reads ../evidences/reference/wallet-core/registry.json and ../evidences/re-evidence/30-chain-registry/*)
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { initWasm } = require('@trustwallet/wallet-core');
 const core = await initWasm();
-const har = JSON.parse(fs.readFileSync('evidence/30-chain-registry/har-balances-chains.json', 'utf8'));
-const viem = JSON.parse(fs.readFileSync('evidence/30-chain-registry/viem-evm-rpc.json', 'utf8'));
-const wc = JSON.parse(fs.readFileSync('../wallet-core/registry.json', 'utf8'));
+const har = JSON.parse(fs.readFileSync('../evidences/re-evidence/30-chain-registry/har-balances-chains.json', 'utf8'));
+const viem = JSON.parse(fs.readFileSync('../evidences/re-evidence/30-chain-registry/viem-evm-rpc.json', 'utf8'));
+const wc = JSON.parse(fs.readFileSync('../evidences/reference/wallet-core/registry.json', 'utf8'));
 const wcById = new Map(wc.map((x) => [x.coinId, x]));
 const ctByVal = new Map();
 for (const [k, v] of Object.entries(core.CoinType)) if (v && typeof v === 'object' && 'value' in v) ctByVal.set(v.value, k);
@@ -30,7 +30,7 @@ const CG = { 0: 'bitcoin', 60: 'ethereum', 61: 'ethereum-classic', 74: 'icon', 1
   10001088: 'metis-token', 10001284: 'moonbeam', 10001285: 'moonriver', 10002020: 'ronin', 10002222: 'kava', 10004663: 'ethereum', 10004689: 'iotex', 10005042: 'usd-coin',
   10007000: 'zetachain', 10008217: 'kaia', 10009000: 'avalanche-2', 10042221: 'ethereum', 17000118: 'akash-network', 19000118: 'sei-network', 20000714: 'binancecoin',
   30000118: 'juno-network', 40000118: 'stride', 50000118: 'axelar', 90000118: 'neutron-3', 245022934: 'neon', 1323161554: 'ethereum' };
-// Public REST/LCD endpoints for non-EVM families (primary first). Unverified from this sandbox (egress blocked) — see evidence/30.
+// Public REST/LCD endpoints for non-EVM families (primary first). Unverified from this sandbox (egress blocked) — see evidences/re-evidence/30.
 const LCD = { 118: 'https://cosmos-rest.publicnode.com', 330: 'https://terra-classic-lcd.publicnode.com', 459: 'https://kava-rest.publicnode.com', 564: 'https://agoric-api.polkachu.com',
   931: 'https://thornode.ninerealms.com', 10000060: 'https://injective-rest.publicnode.com', 10000118: 'https://osmosis-rest.publicnode.com', 10007000: 'https://zetachain-rest.publicnode.com',
   17000118: 'https://akash-rest.publicnode.com', 19000118: 'https://sei-rest.publicnode.com', 30000118: 'https://juno-rest.publicnode.com', 40000118: 'https://stride-rest.publicnode.com',

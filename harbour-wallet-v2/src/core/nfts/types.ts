@@ -1,4 +1,4 @@
-// NFT domain types (pure). Data comes from public indexers (Blockscout v2 for EVM, Solana DAS / Magic Eden) — see evidence/35-nfts.
+// NFT domain types (pure). Data comes from public indexers (Blockscout v2 for EVM, Solana DAS / Magic Eden) — see evidences/re-evidence/35-nfts.
 export type NftStandard = 'ERC-721' | 'ERC-1155' | 'Metaplex' | 'Unknown';
 export interface NftAttribute { key: string; value: string }
 export interface NftItem {

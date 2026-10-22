@@ -1,0 +1,25 @@
+{
+  "original": "artifacts/reference-26.41.0/chunks/import-qr-nu_XkZeU.js",
+  "sha256": "0f9b23a9397a3b4ef15a43933f3b4649b38f8e8f225a06c7b219bd88e71012eb",
+  "input": "inputs/qr-reader-exact.js",
+  "inputSha256": "935ebf7fa525353853d0ec620a26b262160fc594c1eeea814474704c33b8f0ea",
+  "ranges": [
+    {
+      "name": "isInRange",
+      "start": 641299,
+      "end": 641363,
+      "suffix": "\n"
+    },
+    {
+      "name": "createQrSyncReader",
+      "start": 641363,
+      "end": 642523,
+      "suffix": "\n"
+    }
+  ],
+  "unresolvedImports": [
+    "cs.URDecoder",
+    "gunzipSync",
+    "strFromU8"
+  ]
+}

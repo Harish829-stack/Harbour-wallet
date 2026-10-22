@@ -1,0 +1,7 @@
+{
+  "format": "unknown",
+  "strategy": "structural",
+  "modules": {
+    "bundle.js": {"input": "/tmp/rea-wakaru-lyoR3z/inputs/bundle.js", "ranges": [[0,220]], "extraction": "structural"}
+  }
+}

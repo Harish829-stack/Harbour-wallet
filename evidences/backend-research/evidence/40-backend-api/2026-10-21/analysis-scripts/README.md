@@ -1,0 +1,1 @@
+Archived copies of the actual analysis programs. They expect their original location under workspace tools/ and the pinned tools/toolchain dependencies. These copies are provenance, not alternate runnable paths. Reproduce in a fresh output tree; REA recovery output directories must be absent. Original relative tool paths and commands are in ../README.md.

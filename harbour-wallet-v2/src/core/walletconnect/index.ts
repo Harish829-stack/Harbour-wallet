@@ -2,7 +2,7 @@
 // session requests onto the dApp provider's request router (so WalletConnect gets the same validation and approval UI as an injected dApp).
 // Pure (no WalletKit import) so it is unit-tested without a relay. The WalletKit transport lives in background/walletconnect.
 //
-// Evidence note (see evidence/16-walletconnect): Trust Wallet 26.41.0 ships no WalletConnect pairing/session client — only a Kotlin request mapper
+// Evidence note (see evidences/re-evidence/16-walletconnect): Trust Wallet 26.41.0 ships no WalletConnect pairing/session client — only a Kotlin request mapper
 // (com.trustwallet.kit.plugin.walletconnect). This module is a Harbour-side equivalent built on the public Reown WalletKit.
 import { b58decode, b58encode, b64ToBytes, bytesToB64 } from '../provider/base58';
 import { normalizeOrigin } from '../provider/origin';

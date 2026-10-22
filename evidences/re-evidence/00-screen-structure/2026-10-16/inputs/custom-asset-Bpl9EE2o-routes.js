@@ -1,0 +1,1 @@
+const App=()=>(0,cs.jsxs)(I,{children:[(0,cs.jsx)(C,{path:"/select-network",element:(0,cs.jsx)(SelectNetwork,{})}),(0,cs.jsx)(C,{path:"/add-asset/:blockchainType/:blockchainId",element:(0,cs.jsx)(AddAsset,{})}),(0,cs.jsx)(C,{path:"/add-asset/:blockchainType/:blockchainId/manual/:contractAddress?",element:(0,cs.jsx)(AddAsset,{})})]});

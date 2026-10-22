@@ -1,0 +1,8 @@
+{
+  "format": "unknown",
+  "strategy": "structural",
+  "modules": {
+    "chunks/window-COx4dq7s.js": {"input": "/tmp/rea-wakaru-6Sc9MA/inputs/chunks/window-COx4dq7s.js", "ranges": [[0,1371]], "extraction": "structural"},
+    "output/wallet-onboarding-calls.js": {"input": "/tmp/rea-wakaru-6Sc9MA/inputs/output/wallet-onboarding-calls.js", "ranges": [[0,6784]], "extraction": "structural"}
+  }
+}

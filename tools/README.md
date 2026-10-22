@@ -53,7 +53,7 @@ packages. Export/freeze its dependency inventory before a new analysis baseline.
   Do not claim that configuring the Mac binary enables REA recovery.
 - Linux x64 REA recovery succeeds with networking disabled and exact versions:
   old-slice smoke test `../audit/rea-linux-recovery-probe.json`; exact-target
-  extraction/recovery `../evidence/01-install/2026-10-15-local/`.
+  extraction/recovery `../evidences/re-evidence/01-install/2026-10-15-local/`.
   Executed Linux Wakaru SHA-256:
   `664fa06782a61eda7ed15885134b52525fd565dd77607e642062ceb6cd927c38`.
 - All WABT banners are 1.0.42. Direct validation of shipped wallet-core succeeds;
@@ -77,9 +77,9 @@ separators; it does not execute target code or introduce mocked dependencies.
 
 ```sh
 python3 tools/extract-install.py
-node --check evidence/01-install/2026-10-15-local/install-entry-exact.js
+node --check evidences/re-evidence/01-install/2026-10-15-local/install-entry-exact.js
 docker run --rm --platform linux/amd64 --network none --cap-drop ALL --security-opt no-new-privileges \
-  --mount type=bind,source=/Users/jatinsharma/Desktop/REA/evidence/01-install/2026-10-15-local,target=/output \
+  --mount type=bind,source=/Users/jatinsharma/Desktop/REA/evidences/re-evidence/01-install/2026-10-15-local,target=/output \
   sha256:8b8694b18f00e42c6bdf2a26eda3daad9c0ea2ee17c3f98464e0624438152403 \
   recover-javascript-sources /output/install-entry-exact.js /output/recovery-repeat --format json
 ```

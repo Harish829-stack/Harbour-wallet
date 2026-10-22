@@ -211,5 +211,5 @@ test('bsc stakehub plans', () => {
   assert.throws(() => M.bscPlan('compound', { validator: op }), /no "compound"/);
 });
 
-// regression-pinned hashes of the self-generated vectors above (filled by `node test/staking.test.js` run; see evidence/34-staking/SPEC.md)
+// regression-pinned hashes of the self-generated vectors above (filled by `node test/staking.test.js` run; see evidences/re-evidence/34-staking/SPEC.md)
 const PINNED = { cosmosDelegate: 'c03435d9a369568cab223f0e11feafd03444090c6c976d12178aaf796544385b', solDelegate: 'd328bc173785807daf425b669b4f9252948a9068bf3e22e189cd772e112e9e92' };

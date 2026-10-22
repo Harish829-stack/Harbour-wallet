@@ -1,4 +1,4 @@
-// Pure swap rules ported from TW's recovered client logic (evidence/25-swap/SWAP-SPEC.md).
+// Pure swap rules ported from TW's recovered client logic (evidences/re-evidence/25-swap/SWAP-SPEC.md).
 export const SLIPPAGE_PRESETS = ['0.1', '0.5', '1.0', '2.5'] as const; // App chunk `iv`
 export const SLIPPAGE_MAX = 30;           // SettingsModal clamps to 30
 export const SLIPPAGE_STEP = 0.1;         // stepSlippage(±.1)

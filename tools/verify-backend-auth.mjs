@@ -1,8 +1,8 @@
 // Controlled execution of exact target functions only. Synthetic public fixtures;
 // no extension startup, wallet, credential reuse, host network or real signing.
 import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import crypto from 'node:crypto';import assert from 'node:assert/strict';
-const root=path.resolve(import.meta.dirname,'..'),out=path.join(root,'evidence/40-backend-api/2026-10-21');
-const raw=fs.readFileSync(path.join(root,'samples/trustwallet-extension/26.41.0_0/26.41.0_0/background.js'));
+const root=path.resolve(import.meta.dirname,'..'),out=path.join(root,'evidences/re-evidence/40-backend-api/2026-10-21');
+const raw=fs.readFileSync(path.join(root,'evidences/extension/samples/trustwallet-extension/26.41.0_0/26.41.0_0/background.js'));
 const d=JSON.parse(fs.readFileSync(path.join(out,'discovery.json'))),f=JSON.parse(fs.readFileSync(path.join(out,'focus-ranges.json')));
 const ranges=[...d.inputs,...f.inputs].flatMap(x=>x.ranges),names=['sortQueryParams','authenticationInterceptor','parseApiGatewayUrl','isFirstPartyRpcHost'];
 const selected=names.map(name=>{const r=ranges.find(x=>x.name===name);assert(r,`missing ${name}`);return {name,...r};});

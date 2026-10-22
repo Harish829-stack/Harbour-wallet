@@ -1,7 +1,7 @@
 // Staking assets Harbour supports with PUBLIC data + wallet-core signing. TW's list comes from its authenticated gateway
-// (`/v1/invests/staking`, evidence/24-har-api-contract); Harbour builds the list from chains that have (a) a public validators
+// (`/v1/invests/staking`, evidences/re-evidence/24-har-api-contract); Harbour builds the list from chains that have (a) a public validators
 // list at trustwallet/assets and (b) a public read API + a signing path. Anything not here is a documented gap
-// (evidence/34-staking/STATUS.md): Kusama, NEAR, Aptos, Sui, IoTeX, Harmony, Polygon (POL), Neutron…
+// (evidences/re-evidence/34-staking/STATUS.md): Kusama, NEAR, Aptos, Sui, IoTeX, Harmony, Polygon (POL), Neutron…
 // Phase 5 added TRON (Stake 2.0 freeze + vote), Tezos (baker delegation), Cardano (pool delegation; only when the Cardano
 // extra chain is enabled), Polkadot (nomination pools on Asset Hub) and Rocket Pool next to Lido for ETH.
 import type { StakeAssetDef } from './types';

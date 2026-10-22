@@ -1,5 +1,5 @@
 // Send engine types (core, pure: no DOM / chrome.*; fetch is injected). One SendFamily per chain family (ChainInfo.kind).
-// TW evidence for the flow lives in evidence/33-send-receive/SPEC.md.
+// TW evidence for the flow lives in evidences/re-evidence/33-send-receive/SPEC.md.
 import type { ChainInfo, ChainKind } from '../types';
 export type Fetcher = typeof fetch;
 export interface SendEnv { core: any; fetch: Fetcher; now?: () => number; /** Random source (tests inject a deterministic one). */ random?: (n: number) => Uint8Array }

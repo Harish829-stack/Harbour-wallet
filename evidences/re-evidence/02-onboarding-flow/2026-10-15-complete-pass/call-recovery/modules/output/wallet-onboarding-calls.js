@@ -1,0 +1,222 @@
+class WalletCreationCalls {
+    async create() {
+        const ae = await this.vaultService.getPassword();
+        return this.walletCore.generateMnemonicWallet(ae).mnemonic();
+    }
+}
+class WalletImportCalls {
+    async importMnemonic(ae) {
+        if (!this.isValidMnemonic(ae)) {
+            throw new Error(INVALID_MNEMONIC);
+        }
+        const pe = await this.vaultService.getPassword();
+        const ye = this.walletCore.importMnemonicWallet(pe, ae);
+        const es = crypto.randomUUID();
+        const accountsPerWallet = store.getState().wallet.accountsPerWallet;
+        const wallet = await this.keyStoreService.attach(this.vaultService.getVaultData().vaultId).import(ye.mnemonic(), es, pe, this.getSupportedCoins());
+        const ts = wallet.activeAccounts.find((ae)=>ae.coin === this.walletCore.CoinType.ethereum.value);
+        if (Object.values(accountsPerWallet).some((ae)=>Object.values(ae).some((ae)=>{
+                const pe = ae.items[this.walletCore.CoinType.ethereum.value.toString()];
+                return pe && pe.address === ts.address;
+            }))) {
+            await this.keyStoreService.attach(this.vaultService.getVaultData().vaultId).remove(wallet.id, pe);
+            throw new Error(MNEMONIC_ALREADY_EXISTS);
+        }
+        return {
+            wallet,
+            mnemonic: ye.mnemonic()
+        };
+    }
+}
+class WalletCoinCalls {
+    getDefaultCoins() {
+        return [
+            this.walletCore.CoinType.aeternity,
+            this.walletCore.CoinType.aion,
+            this.walletCore.CoinType.binance,
+            this.walletCore.CoinType.bitcoin,
+            this.walletCore.CoinType.bitcoinCash,
+            this.walletCore.CoinType.bitcoinGold,
+            this.walletCore.CoinType.boba,
+            this.walletCore.CoinType.callisto,
+            this.walletCore.CoinType.cardano,
+            this.walletCore.CoinType.confluxeSpace,
+            this.walletCore.CoinType.cosmos,
+            this.walletCore.CoinType.dash,
+            this.walletCore.CoinType.decred,
+            this.walletCore.CoinType.digiByte,
+            this.walletCore.CoinType.dogecoin,
+            this.walletCore.CoinType.eos,
+            this.walletCore.CoinType.ethereum,
+            this.walletCore.CoinType.ethereumClassic,
+            this.walletCore.CoinType.fio,
+            this.walletCore.CoinType.goChain,
+            this.walletCore.CoinType.groestlcoin,
+            this.walletCore.CoinType.icon,
+            this.walletCore.CoinType.ioTeX,
+            this.walletCore.CoinType.kava,
+            this.walletCore.CoinType.kin,
+            this.walletCore.CoinType.litecoin,
+            this.walletCore.CoinType.mantle,
+            this.walletCore.CoinType.merlin,
+            this.walletCore.CoinType.metis,
+            this.walletCore.CoinType.monacoin,
+            this.walletCore.CoinType.nebulas,
+            this.walletCore.CoinType.nuls,
+            this.walletCore.CoinType.nano,
+            this.walletCore.CoinType.near,
+            this.walletCore.CoinType.nimiq,
+            this.walletCore.CoinType.ontology,
+            this.walletCore.CoinType.qtum,
+            this.walletCore.CoinType.xrp,
+            this.walletCore.CoinType.stellar,
+            this.walletCore.CoinType.tezos,
+            this.walletCore.CoinType.theta,
+            this.walletCore.CoinType.thunderCore,
+            this.walletCore.CoinType.neo,
+            this.walletCore.CoinType.viction,
+            this.walletCore.CoinType.tron,
+            this.walletCore.CoinType.veChain,
+            this.walletCore.CoinType.viacoin,
+            this.walletCore.CoinType.wanchain,
+            this.walletCore.CoinType.zcash,
+            this.walletCore.CoinType.firo,
+            this.walletCore.CoinType.zilliqa,
+            this.walletCore.CoinType.zelcash,
+            this.walletCore.CoinType.ravencoin,
+            this.walletCore.CoinType.solana,
+            this.walletCore.CoinType.waves,
+            this.walletCore.CoinType.terra,
+            this.walletCore.CoinType.terraV2,
+            this.walletCore.CoinType.harmony,
+            this.walletCore.CoinType.algorand,
+            this.walletCore.CoinType.kusama,
+            this.walletCore.CoinType.polkadot,
+            this.walletCore.CoinType.filecoin,
+            this.walletCore.CoinType.multiversX,
+            this.walletCore.CoinType.bandChain,
+            this.walletCore.CoinType.smartChainLegacy,
+            this.walletCore.CoinType.smartChain,
+            this.walletCore.CoinType.oasis,
+            this.walletCore.CoinType.polygon,
+            this.walletCore.CoinType.thorchain,
+            this.walletCore.CoinType.bluzelle,
+            this.walletCore.CoinType.optimism,
+            this.walletCore.CoinType.arbitrum,
+            this.walletCore.CoinType.ecochain,
+            this.walletCore.CoinType.avalancheCChain,
+            this.walletCore.CoinType.xdai,
+            this.walletCore.CoinType.fantom,
+            this.walletCore.CoinType.cryptoOrg,
+            this.walletCore.CoinType.celo,
+            this.walletCore.CoinType.ronin,
+            this.walletCore.CoinType.osmosis,
+            this.walletCore.CoinType.ecash,
+            this.walletCore.CoinType.cronosChain,
+            this.walletCore.CoinType.smartBitcoinCash,
+            this.walletCore.CoinType.kuCoinCommunityChain,
+            this.walletCore.CoinType.aurora,
+            this.walletCore.CoinType.evmos,
+            this.walletCore.CoinType.nativeEvmos,
+            this.walletCore.CoinType.moonriver,
+            this.walletCore.CoinType.moonbeam,
+            this.walletCore.CoinType.kavaEvm,
+            this.walletCore.CoinType.kaia,
+            this.walletCore.CoinType.meter,
+            this.walletCore.CoinType.okxchain,
+            this.walletCore.CoinType.nervos,
+            this.walletCore.CoinType.everscale,
+            this.walletCore.CoinType.polygonzkEVM,
+            this.walletCore.CoinType.aptos,
+            this.walletCore.CoinType.sui,
+            this.walletCore.CoinType.neutron,
+            this.walletCore.CoinType.stride,
+            this.walletCore.CoinType.nativeInjective,
+            this.walletCore.CoinType.stargaze,
+            this.walletCore.CoinType.sei,
+            this.walletCore.CoinType.ton,
+            this.walletCore.CoinType.opBNB,
+            this.walletCore.CoinType.base,
+            this.walletCore.CoinType.linea,
+            this.walletCore.CoinType.greenfield,
+            this.walletCore.CoinType.mantaPacific,
+            this.walletCore.CoinType.nativeZetaChain,
+            this.walletCore.CoinType.zetaEVM,
+            this.walletCore.CoinType.tbinance,
+            this.walletCore.CoinType.blast,
+            this.walletCore.CoinType.scroll,
+            this.walletCore.CoinType.internetComputer,
+            this.walletCore.CoinType.bounceBit,
+            this.walletCore.CoinType.zkLinkNova,
+            this.walletCore.CoinType.zksync,
+            this.walletCore.CoinType.agoric,
+            this.walletCore.CoinType.neon,
+            this.walletCore.CoinType.akash,
+            this.walletCore.CoinType.ioTeXEVM,
+            this.walletCore.CoinType.juno,
+            this.walletCore.CoinType.axelar,
+            this.walletCore.CoinType.sonic,
+            this.walletCore.CoinType.plasma,
+            this.walletCore.CoinType.monad,
+            this.walletCore.CoinType.megaETH
+        ];
+    }
+    getSupportedCoins() {
+        const ae = this.blockchainService.getCoinTypesFromBlockchain();
+        const pe = BlockchainService.getAllowedBlockchains().map((pe)=>ae[pe]).filter((ae)=>!!ae);
+        return import_lodash$12.uniqBy([
+            ...this.getDefaultCoins(),
+            ...pe
+        ], (ae)=>ae.value);
+    }
+}
+class WalletCoreCalls {
+    generateMnemonicWallet(ae) {
+        if (!ae) {
+            logger_default.error("Trying to generate wallet without password");
+        }
+        return this.walletCore.HDWallet.create(_WalletCoreService1.DEFAULT_STRENGTH, ae);
+    }
+    isValidMnemonic(ae) {
+        return this.walletCore.Mnemonic.isValid(ae);
+    }
+    isValidPrivateKey(ae, pe) {
+        return this.walletCore.PrivateKey.isValid(ae, pe);
+    }
+    importMnemonicWallet(ae, pe) {
+        return this.walletCore.HDWallet.createWithMnemonic(pe, ae);
+    }
+}
+class WalletDerivationCalls {
+    async addAccountDerivation(ae, pe, ye, es) {
+        const ss = await this.getStoredKey(ae);
+        const ns = ss.wallet(Buffer$1.from(pe));
+        ss.removeAccountForCoin(ye);
+        ss.accountForCoinDerivation(ye, es, ns);
+        const ts = this.keystore.mapWallet(ss);
+        ss.delete();
+        ns.delete();
+        await this.keystore.importWallet(ts);
+    }
+}
+Default.prototype.import = function(ae, ye, es, ss, ns) {
+    const ts = this;
+    return new Promise((resolve, reject)=>{
+        const ts_core = ts.core;
+        const { Mnemonic, StoredKey, HDWallet } = ts_core;
+        ts_core.StoredKeyEncryption;
+        if (!Mnemonic.isValid(ae)) {
+            throw pe.Error.InvalidMnemonic;
+        }
+        const ms = Buffer$1.from(es);
+        const gs = StoredKey.importHDWalletWithEncryption(ae, ye, ms, ss[0], ns);
+        const ds = HDWallet.createWithMnemonic(ae, "");
+        ss.forEach((ae)=>{
+            gs.accountForCoin(ae, ds);
+        });
+        const _s = ts.mapWallet(gs);
+        gs.delete();
+        ds.delete();
+        ts.importWallet(_s).then(()=>resolve(_s)).catch((ae)=>reject(ae));
+    });
+};

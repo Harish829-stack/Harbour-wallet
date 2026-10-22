@@ -1,0 +1,742 @@
+{
+  "scope": "Recovered ApiService methods only; not every HTTP call and not the server implementation. Names and code are recovered, runtime equivalence unknown.",
+  "methods": [
+    {
+      "class": "ApiService",
+      "method": "transformTransaction",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2594,
+      "endLine": 2606,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async transformTransaction(ae, pe) {\n            logger_default.debug(\"Sending transform request\");\n            const ye = ae === WIZARD_TYPE.SIMULATION ? \"simulate\" : \"visualize\";\n            const es = await fetch$2.post(`${API_BASE_URL}/v1/wizard/${ye}`, pe);\n            logger_default.debug(\"Data transform request done\");\n            if (es.data.Result.ResultError) {\n                if (es.data.Result.ResultError.error_code === \"1\") {\n                    throw new FailedSilentSimulation;\n                }\n                throw Error(es.data.Result.ResultError.error_message_en);\n            }\n            return es.data.Result.ResultSuccess;\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "updateDevice",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2607,
+      "endLine": 2624,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async updateDevice(ae, legacy_device_id) {\n            logger_default.debug(\"Sending device id put request\");\n            const ye = getSelectedBaseCurrency();\n            try {\n                return await fetch$2.put(`${API_GATEWAY_BASE_URL}/v2/devices/${ae}`, {\n                    legacy_device_id,\n                    type: \"extension\",\n                    push_enabled: store.getState().settings.pushNotifications.isPushEnabled,\n                    app_version: getRunningVersion(),\n                    wallets_version: 0,\n                    model_name: \"\",\n                    language: getLanguage() ?? \"en\",\n                    currency: ye\n                });\n            } catch (error) {\n                logger_default.debug(\"Device id put request failed\", error);\n            }\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getFingerprint",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2625,
+      "endLine": 2631,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getFingerprint(identifier) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v2/devices/fingerprint`, {\n                identifier,\n                bundle: BUNDLE_ID,\n                sr: SCREEN_RESOLUTION\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getDevice",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2632,
+      "endLine": 2634,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getDevice(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/devices/${ae}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "warningDisplayed",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2635,
+      "endLine": 2639,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "warningDisplayed(ae) {\n            return fetch$2.put(`${API_BASE_URL}/v1/devices/${ae}/metrics`, {\n                version: getRunningVersion()\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "registerWallet",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2640,
+      "endLine": 2653,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "registerWallet(ae, pe, ye, operation_type, ss) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v3/devices/${ae}/wallets/${pe}/register`, {\n                ...ss ? {\n                    parent_wallet_id: ss\n                } : {},\n                operation_type,\n                accounts: Object.keys(ye).map((ae)=>({\n                        addresses: [\n                            ye[ae].address\n                        ],\n                        coin: parseInt(ae, 10)\n                    }))\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "registerCoin",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2654,
+      "endLine": 2662,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "registerCoin(ae, pe, ye, es) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v3/devices/${ae}/wallets/${pe}/address_association`, {\n                ...es ? {\n                    parent_wallet_id: es\n                } : {},\n                coin: ye.coin,\n                address: ye.address\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getWalletMeta",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2663,
+      "endLine": 2665,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getWalletMeta(ae, pe) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v3/devices/${ae}/wallets/${pe}/meta`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssets",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2666,
+      "endLine": 2715,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getAssets(ae, pe, ye = ITokenType.ALL, es = 0, ss = _ApiService1.DEFAULT_ASSETS_LIMIT, ns) {\n            const ts = minFromBoundaries({\n                floor: 1,\n                ceil: ss\n            }, _ApiService1.MAX_ASSETS_LIMIT);\n            const rs = minFromBoundaries({\n                floor: 0,\n                ceil: es\n            }, _ApiService1.MAX_PAGE_ALLOWED);\n            const os = [\n                [\n                    \"sortBy\",\n                    \"market_cap\"\n                ],\n                [\n                    \"type\",\n                    ye\n                ],\n                [\n                    \"include_pricing_info\",\n                    \"true\"\n                ],\n                [\n                    \"version\",\n                    _ApiService1.SEARCH_ASSETS_VERSION\n                ],\n                [\n                    \"limit\",\n                    ts\n                ],\n                [\n                    \"offset\",\n                    rs * ts\n                ]\n            ];\n            if (pe) {\n                os.unshift([\n                    \"exactQuery\",\n                    pe\n                ]);\n            }\n            if (ns) {\n                os.push([\n                    \"fromAsset\",\n                    ns\n                ]);\n            }\n            const as = os.flatMap(([ae, pe])=>`${ae}=${pe}`).join(\"&\");\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/search/assets?networks=${ae}&${as}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchDappDiscovery",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2716,
+      "endLine": 2726,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchDappDiscovery({ currency, walletId, deviceId }) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/discover/new`, {\n                params: {\n                    currency,\n                    wallet_id: `m_${walletId}`,\n                    device_id: deviceId,\n                    content: \"discover-v2\",\n                    source: \"extension\"\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "searchDappDiscovery",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2727,
+      "endLine": 2735,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "searchDappDiscovery(query) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/discover/search`, {\n                params: {\n                    content: \"dapp\",\n                    query,\n                    source: \"extension\"\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAsset",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2736,
+      "endLine": 2738,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAsset(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/${ae}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssetsByIds",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2739,
+      "endLine": 2741,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAssetsByIds(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets?asset_ids=${ae.join(\",\")}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssetBySymbol",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2742,
+      "endLine": 2744,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAssetBySymbol(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/symbols/${ae}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssetsBySymbols",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2745,
+      "endLine": 2748,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAssetsBySymbols(ae) {\n            const pe = ae.join(\",\");\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/symbols?symbols=${pe}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssetsPerBlockchainAddress",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2749,
+      "endLine": 2751,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAssetsPerBlockchainAddress(ae, pe) {\n            return this.requestAssets(ae, pe);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAssetsChangeFeed",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2752,
+      "endLine": 2754,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAssetsChangeFeed(ae, pe) {\n            return this.requestAssets(ae, pe);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "requestAssets",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2755,
+      "endLine": 2761,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "requestAssets(ae, from_time) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/assets`, {\n                assets: ae,\n                from_time,\n                version: _ApiService1.ASSETS_DISCOVERY_VERSION\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "streamBalances",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2762,
+      "endLine": 2774,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "streamBalances(ae, pe) {\n            const ye = {\n                currency: pe,\n                addresses: ae\n            };\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/balances/stream`, ye, {\n                headers: {\n                    Accept: \"application/x-ndjson\"\n                },\n                responseType: \"text\",\n                timeout: 15000\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getBep2Assets",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2775,
+      "endLine": 2777,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getBep2Assets() {\n            return fetch$2.get(\"https://dex.binance.org/api/v1/tokens?limit=10000\");\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchAssetChart",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2778,
+      "endLine": 2780,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchAssetChart(ae) {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/market/charts/${ae.assetId}?currency=${ae.currency}&period=${ae.period}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchHotTokenCategories",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2781,
+      "endLine": 2783,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchHotTokenCategories() {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/listing-categories`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchTrendingTabs",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2784,
+      "endLine": 2786,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchTrendingTabs() {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/tabs-config`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchTrendingConfig",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2787,
+      "endLine": 2789,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchTrendingConfig() {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/trending-config`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchHotTokens",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2790,
+      "endLine": 2832,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchHotTokens(ae, pe, ye, es, ss, ns = getSelectedBaseCurrency()) {\n            const ts = [\n                [\n                    \"version\",\n                    _ApiService1.HOT_TOKENS_LISTING_VERSION\n                ],\n                [\n                    \"category_id\",\n                    ae\n                ],\n                [\n                    \"currency\",\n                    ns\n                ],\n                [\n                    \"limit\",\n                    ye ?? 100\n                ]\n            ];\n            if (pe) {\n                ts.push([\n                    \"networks\",\n                    pe.join(\",\")\n                ]);\n            }\n            if (es) {\n                ts.push([\n                    \"sort_field\",\n                    es\n                ]);\n            }\n            if (ss) {\n                ts.push([\n                    \"sort_direction\",\n                    ss\n                ]);\n            }\n            const rs = new URLSearchParams(ts.map(([ae, pe])=>[\n                    String(ae),\n                    String(pe)\n                ]));\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/listings?${rs.toString()}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchMarketInfo",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2833,
+      "endLine": 2836,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchMarketInfo(ae) {\n            const pe = getSelectedBaseCurrency();\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/market/info/${ae}?currency=${pe}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchSimilarTokensCount",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2837,
+      "endLine": 2839,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchSimilarTokensCount(ae) {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/symbols/similar/${ae}/count`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchSimilarTokens",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2840,
+      "endLine": 2842,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchSimilarTokens(ae) {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/assets/symbols/similar/${ae}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getNFTCollections",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2843,
+      "endLine": 2867,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getNFTCollections(owners, pe = 0, ye = _ApiService1.DEFAULT_NFTS_LIMIT) {\n            const es = [\n                [\n                    \"page\",\n                    minFromBoundaries({\n                        floor: 0,\n                        ceil: pe\n                    }, _ApiService1.MAX_PAGE_ALLOWED)\n                ],\n                [\n                    \"pageSize\",\n                    minFromBoundaries({\n                        floor: 1,\n                        ceil: ye\n                    }, _ApiService1.DEFAULT_NFTS_LIMIT)\n                ],\n                [\n                    \"exclude_spam\",\n                    true\n                ]\n            ].flatMap(([ae, pe])=>`${ae}=${pe}`).join(\"&\");\n            return await fetch$2.post(`${API_GATEWAY_BASE_URL}/v3/nft/collections?${es}`, {\n                owners\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getNFTCollectionItems",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2868,
+      "endLine": 2894,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getNFTCollectionItems(ae, pe, ye, es = 0, ss = _ApiService1.DEFAULT_NFTS_LIMIT) {\n            const ns = [\n                [\n                    \"address\",\n                    pe\n                ],\n                [\n                    \"page\",\n                    minFromBoundaries({\n                        floor: 0,\n                        ceil: es\n                    }, _ApiService1.MAX_PAGE_ALLOWED)\n                ],\n                [\n                    \"pageSize\",\n                    minFromBoundaries({\n                        floor: 1,\n                        ceil: ss\n                    }, _ApiService1.DEFAULT_NFTS_LIMIT)\n                ],\n                [\n                    \"exclude_spam\",\n                    true\n                ]\n            ].flatMap(([ae, pe])=>`${ae}=${pe}`).join(\"&\");\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v3/nft/chains/${ye.id}/collections/${ae}/tokens?${ns}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getNFTMetadata",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2895,
+      "endLine": 2897,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getNFTMetadata(ae, pe, ye) {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v3/nft/chains/${ye.id}/contracts/${ae}/tokens/${pe}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "buyCrypto",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2898,
+      "endLine": 2900,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async buyCrypto(ae, pe, ye, es) {\n            return await fetch$2(`${API_GATEWAY_BASE_URL}/v1/buycrypto/request/${ae}?address=${pe}&ts=${ye}&sig=${es}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "buyCryptoQuote",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2901,
+      "endLine": 2903,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "buyCryptoQuote({ coinId, amount, address, currency, twtAmount, timestamp, hexSignature }) {\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v1/buycrypto/quotes/${coinId}?amount=${amount}&address=${address}&currency=${currency}&twt_amount=${twtAmount}&ts=${timestamp}&sig=${hexSignature}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "buyCryptoConfig",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2904,
+      "endLine": 2906,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async buyCryptoConfig(ae, pe, ye = true) {\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v3/buycrypto/config/${ae}?wallet_id=w_${pe}&is_asset_recommendation_required=${ye}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getBuyCryptoAssets",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2907,
+      "endLine": 2925,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getBuyCryptoAssets(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/buycrypto/assets`, {\n                params: {\n                    wallet_id: `m_${ae.walletId}`,\n                    version: _ApiService1.SEARCH_ASSETS_VERSION,\n                    query: ae.query,\n                    is_recurring_buy_enabled: ae.isRecurringBuyEnabled || undefined,\n                    all_network: ae.allNetwork,\n                    all_limit: ae.allLimit,\n                    all_offset: ae.allOffset,\n                    top100_network: ae.top100Network,\n                    top100_limit: ae.top100Limit,\n                    top100_offset: ae.top100Offset,\n                    stablecoins_network: ae.stablecoinsNetwork,\n                    stablecoins_limit: ae.stablecoinsLimit,\n                    stablecoins_offset: ae.stablecoinsOffset\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getBuyProviderRoutes",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2926,
+      "endLine": 2938,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getBuyProviderRoutes(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v3/buycrypto/${ae.assetId}/routes`, {\n                params: {\n                    address: ae.address,\n                    wallet_id: `m_${ae.walletId}`,\n                    currency: ae.currency,\n                    amount: ae.amount,\n                    is_binance_app_installed: ae.isBinanceAppInstalled ?? false,\n                    platform: ae.platform ?? \"extension\",\n                    twt_amount: ae.twtAmount ?? \"0\"\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "buyCryptoWidgetQuote",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2939,
+      "endLine": 2972,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async buyCryptoWidgetQuote({ address, assetId, walletId, currency, fiatAmount }) {\n            const ns = [\n                [\n                    \"address\",\n                    address\n                ],\n                [\n                    \"asset_id\",\n                    assetId\n                ],\n                [\n                    \"wallet_id\",\n                    `m_${walletId}`\n                ],\n                [\n                    \"is_binance_app_installed\",\n                    \"true\"\n                ]\n            ];\n            if (fiatAmount) {\n                ns.push([\n                    \"fiat_amount\",\n                    fiatAmount.toString()\n                ]);\n            }\n            if (currency) {\n                ns.push([\n                    \"currency\",\n                    currency\n                ]);\n            }\n            const ts = ns.flatMap(([ae, pe])=>`${ae}=${pe}`).join(\"&\");\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/buycrypto/widget/quote?${ts}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "sellCryptoQuote",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2973,
+      "endLine": 2975,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async sellCryptoQuote({ coinId, amount, address, currency, twtAmount, timestamp, hexSignature }) {\n            return await fetch$2(`${API_GATEWAY_BASE_URL}/v1/sellcrypto/quote/${coinId}?amount=${amount}&address=${address}&currency=${currency}&twt_amount=${twtAmount}&ts=${timestamp}&sig=${hexSignature}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "sellCrypto",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2976,
+      "endLine": 2978,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async sellCrypto(ae, pe, ye, es) {\n            return await fetch$2(`${API_GATEWAY_BASE_URL}/v1/sellcrypto/request/${ae}?address=${pe}&ts=${ye}&sig=${es}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getCoinStatus",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2979,
+      "endLine": 2994,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getCoinStatus(ae, pe) {\n            const ye = [];\n            if (pe) {\n                ye.push([\n                    \"include_security_info\",\n                    true\n                ]);\n            }\n            if (pe && getCoinId(ae) === \"501\") {\n                ye.push([\n                    \"include_solana_security_info\",\n                    true\n                ]);\n            }\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v1/coinstatus/${ae}?${ye.flatMap(([ae, pe])=>`${ae}=${pe}`).join(\"&\")}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getSwapPairsForBlockchain",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2995,
+      "endLine": 2997,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getSwapPairsForBlockchain(ae) {\n            return fetch$2(`${CDN_BASE_URL}/blockchains/${ae}/tokenlist.json`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getStakingList",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 2998,
+      "endLine": 3000,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getStakingList() {\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v1/discover/group/invest-staking?currency=USD`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "validateAddress",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3001,
+      "endLine": 3008,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "validateAddress(ae, pe, type = \"security_scanner\") {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/validate/address`, {\n                asset_id: pe,\n                address: ae,\n                version: 7,\n                type\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "validateDappUrl",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3009,
+      "endLine": 3013,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "validateDappUrl(dapp_url) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/validate/url`, {\n                dapp_url\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "validateTransaction",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3014,
+      "endLine": 3016,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "validateTransaction(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/validate/transaction`, ae).catch((ae)=>Promise.reject(markUnsupportedChain(ae)));\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "validateMessage",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3017,
+      "endLine": 3019,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "validateMessage(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/validate/message`, ae).catch((ae)=>Promise.reject(markUnsupportedChain(ae)));\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getTransactionHistory",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3020,
+      "endLine": 3032,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getTransactionHistory(asset, chain, ye, es, ss, limit, ts) {\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v1/txhub/txs`, {\n                params: {\n                    asset,\n                    chain,\n                    address: ye,\n                    from: es,\n                    to: ss,\n                    limit,\n                    next_token: ts\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getMultipleAssetTransactionHistory",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3033,
+      "endLine": 3040,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getMultipleAssetTransactionHistory(ae, pe, ye, es) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/txhub/bulk_history`, {\n                addresses: ae,\n                from: pe,\n                to: ye,\n                next_token: es\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "togglePushNotifications",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3041,
+      "endLine": 3048,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "togglePushNotifications(push_enabled, push_token, ye) {\n            return fetch$2.put(`${API_GATEWAY_BASE_URL}/v2/devices/${ye}`, {\n                push_enabled,\n                ...push_enabled ? {\n                    push_token\n                } : {}\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "updatePushNotificationTopics",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3049,
+      "endLine": 3053,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "updatePushNotificationTopics(ae, pe) {\n            return fetch$2.put(`${API_GATEWAY_BASE_URL}/v2/devices/${pe}/push-topics`, {\n                ...ae\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getCentrifugoToken",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3054,
+      "endLine": 3056,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getCentrifugoToken() {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/centrifugo-hooks/token`, {});\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getBalanceStreamChains",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3057,
+      "endLine": 3059,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getBalanceStreamChains() {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/balances/chains`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "openSwapQuoteSession",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3060,
+      "endLine": 3062,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "openSwapQuoteSession(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/amber-api/v2/session`, ae);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getSwapQuoteSessionStatus",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3063,
+      "endLine": 3065,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getSwapQuoteSessionStatus(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/amber-api/v2/session/status`, ae);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "closeSwapQuoteSession",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3066,
+      "endLine": 3068,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "closeSwapQuoteSession(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/amber-api/v2/session/close`, ae);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getSwapSettlementStatus",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3069,
+      "endLine": 3075,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getSwapSettlementStatus(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/amber-api/v1/history/status`, {\n                params: {\n                    stepId: bareStepId(ae)\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "commitSwapQuoteSessionStep",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3076,
+      "endLine": 3078,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "commitSwapQuoteSessionStep(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/amber-api/v2/route/step`, ae);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchMarketSentimentSupportedCrypto",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3079,
+      "endLine": 3081,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchMarketSentimentSupportedCrypto() {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/market/sentiment-assets`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchMarketSentiment",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3082,
+      "endLine": 3084,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchMarketSentiment(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v2/market/sentiment/${ae}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getAnnouncements",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3085,
+      "endLine": 3087,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "getAnnouncements(ae, pe) {\n            return fetch$2(`${API_GATEWAY_BASE_URL}/v2/announcements?strategy=prioritize_app_update&version=${ae}&platform=extension&device_id=${pe}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "setSeenAnnouncements",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3088,
+      "endLine": 3093,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "setSeenAnnouncements(device_id, announcement_ids) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v2/announcements/seen`, {\n                device_id,\n                announcement_ids\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchCexFundingAssets",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3094,
+      "endLine": 3096,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchCexFundingAssets(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/cex-transfer/providers/${ae}/assets`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchCexFundingLink",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3097,
+      "endLine": 3111,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchCexFundingLink(ae, assetID, walletAddress, es, ss, platform) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/cex-transfer/providers/${ae}`, {\n                params: {\n                    assetID,\n                    ts: ss,\n                    walletAddress,\n                    sig: es,\n                    platform,\n                    redirectUrl: \"trust%3A%2F%2F\"\n                },\n                paramsSerializer: {\n                    encode: (ae)=>ae\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchCexFundingTransferStatus",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3112,
+      "endLine": 3114,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchCexFundingTransferStatus(ae, pe) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/cex-transfer/providers/${ae}/transactions/${pe}`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchTrendingTokens",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3115,
+      "endLine": 3125,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "fetchTrendingTokens(ae, pe, ye) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/homepage`, {\n                params: {\n                    wallet_id: `m_${ae}`,\n                    user_type: \"new\",\n                    coins: pe.join(\",\"),\n                    currency: ye,\n                    version: 0\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "lookupDomainName",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3126,
+      "endLine": 3149,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async lookupDomainName(name, coin) {\n            try {\n                const ye = await fetch$2.get(`${NAMING_API_BASE_URL}/v1/lookup`, {\n                    params: {\n                        name,\n                        coin\n                    }\n                });\n                if (ye.data.address) {\n                    return {\n                        address: ye.data.address,\n                        memo: ye.data.memo\n                    };\n                }\n                return null;\n            } catch (error) {\n                logger_default.debug(\"Domain name lookup failed\", {\n                    name,\n                    coin,\n                    error\n                });\n                return null;\n            }\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchApprovals",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3150,
+      "endLine": 3152,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchApprovals(ae) {\n            return await fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/approvals/scan`, ae);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "fetchFundingMethods",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3153,
+      "endLine": 3156,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async fetchFundingMethods() {\n            const { data } = await fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/buycrypto/screens/funding`);\n            return data;\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getUserVipTierData",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3157,
+      "endLine": 3159,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getUserVipTierData(ae) {\n            return await fetch$2.get(`${API_GATEWAY_BASE_URL}/v3/points/${ae}/vip`);\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getP2PBuyCryptoConfig",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3160,
+      "endLine": 3166,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getP2PBuyCryptoConfig(ae) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/buycrypto/p2p/config`, {\n                params: {\n                    wallet_id: `m_${ae}`\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getP2PBuyCryptoQuotes",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3167,
+      "endLine": 3177,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getP2PBuyCryptoQuotes(ae, pe, amount, es, ss) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/buycrypto/p2p/quotes`, {\n                params: {\n                    wallet_id: `m_${ae}`,\n                    asset_id: pe,\n                    amount,\n                    currency: es,\n                    address: ss\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "getP2PBuyCryptoCheckout",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3178,
+      "endLine": 3187,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async getP2PBuyCryptoCheckout(id, pe, ye, es) {\n            return fetch$2.get(`${API_GATEWAY_BASE_URL}/v1/buycrypto/p2p/checkout`, {\n                params: {\n                    id,\n                    address: pe,\n                    ts: ye,\n                    sig: es\n                }\n            });\n        }"
+    },
+    {
+      "class": "ApiService",
+      "method": "recurringBuyCheckout",
+      "source": "recovery/background-05/modules/bundle.js",
+      "line": 3188,
+      "endLine": 3203,
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "code": "async recurringBuyCheckout(ae) {\n            return fetch$2.post(`${API_GATEWAY_BASE_URL}/v1/buycrypto/route/recurring/checkout`, {\n                wallet_id: `m_${ae.walletId}`,\n                address: ae.address,\n                asset_id: ae.assetId,\n                fiat_currency: ae.fiatCurrency,\n                fiat_amount: ae.fiatAmount,\n                frequency: ae.frequency,\n                ...ae.chargeMonthDay != null && {\n                    charge_month_day: ae.chargeMonthDay\n                },\n                ...ae.chargeWeekDay != null && {\n                    charge_week_day: ae.chargeWeekDay\n                }\n            });\n        }"
+    }
+  ],
+  "recoveries": [
+    {
+      "input": "background-00",
+      "evidenceId": "ev_04558a4be1e14b43f88e400bf39865182621df2e1a6e0368775356e570fd68d2",
+      "status": "complete",
+      "file": "recovery/background-00/modules/bundle.js"
+    },
+    {
+      "input": "background-01",
+      "evidenceId": "ev_42666e75c12b0be2250a3313c192e7e8c6d8625579a7621868727f858e13c64c",
+      "status": "complete",
+      "file": "recovery/background-01/modules/bundle.js"
+    },
+    {
+      "input": "background-02",
+      "evidenceId": "ev_47d21ae37c7ed001624b05f9c07c8f1f0287883bf47ece0009a3c3b3eb1079ef",
+      "status": "complete",
+      "file": "recovery/background-02/modules/bundle.js"
+    },
+    {
+      "input": "background-03",
+      "evidenceId": "ev_497471caf71a278a9eb143b009e37c74de73560f0799986e0381bed77421e9c8",
+      "status": "complete",
+      "file": "recovery/background-03/modules/bundle.js"
+    },
+    {
+      "input": "background-04",
+      "evidenceId": "ev_12717f9383e0248dbf27c01f2816b7c43ec7406847dd40f76d1f5d145b4b3cfd",
+      "status": "complete",
+      "file": "recovery/background-04/modules/bundle.js"
+    },
+    {
+      "input": "background-05",
+      "evidenceId": "ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc",
+      "status": "complete",
+      "file": "recovery/background-05/modules/bundle.js"
+    },
+    {
+      "input": "background-06",
+      "evidenceId": "ev_09922a806dc2f1e1d1cf1bfd56b07d67f50e1c4c8c28c0dadd82f03c66cb0978",
+      "status": "complete",
+      "file": "recovery/background-06/modules/bundle.js"
+    },
+    {
+      "input": "database-0",
+      "evidenceId": "ev_6e2591568b491db7c502fa052d2df11cbadcafff238a7211dbfc769854faf184",
+      "status": "complete",
+      "file": "recovery/database-0/modules/bundle.js"
+    },
+    {
+      "input": "focus-0",
+      "evidenceId": "ev_5c9181e8749cbfa3853ca606c9c9e00cfc49d0e26e03004907e68f95d4b57094",
+      "status": "complete",
+      "file": "recovery/focus-0/modules/bundle.js"
+    },
+    {
+      "input": "focus-1",
+      "evidenceId": "ev_e14dab1cb94a0d966005a73be71cc8103c40a96200590515d6b2ba50c4cc6817",
+      "status": "complete",
+      "file": "recovery/focus-1/modules/bundle.js"
+    },
+    {
+      "input": "focus-extra-0",
+      "evidenceId": "ev_d6181662c7e4399e84db9eed5ed811d1f94258616cc62d5d1bc593bd97baf99e",
+      "status": "complete",
+      "file": "recovery/focus-extra-0/modules/bundle.js"
+    },
+    {
+      "input": "focus-extra-1",
+      "evidenceId": "ev_bb2fee8950427b417d5bfcad476096cb3a5a6661a4f9b9c6ae4a4c97f40b52a6",
+      "status": "complete",
+      "file": "recovery/focus-extra-1/modules/bundle.js"
+    },
+    {
+      "input": "transport-0",
+      "evidenceId": "ev_738956378b937de1e1bf3f52338c12a967582d91b9e0c2ae15d9ce99d746c6df",
+      "status": "complete",
+      "file": "recovery/transport-0/modules/bundle.js"
+    }
+  ]
+}

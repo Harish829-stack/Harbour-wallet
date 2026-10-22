@@ -25,5 +25,5 @@ for (const symbol of symbols) {
 }
 const license = execFileSync('tar', ['-xOf', archive, `${base}/LICENSE.md`], { encoding: 'utf8' });
 await writeFile(path.join(root, 'harbour-wallet-v2/public-production/licenses/CRYPTOCURRENCY-ICONS-CC0.txt'), license);
-await writeFile(path.join(root, 'evidence/00-screen-structure/2026-10-16/asset-logo-import.json'), JSON.stringify({ source: 'https://github.com/spothq/cryptocurrency-icons', revision, archiveHash, license: 'CC0 1.0', checked: new Date().toISOString(), rows }, null, 2) + '\n');
+await writeFile(path.join(root, 'evidences/re-evidence/00-screen-structure/2026-10-16/asset-logo-import.json'), JSON.stringify({ source: 'https://github.com/spothq/cryptocurrency-icons', revision, archiveHash, license: 'CC0 1.0', checked: new Date().toISOString(), rows }, null, 2) + '\n');
 console.log(`Imported ${rows.length} pinned icons into ${output}`);

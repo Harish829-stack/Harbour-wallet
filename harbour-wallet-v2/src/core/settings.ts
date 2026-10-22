@@ -1,6 +1,6 @@
 // Harbour settings model. Pure (no browser APIs) so it is unit-testable.
 //
-// Evidence (Trust Wallet extension 26.41.0, bundle RE; see evidence/26-settings/SETTINGS-SPEC.md):
+// Evidence (Trust Wallet extension 26.41.0, bundle RE; see evidences/re-evidence/26-settings/SETTINGS-SPEC.md):
 //   [certain] settings slice initial state + reducer names            (background.js, `initialState$8`)
 //   [certain] AUTO_LOCK_OPTIONS=[1,5,10,15,30,60,0], default 10, 0 = never, sanitizeLockTime
 //   [certain] SUPPORTED_LOCALE (30 locales)                           (background.js, `init_intl`)

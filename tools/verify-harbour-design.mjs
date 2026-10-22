@@ -4,7 +4,7 @@ import React from '../harbour-wallet-v2/node_modules/react/index.js';
 import {renderToStaticMarkup} from '../harbour-wallet-v2/node_modules/react-dom/server.node.js';
 import {Anchor} from '../harbour-wallet-v2/node_modules/lucide-react/dist/cjs/lucide-react.js';
 const root=path.resolve(import.meta.dirname,'..');process.env.PLAYWRIGHT_BROWSERS_PATH=path.join(root,'tools/browsers');const {chromium}=await import('./toolchain/node_modules/playwright/index.mjs');
-const output=path.join(root,'audit/design/2026-10-16');await mkdir(output,{recursive:true});
+const output=path.join(root,'evidences/audit/design/2026-10-16');await mkdir(output,{recursive:true});
 const browser=await chromium.launch({executablePath:path.join(root,'tools/browsers/chromium-1194/chrome-mac/Chromium.app/Contents/MacOS/Chromium'),headless:true});
 const results=[];try{
  const iconPage=await browser.newPage({viewport:{width:128,height:128},deviceScaleFactor:1});

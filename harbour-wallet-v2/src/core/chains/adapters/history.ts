@@ -349,7 +349,7 @@ export const NON_EVM_HISTORY: Record<string, H> = {
   substrate: async (chain, me, f) => { const host = SUBSCAN[chain.id]; if (!host) throw new Error('unsupported'); const r = await postJ(f, `${host}/api/v2/scan/transfers`, { address: me, row: 25, page: 0, direction: 'all' }, 12000); http(r); if (r.body?.code !== undefined && r.body.code !== 0) throw new Error(r.body.message ?? 'Subscan error'); return mapSubscan(chain, r.body, me); },
   icp: async (chain, me, f) => { const r = await postJ(f, 'https://rosetta-api.internetcomputer.org/search/transactions', { network_identifier: ROSETTA_NET, account_identifier: { address: me }, limit: 25 }, 12000); http(r); return mapRosetta(chain, r.body, me); },
 };
-/** Families with no reliable keyless public transaction-list API (documented in evidence/32-chain-data/STATUS.md). */
+/** Families with no reliable keyless public transaction-list API (documented in evidences/re-evidence/32-chain-data/STATUS.md). */
 export const HISTORY_UNSUPPORTED_REASON: Record<string, string> = {
   harmony: 'no stable public tx-list API', icon: 'tracker API not verified', zilliqa: 'explorer APIs need a key', theta: 'explorer API not verified', iotex: 'no keyless tx-list API',
   fio: 'history_v2 is not served by public nodes', ontology: 'explorer API not verified', nimiq: 'no public endpoint', aion: 'network retired',

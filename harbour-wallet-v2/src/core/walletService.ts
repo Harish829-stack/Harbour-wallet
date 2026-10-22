@@ -23,7 +23,7 @@ export class WalletService {
     }
     return [...coins.values()];
   }
-  // Account-index derivation path, faithful to Trust Wallet (RE §4.8, evidence/08-derivation):
+  // Account-index derivation path, faithful to Trust Wallet (RE §4.8, evidences/re-evidence/08-derivation):
   // take the coin's default path and replace its LAST "0" with the account index.
   // e.g. ethereum "m/44'/60'/0'/0/0" + index 1 -> "m/44'/60'/0'/0/1".
   accountPath(coin: any, index: number): string {

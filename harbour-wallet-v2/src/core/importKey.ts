@@ -1,6 +1,6 @@
 // Wallet import rules shared by onboarding and the background. Pure (wallet-core is injected) so every rule is unit-testable.
 //
-// Evidence (Trust Wallet extension 26.41.0; see evidence/38-onboarding-settings/SPEC.md):
+// Evidence (Trust Wallet extension 26.41.0; see evidences/re-evidence/38-onboarding-settings/SPEC.md):
 //   [certain] chunks/import-mnemonic-or-private-key  - a single token longer than 8 characters is a private key, anything else a
 //                                                      secret phrase (`1 === tokens && length > 8`); network picker (EVM group + chains)
 //   [certain] background.js WalletService.validatePrivateKey - strip "0x"; Solana = base58 of 32/64 bytes (first 32 used); other

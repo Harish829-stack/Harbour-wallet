@@ -9,11 +9,11 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(root, 'tools/browsers');
 const scenario = process.argv[2] || 'import-menu';
 const kind = process.argv[3] || 'reference';
 const profile = await mkdtemp(path.join(tmpdir(), 'rea-onboarding-'));
-const output = path.join(root, kind === 'reference' ? 'evidence/02-onboarding-flow/2026-10-16-runtime' : 'audit/onboarding-v2', scenario);
+const output = path.join(root, kind === 'reference' ? 'evidences/re-evidence/02-onboarding-flow/2026-10-16-runtime' : 'evidences/audit/onboarding-v2', scenario);
 await mkdir(output, { recursive: true });
 let ctx;
 try {
-  const extension = path.join(root, kind === 'reference' ? 'artifacts/reference-26.41.0' : 'harbour-wallet-v2/dist');
+  const extension = path.join(root, kind === 'reference' ? 'evidences/extension/reference-26.41.0' : 'harbour-wallet-v2/dist');
   ctx = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true,
     viewport: { width: 1365, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
   const worker = ctx.serviceWorkers()[0] || await ctx.waitForEvent('serviceworker');

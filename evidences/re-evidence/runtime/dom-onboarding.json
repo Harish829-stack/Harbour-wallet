@@ -1,0 +1,27 @@
+{
+  "testids": [
+    "onboarding-step-title"
+  ],
+  "btns": [
+    {
+      "t": "I already have a wallet",
+      "disabled": true
+    },
+    {
+      "t": "Create new wallet",
+      "disabled": true
+    },
+    {
+      "t": "Scan QR to sync",
+      "disabled": false
+    }
+  ],
+  "inputs": [
+    {
+      "type": "checkbox",
+      "ph": "",
+      "testid": null
+    }
+  ],
+  "bodyText": "Join 200M users in\n\nsecuring their financial future\n\nI have read and agree to the Terms of Use and Privacy Policy\n\nI already have a wallet\nCreate new wallet\n\nHave the Trust Wallet mobile app?\n\nScan QR to sync"
+}

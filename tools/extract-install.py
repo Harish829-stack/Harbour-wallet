@@ -4,9 +4,9 @@ import hashlib
 import json
 
 root = Path(__file__).resolve().parent.parent
-source = root / 'artifacts/reference-26.41.0/background.js'
+source = root / 'evidences/extension/reference-26.41.0/background.js'
 data = source.read_bytes()
-target = root / 'evidence/01-install/2026-10-15-local'
+target = root / 'evidences/re-evidence/01-install/2026-10-15-local'
 target.mkdir(parents=True, exist_ok=True)
 markers = [
     (b'function registerInstallListener(){', b'async function init(){'),

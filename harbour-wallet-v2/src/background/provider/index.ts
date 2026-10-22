@@ -53,7 +53,7 @@ const ensureCtx = async () => { await ctx(); };
 const networksReady: Promise<void> = local.get<any>(KEYS.NETWORKS).then((n) => { if (n) setNetworkState(n); }).catch(() => {});
 
 export const rpc = makeRpc();
-// WalletConnect v2 (Harbour-side equivalent; Trust Wallet 26.41.0 ships no pairing/session client — see evidence/16-walletconnect).
+// WalletConnect v2 (Harbour-side equivalent; Trust Wallet 26.41.0 ships no pairing/session client — see evidences/re-evidence/16-walletconnect).
 export const wc = new WalletConnectBridge({
   kv: kvLocal, perms, service: () => getProvider(), createKit, projectId: readProjectId,
   networks: { get: (id) => evmNetwork(id) }, disconnectOrigin: (o) => disconnectOrigin(o),

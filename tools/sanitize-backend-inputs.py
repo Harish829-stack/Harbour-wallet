@@ -4,10 +4,10 @@ No original target or pre-existing evidence is modified.
 """
 from pathlib import Path
 import re,json,hashlib
-root=Path(__file__).resolve().parents[1];p=root/'evidence/40-backend-api/2026-10-21'
+root=Path(__file__).resolve().parents[1];p=root/'evidences/re-evidence/40-backend-api/2026-10-21'
 d=json.loads((p/'discovery.json').read_text());excluded=d.get('excludedCredentialNodes',[])
 for item in d['inputs']:
-    original=(root/'samples/trustwallet-extension/26.41.0_0/26.41.0_0'/item['original']).read_bytes()
+    original=(root/'evidences/extension/samples/trustwallet-extension/26.41.0_0/26.41.0_0'/item['original']).read_bytes()
     parts=[];ranges=[]
     for r in item['ranges']:
         exact=original[r['start']:r['end']];s=exact.decode()

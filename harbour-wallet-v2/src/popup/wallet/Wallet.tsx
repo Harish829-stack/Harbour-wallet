@@ -187,7 +187,7 @@ const Dropdown: React.FC<{ label: React.ReactNode; children: (close: () => void)
     </div>
   );
 };
-// Trending — TW "TrendingTokens" parity (evidence/23-trending): sortable Token | Price | Market table
+// Trending — TW "TrendingTokens" parity (evidences/re-evidence/23-trending): sortable Token | Price | Market table
 // with the 3 TW dropdowns (Networks / Trending category / timeframe).
 const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   const [data, setData] = useState<any[] | null>(null);

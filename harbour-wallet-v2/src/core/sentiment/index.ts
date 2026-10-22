@@ -3,7 +3,7 @@
 // mentions => 50%"). Those endpoints are TW-private; Harbour's public equivalent aggregates open sources and scores locally:
 //   articles: CryptoCompare news JSON + CoinDesk / Cointelegraph / Decrypt RSS (filtered to the asset)
 //   posts:    Reddit search JSON + StockTwits symbol stream (its own Bullish/Bearish tags are used when present)
-// The classifier is a small transparent keyword lexicon (NOT a trained model) - see evidence/37-discover/SPEC.md for limits.
+// The classifier is a small transparent keyword lexicon (NOT a trained model) - see evidences/re-evidence/37-discover/SPEC.md for limits.
 import { safeHttpsLink } from '../ramps/guard';
 import { ALL_CHAINS } from '../chains/index';
 import { GATEWAY_URL } from '../../kit/endpoints';

@@ -1,7 +1,7 @@
 name: harbour-ci
 on:
-  push: { paths: ['harbour-wallet-v2/**'] }
-  pull_request: { paths: ['harbour-wallet-v2/**'] }
+  push: { paths: ['harbour-wallet-v2/**', 'evidences/re-evidence/**'] }
+  pull_request: { paths: ['harbour-wallet-v2/**', 'evidences/re-evidence/**'] }
 jobs:
   verify:
     runs-on: ubuntu-latest

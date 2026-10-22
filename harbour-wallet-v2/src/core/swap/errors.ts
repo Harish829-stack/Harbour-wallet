@@ -1,6 +1,6 @@
 import type { SwapError, SwapErrorCode } from './types';
 // User-facing texts are TW's own English strings (composeResources strings.commonMain.cvr,
-// QuoteError* / SwapError* keys; extension react-intl swap.* ids) — see evidence/25-swap.
+// QuoteError* / SwapError* keys; extension react-intl swap.* ids) — see evidences/re-evidence/25-swap.
 export const SWAP_MESSAGES: Record<SwapErrorCode, string> = {
   amount_too_low: 'Adjust input: Amount entered is too low.',
   amount_too_high: 'Adjust input: Amount entered is too high',

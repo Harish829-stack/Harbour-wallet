@@ -8,7 +8,7 @@ import base64, collections, hashlib, json, pathlib, re
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, quote
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-OUT=ROOT/'evidence/40-backend-api/2026-10-21'
+OUT=ROOT/'evidences/re-evidence/40-backend-api/2026-10-21'
 def path_template(path):
     path=re.sub(r'(/naas/session/)[^/]+',r'\1{sessionToken}',path)
     path=re.sub(r'(/devices/)(?!fingerprint(?:/|$))[^/]+',r'\1{deviceId}',path)
@@ -51,7 +51,7 @@ def parse_text(text,encoding=None):
             except ValueError:pass
         return objects if objects else None
 contracts={};sources=[];projection=[];rpc=collections.Counter()
-for file in sorted((ROOT/'harbour-wallet-v2').glob('*.har')):
+for file in sorted((ROOT/'evidences/network-logs').glob('*.har')):
     raw=file.read_bytes();parse_limit=None
     try:har=json.loads(raw);entries=har.get('log',{}).get('entries',[])
     except json.JSONDecodeError as err:

@@ -20,7 +20,7 @@ export const BALANCE_ADAPTERS: Partial<Record<ChainKind, BalanceAdapter>> = {
   vechain: O.vechainBalance, harmony: O.harmonyBalance, icon: O.iconBalance, zilliqa: O.zilliqaBalance, multiversx: O.multiversxBalance,
   theta: O.thetaBalance, iotex: O.iotexBalance, icp: O.icpBalance, fio: O.fioBalance, ontology: O.ontologyBalance,
   nimiq: O.nimiqBalance, aion: O.aionBalance, cardano: cardanoBalance,
-  // Registered by core/chains/adapters/<kind>.ts as they are implemented (see evidence/30-chain-registry/ADAPTERS.md):
+  // Registered by core/chains/adapters/<kind>.ts as they are implemented (see evidences/re-evidence/30-chain-registry/ADAPTERS.md):
   // utxo, cosmos, tron, ton, aptos, sui, near, algorand, ripple, stellar, substrate, tezos, filecoin, waves, vechain, harmony, icon, zilliqa, …
 };
 export function registerBalanceAdapter(kind: ChainKind, a: BalanceAdapter) { BALANCE_ADAPTERS[kind] = a; }

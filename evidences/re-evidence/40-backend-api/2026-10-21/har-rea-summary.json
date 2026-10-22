@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"error\":{\"code\":\"invalid_request\",\"category\":\"invalid_input\",\"message\":\"Analysis input is invalid. Check the arguments and try again.\",\"retryable\":true,\"remediation\":{\"action\":\"Correct the listed arguments and retry.\"},\"details\":{\"operation\":\"inspect_web_network_capture\",\"issues\":[{\"path\":[\"capture_path\",\"/log/entries/0/request/url\"],\"reason\":\"invalid_format\",\"message\":\"HAR schema validation failed: format (must match format \\\"uri\\\").\"}]}}}"
+    }
+  ],
+  "isError": true
+}

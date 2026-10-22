@@ -1,0 +1,113 @@
+{
+  "title": "Trust Wallet",
+  "headings": [
+    {
+      "text": "Brilliant, your wallet is ready!",
+      "x": 74.984375,
+      "y": 178,
+      "width": 305,
+      "height": 78,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "28px",
+      "fontWeight": "700",
+      "lineHeight": "39px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    },
+    {
+      "text": "Start exploring",
+      "x": 559.984375,
+      "y": 178,
+      "width": 171.84375,
+      "height": 30,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "34px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "0px"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "Go to app",
+      "disabled": false,
+      "x": 1069.984375,
+      "y": 438,
+      "width": 153,
+      "height": 20,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "16px",
+      "fontWeight": "600",
+      "lineHeight": "16px",
+      "color": "rgb(15, 17, 26)",
+      "background": "rgba(0, 0, 0, 0)",
+      "radius": "9999px"
+    },
+    {
+      "text": "",
+      "disabled": true,
+      "x": 849.984375,
+      "y": 600,
+      "width": 36,
+      "height": 36,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "12px",
+      "fontWeight": "400",
+      "lineHeight": "18px",
+      "color": "rgba(153, 156, 171, 0.48)",
+      "background": "rgba(153, 156, 171, 0.08)",
+      "radius": "9999px"
+    },
+    {
+      "text": "",
+      "disabled": false,
+      "x": 949.96875,
+      "y": 600,
+      "width": 36,
+      "height": 36,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "12px",
+      "fontWeight": "400",
+      "lineHeight": "18px",
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(57, 47, 250)",
+      "radius": "9999px"
+    },
+    {
+      "text": "Open my wallet",
+      "disabled": false,
+      "x": 925.984375,
+      "y": 684,
+      "width": 350,
+      "height": 56,
+      "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "fontSize": "16px",
+      "fontWeight": "600",
+      "lineHeight": "16px",
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(57, 47, 250)",
+      "radius": "9999px"
+    }
+  ],
+  "inputs": [],
+  "bodyStyle": {
+    "x": 0,
+    "y": 0,
+    "width": 1365,
+    "height": 900,
+    "fontFamily": "Inter, Geeza, \"Ping Fang\", \"Binance Plex\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+    "fontSize": "12px",
+    "fontWeight": "400",
+    "lineHeight": "18px",
+    "color": "rgb(15, 17, 26)",
+    "background": "rgb(252, 252, 252)",
+    "radius": "0px"
+  },
+  "viewport": {
+    "width": 1365,
+    "height": 900
+  }
+}

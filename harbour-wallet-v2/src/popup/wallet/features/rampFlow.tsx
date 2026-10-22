@@ -1,6 +1,6 @@
 // Buy / Sell / P2P / Recurring flow (TW routes /buy/new[/enter-amount|select-fiat|select-crypto|select-network|select-provider|select-payment-method],
 // /buy/recurring-setup, /sell/new[...], /fiat-ramps). One state machine, real quotes from background `rampsQuotes`, real widget hand-off through
-// `rampsCheckout` (address always from the vault). See evidence/36-ramps/SPEC.md.
+// `rampsCheckout` (address always from the vault). See evidences/re-evidence/36-ramps/SPEC.md.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../../theme';
 import type { Ctx } from '../screens';

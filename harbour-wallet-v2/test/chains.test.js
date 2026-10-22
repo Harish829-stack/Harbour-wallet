@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const reg = JSON.parse(fs.readFileSync(new URL('../src/core/chains/registry.json', import.meta.url), 'utf8'));
-const har = JSON.parse(fs.readFileSync(new URL('../evidence/30-chain-registry/har-balances-chains.json', import.meta.url), 'utf8'));
+const har = JSON.parse(fs.readFileSync(new URL('../../evidences/re-evidence/30-chain-registry/har-balances-chains.json', import.meta.url), 'utf8'));
 
 test('registry contains exactly the chains Trust Wallet enables', () => {
   const enabled = har.chains.filter((c) => c.enabled).map((c) => c.chain_id).sort((a, b) => a - b);

@@ -12,7 +12,7 @@ import { refreshTokens, tokenItem, useTokenItems } from './tokensStore';
 import { money, moneyPrice, fmtNumber } from '../settingsStore';
 import type { Ctx } from './screens';
 
-// Custom token import, rebuilt from the Trust Wallet extension's `custom-asset` chunk (REA, evidence/27-custom-token):
+// Custom token import, rebuilt from the Trust Wallet extension's `custom-asset` chunk (REA, evidences/re-evidence/27-custom-token):
 //   /select-network  -> list of networks with customTokensEnabled
 //   /add-asset/main/<network>  -> address field (trimmed, 200 ms debounced lookup), network badge "on <network>",
 //        valid lookup shows an arrow + "confirm" text + preview card (name, type tag, network, symbol, decimals),

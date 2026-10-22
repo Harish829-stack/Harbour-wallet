@@ -1,5 +1,5 @@
 // Swap data model. Shapes mirror Trust Wallet's recovered client models
-// (evidence/25-swap/serializer-schemas.json: Amber* route/step models, SwapQuoteResponse,
+// (evidences/re-evidence/25-swap/serializer-schemas.json: Amber* route/step models, SwapQuoteResponse,
 // SwapSettingsState). Harbour fills them from PUBLIC aggregators (LI.FI, Jupiter), never from
 // TW's private gateway.
 export type SwapDomainKind = 'evm' | 'solana' | 'utxo';

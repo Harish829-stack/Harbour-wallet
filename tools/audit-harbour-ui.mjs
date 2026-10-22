@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const out = path.join(root, 'audit/ui/2026-10-19');
+const out = path.join(root, 'evidences/audit/ui/2026-10-19');
 const profile = await mkdtemp(path.join(tmpdir(), 'harbour-ui-'));
 await mkdir(out, { recursive: true });
 const results = [];

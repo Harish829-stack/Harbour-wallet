@@ -1,0 +1,4044 @@
+{
+  "method": "Inert Babel AST; original half-open UTF-8 byte ranges; includes decimal API versions. No target execution.",
+  "paths": [
+    {
+      "file": "background.js",
+      "start": 8363487,
+      "end": 8363512,
+      "value": "/v2/devices/fingerprint",
+      "owner": "TrustFingerPrintRpcClient$getDeviceFingerPrint$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8363880,
+      "end": 8363896,
+      "value": "/v1/gas/price/",
+      "owner": "GasPriceRemoteService$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8431645,
+      "end": 8431660,
+      "value": "/v2/projects/",
+      "owner": "HttpNaasNodeRemoteStorage$loadNodes$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8665565,
+      "end": 8665592,
+      "value": "/v2/nodes?network={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 8852523,
+      "end": 8852542,
+      "value": "/v1/fee/priority/",
+      "owner": "BitcoinRemoteFeeService$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8855524,
+      "end": 8855539,
+      "value": "/v1/fee/type/",
+      "owner": "BitcoinRemoteFeeTypeService$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8864801,
+      "end": 8864819,
+      "value": "/api/v2/address/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8864838,
+      "end": 8864853,
+      "value": "/api/v2/xpub/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8864993,
+      "end": 8865010,
+      "value": "/api/v2/sendtx/",
+      "owner": "BitcoinRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8865370,
+      "end": 8865383,
+      "value": "/api/v2/tx/",
+      "owner": "BitcoinRpcClient$getTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8866123,
+      "end": 8866138,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getUnspentOutputs$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8866374,
+      "end": 8866397,
+      "value": "/api/v2/estimatefee/2",
+      "owner": "BitcoinRpcClient$estimateFee$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8977767,
+      "end": 8977785,
+      "value": "/api/v2/address/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8977925,
+      "end": 8977942,
+      "value": "/api/v2/sendtx/",
+      "owner": "BitcoinRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8978302,
+      "end": 8978315,
+      "value": "/api/v2/tx/",
+      "owner": "BitcoinRpcClient$getTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8978437,
+      "end": 8978452,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getUnspentOutputs$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8978950,
+      "end": 8978965,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getDerivationPaths$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8979381,
+      "end": 8979404,
+      "value": "/api/v2/estimatefee/2",
+      "owner": "BitcoinRpcClient$estimateFee$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 8992371,
+      "end": 8992390,
+      "value": "/v1/fee/priority/",
+      "owner": "BitcoinRemoteFeeService$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9189674,
+      "end": 9189693,
+      "value": "/v1/validator/all",
+      "owner": "BscRpcStakingClient$getValidators$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9490113,
+      "end": 9490119,
+      "value": "/v2/",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 9608129,
+      "end": 9608157,
+      "value": "/evmos/feemarket/v1/params",
+      "owner": "CosmosRpcClient$getEvmosFeeMarketParams$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9609030,
+      "end": 9609059,
+      "value": "/cosmwasm/wasm/v1/contract/",
+      "owner": "CosmosRpcClient$getContractBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9609305,
+      "end": 9609331,
+      "value": "/feemarket/v1/gas_prices",
+      "owner": "CosmosRpcClient$getNeutronMarketFee$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9620043,
+      "end": 9620061,
+      "value": "/v1/fee/default/",
+      "owner": "CosmosDefaultFeeRemoteServiceDelegate$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9622922,
+      "end": 9622931,
+      "value": "/v1/apr",
+      "owner": "CosmosStakingAprRemoteServiceDelegate$execute$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9635991,
+      "end": 9636019,
+      "value": "/evmos/inflation/v1/params",
+      "owner": "CosmosStakingRpcClient$getEvmosInflation$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9637417,
+      "end": 9637459,
+      "value": "/evmos/inflation/v1/epoch_mint_provision",
+      "owner": "CosmosStakingRpcClient$getEvmosEpoch$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9638202,
+      "end": 9638232,
+      "value": "/sommelier/incentives/v1/apy",
+      "owner": "CosmosStakingRpcClient$getSommelierAPY$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9655211,
+      "end": 9655231,
+      "value": "/v1/txs/gas_prices",
+      "owner": "TerraRpcClient$getTerraGasPrices$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9983854,
+      "end": 9983874,
+      "value": "/v1/chain/get_info",
+      "owner": "FioNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9983946,
+      "end": 9983966,
+      "value": "/v1/chain/get_info",
+      "owner": "FioNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9984399,
+      "end": 9984426,
+      "value": "/v1/chain/get_fio_balance",
+      "owner": "FioRpcClient$getCoinBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9985153,
+      "end": 9985165,
+      "value": "/v1/chain/",
+      "owner": "FioRpcClient$broadcastTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9985780,
+      "end": 9985799,
+      "value": "/v1/chain/get_fee",
+      "owner": "FioRpcClient$estimateFee$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9986433,
+      "end": 9986453,
+      "value": "/v1/chain/get_info",
+      "owner": "FioRpcClient$fetchChainParams$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9986634,
+      "end": 9986655,
+      "value": "/v1/chain/get_block",
+      "owner": "FioRpcClient$fetchChainParams$lambda_0"
+    },
+    {
+      "file": "background.js",
+      "start": 9987386,
+      "end": 9987409,
+      "value": "/v1/chain/avail_check",
+      "owner": "FioRpcClient$checkAvailability$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9988105,
+      "end": 9988134,
+      "value": "/v1/chain/get_fio_addresses",
+      "owner": "FioRpcClient$getAddresses$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9988844,
+      "end": 9988873,
+      "value": "/v1/chain/get_pub_addresses",
+      "owner": "FioRpcClient$getAllPublicKeys$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 9989498,
+      "end": 9989519,
+      "value": "/v1/fio/buy-address",
+      "owner": "FioRpcClient$registerFreeHandle$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10110297,
+      "end": 10110355,
+      "value": "https://wallet-kit.trustwallet.com/v1/apr/proxy/stakewiz",
+      "owner": "Companion_30"
+    },
+    {
+      "file": "background.js",
+      "start": 10326174,
+      "end": 10326232,
+      "value": "https://wallet-kit.trustwallet.com/v1/apr/proxy/stakewiz",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 10454724,
+      "end": 10454737,
+      "value": "/v1/domains",
+      "owner": "AmberRpcClient$getDomains$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10454877,
+      "end": 10454892,
+      "value": "/v1/providers",
+      "owner": "AmberRpcClient$getProviders$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455008,
+      "end": 10455031,
+      "value": "/v1/providers/bridge/",
+      "owner": "AmberRpcClient$getBridgeProvider$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455147,
+      "end": 10455167,
+      "value": "/v1/providers/dex/",
+      "owner": "AmberRpcClient$getDexProvider$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455275,
+      "end": 10455286,
+      "value": "/v1/route",
+      "owner": "AmberRpcClient$getRoutes$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455389,
+      "end": 10455405,
+      "value": "/v1/route/step",
+      "owner": "AmberRpcClient$getStep$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455518,
+      "end": 10455538,
+      "value": "/v1/history/create",
+      "owner": "AmberRpcClient$createTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455658,
+      "end": 10455678,
+      "value": "/v1/history/status",
+      "owner": "AmberRpcClient$findTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10455832,
+      "end": 10455856,
+      "value": "/v1/transaction/submit",
+      "owner": "AmberRpcClient$submitTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10765915,
+      "end": 10765927,
+      "value": "/v2/status",
+      "owner": "AlgorandNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10766004,
+      "end": 10766016,
+      "value": "/v2/status",
+      "owner": "AlgorandNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10766429,
+      "end": 10766441,
+      "value": "/v2/status",
+      "owner": "AlgorandRpcClient$getStatus$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10766834,
+      "end": 10766849,
+      "value": "/v2/accounts/",
+      "owner": "AlgorandRpcClient$getAccountData$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10767065,
+      "end": 10767092,
+      "value": "/v2/transactions/pending/",
+      "owner": "AlgorandRpcClient$getTransactionStatus$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10767325,
+      "end": 10767350,
+      "value": "/v2/transactions/params",
+      "owner": "AlgorandRpcClient$getTransactionParams$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10767439,
+      "end": 10767457,
+      "value": "/v2/transactions",
+      "owner": "AlgorandRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10768235,
+      "end": 10768250,
+      "value": "/v2/accounts/",
+      "owner": "AlgorandRpcClient$getAssetRegistered$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10828171,
+      "end": 10828186,
+      "value": "/v1/-/healthy",
+      "owner": "AptosNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10829738,
+      "end": 10829744,
+      "value": "/v1/",
+      "owner": "AptosRpcClient$fetchLedgerTimestamp$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10829928,
+      "end": 10829943,
+      "value": "/v1/accounts/",
+      "owner": "AptosRpcClient$sequenceNumber$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10830031,
+      "end": 10830058,
+      "value": "/v1/transactions/simulate",
+      "owner": "AptosRpcClient$simulate$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10830481,
+      "end": 10830505,
+      "value": "/v1/estimate_gas_price",
+      "owner": "AptosRpcClient$estimateGasPrice$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10830586,
+      "end": 10830604,
+      "value": "/v1/transactions",
+      "owner": "AptosRpcClient$sendTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10830958,
+      "end": 10830985,
+      "value": "/v1/transactions/by_hash/",
+      "owner": "AptosRpcClient$getTransactionByHash$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 10831076,
+      "end": 10831086,
+      "value": "/v1/view",
+      "owner": "AptosRpcClient$executeView$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11113597,
+      "end": 11113640,
+      "value": "/v1/staking/chains/cardano/validator_aprs",
+      "owner": "CardanoAprRpcClient$getValidatorsAPR$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11481837,
+      "end": 11481867,
+      "value": "/v1/pools/exit-queue/ticket/",
+      "owner": "EthKilnRpcStakingClient$getExitQueueEstimation$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11578816,
+      "end": 11578847,
+      "value": "/v1/invests/stablecoin/config",
+      "owner": "Companion_9"
+    },
+    {
+      "file": "background.js",
+      "start": 11604069,
+      "end": 11604079,
+      "value": "/v1/defi",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "background.js",
+      "start": 11604092,
+      "end": 11604116,
+      "value": "/v1/defi/network-stats",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "background.js",
+      "start": 11604129,
+      "end": 11604160,
+      "value": "/v1/defi/extra-rewards/morpho",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "background.js",
+      "start": 11604173,
+      "end": 11604210,
+      "value": "/v1/defi/extra-rewards/morpho/claim",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "background.js",
+      "start": 11604223,
+      "end": 11604240,
+      "value": "/v1/defi/stakes",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "background.js",
+      "start": 11604685,
+      "end": 11604702,
+      "value": "/v1/defi/stakes",
+      "owner": "KilnVaultsRpcClient$positions$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11604772,
+      "end": 11604796,
+      "value": "/v1/defi/network-stats",
+      "owner": "KilnVaultsRpcClient$vaults$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11604878,
+      "end": 11604909,
+      "value": "/v1/defi/extra-rewards/morpho",
+      "owner": "KilnVaultsRpcClient$morphoExtraRewards$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11604996,
+      "end": 11605033,
+      "value": "/v1/defi/extra-rewards/morpho/claim",
+      "owner": "KilnVaultsRpcClient$craftClaimMorphoRewards$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11654686,
+      "end": 11654712,
+      "value": "/v1/defi/angle/positions",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 11657318,
+      "end": 11657343,
+      "value": "/v1/defi/angle/overview",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 11662683,
+      "end": 11662707,
+      "value": "/v1/defi/angle/deposit",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 11662947,
+      "end": 11662972,
+      "value": "/v1/defi/angle/withdraw",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 11714671,
+      "end": 11714702,
+      "value": "/v1/invests/stablecoin/config",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 11909680,
+      "end": 11909698,
+      "value": "/api/v2/tronRent",
+      "owner": "Companion_34"
+    },
+    {
+      "file": "background.js",
+      "start": 11909875,
+      "end": 11909893,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$preorder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11909985,
+      "end": 11910003,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$createOrder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11910094,
+      "end": 11910112,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$uploadHash$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 11910197,
+      "end": 11910215,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$orderStatus$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12139544,
+      "end": 12139550,
+      "value": "/v2/",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 12363588,
+      "end": 12363600,
+      "value": "/v3/bakers",
+      "owner": "TezosRpcClient$getBakers$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12615077,
+      "end": 12615096,
+      "value": "/v2/transactions/",
+      "owner": "AeternityRpcClient$findTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12615294,
+      "end": 12615309,
+      "value": "/v2/accounts/",
+      "owner": "AeternityRpcClient$getAccount$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12615413,
+      "end": 12615431,
+      "value": "/v2/transactions",
+      "owner": "AeternityRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12616221,
+      "end": 12616237,
+      "value": "/v2/blocks/top",
+      "owner": "AeternityRpcClient$getBlockNumber$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 12633544,
+      "end": 12633556,
+      "value": "/v2/status",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 12636382,
+      "end": 12636398,
+      "value": "/v2/blocks/top",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 13088242,
+      "end": 13088265,
+      "value": "/v1/user/accountstate",
+      "owner": "NebulasRpcClient$getAccount$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13088987,
+      "end": 13089009,
+      "value": "/v1/user/getGasPrice",
+      "owner": "NebulasRpcClient$getGasPrice$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13089098,
+      "end": 13089130,
+      "value": "/v1/user/getTransactionReceipt",
+      "owner": "NebulasRpcClient$getTransactionReceipt$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13089880,
+      "end": 13089894,
+      "value": "/v1/user/lib",
+      "owner": "NebulasRpcClient$getLatestBlock$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13090095,
+      "end": 13090114,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasRpcClient$getNebulasState$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13090202,
+      "end": 13090227,
+      "value": "/v1/user/rawtransaction",
+      "owner": "NebulasRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13091445,
+      "end": 13091464,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13091540,
+      "end": 13091559,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13213416,
+      "end": 13213431,
+      "value": "/v1/accounts/",
+      "owner": "IotexRpcClient$getAccountMeta$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13213641,
+      "end": 13213660,
+      "value": "/v1/actions/hash/",
+      "owner": "IotexRpcClient$getTransactionByHash$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13213873,
+      "end": 13213891,
+      "value": "/v1/actionbytes/",
+      "owner": "IotexRpcClient$broadcastTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13758086,
+      "end": 13758098,
+      "value": "/v2.1/swap",
+      "owner": "TrustSwapClient$getSwap$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 13758407,
+      "end": 13758425,
+      "value": "/v2.1/swap/quote",
+      "owner": "TrustSwapClient$getSwapQuote$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34169553,
+      "end": 34169566,
+      "value": "/v1/assets/",
+      "owner": "AssetApiClientImpl$getAsset$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34169662,
+      "end": 34169674,
+      "value": "/v1/assets",
+      "owner": "AssetApiClientImpl$getAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34169818,
+      "end": 34169835,
+      "value": "/v2/coinstatus/",
+      "owner": "AssetApiClientImpl$getAssetStatus$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34170190,
+      "end": 34170209,
+      "value": "/v1/search/assets",
+      "owner": "AssetApiClientImpl$findAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34170814,
+      "end": 34170834,
+      "value": "/v1/assets/popular",
+      "owner": "AssetApiClientImpl$getPopularAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34170951,
+      "end": 34170972,
+      "value": "/v1/assets/listings",
+      "owner": "AssetApiClientImpl$getListingAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34172191,
+      "end": 34172212,
+      "value": "/v1/balances/stream",
+      "owner": "BalanceApiClientImpl$streamBalances$slambda$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34173214,
+      "end": 34173234,
+      "value": "/v2/market/tickers",
+      "owner": "MarketApiClientImpl$getTickers$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34173334,
+      "end": 34173352,
+      "value": "/v1/market/info/",
+      "owner": "MarketApiClientImpl$getMarketInfo$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34173486,
+      "end": 34173504,
+      "value": "/v2/market/rates",
+      "owner": "MarketApiClientImpl$getUsdExchangeRate$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34475075,
+      "end": 34475088,
+      "value": "/v1/invests",
+      "owner": "Companion_1"
+    },
+    {
+      "file": "background.js",
+      "start": 34475101,
+      "end": 34475132,
+      "value": "/v1/invests/stablecoin/quotes",
+      "owner": "Companion_1"
+    },
+    {
+      "file": "background.js",
+      "start": 34475292,
+      "end": 34475313,
+      "value": "/v1/invests/staking",
+      "owner": "InvestApiClientImpl$nativeInvests$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34475494,
+      "end": 34475518,
+      "value": "/v1/invests/stablecoin",
+      "owner": "InvestApiClientImpl$stablecoinInvests$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34475707,
+      "end": 34475741,
+      "value": "/v1/invests/stablecoin/positions",
+      "owner": "InvestApiClientImpl$getStablecoinPositions$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34475967,
+      "end": 34476006,
+      "value": "/v1/invests/stablecoin/quotes/approve",
+      "owner": "InvestApiClientImpl$createApproveQuote$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34476088,
+      "end": 34476127,
+      "value": "/v1/invests/stablecoin/quotes/deposit",
+      "owner": "InvestApiClientImpl$createDepositQuote$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34476210,
+      "end": 34476250,
+      "value": "/v1/invests/stablecoin/quotes/withdraw",
+      "owner": "InvestApiClientImpl$createWithdrawQuote$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 34477284,
+      "end": 34477322,
+      "value": "/v1/launchpool/userMultiChainRewards",
+      "owner": "MerklRewardsClientImpl$merklRewards$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427191,
+      "end": 35427238,
+      "value": "/bapi/futures/v1/public/future/web3/get-nonce",
+      "owner": "PerpetualApiClientImpl$getNonce$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427310,
+      "end": 35427353,
+      "value": "/bapi/futures/v1/public/future/web3/login",
+      "owner": "PerpetualApiClientImpl$login$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427430,
+      "end": 35427481,
+      "value": "/bapi/futures/v1/private/future/order/place-order",
+      "owner": "PerpetualApiClientImpl$placeOrder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427566,
+      "end": 35427620,
+      "value": "/bapi/futures/v1/private/future/strategy/place-order",
+      "owner": "PerpetualApiClientImpl$placeStrategyOrder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427704,
+      "end": 35427756,
+      "value": "/bapi/futures/v1/public/future/apx/withdraw/assets",
+      "owner": "PerpetualApiClientImpl$getWithdrawAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35427869,
+      "end": 35427920,
+      "value": "/bapi/futures/v1/public/future/apx/deposit/assets",
+      "owner": "PerpetualApiClientImpl$getDepositAssets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35428058,
+      "end": 35428116,
+      "value": "/bapi/futures/v1/public/future/apx/estimate-withdraw-fee",
+      "owner": "PerpetualApiClientImpl$getWithdrawalFee$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35428484,
+      "end": 35428543,
+      "value": "/bapi/futures/v1/private/future/web3/chain-withdraw-limit",
+      "owner": "PerpetualApiClientImpl$getChainWithdrawLimit$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35428701,
+      "end": 35428751,
+      "value": "/bapi/futures/v1/private/future/apx/limit/profit",
+      "owner": "PerpetualApiClientImpl$getLockedProfit$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35428999,
+      "end": 35429050,
+      "value": "/bapi/futures/v1/private/future/apx/user-withdraw",
+      "owner": "PerpetualApiClientImpl$requestWithdraw$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35429153,
+      "end": 35429217,
+      "value": "/bapi/futures/v1/private/future/user-data/getMaxWithdrawAmount",
+      "owner": "PerpetualApiClientImpl$getMaxWithdrawAmount$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35429825,
+      "end": 35429887,
+      "value": "/bapi/futures/v1/private/future/user-data/adjust-margin-type",
+      "owner": "PerpetualApiClientImpl$updateMarginType$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35430518,
+      "end": 35430574,
+      "value": "/bapi/futures/v4/private/future/user-data/user-balance",
+      "owner": "PerpetualApiClientImpl$getPerpetualAccountBalance$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35431162,
+      "end": 35431183,
+      "value": "/fapi/v1/assetIndex",
+      "owner": "PerpetualApiClientImpl$getAssetIndex$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35431262,
+      "end": 35431285,
+      "value": "/fapi/v1/premiumIndex",
+      "owner": "PerpetualApiClientImpl$getTradeInfo$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35431383,
+      "end": 35431450,
+      "value": "/bapi/futures/v1/private/future/user-setting/get-optional-symbols",
+      "owner": "PerpetualApiClientImpl$getFavoriteSymbols$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35431772,
+      "end": 35431842,
+      "value": "/bapi/futures/v1/private/future/user-setting/update-optional-symbols",
+      "owner": "PerpetualApiClientImpl$setFavoriteSymbols$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35432462,
+      "end": 35432520,
+      "value": "/bapi/futures/v1/private/future/user-data/adjustLeverage",
+      "owner": "PerpetualApiClientImpl$adjustLeverage$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35433140,
+      "end": 35433196,
+      "value": "/bapi/futures/v1/public/future/asset/ae/all-asset-logo",
+      "owner": "PerpetualApiClientImpl$getAssetIcons$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35433499,
+      "end": 35433530,
+      "value": "/fapi/v1/astherusExchangeInfo",
+      "owner": "PerpetualApiClientImpl$getExchangeInfo$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35433607,
+      "end": 35433629,
+      "value": "/fapi/v1/ticker/24hr",
+      "owner": "PerpetualApiClientImpl$getTickers$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35433704,
+      "end": 35433753,
+      "value": "/bapi/future/v1/public/future/aster/ticker/pair",
+      "owner": "PerpetualApiClientImpl$getPairs$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35433858,
+      "end": 35433885,
+      "value": "/fapi/v1/continuousKlines",
+      "owner": "PerpetualApiClientImpl$getKlines$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35434164,
+      "end": 35434214,
+      "value": "/bapi/futures/v1/friendly/future/common/brackets",
+      "owner": "PerpetualApiClientImpl$getBrackets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35434739,
+      "end": 35434796,
+      "value": "/bapi/futures/v5/private/future/user-data/user-position",
+      "owner": "PerpetualApiClientImpl$getUserPosition$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35435316,
+      "end": 35435367,
+      "value": "/bapi/futures/v2/private/future/order/open-orders",
+      "owner": "PerpetualApiClientImpl$getUserOrders$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35435691,
+      "end": 35435753,
+      "value": "/bapi/futures/v1/private/future/strategy/query-open-strategy",
+      "owner": "PerpetualApiClientImpl$getStrategyOrders$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35436381,
+      "end": 35436433,
+      "value": "/bapi/futures/v1/private/future/order/cancel-order",
+      "owner": "PerpetualApiClientImpl$cancelOrder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35437053,
+      "end": 35437106,
+      "value": "/bapi/futures/v1/private/future/order/cancel-orders",
+      "owner": "PerpetualApiClientImpl$cancelAllOrders$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35437630,
+      "end": 35437684,
+      "value": "/bapi/futures/v2/private/future/order/clear-position",
+      "owner": "PerpetualApiClientImpl$closeAllPositions$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35438334,
+      "end": 35438393,
+      "value": "/bapi/futures/v1/private/future/user-data/get-join-margin",
+      "owner": "PerpetualApiClientImpl$getMultiAsset$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35438713,
+      "end": 35438775,
+      "value": "/bapi/futures/v1/private/future/user-data/change-join-margin",
+      "owner": "PerpetualApiClientImpl$changeMultiAsset$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35439377,
+      "end": 35439433,
+      "value": "/bapi/futures/v1/private/future/user-data/userLeverage",
+      "owner": "PerpetualApiClientImpl$getUserLeverage$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35439765,
+      "end": 35439819,
+      "value": "/bapi/futures/v1/private/future/web3/deposit-address",
+      "owner": "PerpetualApiClientImpl$getNetworkDepositAddress$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35439929,
+      "end": 35439982,
+      "value": "/bapi/futures/v1/private/future/order/order-history",
+      "owner": "PerpetualApiClientImpl$getOrderHistory$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35440064,
+      "end": 35440121,
+      "value": "/bapi/futures/v1/private/future/user-data/trade-history",
+      "owner": "PerpetualApiClientImpl$getTradeHistory$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35440209,
+      "end": 35440272,
+      "value": "/bapi/futures/v1/private/future/user-data/transaction-history",
+      "owner": "PerpetualApiClientImpl$getTransactionHistory$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35440382,
+      "end": 35440450,
+      "value": "/bapi/futures/v1/private/future/web3/ae/depositAndWithdraw/history",
+      "owner": "PerpetualApiClientImpl$getDepositWithdrawalHistory$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35441042,
+      "end": 35441109,
+      "value": "/bapi/futures/v1/private/future/user-data/account-tier-commission",
+      "owner": "PerpetualApiClientImpl$getAccountTierCommission$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 35441211,
+      "end": 35441270,
+      "value": "/bapi/futures/v1/private/future/user-data/user-listen-key",
+      "owner": "PerpetualApiClientImpl$getPrivateDataWsKey$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 36734227,
+      "end": 36734245,
+      "value": "/v1/fee/history/",
+      "owner": "GasStationClient$getFeeHistory$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 36734355,
+      "end": 36734374,
+      "value": "/v1/fee/priority/",
+      "owner": "GasStationClient$getFeePriority$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37434640,
+      "end": 37434656,
+      "value": "/v1/txhub/txs/",
+      "owner": "TransactionApiClientImpl$getTransaction$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37851137,
+      "end": 37851156,
+      "value": "/v1/odd/portfolio",
+      "owner": "PredictionApiClientImpl$getPortfolio$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37851776,
+      "end": 37851795,
+      "value": "/v1/odd/positions",
+      "owner": "PredictionApiClientImpl$getPositions$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37852465,
+      "end": 37852481,
+      "value": "/v1/odd/trades",
+      "owner": "PredictionApiClientImpl$getTrades$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37853100,
+      "end": 37853123,
+      "value": "/v1/odd/trades/create",
+      "owner": "PredictionApiClientImpl$createTrade$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37853742,
+      "end": 37853762,
+      "value": "/v1/odd/categories",
+      "owner": "PredictionApiClientImpl$getCategories$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37853841,
+      "end": 37853859,
+      "value": "/v1/odd/networks",
+      "owner": "PredictionApiClientImpl$getNetworks$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37853959,
+      "end": 37853976,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getMarkets$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37854295,
+      "end": 37854312,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getMarket$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37854586,
+      "end": 37854604,
+      "value": "/v1/odd/markets/",
+      "owner": "PredictionApiClientImpl$getQuote$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37854956,
+      "end": 37854973,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getOutcomePrices$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37855093,
+      "end": 37855125,
+      "value": "/v1/odd/markets/batch_outcomes",
+      "owner": "PredictionApiClientImpl$getBatchOutcomes$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37855265,
+      "end": 37855279,
+      "value": "/v1/odd/auth",
+      "owner": "PredictionApiClientImpl$exchangeSignature$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 37855856,
+      "end": 37855871,
+      "value": "/v1/odd/order",
+      "owner": "PredictionApiClientImpl$submitOrder$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 38251795,
+      "end": 38251807,
+      "value": "/v1/lookup",
+      "owner": "NamingClient$lookup$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 38359009,
+      "end": 38359023,
+      "value": "/v1/wallets/",
+      "owner": "WalletAggregationApiClientImpl$getWalletMetaFromRegistry$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 38359173,
+      "end": 38359187,
+      "value": "/v3/devices/",
+      "owner": "WalletAggregationApiClientImpl$getWalletMetaLegacy$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 38669533,
+      "end": 38669555,
+      "value": "/analytics/v1/events",
+      "owner": "AnalyticsClient$uploadBatch$lambda"
+    },
+    {
+      "file": "background.js",
+      "start": 39375910,
+      "end": 39375935,
+      "value": "/v2/devices/fingerprint",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 39462520,
+      "end": 39462541,
+      "value": "/amber-api/v1/route",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 39606326,
+      "end": 39606359,
+      "value": "${…}/v1/wizard/${…}",
+      "owner": "transformTransaction"
+    },
+    {
+      "file": "background.js",
+      "start": 39606764,
+      "end": 39606806,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "updateDevice"
+    },
+    {
+      "file": "background.js",
+      "start": 39607129,
+      "end": 39607177,
+      "value": "${…}/v2/devices/fingerprint",
+      "owner": "getFingerprint"
+    },
+    {
+      "file": "background.js",
+      "start": 39607266,
+      "end": 39607308,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "getDevice"
+    },
+    {
+      "file": "background.js",
+      "start": 39607350,
+      "end": 39607392,
+      "value": "${…}/v1/devices/${…}/metrics",
+      "owner": "warningDisplayed"
+    },
+    {
+      "file": "background.js",
+      "start": 39607475,
+      "end": 39607540,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/register",
+      "owner": "registerWallet"
+    },
+    {
+      "file": "background.js",
+      "start": 39607725,
+      "end": 39607801,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/address_association",
+      "owner": "registerCoin"
+    },
+    {
+      "file": "background.js",
+      "start": 39607908,
+      "end": 39607969,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/meta",
+      "owner": "getWalletMeta"
+    },
+    {
+      "file": "background.js",
+      "start": 39608498,
+      "end": 39608561,
+      "value": "${…}/v1/search/assets?networks={redactedValue}&${…}",
+      "owner": "getAssets"
+    },
+    {
+      "file": "background.js",
+      "start": 39608640,
+      "end": 39608681,
+      "value": "${…}/v1/discover/new",
+      "owner": "fetchDappDiscovery"
+    },
+    {
+      "file": "background.js",
+      "start": 39608823,
+      "end": 39608867,
+      "value": "${…}/v1/discover/search",
+      "owner": "searchDappDiscovery"
+    },
+    {
+      "file": "background.js",
+      "start": 39608955,
+      "end": 39608996,
+      "value": "${…}/v1/assets/${…}",
+      "owner": "getAsset"
+    },
+    {
+      "file": "background.js",
+      "start": 39609036,
+      "end": 39609097,
+      "value": "${…}/v1/assets?asset_ids={redactedValue}",
+      "owner": "getAssetsByIds"
+    },
+    {
+      "file": "background.js",
+      "start": 39609139,
+      "end": 39609188,
+      "value": "${…}/v1/assets/symbols/${…}",
+      "owner": "getAssetBySymbol"
+    },
+    {
+      "file": "background.js",
+      "start": 39609254,
+      "end": 39609311,
+      "value": "${…}/v1/assets/symbols?symbols={redactedValue}",
+      "owner": "getAssetsBySymbols"
+    },
+    {
+      "file": "background.js",
+      "start": 39609484,
+      "end": 39609519,
+      "value": "${…}/v1/assets",
+      "owner": "requestAssets"
+    },
+    {
+      "file": "background.js",
+      "start": 39609670,
+      "end": 39609714,
+      "value": "${…}/v1/balances/stream",
+      "owner": "streamBalances"
+    },
+    {
+      "file": "background.js",
+      "start": 39609829,
+      "end": 39609880,
+      "value": "https://dex.binance.org/api/v1/tokens?limit={redactedValue}",
+      "owner": "getBep2Assets"
+    },
+    {
+      "file": "background.js",
+      "start": 39609933,
+      "end": 39610033,
+      "value": "${…}/v2/market/charts/${…}?currency={redactedValue}&period={redactedValue}",
+      "owner": "fetchAssetChart"
+    },
+    {
+      "file": "background.js",
+      "start": 39610092,
+      "end": 39610146,
+      "value": "${…}/v1/assets/listing-categories",
+      "owner": "fetchHotTokenCategories"
+    },
+    {
+      "file": "background.js",
+      "start": 39610199,
+      "end": 39610246,
+      "value": "${…}/v1/assets/tabs-config",
+      "owner": "fetchTrendingTabs"
+    },
+    {
+      "file": "background.js",
+      "start": 39610301,
+      "end": 39610352,
+      "value": "${…}/v1/assets/trending-config",
+      "owner": "fetchTrendingConfig"
+    },
+    {
+      "file": "background.js",
+      "start": 39610739,
+      "end": 39610800,
+      "value": "${…}/v1/assets/listings?${…}",
+      "owner": "fetchHotTokens"
+    },
+    {
+      "file": "background.js",
+      "start": 39610888,
+      "end": 39610949,
+      "value": "${…}/v2/market/info/${…}?currency={redactedValue}",
+      "owner": "fetchMarketInfo"
+    },
+    {
+      "file": "background.js",
+      "start": 39611010,
+      "end": 39611073,
+      "value": "${…}/v1/assets/symbols/similar/${…}/count",
+      "owner": "fetchSimilarTokensCount"
+    },
+    {
+      "file": "background.js",
+      "start": 39611129,
+      "end": 39611186,
+      "value": "${…}/v1/assets/symbols/similar/${…}",
+      "owner": "fetchSimilarTokens"
+    },
+    {
+      "file": "background.js",
+      "start": 39611515,
+      "end": 39611565,
+      "value": "${…}/v3/nft/collections?${…}",
+      "owner": "getNFTCollections"
+    },
+    {
+      "file": "background.js",
+      "start": 39611930,
+      "end": 39612009,
+      "value": "${…}/v3/nft/chains/${…}/collections/${…}/tokens?${…}",
+      "owner": "getNFTCollectionItems"
+    },
+    {
+      "file": "background.js",
+      "start": 39612067,
+      "end": 39612144,
+      "value": "${…}/v3/nft/chains/${…}/contracts/${…}/tokens/${…}",
+      "owner": "getNFTMetadata"
+    },
+    {
+      "file": "background.js",
+      "start": 39612196,
+      "end": 39612281,
+      "value": "${…}/v1/buycrypto/request/${…}?address={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "buyCrypto"
+    },
+    {
+      "file": "background.js",
+      "start": 39612401,
+      "end": 39612530,
+      "value": "${…}/v1/buycrypto/quotes/${…}?amount={redactedValue}&address={redactedValue}&currency={redactedValue}&twt_amount={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "buyCryptoQuote"
+    },
+    {
+      "file": "background.js",
+      "start": 39612582,
+      "end": 39612690,
+      "value": "${…}/v3/buycrypto/config/${…}?wallet_id={redactedValue}&is_asset_recommendation_required={redactedValue}",
+      "owner": "buyCryptoConfig"
+    },
+    {
+      "file": "background.js",
+      "start": 39612740,
+      "end": 39612785,
+      "value": "${…}/v2/buycrypto/assets",
+      "owner": "getBuyCryptoAssets"
+    },
+    {
+      "file": "background.js",
+      "start": 39613275,
+      "end": 39613334,
+      "value": "${…}/v3/buycrypto/${…}/routes",
+      "owner": "getBuyProviderRoutes"
+    },
+    {
+      "file": "background.js",
+      "start": 39613889,
+      "end": 39613946,
+      "value": "${…}/v1/buycrypto/widget/quote?${…}",
+      "owner": "buyCryptoWidgetQuote"
+    },
+    {
+      "file": "background.js",
+      "start": 39614079,
+      "end": 39614208,
+      "value": "${…}/v1/sellcrypto/quote/${…}?amount={redactedValue}&address={redactedValue}&currency={redactedValue}&twt_amount={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "sellCryptoQuote"
+    },
+    {
+      "file": "background.js",
+      "start": 39614261,
+      "end": 39614347,
+      "value": "${…}/v1/sellcrypto/request/${…}?address={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "sellCrypto"
+    },
+    {
+      "file": "background.js",
+      "start": 39614511,
+      "end": 39614606,
+      "value": "${…}/v1/coinstatus/${…}?${…}",
+      "owner": "getCoinStatus"
+    },
+    {
+      "file": "background.js",
+      "start": 39614737,
+      "end": 39614808,
+      "value": "${…}/v1/discover/group/invest-staking?currency={redactedValue}",
+      "owner": "getStakingList"
+    },
+    {
+      "file": "background.js",
+      "start": 39614875,
+      "end": 39614920,
+      "value": "${…}/v1/validate/address",
+      "owner": "validateAddress"
+    },
+    {
+      "file": "background.js",
+      "start": 39615005,
+      "end": 39615046,
+      "value": "${…}/v1/validate/url",
+      "owner": "validateDappUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 39615106,
+      "end": 39615155,
+      "value": "${…}/v1/validate/transaction",
+      "owner": "validateTransaction"
+    },
+    {
+      "file": "background.js",
+      "start": 39615252,
+      "end": 39615297,
+      "value": "${…}/v1/validate/message",
+      "owner": "validateMessage"
+    },
+    {
+      "file": "background.js",
+      "start": 39615413,
+      "end": 39615451,
+      "value": "${…}/v1/txhub/txs",
+      "owner": "getTransactionHistory"
+    },
+    {
+      "file": "background.js",
+      "start": 39615598,
+      "end": 39615645,
+      "value": "${…}/v1/txhub/bulk_history",
+      "owner": "getMultipleAssetTransactionHistory"
+    },
+    {
+      "file": "background.js",
+      "start": 39615743,
+      "end": 39615785,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "togglePushNotifications"
+    },
+    {
+      "file": "background.js",
+      "start": 39615885,
+      "end": 39615939,
+      "value": "${…}/v2/devices/${…}/push-topics",
+      "owner": "updatePushNotificationTopics"
+    },
+    {
+      "file": "background.js",
+      "start": 39615990,
+      "end": 39616041,
+      "value": "${…}/v1/centrifugo-hooks/token",
+      "owner": "getCentrifugoToken"
+    },
+    {
+      "file": "background.js",
+      "start": 39616090,
+      "end": 39616134,
+      "value": "${…}/v1/balances/chains",
+      "owner": "getBalanceStreamChains"
+    },
+    {
+      "file": "background.js",
+      "start": 39616181,
+      "end": 39616227,
+      "value": "${…}/amber-api/v2/session",
+      "owner": "openSwapQuoteSession"
+    },
+    {
+      "file": "background.js",
+      "start": 39616282,
+      "end": 39616335,
+      "value": "${…}/amber-api/v2/session/status",
+      "owner": "getSwapQuoteSessionStatus"
+    },
+    {
+      "file": "background.js",
+      "start": 39616386,
+      "end": 39616438,
+      "value": "${…}/amber-api/v2/session/close",
+      "owner": "closeSwapQuoteSession"
+    },
+    {
+      "file": "background.js",
+      "start": 39616490,
+      "end": 39616543,
+      "value": "${…}/amber-api/v1/history/status",
+      "owner": "getSwapSettlementStatus"
+    },
+    {
+      "file": "background.js",
+      "start": 39616629,
+      "end": 39616678,
+      "value": "${…}/amber-api/v2/route/step",
+      "owner": "commitSwapQuoteSessionStep"
+    },
+    {
+      "file": "background.js",
+      "start": 39616740,
+      "end": 39616792,
+      "value": "${…}/v2/market/sentiment-assets",
+      "owner": "fetchMarketSentimentSupportedCrypto"
+    },
+    {
+      "file": "background.js",
+      "start": 39616838,
+      "end": 39616889,
+      "value": "${…}/v2/market/sentiment/${…}",
+      "owner": "fetchMarketSentiment"
+    },
+    {
+      "file": "background.js",
+      "start": 39616930,
+      "end": 39617052,
+      "value": "${…}/v2/announcements?strategy={redactedValue}&version={redactedValue}&platform={redactedValue}&device_id={redactedValue}",
+      "owner": "getAnnouncements"
+    },
+    {
+      "file": "background.js",
+      "start": 39617102,
+      "end": 39617149,
+      "value": "${…}/v2/announcements/seen",
+      "owner": "setSeenAnnouncements"
+    },
+    {
+      "file": "background.js",
+      "start": 39617231,
+      "end": 39617295,
+      "value": "${…}/v1/cex-transfer/providers/${…}/assets",
+      "owner": "fetchCexFundingAssets"
+    },
+    {
+      "file": "background.js",
+      "start": 39617355,
+      "end": 39617412,
+      "value": "${…}/v1/cex-transfer/providers/${…}",
+      "owner": "fetchCexFundingLink"
+    },
+    {
+      "file": "background.js",
+      "start": 39617596,
+      "end": 39617672,
+      "value": "${…}/v1/cex-transfer/providers/${…}/transactions/${…}",
+      "owner": "fetchCexFundingTransferStatus"
+    },
+    {
+      "file": "background.js",
+      "start": 39617723,
+      "end": 39617760,
+      "value": "${…}/v1/homepage",
+      "owner": "fetchTrendingTokens"
+    },
+    {
+      "file": "background.js",
+      "start": 39617911,
+      "end": 39617945,
+      "value": "${…}/v1/lookup",
+      "owner": "lookupDomainName"
+    },
+    {
+      "file": "background.js",
+      "start": 39618197,
+      "end": 39618240,
+      "value": "${…}/v1/approvals/scan",
+      "owner": "fetchApprovals"
+    },
+    {
+      "file": "background.js",
+      "start": 39618306,
+      "end": 39618360,
+      "value": "${…}/v1/buycrypto/screens/funding",
+      "owner": "fetchFundingMethods"
+    },
+    {
+      "file": "background.js",
+      "start": 39618426,
+      "end": 39618471,
+      "value": "${…}/v3/points/${…}/vip",
+      "owner": "getUserVipTierData"
+    },
+    {
+      "file": "background.js",
+      "start": 39618524,
+      "end": 39618573,
+      "value": "${…}/v1/buycrypto/p2p/config",
+      "owner": "getP2PBuyCryptoConfig"
+    },
+    {
+      "file": "background.js",
+      "start": 39618669,
+      "end": 39618718,
+      "value": "${…}/v1/buycrypto/p2p/quotes",
+      "owner": "getP2PBuyCryptoQuotes"
+    },
+    {
+      "file": "background.js",
+      "start": 39618858,
+      "end": 39618909,
+      "value": "${…}/v1/buycrypto/p2p/checkout",
+      "owner": "getP2PBuyCryptoCheckout"
+    },
+    {
+      "file": "background.js",
+      "start": 39619003,
+      "end": 39619066,
+      "value": "${…}/v1/buycrypto/route/recurring/checkout",
+      "owner": "recurringBuyCheckout"
+    },
+    {
+      "file": "background.js",
+      "start": 39658646,
+      "end": 39658689,
+      "value": "${…}/v2/market/tickers",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 39658704,
+      "end": 39658745,
+      "value": "${…}/v2/market/rates",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 39719999,
+      "end": 39720040,
+      "value": "${…}/v1/assets/${…}",
+      "owner": null
+    },
+    {
+      "file": "background.js",
+      "start": 40198943,
+      "end": 40198974,
+      "value": "eth-mainnet.alchemyapi.io/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40198997,
+      "end": 40199027,
+      "value": "eth-goerli.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199051,
+      "end": 40199082,
+      "value": "eth-sepolia.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199104,
+      "end": 40199139,
+      "value": "polygon-mainnet.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199164,
+      "end": 40199198,
+      "value": "polygon-mumbai.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199223,
+      "end": 40199254,
+      "value": "arb-mainnet.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199286,
+      "end": 40199316,
+      "value": "arb-goerli.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199349,
+      "end": 40199380,
+      "value": "arb-sepolia.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199405,
+      "end": 40199436,
+      "value": "opt-mainnet.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199468,
+      "end": 40199498,
+      "value": "opt-goerli.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40199531,
+      "end": 40199562,
+      "value": "opt-sepolia.g.alchemy.com/v2/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40221333,
+      "end": 40221339,
+      "value": "/v3/",
+      "owner": "constructor"
+    },
+    {
+      "file": "background.js",
+      "start": 40221340,
+      "end": 40221349,
+      "value": "/ws/v3/",
+      "owner": "constructor"
+    },
+    {
+      "file": "background.js",
+      "start": 40223017,
+      "end": 40223023,
+      "value": "/v3/",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40224992,
+      "end": 40225046,
+      "value": "https://ethereum.api.nodesmith.io/v1/mainnet/jsonrpc",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40225070,
+      "end": 40225124,
+      "value": "https://ethereum.api.nodesmith.io/v1/ropsten/jsonrpc",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40225148,
+      "end": 40225202,
+      "value": "https://ethereum.api.nodesmith.io/v1/rinkeby/jsonrpc",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40225225,
+      "end": 40225278,
+      "value": "https://ethereum.api.nodesmith.io/v1/goerli/jsonrpc",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40225300,
+      "end": 40225352,
+      "value": "https://ethereum.api.nodesmith.io/v1/kovan/jsonrpc",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 40226781,
+      "end": 40226822,
+      "value": "https://${…}/v1/lb/${…}",
+      "owner": "getUrl"
+    },
+    {
+      "file": "background.js",
+      "start": 42525639,
+      "end": 42525662,
+      "value": "/v1/perps/relay/quote",
+      "owner": "getRelayQuote"
+    },
+    {
+      "file": "background.js",
+      "start": 42525714,
+      "end": 42525737,
+      "value": "/v1/perps/relay/quote",
+      "owner": "getRelayWithdrawQuote"
+    },
+    {
+      "file": "background.js",
+      "start": 42525813,
+      "end": 42525860,
+      "value": "${…}/v1/perps/relay/status",
+      "owner": "getRelayStatus"
+    },
+    {
+      "file": "background.js",
+      "start": 42525973,
+      "end": 42526000,
+      "value": "/v1/perps/relay/authorize",
+      "owner": "relayAuthorize"
+    },
+    {
+      "file": "chunks/fetch-BWDPg6HI.js",
+      "start": 56479,
+      "end": 56504,
+      "value": "/v2/devices/fingerprint",
+      "owner": null
+    },
+    {
+      "file": "chunks/fiat-ramps-BdoaGdC5.js",
+      "start": 141105,
+      "end": 141166,
+      "value": "${…}/v1/${…}/config/${…}",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 193726,
+      "end": 193741,
+      "value": "${…}/v1/dapps",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 362259,
+      "end": 362304,
+      "value": "https://nft.api.live.ledger.com/v1/ethereum",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 400888,
+      "end": 400964,
+      "value": "https://explorers.api.live.ledger.com/blockchain/v4/eth/ens/resolve/{name}",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 400973,
+      "end": 401060,
+      "value": "https://explorers.api.live.ledger.com/blockchain/v4/eth/ens/reverse-resolve/{address}",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 401082,
+      "end": 401165,
+      "value": "https://nft.api.live.ledger.com/v1/names/ens/forward/{name}?challenge={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 401174,
+      "end": 401260,
+      "value": "https://nft.api.live.ledger.com/v1/names/ens/reverse/{address}?challenge={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1302854,
+      "end": 1302873,
+      "value": "/api/v1/broadcast",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1302883,
+      "end": 1302902,
+      "value": "/api/v1/node-info",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1302914,
+      "end": 1302931,
+      "value": "/api/v1/account",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1302943,
+      "end": 1302960,
+      "value": "/api/v1/markets",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1302970,
+      "end": 1302992,
+      "value": "/api/v1/atomic-swaps",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1303007,
+      "end": 1303028,
+      "value": "/api/v1/orders/open",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1303038,
+      "end": 1303053,
+      "value": "/api/v1/depth",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1303070,
+      "end": 1303092,
+      "value": "/api/v1/transactions",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1303100,
+      "end": 1303116,
+      "value": "/bc/api/v1/txs",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1303123,
+      "end": 1303135,
+      "value": "/api/v1/tx",
+      "owner": null
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1582554,
+      "end": 1582598,
+      "value": "${…}/api/v1/account/${…}",
+      "owner": "fetchExternalData"
+    },
+    {
+      "file": "chunks/ledger-9TVWcyBQ.js",
+      "start": 1582603,
+      "end": 1582633,
+      "value": "${…}/api/v1/node-info",
+      "owner": "fetchExternalData"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 142665,
+      "end": 142687,
+      "value": "${…}/v1/wizard/${…}",
+      "owner": "transformTransaction"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143012,
+      "end": 143035,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "updateDevice"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143307,
+      "end": 143337,
+      "value": "${…}/v2/devices/fingerprint",
+      "owner": "getFingerprint"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143395,
+      "end": 143418,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "getDevice"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143454,
+      "end": 143485,
+      "value": "${…}/v1/devices/${…}/metrics",
+      "owner": "warningDisplayed"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143542,
+      "end": 143587,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/register",
+      "owner": "registerWallet"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143755,
+      "end": 143811,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/address_association",
+      "owner": "registerCoin"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 143907,
+      "end": 143948,
+      "value": "${…}/v3/devices/${…}/wallets/${…}/meta",
+      "owner": "getWalletMeta"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144367,
+      "end": 144410,
+      "value": "${…}/v1/search/assets?networks={redactedValue}&${…}",
+      "owner": "getAssets"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144481,
+      "end": 144504,
+      "value": "${…}/v1/discover/new",
+      "owner": "fetchDappDiscovery"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144637,
+      "end": 144663,
+      "value": "${…}/v1/discover/search",
+      "owner": "searchDappDiscovery"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144744,
+      "end": 144766,
+      "value": "${…}/v1/assets/${…}",
+      "owner": "getAsset"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144800,
+      "end": 144842,
+      "value": "${…}/v1/assets?asset_ids={redactedValue}",
+      "owner": "getAssetsByIds"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144878,
+      "end": 144908,
+      "value": "${…}/v1/assets/symbols/${…}",
+      "owner": "getAssetBySymbol"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 144966,
+      "end": 145004,
+      "value": "${…}/v1/assets/symbols?symbols={redactedValue}",
+      "owner": "getAssetsBySymbols"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145162,
+      "end": 145179,
+      "value": "${…}/v1/assets",
+      "owner": "requestAssets"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145308,
+      "end": 145334,
+      "value": "${…}/v1/balances/stream",
+      "owner": "streamBalances"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145443,
+      "end": 145494,
+      "value": "https://dex.binance.org/api/v1/tokens?limit={redactedValue}",
+      "owner": "getBep2Assets"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145541,
+      "end": 145620,
+      "value": "${…}/v2/market/charts/${…}?currency={redactedValue}&period={redactedValue}",
+      "owner": "fetchAssetChart"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145674,
+      "end": 145710,
+      "value": "${…}/v1/assets/listing-categories",
+      "owner": "fetchHotTokenCategories"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145758,
+      "end": 145787,
+      "value": "${…}/v1/assets/tabs-config",
+      "owner": "fetchTrendingTabs"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 145837,
+      "end": 145870,
+      "value": "${…}/v1/assets/trending-config",
+      "owner": "fetchTrendingConfig"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 146196,
+      "end": 146238,
+      "value": "${…}/v1/assets/listings?${…}",
+      "owner": "fetchHotTokens"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 146298,
+      "end": 146339,
+      "value": "${…}/v2/market/info/${…}?currency={redactedValue}",
+      "owner": "fetchMarketInfo"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 146394,
+      "end": 146438,
+      "value": "${…}/v1/assets/symbols/similar/${…}/count",
+      "owner": "fetchSimilarTokensCount"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 146488,
+      "end": 146526,
+      "value": "${…}/v1/assets/symbols/similar/${…}",
+      "owner": "fetchSimilarTokens"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 146780,
+      "end": 146811,
+      "value": "${…}/v3/nft/collections?${…}",
+      "owner": "getNFTCollections"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147097,
+      "end": 147155,
+      "value": "${…}/v3/nft/chains/${…}/collections/${…}/tokens?${…}",
+      "owner": "getNFTCollectionItems"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147205,
+      "end": 147261,
+      "value": "${…}/v3/nft/chains/${…}/contracts/${…}/tokens/${…}",
+      "owner": "getNFTMetadata"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147304,
+      "end": 147367,
+      "value": "${…}/v1/buycrypto/request/${…}?address={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "buyCrypto"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147475,
+      "end": 147579,
+      "value": "${…}/v1/buycrypto/quotes/${…}?amount={redactedValue}&address={redactedValue}&currency={redactedValue}&twt_amount={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "buyCryptoQuote"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147623,
+      "end": 147710,
+      "value": "${…}/v3/buycrypto/config/${…}?wallet_id={redactedValue}&is_asset_recommendation_required={redactedValue}",
+      "owner": "buyCryptoConfig"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 147754,
+      "end": 147781,
+      "value": "${…}/v2/buycrypto/assets",
+      "owner": "getBuyCryptoAssets"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 148243,
+      "end": 148283,
+      "value": "${…}/v3/buycrypto/${…}/routes",
+      "owner": "getBuyProviderRoutes"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 148805,
+      "end": 148843,
+      "value": "${…}/v1/buycrypto/widget/quote?${…}",
+      "owner": "buyCryptoWidgetQuote"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 148964,
+      "end": 149068,
+      "value": "${…}/v1/sellcrypto/quote/${…}?amount={redactedValue}&address={redactedValue}&currency={redactedValue}&twt_amount={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "sellCryptoQuote"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149112,
+      "end": 149176,
+      "value": "${…}/v1/sellcrypto/request/${…}?address={redactedValue}&ts={redactedValue}&sig={redactedValue}",
+      "owner": "sellCrypto"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149319,
+      "end": 149390,
+      "value": "${…}/v1/coinstatus/${…}?${…}",
+      "owner": "getCoinStatus"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149499,
+      "end": 149552,
+      "value": "${…}/v1/discover/group/invest-staking?currency={redactedValue}",
+      "owner": "getStakingList"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149611,
+      "end": 149638,
+      "value": "${…}/v1/validate/address",
+      "owner": "validateAddress"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149714,
+      "end": 149737,
+      "value": "${…}/v1/validate/url",
+      "owner": "validateDappUrl"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149790,
+      "end": 149821,
+      "value": "${…}/v1/validate/transaction",
+      "owner": "validateTransaction"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 149891,
+      "end": 149918,
+      "value": "${…}/v1/validate/message",
+      "owner": "validateMessage"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150001,
+      "end": 150021,
+      "value": "${…}/v1/txhub/txs",
+      "owner": "getTransactionHistory"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150152,
+      "end": 150181,
+      "value": "${…}/v1/txhub/bulk_history",
+      "owner": "getMultipleAssetTransactionHistory"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150267,
+      "end": 150290,
+      "value": "${…}/v2/devices/${…}",
+      "owner": "togglePushNotifications"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150380,
+      "end": 150415,
+      "value": "${…}/v2/devices/${…}/push-topics",
+      "owner": "updatePushNotificationTopics"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150460,
+      "end": 150493,
+      "value": "${…}/v1/centrifugo-hooks/token",
+      "owner": "getCentrifugoToken"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150537,
+      "end": 150563,
+      "value": "${…}/v1/balances/chains",
+      "owner": "getBalanceStreamChains"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150604,
+      "end": 150632,
+      "value": "${…}/amber-api/v2/session",
+      "owner": "openSwapQuoteSession"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150680,
+      "end": 150715,
+      "value": "${…}/amber-api/v2/session/status",
+      "owner": "getSwapQuoteSessionStatus"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150759,
+      "end": 150793,
+      "value": "${…}/amber-api/v2/session/close",
+      "owner": "closeSwapQuoteSession"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150838,
+      "end": 150873,
+      "value": "${…}/amber-api/v1/history/status",
+      "owner": "getSwapSettlementStatus"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 150952,
+      "end": 150983,
+      "value": "${…}/amber-api/v2/route/step",
+      "owner": "commitSwapQuoteSessionStep"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151039,
+      "end": 151073,
+      "value": "${…}/v2/market/sentiment-assets",
+      "owner": "fetchMarketSentimentSupportedCrypto"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151113,
+      "end": 151145,
+      "value": "${…}/v2/market/sentiment/${…}",
+      "owner": "fetchMarketSentiment"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151179,
+      "end": 151281,
+      "value": "${…}/v2/announcements?strategy={redactedValue}&version={redactedValue}&platform={redactedValue}&device_id={redactedValue}",
+      "owner": "getAnnouncements"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151324,
+      "end": 151353,
+      "value": "${…}/v2/announcements/seen",
+      "owner": "setSeenAnnouncements"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151427,
+      "end": 151472,
+      "value": "${…}/v1/cex-transfer/providers/${…}/assets",
+      "owner": "fetchCexFundingAssets"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151521,
+      "end": 151559,
+      "value": "${…}/v1/cex-transfer/providers/${…}",
+      "owner": "fetchCexFundingLink"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151729,
+      "end": 151785,
+      "value": "${…}/v1/cex-transfer/providers/${…}/transactions/${…}",
+      "owner": "fetchCexFundingTransferStatus"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151828,
+      "end": 151847,
+      "value": "${…}/v1/homepage",
+      "owner": "fetchTrendingTokens"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 151987,
+      "end": 152004,
+      "value": "${…}/v1/lookup",
+      "owner": "lookupDomainName"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152228,
+      "end": 152253,
+      "value": "${…}/v1/approvals/scan",
+      "owner": "fetchApprovals"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152312,
+      "end": 152348,
+      "value": "${…}/v1/buycrypto/screens/funding",
+      "owner": "fetchFundingMethods"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152407,
+      "end": 152433,
+      "value": "${…}/v3/points/${…}/vip",
+      "owner": "getUserVipTierData"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152480,
+      "end": 152511,
+      "value": "${…}/v1/buycrypto/p2p/config",
+      "owner": "getP2PBuyCryptoConfig"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152596,
+      "end": 152627,
+      "value": "${…}/v1/buycrypto/p2p/quotes",
+      "owner": "getP2PBuyCryptoQuotes"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152753,
+      "end": 152786,
+      "value": "${…}/v1/buycrypto/p2p/checkout",
+      "owner": "getP2PBuyCryptoCheckout"
+    },
+    {
+      "file": "chunks/network-BgRJPftY.js",
+      "start": 152870,
+      "end": 152915,
+      "value": "${…}/v1/buycrypto/route/recurring/checkout",
+      "owner": "recurringBuyCheckout"
+    },
+    {
+      "file": "chunks/sell-DEKcDK89.js",
+      "start": 2749,
+      "end": 2796,
+      "value": "${…}/v1/sellcrypto/config/${…}?wallet_id={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "chunks/useAnalytics-COpZR7i2.js",
+      "start": 347595,
+      "end": 347616,
+      "value": "/sdk/v2/vardata?v={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "chunks/useAnalytics-COpZR7i2.js",
+      "start": 348725,
+      "end": 348740,
+      "value": "/sdk/v2/flags",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6357467,
+      "end": 6357492,
+      "value": "/v2/devices/fingerprint",
+      "owner": "TrustFingerPrintRpcClient$getDeviceFingerPrint$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6357860,
+      "end": 6357876,
+      "value": "/v1/gas/price/",
+      "owner": "GasPriceRemoteService$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6425625,
+      "end": 6425640,
+      "value": "/v2/projects/",
+      "owner": "HttpNaasNodeRemoteStorage$loadNodes$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6659545,
+      "end": 6659572,
+      "value": "/v2/nodes?network={redactedValue}",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6846386,
+      "end": 6846405,
+      "value": "/v1/fee/priority/",
+      "owner": "BitcoinRemoteFeeService$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6849387,
+      "end": 6849402,
+      "value": "/v1/fee/type/",
+      "owner": "BitcoinRemoteFeeTypeService$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6858664,
+      "end": 6858682,
+      "value": "/api/v2/address/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6858701,
+      "end": 6858716,
+      "value": "/api/v2/xpub/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6858856,
+      "end": 6858873,
+      "value": "/api/v2/sendtx/",
+      "owner": "BitcoinRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6859233,
+      "end": 6859246,
+      "value": "/api/v2/tx/",
+      "owner": "BitcoinRpcClient$getTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6859986,
+      "end": 6860001,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getUnspentOutputs$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6860237,
+      "end": 6860260,
+      "value": "/api/v2/estimatefee/2",
+      "owner": "BitcoinRpcClient$estimateFee$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6971617,
+      "end": 6971635,
+      "value": "/api/v2/address/",
+      "owner": "BitcoinRpcClient$getBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6971775,
+      "end": 6971792,
+      "value": "/api/v2/sendtx/",
+      "owner": "BitcoinRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6972152,
+      "end": 6972165,
+      "value": "/api/v2/tx/",
+      "owner": "BitcoinRpcClient$getTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6972287,
+      "end": 6972302,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getUnspentOutputs$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6972800,
+      "end": 6972815,
+      "value": "/api/v2/utxo/",
+      "owner": "BitcoinRpcClient$getDerivationPaths$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6973231,
+      "end": 6973254,
+      "value": "/api/v2/estimatefee/2",
+      "owner": "BitcoinRpcClient$estimateFee$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 6986221,
+      "end": 6986240,
+      "value": "/v1/fee/priority/",
+      "owner": "BitcoinRemoteFeeService$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7183498,
+      "end": 7183517,
+      "value": "/v1/validator/all",
+      "owner": "BscRpcStakingClient$getValidators$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7483937,
+      "end": 7483943,
+      "value": "/v2/",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7601940,
+      "end": 7601968,
+      "value": "/evmos/feemarket/v1/params",
+      "owner": "CosmosRpcClient$getEvmosFeeMarketParams$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7602841,
+      "end": 7602870,
+      "value": "/cosmwasm/wasm/v1/contract/",
+      "owner": "CosmosRpcClient$getContractBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7603116,
+      "end": 7603142,
+      "value": "/feemarket/v1/gas_prices",
+      "owner": "CosmosRpcClient$getNeutronMarketFee$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7613854,
+      "end": 7613872,
+      "value": "/v1/fee/default/",
+      "owner": "CosmosDefaultFeeRemoteServiceDelegate$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7616733,
+      "end": 7616742,
+      "value": "/v1/apr",
+      "owner": "CosmosStakingAprRemoteServiceDelegate$execute$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7629802,
+      "end": 7629830,
+      "value": "/evmos/inflation/v1/params",
+      "owner": "CosmosStakingRpcClient$getEvmosInflation$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7631228,
+      "end": 7631270,
+      "value": "/evmos/inflation/v1/epoch_mint_provision",
+      "owner": "CosmosStakingRpcClient$getEvmosEpoch$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7632013,
+      "end": 7632043,
+      "value": "/sommelier/incentives/v1/apy",
+      "owner": "CosmosStakingRpcClient$getSommelierAPY$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7649022,
+      "end": 7649042,
+      "value": "/v1/txs/gas_prices",
+      "owner": "TerraRpcClient$getTerraGasPrices$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7977652,
+      "end": 7977672,
+      "value": "/v1/chain/get_info",
+      "owner": "FioNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7977744,
+      "end": 7977764,
+      "value": "/v1/chain/get_info",
+      "owner": "FioNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7978197,
+      "end": 7978224,
+      "value": "/v1/chain/get_fio_balance",
+      "owner": "FioRpcClient$getCoinBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7978951,
+      "end": 7978963,
+      "value": "/v1/chain/",
+      "owner": "FioRpcClient$broadcastTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7979578,
+      "end": 7979597,
+      "value": "/v1/chain/get_fee",
+      "owner": "FioRpcClient$estimateFee$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7980231,
+      "end": 7980251,
+      "value": "/v1/chain/get_info",
+      "owner": "FioRpcClient$fetchChainParams$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7980432,
+      "end": 7980453,
+      "value": "/v1/chain/get_block",
+      "owner": "FioRpcClient$fetchChainParams$lambda_0"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7981184,
+      "end": 7981207,
+      "value": "/v1/chain/avail_check",
+      "owner": "FioRpcClient$checkAvailability$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7981903,
+      "end": 7981932,
+      "value": "/v1/chain/get_fio_addresses",
+      "owner": "FioRpcClient$getAddresses$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7982642,
+      "end": 7982671,
+      "value": "/v1/chain/get_pub_addresses",
+      "owner": "FioRpcClient$getAllPublicKeys$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 7983296,
+      "end": 7983317,
+      "value": "/v1/fio/buy-address",
+      "owner": "FioRpcClient$registerFreeHandle$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8104082,
+      "end": 8104140,
+      "value": "https://wallet-kit.trustwallet.com/v1/apr/proxy/stakewiz",
+      "owner": "Companion_30"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8319959,
+      "end": 8320017,
+      "value": "https://wallet-kit.trustwallet.com/v1/apr/proxy/stakewiz",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8448483,
+      "end": 8448496,
+      "value": "/v1/domains",
+      "owner": "AmberRpcClient$getDomains$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8448636,
+      "end": 8448651,
+      "value": "/v1/providers",
+      "owner": "AmberRpcClient$getProviders$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8448767,
+      "end": 8448790,
+      "value": "/v1/providers/bridge/",
+      "owner": "AmberRpcClient$getBridgeProvider$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8448906,
+      "end": 8448926,
+      "value": "/v1/providers/dex/",
+      "owner": "AmberRpcClient$getDexProvider$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8449034,
+      "end": 8449045,
+      "value": "/v1/route",
+      "owner": "AmberRpcClient$getRoutes$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8449148,
+      "end": 8449164,
+      "value": "/v1/route/step",
+      "owner": "AmberRpcClient$getStep$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8449277,
+      "end": 8449297,
+      "value": "/v1/history/create",
+      "owner": "AmberRpcClient$createTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8449417,
+      "end": 8449437,
+      "value": "/v1/history/status",
+      "owner": "AmberRpcClient$findTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8449591,
+      "end": 8449615,
+      "value": "/v1/transaction/submit",
+      "owner": "AmberRpcClient$submitTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8759648,
+      "end": 8759660,
+      "value": "/v2/status",
+      "owner": "AlgorandNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8759737,
+      "end": 8759749,
+      "value": "/v2/status",
+      "owner": "AlgorandNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8760162,
+      "end": 8760174,
+      "value": "/v2/status",
+      "owner": "AlgorandRpcClient$getStatus$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8760567,
+      "end": 8760582,
+      "value": "/v2/accounts/",
+      "owner": "AlgorandRpcClient$getAccountData$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8760798,
+      "end": 8760825,
+      "value": "/v2/transactions/pending/",
+      "owner": "AlgorandRpcClient$getTransactionStatus$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8761058,
+      "end": 8761083,
+      "value": "/v2/transactions/params",
+      "owner": "AlgorandRpcClient$getTransactionParams$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8761172,
+      "end": 8761190,
+      "value": "/v2/transactions",
+      "owner": "AlgorandRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8761968,
+      "end": 8761983,
+      "value": "/v2/accounts/",
+      "owner": "AlgorandRpcClient$getAssetRegistered$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8821891,
+      "end": 8821906,
+      "value": "/v1/-/healthy",
+      "owner": "AptosNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8823458,
+      "end": 8823464,
+      "value": "/v1/",
+      "owner": "AptosRpcClient$fetchLedgerTimestamp$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8823648,
+      "end": 8823663,
+      "value": "/v1/accounts/",
+      "owner": "AptosRpcClient$sequenceNumber$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8823751,
+      "end": 8823778,
+      "value": "/v1/transactions/simulate",
+      "owner": "AptosRpcClient$simulate$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8824201,
+      "end": 8824225,
+      "value": "/v1/estimate_gas_price",
+      "owner": "AptosRpcClient$estimateGasPrice$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8824306,
+      "end": 8824324,
+      "value": "/v1/transactions",
+      "owner": "AptosRpcClient$sendTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8824678,
+      "end": 8824705,
+      "value": "/v1/transactions/by_hash/",
+      "owner": "AptosRpcClient$getTransactionByHash$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 8824796,
+      "end": 8824806,
+      "value": "/v1/view",
+      "owner": "AptosRpcClient$executeView$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9107244,
+      "end": 9107287,
+      "value": "/v1/staking/chains/cardano/validator_aprs",
+      "owner": "CardanoAprRpcClient$getValidatorsAPR$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9475458,
+      "end": 9475488,
+      "value": "/v1/pools/exit-queue/ticket/",
+      "owner": "EthKilnRpcStakingClient$getExitQueueEstimation$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9572424,
+      "end": 9572455,
+      "value": "/v1/invests/stablecoin/config",
+      "owner": "Companion_9"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9597677,
+      "end": 9597687,
+      "value": "/v1/defi",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9597700,
+      "end": 9597724,
+      "value": "/v1/defi/network-stats",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9597737,
+      "end": 9597768,
+      "value": "/v1/defi/extra-rewards/morpho",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9597781,
+      "end": 9597818,
+      "value": "/v1/defi/extra-rewards/morpho/claim",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9597831,
+      "end": 9597848,
+      "value": "/v1/defi/stakes",
+      "owner": "Companion_25"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9598293,
+      "end": 9598310,
+      "value": "/v1/defi/stakes",
+      "owner": "KilnVaultsRpcClient$positions$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9598380,
+      "end": 9598404,
+      "value": "/v1/defi/network-stats",
+      "owner": "KilnVaultsRpcClient$vaults$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9598486,
+      "end": 9598517,
+      "value": "/v1/defi/extra-rewards/morpho",
+      "owner": "KilnVaultsRpcClient$morphoExtraRewards$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9598604,
+      "end": 9598641,
+      "value": "/v1/defi/extra-rewards/morpho/claim",
+      "owner": "KilnVaultsRpcClient$craftClaimMorphoRewards$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9648294,
+      "end": 9648320,
+      "value": "/v1/defi/angle/positions",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9650926,
+      "end": 9650951,
+      "value": "/v1/defi/angle/overview",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9656291,
+      "end": 9656315,
+      "value": "/v1/defi/angle/deposit",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9656555,
+      "end": 9656580,
+      "value": "/v1/defi/angle/withdraw",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9708279,
+      "end": 9708310,
+      "value": "/v1/invests/stablecoin/config",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9903249,
+      "end": 9903267,
+      "value": "/api/v2/tronRent",
+      "owner": "Companion_34"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9903444,
+      "end": 9903462,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$preorder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9903554,
+      "end": 9903572,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$createOrder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9903663,
+      "end": 9903681,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$uploadHash$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 9903766,
+      "end": 9903784,
+      "value": "/api/v2/tronRent",
+      "owner": "TronifyApiClient$orderStatus$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10133113,
+      "end": 10133119,
+      "value": "/v2/",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10357118,
+      "end": 10357130,
+      "value": "/v3/bakers",
+      "owner": "TezosRpcClient$getBakers$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10608568,
+      "end": 10608587,
+      "value": "/v2/transactions/",
+      "owner": "AeternityRpcClient$findTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10608785,
+      "end": 10608800,
+      "value": "/v2/accounts/",
+      "owner": "AeternityRpcClient$getAccount$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10608904,
+      "end": 10608922,
+      "value": "/v2/transactions",
+      "owner": "AeternityRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10609712,
+      "end": 10609728,
+      "value": "/v2/blocks/top",
+      "owner": "AeternityRpcClient$getBlockNumber$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10627035,
+      "end": 10627047,
+      "value": "/v2/status",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 10629873,
+      "end": 10629889,
+      "value": "/v2/blocks/top",
+      "owner": null
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11081642,
+      "end": 11081665,
+      "value": "/v1/user/accountstate",
+      "owner": "NebulasRpcClient$getAccount$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11082387,
+      "end": 11082409,
+      "value": "/v1/user/getGasPrice",
+      "owner": "NebulasRpcClient$getGasPrice$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11082498,
+      "end": 11082530,
+      "value": "/v1/user/getTransactionReceipt",
+      "owner": "NebulasRpcClient$getTransactionReceipt$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11083280,
+      "end": 11083294,
+      "value": "/v1/user/lib",
+      "owner": "NebulasRpcClient$getLatestBlock$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11083495,
+      "end": 11083514,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasRpcClient$getNebulasState$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11083602,
+      "end": 11083627,
+      "value": "/v1/user/rawtransaction",
+      "owner": "NebulasRpcClient$broadcastTransaction$lambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11084845,
+      "end": 11084864,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasNodeRpcClient$isSynced$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11084940,
+      "end": 11084959,
+      "value": "/v1/user/nebstate",
+      "owner": "NebulasNodeRpcClient$blockNumber$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11206777,
+      "end": 11206792,
+      "value": "/v1/accounts/",
+      "owner": "IotexRpcClient$getAccountMeta$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11207002,
+      "end": 11207021,
+      "value": "/v1/actions/hash/",
+      "owner": "IotexRpcClient$getTransactionByHash$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11207234,
+      "end": 11207252,
+      "value": "/v1/actionbytes/",
+      "owner": "IotexRpcClient$broadcastTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11751330,
+      "end": 11751342,
+      "value": "/v2.1/swap",
+      "owner": "TrustSwapClient$getSwap$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 11751651,
+      "end": 11751669,
+      "value": "/v2.1/swap/quote",
+      "owner": "TrustSwapClient$getSwapQuote$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32112641,
+      "end": 32112654,
+      "value": "/v1/assets/",
+      "owner": "AssetApiClientImpl$getAsset$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32112750,
+      "end": 32112762,
+      "value": "/v1/assets",
+      "owner": "AssetApiClientImpl$getAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32112906,
+      "end": 32112923,
+      "value": "/v2/coinstatus/",
+      "owner": "AssetApiClientImpl$getAssetStatus$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32113278,
+      "end": 32113297,
+      "value": "/v1/search/assets",
+      "owner": "AssetApiClientImpl$findAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32113902,
+      "end": 32113922,
+      "value": "/v1/assets/popular",
+      "owner": "AssetApiClientImpl$getPopularAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32114039,
+      "end": 32114060,
+      "value": "/v1/assets/listings",
+      "owner": "AssetApiClientImpl$getListingAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32115279,
+      "end": 32115300,
+      "value": "/v1/balances/stream",
+      "owner": "BalanceApiClientImpl$streamBalances$slambda$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32116302,
+      "end": 32116322,
+      "value": "/v2/market/tickers",
+      "owner": "MarketApiClientImpl$getTickers$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32116422,
+      "end": 32116440,
+      "value": "/v1/market/info/",
+      "owner": "MarketApiClientImpl$getMarketInfo$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32116574,
+      "end": 32116592,
+      "value": "/v2/market/rates",
+      "owner": "MarketApiClientImpl$getUsdExchangeRate$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32418150,
+      "end": 32418163,
+      "value": "/v1/invests",
+      "owner": "Companion_1"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32418176,
+      "end": 32418207,
+      "value": "/v1/invests/stablecoin/quotes",
+      "owner": "Companion_1"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32418367,
+      "end": 32418388,
+      "value": "/v1/invests/staking",
+      "owner": "InvestApiClientImpl$nativeInvests$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32418569,
+      "end": 32418593,
+      "value": "/v1/invests/stablecoin",
+      "owner": "InvestApiClientImpl$stablecoinInvests$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32418782,
+      "end": 32418816,
+      "value": "/v1/invests/stablecoin/positions",
+      "owner": "InvestApiClientImpl$getStablecoinPositions$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32419042,
+      "end": 32419081,
+      "value": "/v1/invests/stablecoin/quotes/approve",
+      "owner": "InvestApiClientImpl$createApproveQuote$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32419163,
+      "end": 32419202,
+      "value": "/v1/invests/stablecoin/quotes/deposit",
+      "owner": "InvestApiClientImpl$createDepositQuote$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32419285,
+      "end": 32419325,
+      "value": "/v1/invests/stablecoin/quotes/withdraw",
+      "owner": "InvestApiClientImpl$createWithdrawQuote$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 32420359,
+      "end": 32420397,
+      "value": "/v1/launchpool/userMultiChainRewards",
+      "owner": "MerklRewardsClientImpl$merklRewards$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370188,
+      "end": 33370235,
+      "value": "/bapi/futures/v1/public/future/web3/get-nonce",
+      "owner": "PerpetualApiClientImpl$getNonce$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370307,
+      "end": 33370350,
+      "value": "/bapi/futures/v1/public/future/web3/login",
+      "owner": "PerpetualApiClientImpl$login$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370427,
+      "end": 33370478,
+      "value": "/bapi/futures/v1/private/future/order/place-order",
+      "owner": "PerpetualApiClientImpl$placeOrder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370563,
+      "end": 33370617,
+      "value": "/bapi/futures/v1/private/future/strategy/place-order",
+      "owner": "PerpetualApiClientImpl$placeStrategyOrder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370701,
+      "end": 33370753,
+      "value": "/bapi/futures/v1/public/future/apx/withdraw/assets",
+      "owner": "PerpetualApiClientImpl$getWithdrawAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33370866,
+      "end": 33370917,
+      "value": "/bapi/futures/v1/public/future/apx/deposit/assets",
+      "owner": "PerpetualApiClientImpl$getDepositAssets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33371055,
+      "end": 33371113,
+      "value": "/bapi/futures/v1/public/future/apx/estimate-withdraw-fee",
+      "owner": "PerpetualApiClientImpl$getWithdrawalFee$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33371481,
+      "end": 33371540,
+      "value": "/bapi/futures/v1/private/future/web3/chain-withdraw-limit",
+      "owner": "PerpetualApiClientImpl$getChainWithdrawLimit$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33371698,
+      "end": 33371748,
+      "value": "/bapi/futures/v1/private/future/apx/limit/profit",
+      "owner": "PerpetualApiClientImpl$getLockedProfit$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33371996,
+      "end": 33372047,
+      "value": "/bapi/futures/v1/private/future/apx/user-withdraw",
+      "owner": "PerpetualApiClientImpl$requestWithdraw$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33372150,
+      "end": 33372214,
+      "value": "/bapi/futures/v1/private/future/user-data/getMaxWithdrawAmount",
+      "owner": "PerpetualApiClientImpl$getMaxWithdrawAmount$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33372822,
+      "end": 33372884,
+      "value": "/bapi/futures/v1/private/future/user-data/adjust-margin-type",
+      "owner": "PerpetualApiClientImpl$updateMarginType$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33373515,
+      "end": 33373571,
+      "value": "/bapi/futures/v4/private/future/user-data/user-balance",
+      "owner": "PerpetualApiClientImpl$getPerpetualAccountBalance$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33374159,
+      "end": 33374180,
+      "value": "/fapi/v1/assetIndex",
+      "owner": "PerpetualApiClientImpl$getAssetIndex$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33374259,
+      "end": 33374282,
+      "value": "/fapi/v1/premiumIndex",
+      "owner": "PerpetualApiClientImpl$getTradeInfo$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33374380,
+      "end": 33374447,
+      "value": "/bapi/futures/v1/private/future/user-setting/get-optional-symbols",
+      "owner": "PerpetualApiClientImpl$getFavoriteSymbols$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33374769,
+      "end": 33374839,
+      "value": "/bapi/futures/v1/private/future/user-setting/update-optional-symbols",
+      "owner": "PerpetualApiClientImpl$setFavoriteSymbols$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33375459,
+      "end": 33375517,
+      "value": "/bapi/futures/v1/private/future/user-data/adjustLeverage",
+      "owner": "PerpetualApiClientImpl$adjustLeverage$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33376137,
+      "end": 33376193,
+      "value": "/bapi/futures/v1/public/future/asset/ae/all-asset-logo",
+      "owner": "PerpetualApiClientImpl$getAssetIcons$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33376496,
+      "end": 33376527,
+      "value": "/fapi/v1/astherusExchangeInfo",
+      "owner": "PerpetualApiClientImpl$getExchangeInfo$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33376604,
+      "end": 33376626,
+      "value": "/fapi/v1/ticker/24hr",
+      "owner": "PerpetualApiClientImpl$getTickers$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33376701,
+      "end": 33376750,
+      "value": "/bapi/future/v1/public/future/aster/ticker/pair",
+      "owner": "PerpetualApiClientImpl$getPairs$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33376855,
+      "end": 33376882,
+      "value": "/fapi/v1/continuousKlines",
+      "owner": "PerpetualApiClientImpl$getKlines$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33377161,
+      "end": 33377211,
+      "value": "/bapi/futures/v1/friendly/future/common/brackets",
+      "owner": "PerpetualApiClientImpl$getBrackets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33377736,
+      "end": 33377793,
+      "value": "/bapi/futures/v5/private/future/user-data/user-position",
+      "owner": "PerpetualApiClientImpl$getUserPosition$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33378313,
+      "end": 33378364,
+      "value": "/bapi/futures/v2/private/future/order/open-orders",
+      "owner": "PerpetualApiClientImpl$getUserOrders$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33378688,
+      "end": 33378750,
+      "value": "/bapi/futures/v1/private/future/strategy/query-open-strategy",
+      "owner": "PerpetualApiClientImpl$getStrategyOrders$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33379378,
+      "end": 33379430,
+      "value": "/bapi/futures/v1/private/future/order/cancel-order",
+      "owner": "PerpetualApiClientImpl$cancelOrder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33380050,
+      "end": 33380103,
+      "value": "/bapi/futures/v1/private/future/order/cancel-orders",
+      "owner": "PerpetualApiClientImpl$cancelAllOrders$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33380627,
+      "end": 33380681,
+      "value": "/bapi/futures/v2/private/future/order/clear-position",
+      "owner": "PerpetualApiClientImpl$closeAllPositions$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33381331,
+      "end": 33381390,
+      "value": "/bapi/futures/v1/private/future/user-data/get-join-margin",
+      "owner": "PerpetualApiClientImpl$getMultiAsset$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33381710,
+      "end": 33381772,
+      "value": "/bapi/futures/v1/private/future/user-data/change-join-margin",
+      "owner": "PerpetualApiClientImpl$changeMultiAsset$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33382374,
+      "end": 33382430,
+      "value": "/bapi/futures/v1/private/future/user-data/userLeverage",
+      "owner": "PerpetualApiClientImpl$getUserLeverage$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33382762,
+      "end": 33382816,
+      "value": "/bapi/futures/v1/private/future/web3/deposit-address",
+      "owner": "PerpetualApiClientImpl$getNetworkDepositAddress$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33382926,
+      "end": 33382979,
+      "value": "/bapi/futures/v1/private/future/order/order-history",
+      "owner": "PerpetualApiClientImpl$getOrderHistory$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33383061,
+      "end": 33383118,
+      "value": "/bapi/futures/v1/private/future/user-data/trade-history",
+      "owner": "PerpetualApiClientImpl$getTradeHistory$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33383206,
+      "end": 33383269,
+      "value": "/bapi/futures/v1/private/future/user-data/transaction-history",
+      "owner": "PerpetualApiClientImpl$getTransactionHistory$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33383379,
+      "end": 33383447,
+      "value": "/bapi/futures/v1/private/future/web3/ae/depositAndWithdraw/history",
+      "owner": "PerpetualApiClientImpl$getDepositWithdrawalHistory$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33384039,
+      "end": 33384106,
+      "value": "/bapi/futures/v1/private/future/user-data/account-tier-commission",
+      "owner": "PerpetualApiClientImpl$getAccountTierCommission$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 33384208,
+      "end": 33384267,
+      "value": "/bapi/futures/v1/private/future/user-data/user-listen-key",
+      "owner": "PerpetualApiClientImpl$getPrivateDataWsKey$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 34677107,
+      "end": 34677125,
+      "value": "/v1/fee/history/",
+      "owner": "GasStationClient$getFeeHistory$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 34677235,
+      "end": 34677254,
+      "value": "/v1/fee/priority/",
+      "owner": "GasStationClient$getFeePriority$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35377416,
+      "end": 35377432,
+      "value": "/v1/txhub/txs/",
+      "owner": "TransactionApiClientImpl$getTransaction$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35793861,
+      "end": 35793880,
+      "value": "/v1/odd/portfolio",
+      "owner": "PredictionApiClientImpl$getPortfolio$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35794500,
+      "end": 35794519,
+      "value": "/v1/odd/positions",
+      "owner": "PredictionApiClientImpl$getPositions$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35795189,
+      "end": 35795205,
+      "value": "/v1/odd/trades",
+      "owner": "PredictionApiClientImpl$getTrades$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35795824,
+      "end": 35795847,
+      "value": "/v1/odd/trades/create",
+      "owner": "PredictionApiClientImpl$createTrade$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35796466,
+      "end": 35796486,
+      "value": "/v1/odd/categories",
+      "owner": "PredictionApiClientImpl$getCategories$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35796565,
+      "end": 35796583,
+      "value": "/v1/odd/networks",
+      "owner": "PredictionApiClientImpl$getNetworks$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35796683,
+      "end": 35796700,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getMarkets$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35797019,
+      "end": 35797036,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getMarket$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35797310,
+      "end": 35797328,
+      "value": "/v1/odd/markets/",
+      "owner": "PredictionApiClientImpl$getQuote$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35797680,
+      "end": 35797697,
+      "value": "/v1/odd/markets",
+      "owner": "PredictionApiClientImpl$getOutcomePrices$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35797817,
+      "end": 35797849,
+      "value": "/v1/odd/markets/batch_outcomes",
+      "owner": "PredictionApiClientImpl$getBatchOutcomes$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35797989,
+      "end": 35798003,
+      "value": "/v1/odd/auth",
+      "owner": "PredictionApiClientImpl$exchangeSignature$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 35798580,
+      "end": 35798595,
+      "value": "/v1/odd/order",
+      "owner": "PredictionApiClientImpl$submitOrder$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 36194506,
+      "end": 36194518,
+      "value": "/v1/lookup",
+      "owner": "NamingClient$lookup$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 36301668,
+      "end": 36301682,
+      "value": "/v1/wallets/",
+      "owner": "WalletAggregationApiClientImpl$getWalletMetaFromRegistry$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 36301832,
+      "end": 36301846,
+      "value": "/v3/devices/",
+      "owner": "WalletAggregationApiClientImpl$getWalletMetaLegacy$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 36611984,
+      "end": 36612006,
+      "value": "/analytics/v1/events",
+      "owner": "AnalyticsClient$uploadBatch$lambda"
+    },
+    {
+      "file": "chunks/walletkit.service-C_NgWHzp.js",
+      "start": 37325539,
+      "end": 37325560,
+      "value": "/amber-api/v1/route",
+      "owner": null
+    },
+    {
+      "file": "inpage.js",
+      "start": 3143483,
+      "end": 3143578,
+      "value": "v1/contracts/${…}/events?${…}",
+      "owner": "getEventsByContractAddress"
+    },
+    {
+      "file": "inpage.js",
+      "start": 3143953,
+      "end": 3144021,
+      "value": "v1/transactions/${…}/events?${…}",
+      "owner": "getEventsByTransactionID"
+    },
+    {
+      "file": "inpage.js",
+      "start": 3144423,
+      "end": 3144485,
+      "value": "v1/blocks/${…}/events?${…}",
+      "owner": "getEventsByBlockNumber"
+    },
+    {
+      "file": "inpage.js",
+      "start": 3144786,
+      "end": 3144849,
+      "value": "v1/blocks/latest/events?${…}",
+      "owner": "getEventsOfLatestBlock"
+    }
+  ]
+}

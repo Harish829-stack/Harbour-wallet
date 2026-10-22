@@ -1,5 +1,5 @@
 // Selection steps of the Buy / Sell flow (TW: BuySelectFiat, BuySelectCrypto, BuySelectNetwork, BuySelectProvider, BuySelectPaymentMethod,
-// RecurringBuySetup; evidence/36-ramps/SPEC.md). Each is a full-screen pushed view that reports its choice through a callback.
+// RecurringBuySetup; evidences/re-evidence/36-ramps/SPEC.md). Each is a full-screen pushed view that reports its choice through a callback.
 import React, { useMemo, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Row, Btn, Empty, Coin, Ic, ICON } from '../ui';

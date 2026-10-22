@@ -1,4 +1,4 @@
-// EIP-1193 provider (window.ethereum / window.trustwallet). Trust Wallet parity notes: evidence/12-dapp-provider (EthereumAdapter + request switch).
+// EIP-1193 provider (window.ethereum / window.trustwallet). Trust Wallet parity notes: evidences/re-evidence/12-dapp-provider (EthereumAdapter + request switch).
 import { Emitter, ProviderRpcError } from './emitter';
 import type { Bridge, BridgeEvent } from './bridge';
 import type { InitState } from '../core/provider/protocol';
