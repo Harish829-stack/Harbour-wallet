@@ -82,7 +82,7 @@ async function keyed(p: string, url: URL, req: Request, env: Env): Promise<Respo
   }
   if (p.startsWith('/toncenter/')) {
     const rest = p.slice('/toncenter'.length);
-    if (!env.TONCENTER_API_KEY || !/^\/api\/v[23]\/(getAddressInformation|getWalletInformation|getTransactions|sendBoc|runGetMethod|estimateFee|jetton\/wallets|jetton\/transfers|nft\/items|getMasterchainInfo|transactions)$/.test(rest)) return json({ error: 'not_allowed' }, 403);
+    if (!env.TONCENTER_API_KEY || !/^\/api\/v[23]\/(getAddressInformation|getWalletInformation|getTransactions|sendBoc|sendBocReturnHash|runGetMethod|estimateFee|jetton\/wallets|jetton\/masters|jetton\/transfers|nft\/items|getMasterchainInfo|transactions)$/.test(rest)) return json({ error: 'not_allowed' }, 403);
     return relay(`https://toncenter.com${rest}${url.search}`, { method: req.method, headers: { 'content-type': 'application/json', 'X-API-Key': env.TONCENTER_API_KEY }, body: req.method === 'POST' ? await req.text() : undefined });
   }
   m = p.match(/^\/pimlico\/(1|56|137|42161|8453)$/); // ERC-4337 bundler + paymaster for gasless (EIP-7702) swaps

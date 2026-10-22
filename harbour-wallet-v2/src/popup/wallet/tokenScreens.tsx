@@ -7,7 +7,7 @@ import { explorerAddress, explorerAddressById, assetOf } from './data';
 import { chainById, chainByEvmId } from '../../core/chains/index';
 import { useChart, PriceChart } from './tokenData';
 import type { ChartRange } from '../../core/marketData';
-import { validTokenAddress, TOKEN_CHAINS } from '../../core/chains/adapters/tokens';
+import { validTokenAddress, TOKEN_CHAINS, STANDARD_LABEL, type TokenStandard } from '../../core/chains/adapters/tokens';
 import { refreshTokens, tokenItem, useTokenItems } from './tokensStore';
 import { money, moneyPrice, fmtNumber } from '../settingsStore';
 import type { Ctx } from './screens';
@@ -35,7 +35,7 @@ export const SelectTokenNetworkScreen: React.FC<Ctx> = (c) => {
       <Row key={n.id} onClick={() => c.nav.push('addCustomToken', { chainId: n.chainId, address: c.params?.address })} left={<Coin sym={n.name.slice(0, 3)} assetId={n.id} />} title={n.name} sub={n.testnet ? 'Testnet' : undefined} right={<Ic d={ICON.chevron} size={18} />} />
     ))}
     {Object.entries(TOKEN_CHAINS).map(([id, std]) => { const ch = chainById(id); return ch ? (
-      <Row key={id} onClick={() => c.nav.push('addChainToken', { chain: id, address: c.params?.address })} left={<Coin sym={ch.symbol} assetId={id} />} title={ch.name} sub={std === 'SPL' ? 'SPL tokens' : 'TRC-20 tokens'} right={<Ic d={ICON.chevron} size={18} />} />
+      <Row key={id} onClick={() => c.nav.push('addChainToken', { chain: id, address: c.params?.address })} left={<Coin sym={ch.symbol} assetId={id} />} title={ch.name} sub={`${STANDARD_LABEL[std as TokenStandard] ?? 'Custom'} tokens`} right={<Ic d={ICON.chevron} size={18} />} />
     ) : null; })}
   </Screen>
   );
@@ -159,7 +159,7 @@ export const CustomTokenDetailScreen: React.FC<Ctx> = (c) => {
           <div style={{ color: T.sub, marginTop: 4 }}>{it?.usd != null ? money(it.usd) : it?.price == null ? 'No price available' : money(0)}{it?.price != null && <> · {moneyPrice(it.price)}</>}</div>
         </div>
         <div style={{ background: T.bgAlt, borderRadius: 14, padding: 14, marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-          {[['Network', net?.name ?? ''], ['Type', nonEvm ? (tk?.standard === 'SPL' ? 'SPL' : 'TRC20') : 'ERC20'], ['Decimals', String(t.decimals)]].map(([k, v]) => <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.sub }}>{k}</span><span style={{ fontWeight: 600 }}>{v}</span></div>)}
+          {[['Network', net?.name ?? ''], ['Type', nonEvm ? (STANDARD_LABEL[tk?.standard as TokenStandard] ?? 'Token') : 'ERC20'], ['Decimals', String(t.decimals)]].map(([k, v]) => <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.sub }}>{k}</span><span style={{ fontWeight: 600 }}>{v}</span></div>)}
           <div><div style={{ color: T.sub, marginBottom: 4 }}>{nonEvm === 'solana' ? 'Mint' : 'Contract'}</div><div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontWeight: 600 }}>{t.address}</div>
             <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
               <button type="button" onClick={() => navigator.clipboard?.writeText(t.address).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
@@ -232,7 +232,7 @@ export const AddChainTokenScreen: React.FC<Ctx> = (c) => {
       {look.state === 'ok' && <div style={{ margin: '14px 0 6px' }} data-testid="custom-asset-preview">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.bgAlt, borderRadius: 16, padding: 14 }}>
           <Coin sym={symbol || '?'} size={40} />
-          <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || 'Unnamed token'}</div><div style={{ fontSize: 12, color: T.sub }}>{ch.name} · {std === 'SPL' ? 'SPL' : 'TRC20'}</div></div>
+          <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || 'Unnamed token'}</div><div style={{ fontSize: 12, color: T.sub }}>{ch.name} · {STANDARD_LABEL[std as TokenStandard] ?? 'Token'}</div></div>
           <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 700 }}>{symbol || '—'}</div><div style={{ fontSize: 12, color: T.sub }}>{look.decimals} decimals</div></div>
         </div>
         {needsManual && <>

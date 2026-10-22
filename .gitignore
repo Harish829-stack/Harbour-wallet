@@ -53,3 +53,11 @@ npm-debug.log*
 /samples
 # ---- third-party reverse-engineering inputs (never commit) ----
 samples/
+
+harbour-keys.env
+harbour-config-key.json
+
+# ---- signing / service-account keys (never commit) ----
+harbour-release-key.json
+*firebase-adminsdk*.json
+*-adminsdk-*.json

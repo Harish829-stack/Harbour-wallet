@@ -10,12 +10,14 @@ import { base58CheckDecode, base58Decode, bytesToHex, toBig } from './codec';
 import { solanaRpcUrl } from '../../rpc';
 import { firstOf, formatUnits } from './types';
 
+export type TokenStandard = 'SPL' | 'TRC20' | 'JETTON' | 'COIN';
+export const STANDARD_LABEL: Record<TokenStandard, string> = { SPL: 'SPL', TRC20: 'TRC-20', JETTON: 'Jetton', COIN: 'Coin' };
 export type TokenFailure = 'INVALID_ADDRESS' | 'UNSUPPORTED_NETWORK' | 'NOT_A_CONTRACT' | 'NOT_A_TOKEN' | 'NETWORK_ERROR';
-export interface ChainTokenMeta { address: string; name: string; symbol: string; decimals: number; standard: 'SPL' | 'TRC20' }
+export interface ChainTokenMeta { address: string; name: string; symbol: string; decimals: number; standard: TokenStandard }
 export type ChainProbe = { ok: true; token: ChainTokenMeta; needsManual?: boolean } | { ok: false; code: TokenFailure; error: string };
 export type ChainTokenBalance = { ok: true; raw: string; formatted: string } | { ok: false; error: string };
 
-export const TOKEN_CHAINS: Record<string, 'SPL' | 'TRC20'> = { solana: 'SPL', tron: 'TRC20' };
+export const TOKEN_CHAINS: Record<string, TokenStandard> = { solana: 'SPL', tron: 'TRC20', ton: 'JETTON', sui: 'COIN', aptos: 'COIN' };
 export const TOKEN_PROGRAMS = ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'];
 const NET_ERR: ChainProbe = { ok: false, code: 'NETWORK_ERROR', error: 'Could not reach the network. Check your connection and try again.' };
 const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩﻿]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -23,7 +25,12 @@ const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u00
 // ---------- address validation ----------
 export const isSolanaAddress = (a: string): boolean => { try { return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a) && base58Decode(a).length === 32; } catch { return false; } };
 export const isTronAddress = (a: string): boolean => { try { const p = base58CheckDecode(a); return p.length === 21 && p[0] === 0x41; } catch { return false; } };
-export const validTokenAddress = (chainId: string, a: string): boolean => (chainId === 'solana' ? isSolanaAddress(a) : chainId === 'tron' ? isTronAddress(a) : false);
+export const isTonAddress = (a: string): boolean => /^[A-Za-z0-9_-]{48}$/.test(a) || /^-?\d+:[0-9a-fA-F]{64}$/.test(a);
+/** Move coin type `0x<addr>::<module>::<Name>` (Sui and Aptos legacy coins). */
+export const isMoveCoinType = (a: string): boolean => /^0x[0-9a-fA-F]{1,64}::[A-Za-z_][A-Za-z0-9_]*::[A-Za-z_][A-Za-z0-9_]*$/.test(a) && a.length <= 160;
+/** Aptos fungible-asset metadata object address. */
+export const isAptosFaAddress = (a: string): boolean => /^0x[0-9a-fA-F]{1,64}$/.test(a);
+export const validTokenAddress = (chainId: string, a: string): boolean => (chainId === 'solana' ? isSolanaAddress(a) : chainId === 'tron' ? isTronAddress(a) : chainId === 'ton' ? isTonAddress(a) : chainId === 'sui' ? isMoveCoinType(a) : chainId === 'aptos' ? isMoveCoinType(a) || isAptosFaAddress(a) : false);
 
 // ---------- Solana ----------
 const solUrls = (chain: ChainInfo) => [solanaRpcUrl(), ...endpointsOf(chain)].filter((u, i, a) => u && a.indexOf(u) === i);
@@ -114,14 +121,103 @@ export async function probeTrc20(chain: ChainInfo, contract: string, f: Fetcher)
   return { ok: true, token: { address: contract, name, symbol, decimals, standard: 'TRC20' } };
 }
 
+// ---------- TON jettons (toncenter v3 index, same host as the v2 registry endpoint) ----------
+const tonV3 = (chain: ChainInfo) => endpointsOf(chain).map((u) => u.replace(/\/api\/v2$/, '/api/v3'));
+const num = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
+/** The owner's jetton-wallet contract for a master (raw "0:HEX" form) and its balance; null wallet = the owner holds none. */
+export async function tonJettonWallet(chain: ChainInfo, owner: string, master: string, f: Fetcher): Promise<{ wallet: string | null; balance: bigint }> {
+  return firstOf(tonV3(chain), async (u) => {
+    const r = await getJ(f, `${u}/jetton/wallets?owner_address=${encodeURIComponent(owner)}&jetton_address=${encodeURIComponent(master)}&limit=1&offset=0`);
+    if (!r.ok || !Array.isArray(r.body?.jetton_wallets)) throw new Error(`HTTP ${r.status}`);
+    const w = r.body.jetton_wallets[0]; if (!w) return { wallet: null, balance: 0n };
+    return { wallet: String(w.address), balance: toBig(w.balance ?? 0) };
+  });
+}
+export async function jettonBalance(chain: ChainInfo, owner: string, master: string, decimals: number, f: Fetcher): Promise<ChainTokenBalance> {
+  try { const { balance } = await tonJettonWallet(chain, owner, master, f); return { ok: true, raw: balance.toString(), formatted: formatUnits(balance, decimals) }; }
+  catch (e: any) { return { ok: false, error: e?.message ?? 'balance unavailable' }; }
+}
+export async function probeJetton(chain: ChainInfo, master: string, f: Fetcher): Promise<ChainProbe> {
+  if (!isTonAddress(master)) return { ok: false, code: 'INVALID_ADDRESS', error: 'Enter a valid jetton master address.' };
+  let body: any;
+  try {
+    body = await firstOf(tonV3(chain), async (u) => {
+      const r = await getJ(f, `${u}/jetton/masters?address=${encodeURIComponent(master)}&limit=1&offset=0`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.body;
+    });
+  } catch { return NET_ERR; }
+  const m = body?.jetton_masters?.[0];
+  if (!m) return { ok: false, code: 'NOT_A_TOKEN', error: 'This address is not a jetton master.' };
+  const content = m.jetton_content ?? {}; const info = Object.values(body?.metadata ?? {}).map((x: any) => x?.token_info?.[0]).find(Boolean) as any;
+  const decimals = num(content.decimals ?? info?.extra?.decimals ?? 9);
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) return { ok: false, code: 'NOT_A_TOKEN', error: 'This jetton reports invalid decimals.' };
+  const name = clean(content.name ?? info?.name, 64), symbol = clean(content.symbol ?? info?.symbol, 32);
+  return { ok: true, token: { address: master, name, symbol, decimals, standard: 'JETTON' }, needsManual: !name || !symbol };
+}
+
+// ---------- Sui coins (suix_getBalance / suix_getCoinMetadata) ----------
+export async function suiCoinBalance(chain: ChainInfo, owner: string, coinType: string, decimals: number, f: Fetcher): Promise<ChainTokenBalance> {
+  try {
+    const raw = await firstOf(endpointsOf(chain), async (u) => {
+      const r = await rpc(f, u, 'suix_getBalance', [owner, coinType]); if (r.error) throw new Error(r.error.message ?? 'RPC error');
+      return toBig(r.result?.totalBalance ?? 0);
+    });
+    return { ok: true, raw: raw.toString(), formatted: formatUnits(raw, decimals) };
+  } catch (e: any) { return { ok: false, error: e?.message ?? 'balance unavailable' }; }
+}
+export async function probeSuiCoin(chain: ChainInfo, coinType: string, f: Fetcher): Promise<ChainProbe> {
+  if (!isMoveCoinType(coinType)) return { ok: false, code: 'INVALID_ADDRESS', error: 'Enter a Sui coin type such as 0x2::sui::SUI.' };
+  let meta: any;
+  try {
+    meta = await firstOf(endpointsOf(chain), async (u) => { const r = await rpc(f, u, 'suix_getCoinMetadata', [coinType]); if (r.error) throw new Error(r.error.message ?? 'RPC error'); return r.result; });
+  } catch { return NET_ERR; }
+  if (!meta) return { ok: false, code: 'NOT_A_TOKEN', error: 'No coin metadata was found for this coin type.' };
+  const decimals = num(meta.decimals); if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) return { ok: false, code: 'NOT_A_TOKEN', error: 'This coin reports invalid decimals.' };
+  const name = clean(meta.name, 64), symbol = clean(meta.symbol, 32);
+  return { ok: true, token: { address: coinType, name, symbol, decimals, standard: 'COIN' }, needsManual: !name || !symbol };
+}
+
+// ---------- Aptos coins (`0x1::coin`) and fungible assets (metadata object) ----------
+const aptosView = (chain: ChainInfo, f: Fetcher, fn: string, typeArgs: string[], args: unknown[]) => firstOf(endpointsOf(chain), async (u) => {
+  const r = await postJ(f, `${u}/view`, { function: fn, type_arguments: typeArgs, arguments: args }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.body;
+});
+export async function aptosBalance(chain: ChainInfo, owner: string, asset: string, decimals: number, f: Fetcher): Promise<ChainTokenBalance> {
+  try {
+    const b = isMoveCoinType(asset) ? await aptosView(chain, f, '0x1::coin::balance', [asset], [owner]) : await aptosView(chain, f, '0x1::primary_fungible_store::balance', ['0x1::fungible_asset::Metadata'], [owner, asset]);
+    const raw = toBig(b?.[0] ?? 0); return { ok: true, raw: raw.toString(), formatted: formatUnits(raw, decimals) };
+  } catch (e: any) { return { ok: false, error: e?.message ?? 'balance unavailable' }; }
+}
+export async function probeAptosAsset(chain: ChainInfo, asset: string, f: Fetcher): Promise<ChainProbe> {
+  const coin = isMoveCoinType(asset);
+  if (!coin && !isAptosFaAddress(asset)) return { ok: false, code: 'INVALID_ADDRESS', error: 'Enter an Aptos coin type (0x…::module::Name) or a fungible-asset address.' };
+  const holder = coin ? asset.split('::')[0] : asset; const resource = coin ? `0x1::coin::CoinInfo<${asset}>` : '0x1::fungible_asset::Metadata';
+  let r: any;
+  try {
+    r = await firstOf(endpointsOf(chain), async (u) => {
+      const x = await getJ(f, `${u}/accounts/${holder}/resource/${encodeURIComponent(resource)}`);
+      if (x.status === 404) return null; if (!x.ok) throw new Error(`HTTP ${x.status}`); return x.body;
+    });
+  } catch { return NET_ERR; }
+  const d = r?.data; if (!d) return { ok: false, code: 'NOT_A_TOKEN', error: coin ? 'No coin info was found for this coin type.' : 'This address is not a fungible asset.' };
+  const decimals = num(d.decimals); if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) return { ok: false, code: 'NOT_A_TOKEN', error: 'This asset reports invalid decimals.' };
+  const name = clean(d.name, 64), symbol = clean(d.symbol, 32);
+  return { ok: true, token: { address: asset, name, symbol, decimals, standard: 'COIN' }, needsManual: !name || !symbol };
+}
+
 export function probeChainToken(chain: ChainInfo, address: string, f: Fetcher): Promise<ChainProbe> {
   const a = address.trim();
   if (chain.id === 'solana') return probeSpl(chain, a, f);
   if (chain.id === 'tron') return probeTrc20(chain, a, f);
+  if (chain.id === 'ton') return probeJetton(chain, a, f);
+  if (chain.id === 'sui') return probeSuiCoin(chain, a, f);
+  if (chain.id === 'aptos') return probeAptosAsset(chain, a, f);
   return Promise.resolve({ ok: false, code: 'UNSUPPORTED_NETWORK', error: 'Custom tokens are not supported on this network yet.' });
 }
 export function chainTokenBalance(chain: ChainInfo, owner: string, token: { address: string; decimals: number }, f: Fetcher): Promise<ChainTokenBalance> {
   if (chain.id === 'solana') return splBalance(chain, owner, token.address, token.decimals, f);
   if (chain.id === 'tron') return trc20Balance(chain, owner, token.address, token.decimals, f);
+  if (chain.id === 'ton') return jettonBalance(chain, owner, token.address, token.decimals, f);
+  if (chain.id === 'sui') return suiCoinBalance(chain, owner, token.address, token.decimals, f);
+  if (chain.id === 'aptos') return aptosBalance(chain, owner, token.address, token.decimals, f);
   return Promise.resolve({ ok: false, error: 'unsupported' });
 }

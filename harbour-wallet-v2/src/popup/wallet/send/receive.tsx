@@ -14,7 +14,7 @@ import { receiveNote } from '../../../core/sendService';
 import { networkByChainId } from '../../../core/customTokens';
 import type { Asset } from '../data';
 
-const STANDARD: Record<string, string> = { smartchain: 'BEP-20', tron: 'TRC-20', solana: 'SPL', polygon: 'ERC-20' };
+const STANDARD: Record<string, string> = { smartchain: 'BEP-20', tron: 'TRC-20', solana: 'SPL', ton: 'Jetton', sui: 'Coin', aptos: 'Coin', polygon: 'ERC-20' };
 const addrFor = (c: Ctx, a: Asset) => { const ch = chainOfAsset(a); if (!ch) return ''; return addressFor(ch, c.addrs) || (ch.kind === 'evm' ? c.addrs.ethereum ?? '' : ''); };
 
 /** `/receive`: searchable list of every network (and token) in the registry. */

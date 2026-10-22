@@ -145,7 +145,7 @@ export function resolveSendChain(id: string | undefined, evmChainId: number | un
 export function sanitizeTokenSpec(raw: any): { contract: string; decimals: number; symbol: string } | null {
   if (!raw || typeof raw !== 'object') return null;
   const contract = typeof raw.contract === 'string' ? raw.contract.trim() : ''; const decimals = Number(raw.decimals);
-  if (!contract || contract.length > 128 || /[\s\u0000-\u001f]/.test(contract)) return null;
+  if (!contract || contract.length > 170 || /[\s\u0000-\u001f]/.test(contract)) return null;
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) return null;
   const symbol = String(raw.symbol ?? '').replace(/[^\p{L}\p{N}._-]/gu, '').slice(0, 12) || 'TOKEN';
   return { contract, decimals, symbol };

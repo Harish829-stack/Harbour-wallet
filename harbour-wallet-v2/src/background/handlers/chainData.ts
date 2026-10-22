@@ -6,11 +6,11 @@ import { addressFor, fetchNativeBalance, BALANCE_ADAPTERS } from '../../core/cha
 import { fetchHistory, historySupportedFor, historyUnsupportedReason } from '../../core/txHistory';
 import { fetchGasQuote } from '../../core/gasFees';
 import { fetchNativePrices } from '../../core/priceService';
-import { probeChainToken, chainTokenBalance, validTokenAddress, TOKEN_CHAINS } from '../../core/chains/adapters/tokens';
+import { probeChainToken, chainTokenBalance, validTokenAddress, TOKEN_CHAINS, type TokenStandard } from '../../core/chains/adapters/tokens';
 import { activeEntry, ensureAccounts } from '../walletState';
 import { cleanText } from '../../core/erc20';
 
-export interface ChainToken { id: string; chain: string; chainId: number; address: string; name: string; symbol: string; decimals: number; standard: 'SPL' | 'TRC20'; manual: boolean; addedAt: number }
+export interface ChainToken { id: string; chain: string; chainId: number; address: string; name: string; symbol: string; decimals: number; standard: TokenStandard; manual: boolean; addedAt: number }
 export const MAX_CHAIN_TOKENS = 100;
 const tokenId = (chain: string, address: string) => `${chain}_t${address}`; // base58 is case-sensitive: never lower-cased
 export const readChainTokens = (list: unknown): ChainToken[] => (Array.isArray(list) ? list : []).filter((t): t is ChainToken => !!t && typeof t.id === 'string' && typeof t.chain === 'string' && !!TOKEN_CHAINS[t.chain] && typeof t.address === 'string' && typeof t.decimals === 'number');

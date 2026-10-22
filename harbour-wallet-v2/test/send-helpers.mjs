@@ -8,7 +8,7 @@ import pkg from '@trustwallet/wallet-core';
 const root = fileURLToPath(new URL('../', import.meta.url));
 export async function loadSend() {
   const out = await build({
-    stdin: { contents: `export * from './chains/send/index'; export { bech32Bytes } from './chains/send/util'; export { evmTransferData, validEvmAddress } from './chains/send/evm'; export { validateXrpTag } from './chains/send/ripple'; export { COSMOS_SPECS } from './chains/send/cosmos'; export { ALL_CHAINS, chainById } from './chains/index'; export { parsePaymentUri, assessRecipient, upsertSent, readSent, nameService, resolveEns, resolveSendChain, sanitizeTokenSpec, receiveNote } from './sendService';`, resolveDir: join(root, 'src/core'), sourcefile: 'entry.ts', loader: 'ts' },
+    stdin: { contents: `export * from './chains/send/index'; export * from './chains/adapters/tokens'; export { aptosPayload } from './chains/send/aptos'; export { bech32Bytes } from './chains/send/util'; export { evmTransferData, validEvmAddress } from './chains/send/evm'; export { validateXrpTag } from './chains/send/ripple'; export { COSMOS_SPECS } from './chains/send/cosmos'; export { ALL_CHAINS, chainById } from './chains/index'; export { parsePaymentUri, assessRecipient, upsertSent, readSent, nameService, resolveEns, resolveSendChain, sanitizeTokenSpec, receiveNote } from './sendService';`, resolveDir: join(root, 'src/core'), sourcefile: 'entry.ts', loader: 'ts' },
     bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', external: ['@trustwallet/wallet-core'],
   });
   const file = join(root, 'node_modules/.cache/harbour-send-test/bundle.mjs');

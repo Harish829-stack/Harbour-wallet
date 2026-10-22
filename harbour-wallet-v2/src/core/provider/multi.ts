@@ -70,7 +70,7 @@ export function describeTron(rawHex: string): { contracts: string[]; transfer?: 
   } catch { return { contracts: [] }; }
 }
 
-// ---------------------------------------------------------------- Bitcoin (BIP-137 message signing; PSBT signing is not implemented yet)
+// ---------------------------------------------------------------- Bitcoin (BIP-137 message signing and PSBT signing)
 const btcMsgDigest = (m: Uint8Array) => sha256(sha256(concat(utf8('\x18Bitcoin Signed Message:\n'), varint(BigInt(m.length)), m)));
 
 // ---------------------------------------------------------------- request normalisation

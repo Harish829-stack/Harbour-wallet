@@ -734,3 +734,12 @@ Mainnet test with small amounts before release.
 **Not tested live**
 - Hyperliquid exchange calls and Polymarket CLOB orders: the sandbox has no egress, so the plan's exit test is pending.
 - Ledger signing: there is no device here.
+
+## Phase 8 — security, hardening, release (2026-10-21)
+Simulation previews (`eth_simulateV1`), GoPlus + ScamSniffer address/approval checks, approval scanner with revoke, `tabs` permission removed, `npm audit` to 0 high/critical, reproducible builds (`scripts/repro.mjs`), deterministic zip + Ed25519-signed release metadata (`scripts/release.mjs`, `verify-release.mjs`). See `SECURITY.md`, `RELEASE.md`, `STORE-LISTING.md`. Commits `a99c7f0`, `112d811`.
+
+## Final gap sweep (2026-10-22)
+- Non-EVM custom tokens: TON jettons, Sui coins, Aptos coins and fungible assets — probe, balance, add-token UI and send (`adapters/tokens.ts`, `send/{ton,sui,aptos}.ts`). `test/tokens-nonevm.test.js` (7 tests). Total 410 tests pass; `tsc --noEmit` clean.
+- Found PSBT signing was already implemented (stale comment fixed).
+- `.gitignore` now excludes `harbour-release-key.json` and `*-adminsdk-*.json` (both were untracked but not ignored).
+- Remaining documented gaps: ICP, FIO, Nimiq, Ontology, Aion send; Cosmos IBC/CW20 tokens; Stellar/Polkadot Asset Hub tokens; BTC inscriptions view; USD prices for non-EVM custom tokens.

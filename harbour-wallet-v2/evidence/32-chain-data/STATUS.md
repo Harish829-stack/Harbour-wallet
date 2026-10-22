@@ -44,9 +44,11 @@ Integer fields above 2^53 (FIO, Algorand, Waves, Tron) are read from raw JSON te
 | Solana SPL balance | Real | `getTokenAccountsByOwner(owner,{mint})` jsonParsed, sums all accounts (Token + Token-2022) |
 | Solana SPL probe | Real / Partial | decimals + mint-ness from `getAccountInfo` (certain). name/symbol are not on the mint: best-effort Jupiter token index (`lite-api.jup.ag/tokens/v2/search`), accepted only if `id` AND `decimals` match the chain; otherwise the user types name/symbol (decimals stay chain-locked). Metaplex metadata PDA not implemented |
 | Tron TRC-20 balance + probe | Real | TronGrid `triggerconstantcontract` (`balanceOf/name/symbol/decimals`, string + bytes32 decoding) |
-| Jetton (TON), Aptos/Sui coins, Cosmos IBC tokens | Gap | not implemented |
+| Jetton (TON), Aptos coins + fungible assets, Sui coins | Real (live-unverified) | TON via toncenter v3 `/jetton/masters` + `/jetton/wallets`; Sui `suix_getCoinMetadata`/`suix_getBalance`; Aptos `0x1::coin::CoinInfo` resource / `fungible_asset::Metadata` and `/view` balance. Probes decide decimals; name/symbol typed by the user when the chain has none |
+| Cosmos IBC / CW20 tokens | Gap | not implemented |
 | Add/remove/list UI | Real | `addChainToken` screen (reached from Select network), tokens stored per wallet in vault `customChainTokens`, shown on Home beside EVM tokens, detail screen shows SPL/TRC20 + explorer link |
-| Send / USD price for these tokens | Gap | send belongs to the send worker; no CoinGecko mapping for non-EVM contracts, rows show balance only |
+| Send for these tokens | Real for SPL, TRC-20, jettons, Sui coins, Aptos coins/FA (unit-tested with mocked nodes; no mainnet send yet) | `core/chains/send/{ton,sui,aptos}.ts` |
+| USD price for these tokens | Gap | no CoinGecko mapping for non-EVM contracts, rows show balance only |
 
 ## Transaction history (`core/txHistory.ts` `fetchHistory(chain|id, address)`, `adapters/history.ts`)
 Normalized `HistoryItem`: `kind` (send/receive/self/contract = direction), `amount` (human), `symbol`, optional `token{symbol,address,decimals}`, `counterparty`, `status`, `id` (hash), `timestamp` (ms), `url`, optional `usd`.
