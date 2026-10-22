@@ -88,7 +88,7 @@ export function mapThorRoute(q: any, req: SwapRouteRequest, now = Date.now()): S
   const impact = Number(q?.fees?.slippage_bps); // fee-side price impact in bps
   const step: SwapStep = {
     id: `thorchain-${now}`, type: 'swapAndBridge',
-    provider: { id: 'thorchain', name: 'THORChain', logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/thorchain/info/logo.png' },
+    provider: { id: 'thorchain', name: 'THORChain', logoUrl: '/chains/thorchain.png' },
     fromDomainId: req.from.domainId, toDomainId: req.to.domainId,
     from: { asset: req.from, amount: req.amount },
     to: { asset: req.to, amount: out.toString(), minAmount: min.toString() },
