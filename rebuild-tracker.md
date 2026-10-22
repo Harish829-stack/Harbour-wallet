@@ -168,3 +168,26 @@ The latest user request restricts this session to UI/UX on already present scree
 
 ## 2026-10-19 cleanup snapshot
 See `FEATURE-MATRIX.md`. WalletConnect v2 now implemented (Reown, needs project ID). Ledger still a stub. 349/349 tests, tsc clean, build OK. All network paths live-unverified.
+
+## 2026-10-21 — Backend/API documentation request (cross-cutting)
+
+The user's direct request authorizes this backend-specific survey without claiming
+later lifecycle gates complete. See [TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md)
+and [evidence registry](evidence/40-backend-api/2026-10-21/README.md).
+
+| Scope | RE progress / verified from target | Confidence and remaining gap |
+|---|---|---|
+| Backend client, API and local DB survey | Partial overall; code portions recovered via pinned REA/Wakaru, historical traffic projected through REA | [certain] per recovered client claim; remote DB/framework and private server algorithms UNKNOWN |
+| 73 ApiService method bodies | CODE-CONFIRMED, preserved with source ranges/manifests | Client contracts; not 73 distinct endpoints or proof all methods reachable |
+| Local SQLite persistence | CODE-CONFIRMED; no Chrome execution this pass | TrustSDK_DB, deflate/base64, Chrome local storage; server DB UNKNOWN |
+| HTTP/RPC inventory | 5,216 historical entries, 237 route groups, 86 RPC host/method pairs; 802 static path locations | Historical attribution/dynamic routes/populated responses incomplete; no live API verification |
+| Verification | Source/hash/link checks and 6 controlled synthetic auth checks pass | Not complete browser/runtime/server equivalence |
+
+Chronological feature statuses are unchanged; resume the earliest unfinished gate
+for lifecycle research. No Harbour implementation, UI coverage or build changes.
+
+## 2026-10-21 — Harbour packaging support
+
+Corrected the upload archive root only; see harbour-wallet-v2/BUILD-LOG.md
+and releases/Harbour-root-fixed.validation.json. No Trust Wallet feature research
+or chronological gate status changed. Next research target remains #02.

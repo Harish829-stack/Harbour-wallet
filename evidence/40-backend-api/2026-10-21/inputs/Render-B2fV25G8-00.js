@@ -1,0 +1,18 @@
+var t="https://react.dev/errors/"+e;
+o=l.createElementNS("http://www.w3.org/2000/svg",a);;
+o=l.createElementNS("http://www.w3.org/1998/Math/MathML",a);;
+o=l.createElementNS("http://www.w3.org/2000/svg",a);;
+o=l.createElementNS("http://www.w3.org/1998/Math/MathML",a);;
+(!(o=a.getElementsByTagName("title")[0])||o[ge]||o[ue]||"http://www.w3.org/2000/svg"===o.namespaceURI||o.hasAttribute("itemprop"))&&(o=a.createElement(r),a.head.insertBefore(o,a.querySelector("head > title"))),setInitialProperties(o,r,n),o[ue]=e,markNodeAsHoistable(o),r=o;;
+n=sanitizeURL(""+r),e.setAttributeNS("http://www.w3.org/1999/xlink","xlink:href",n);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:actuate",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:arcrole",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:role",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:show",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:title",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/1999/xlink","xlink:type",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/XML/1998/namespace","xml:base",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/XML/1998/namespace","xml:lang",r);;
+setValueForNamespacedAttribute(e,"http://www.w3.org/XML/1998/namespace","xml:space",r);;
+function getOwnHostContext(e){switch(e){case"http://www.w3.org/2000/svg":return 1;case"http://www.w3.org/1998/Math/MathML":return 2;default:return 0}};
+function getHydratableHoistableCache(e,t,n){if(null===ha){var r=new Map,a=ha=new Map;a.set(n,r)}else(r=(a=ha).get(n))||(r=new Map,a.set(n,r));if(r.has(e))return r;for(r.set(e,null),n=n.getElementsByTagName(e),a=0;a<n.length;a++){var o=n[a];if(!(o[ge]||o[ue]||"link"===e&&"stylesheet"===o.getAttribute("rel"))&&"http://www.w3.org/2000/svg"!==o.namespaceURI){var l=o.getAttribute(t)||"";l=e+l;var i=r.get(l);i?i.push(o):r.set(l,[o])}}return r};

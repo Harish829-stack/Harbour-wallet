@@ -1,0 +1,1382 @@
+[
+  {
+    "id": "DDL-01",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetInfo (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    type TEXT NOT NULL,\n    name TEXT NOT NULL,\n    symbol TEXT NOT NULL,\n    decimals INTEGER NOT NULL,\n    iconUrl TEXT,\n    updatedAt INTEGER NOT NULL DEFAULT 0\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15468666,
+        "end": 15468919,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13412107,
+        "end": 13412360,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-02",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetStatus (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isBuyAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSellAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSwapAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSwapCrossChainAvailable INTEGER DEFAULT 0 NOT NULL,\n    isStakeAvailable INTEGER DEFAULT 0 NOT NULL,\n    defaultSwapPairFromAssetID TEXT,\n    defaultSwapPairToAssetID TEXT,\n    defaultSwapCrossChainPairFromAssetID TEXT,\n    defaultSwapCrossChainPairToAssetID TEXT,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    -- ERC-8056 / BEP-677 scaled UI amount. Defaults preserve identity behaviour\n    -- for rows written before sc-137829/sc-137837 landed, and for assets the\n    -- backend does not flag. Display-only; raw amounts stay canonical.\n    isScaledUIAmount INTEGER NOT NULL DEFAULT 0,\n    uiMultiplier TEXT,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15469010,
+        "end": 15469925,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13412451,
+        "end": 13413366,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-03",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetLocalStatus (\n    assetID TEXT NOT NULL,\n    isAddedManually INTEGER DEFAULT 0 NOT NULL,\n    isEnabled INTEGER DEFAULT 1 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    walletID TEXT NOT NULL,\n    PRIMARY KEY (assetID, walletID),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15470016,
+        "end": 15470352,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13413457,
+        "end": 13413793,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-04",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetMessage (\n    id TEXT NOT NULL PRIMARY KEY,\n    assetID TEXT NOT NULL,\n    messageType TEXT,\n    format TEXT,\n    title TEXT,\n    description TEXT NOT NULL,\n    imageUrl TEXT,\n    alwaysShow INTEGER DEFAULT 0 NOT NULL,\n    metadataType TEXT,\n    linkType TEXT,\n    linkUrl TEXT,\n    FOREIGN KEY(assetID) REFERENCES AssetStatus(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15470443,
+        "end": 15470845,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15490471,
+        "end": 15490873,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13413884,
+        "end": 13414286,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13433912,
+        "end": 13434314,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-05",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetLocalMessage (\n    walletID TEXT NOT NULL,\n    messageID TEXT NOT NULL,\n    assetID TEXT NOT NULL,\n    isClosed INTEGER DEFAULT 0 NOT NULL,\n    PRIMARY KEY (walletID, messageID),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE,\n    FOREIGN KEY(messageID) REFERENCES AssetMessage(id) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15470936,
+        "end": 15471305,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15491133,
+        "end": 15491502,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13414377,
+        "end": 13414746,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13434574,
+        "end": 13434943,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-06",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetTicker (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    updatedTime INTEGER NOT NULL,\n    price TEXT NOT NULL,\n    percentChange24h TEXT NOT NULL,\n    currencyCode TEXT NOT NULL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15471396,
+        "end": 15471668,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13414837,
+        "end": 13415109,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-07",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetAccount (\n    assetID TEXT NOT NULL,\n    accountAddress TEXT NOT NULL,\n    availableBalance TEXT,\n    frozenBalance TEXT,\n    lockedBalance TEXT,\n    rewardsBalance TEXT,\n    stakedBalance TEXT,\n    pendingBalance TEXT,\n    blockedBalance TEXT,\n    claimableBalance TEXT,\n    transferableBalance TEXT,\n    inscribedBalance TEXT,\n    dustBalance TEXT,\n    investedBalance TEXT,\n    earnedBalance TEXT,\n    energyBalance TEXT,\n    bandwidthBalance TEXT,\n    energyLimitBalance TEXT,\n    bandwidthLimitBalance TEXT,\n    reservedBalance TEXT,\n    isRegistered INTEGER DEFAULT 1 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, accountAddress),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15471759,
+        "end": 15472543,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13415200,
+        "end": 13415984,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-08",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetSecurityInfo (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isScanned INTEGER NOT NULL,\n    provider TEXT,\n    contractSecurityNumRisks INTEGER,\n    contractSecurityNumWarnings INTEGER,\n    honeypotRiskNumRisks INTEGER,\n    honeypotRiskNumWarnings INTEGER,\n    buyTax REAL,\n    sellTax REAL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15472634,
+        "end": 15473043,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13416075,
+        "end": 13416484,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-09",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetSecurityInfoItem (\n    assetID TEXT NOT NULL,\n    itemType INTEGER NOT NULL,\n    type TEXT NOT NULL,\n    summary TEXT NOT NULL,\n    description TEXT NOT NULL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15473134,
+        "end": 15473408,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15497255,
+        "end": 15497529,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13416575,
+        "end": 13416849,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13440696,
+        "end": 13440970,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-10",
+    "sql": "CREATE TABLE IF NOT EXISTS EarnPortfolio (\n    wallet_id TEXT NOT NULL,\n    currency_code TEXT NOT NULL,\n    portfolio_json TEXT NOT NULL,\n    updated_at INTEGER NOT NULL,\n    PRIMARY KEY (wallet_id, currency_code)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15473500,
+        "end": 15473724,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15506393,
+        "end": 15506617,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13416941,
+        "end": 13417165,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13449834,
+        "end": 13450058,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-11",
+    "sql": "CREATE TABLE IF NOT EXISTS FeePriority (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    priceLow TEXT NOT NULL,\n    timeLow INTEGER NOT NULL,\n    priceMedium TEXT NOT NULL,\n    timeMedium INTEGER NOT NULL,\n    priceHigh TEXT NOT NULL,\n    timeHigh INTEGER NOT NULL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15473817,
+        "end": 15474146,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13417258,
+        "end": 13417587,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-12",
+    "sql": "CREATE TABLE IF NOT EXISTS HomepageCache (\n    wallet_id TEXT NOT NULL,\n    currency_code TEXT NOT NULL,\n    data_json TEXT NOT NULL,\n    updated_at INTEGER NOT NULL,\n    PRIMARY KEY (wallet_id, currency_code)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15474239,
+        "end": 15474458,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15510137,
+        "end": 15510356,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13417680,
+        "end": 13417899,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13453578,
+        "end": 13453797,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-13",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolCampaign (\n    id TEXT NOT NULL PRIMARY KEY,\n    tokenLockerId TEXT NOT NULL,\n    groupId INTEGER NOT NULL,\n    timeStart INTEGER NOT NULL,\n    timeEnd INTEGER NOT NULL,\n    campaign TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15474551,
+        "end": 15474795,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15505513,
+        "end": 15505757,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13417992,
+        "end": 13418236,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13448954,
+        "end": 13449198,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-14",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolReward (\n    rewardAssetId TEXT NOT NULL PRIMARY KEY,\n    rewardsInfo TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15474888,
+        "end": 15475015,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15506990,
+        "end": 15507117,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13418329,
+        "end": 13418456,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13450431,
+        "end": 13450558,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-15",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolRewardItem (\n    rewardAssetId TEXT NOT NULL,\n    campaignId TEXT NOT NULL,\n    accumulated TEXT NOT NULL,\n    unclaimed TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15475108,
+        "end": 15475288,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15500574,
+        "end": 15500754,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13418549,
+        "end": 13418729,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13444015,
+        "end": 13444195,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-16",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolRewardProof (\n    rewardAssetId TEXT NOT NULL,\n    proof TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15475381,
+        "end": 15475495,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15501017,
+        "end": 15501131,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13418822,
+        "end": 13418936,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13444458,
+        "end": 13444572,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-17",
+    "sql": "CREATE TABLE IF NOT EXISTS MarketInfo (\n    assetID TEXT NOT NULL,\n    currency TEXT NOT NULL,\n    provider TEXT DEFAULT NULL,\n    providerUrl TEXT DEFAULT NULL,\n    volume24 REAL DEFAULT 0,\n    marketCap REAL DEFAULT 0,\n    circulatingSupply REAL DEFAULT 0,\n    totalSupply REAL DEFAULT 0,\n    website TEXT DEFAULT NULL,\n    explorer TEXT DEFAULT NULL,\n    research TEXT DEFAULT NULL,\n    shortDescription TEXT DEFAULT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, currency),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15475588,
+        "end": 15476185,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15497907,
+        "end": 15498504,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13419029,
+        "end": 13419626,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13441348,
+        "end": 13441945,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-18",
+    "sql": "CREATE TABLE IF NOT EXISTS MarketInfoLink (\n    assetID TEXT NOT NULL,\n    name TEXT NOT NULL,\n    url TEXT NOT NULL,\n    handle TEXT DEFAULT NULL,\n    PRIMARY KEY (assetID, name),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15476278,
+        "end": 15476542,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15498621,
+        "end": 15498885,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13419719,
+        "end": 13419983,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13442062,
+        "end": 13442326,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-19",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualUserLeverage (\n    symbol TEXT NOT NULL PRIMARY KEY,\n    leverage INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15476635,
+        "end": 15476760,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15508092,
+        "end": 15508217,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13420076,
+        "end": 13420201,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13451533,
+        "end": 13451658,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-20",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualExchangeSymbol (\n    symbol TEXT NOT NULL PRIMARY KEY,\n    pair TEXT NOT NULL,\n    status TEXT NOT NULL,\n    baseAsset TEXT NOT NULL,\n    quoteAsset TEXT NOT NULL,\n    marginAsset TEXT NOT NULL,\n    quantityPrecision INTEGER NOT NULL,\n    baseAssetPrecision INTEGER NOT NULL,\n    quotePrecision INTEGER,\n    name TEXT NOT NULL,\n    filtersJson TEXT NOT NULL,\n    symbolSubtypes TEXT NOT NULL,\n    symbolSchedule INTEGER NOT NULL,\n    stepSize INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15476853,
+        "end": 15477367,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15508335,
+        "end": 15508849,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13420294,
+        "end": 13420808,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13451776,
+        "end": 13452290,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-21",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualAssetIcon (\n    assetCode TEXT NOT NULL PRIMARY KEY,\n    logoUrl TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15477460,
+        "end": 15477581,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15508942,
+        "end": 15509063,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13420901,
+        "end": 13421022,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13452383,
+        "end": 13452504,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-22",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualOrderedSymbol (\n    orderIndex INTEGER NOT NULL PRIMARY KEY,\n    symbol TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15477674,
+        "end": 15477802,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15509344,
+        "end": 15509472,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13421115,
+        "end": 13421243,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13452785,
+        "end": 13452913,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-23",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualBracketRisk (\n    symbol TEXT NOT NULL,\n    level INTEGER NOT NULL,\n    maintenanceMarginRate REAL NOT NULL,\n    notionalCap REAL NOT NULL,\n    notionalFloor REAL NOT NULL,\n    cumMaintenanceAmount REAL NOT NULL,\n    maxOpenPosLeverage INTEGER NOT NULL,\n    minOpenPosLeverage INTEGER NOT NULL,\n    PRIMARY KEY (symbol, level)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15477895,
+        "end": 15478271,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15509565,
+        "end": 15509941,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13421336,
+        "end": 13421712,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13453006,
+        "end": 13453382,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-24",
+    "sql": "CREATE TABLE IF NOT EXISTS PerpetualFavoriteSymbol (\n    symbol TEXT NOT NULL PRIMARY KEY\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15478364,
+        "end": 15478459,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15509156,
+        "end": 15509251,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13421805,
+        "end": 13421900,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13452597,
+        "end": 13452692,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-25",
+    "sql": "CREATE TABLE IF NOT EXISTS PriceAlert (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    enabled INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15478552,
+        "end": 15478666,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15494079,
+        "end": 15494193,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13421993,
+        "end": 13422107,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13437520,
+        "end": 13437634,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-26",
+    "sql": "CREATE TABLE IF NOT EXISTS StablecoinBalanceChange (\n    wallet_id TEXT NOT NULL,\n    asset_id TEXT NOT NULL,\n    last_available_balance TEXT NOT NULL,\n    last_balance_increasing_date INTEGER,\n    PRIMARY KEY (wallet_id, asset_id)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15478759,
+        "end": 15479000,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15507310,
+        "end": 15507551,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13422200,
+        "end": 13422441,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13450751,
+        "end": 13450992,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-27",
+    "sql": "CREATE TABLE IF NOT EXISTS StablecoinPopupStatus (\n    wallet_id TEXT NOT NULL,\n    asset_id TEXT NOT NULL,\n    last_shown_date INTEGER,\n    dont_remind_me INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (wallet_id, asset_id)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15479093,
+        "end": 15479324,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15507668,
+        "end": 15507899,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13422534,
+        "end": 13422765,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13451109,
+        "end": 13451340,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-28",
+    "sql": "CREATE TABLE IF NOT EXISTS SwapSelectedPair (\n    id INTEGER DEFAULT 1 NOT NULL PRIMARY KEY,\n    fromAssetID TEXT,\n    fromNetwork INTEGER,\n    toAssetID TEXT,\n    toNetwork INTEGER\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15479417,
+        "end": 15479608,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15484062,
+        "end": 15484253,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13422858,
+        "end": 13423049,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13427503,
+        "end": 13427694,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-29",
+    "sql": "CREATE TABLE IF NOT EXISTS TokenLockerPosition (\n    assetId TEXT NOT NULL,\n    tokenLockerId TEXT NOT NULL,\n    amount TEXT NOT NULL,\n    unlockableTimestamp INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15479701,
+        "end": 15479885,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15499875,
+        "end": 15500059,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13423142,
+        "end": 13423326,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13443316,
+        "end": 13443500,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-30",
+    "sql": "CREATE INDEX IF NOT EXISTS AssetMessage_assetID ON AssetMessage(assetID)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15479978,
+        "end": 15480052,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15490966,
+        "end": 15491040,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13423419,
+        "end": 13423493,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13434407,
+        "end": 13434481,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-31",
+    "sql": "CREATE INDEX IF NOT EXISTS AssetLocalMessage_assetID ON AssetLocalMessage(assetID)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15480145,
+        "end": 15480229,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15491595,
+        "end": 15491679,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13423586,
+        "end": 13423670,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13435036,
+        "end": 13435120,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-32",
+    "sql": "CREATE INDEX IF NOT EXISTS AssetSecurityInfoItem_assetID ON AssetSecurityInfoItem(assetID)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15480322,
+        "end": 15480414,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15497622,
+        "end": 15497714,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13423763,
+        "end": 13423855,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13441063,
+        "end": 13441155,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-33",
+    "sql": "CREATE INDEX IF NOT EXISTS group_id ON LaunchpoolCampaign(groupId)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15480507,
+        "end": 15480575,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15499714,
+        "end": 15499782,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15504627,
+        "end": 15504695,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15505850,
+        "end": 15505918,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13423948,
+        "end": 13424016,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13443155,
+        "end": 13443223,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13448068,
+        "end": 13448136,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13449291,
+        "end": 13449359,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-34",
+    "sql": "CREATE INDEX IF NOT EXISTS reward_id ON LaunchpoolRewardItem(rewardAssetId)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15480668,
+        "end": 15480745,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15500847,
+        "end": 15500924,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13424109,
+        "end": 13424186,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13444288,
+        "end": 13444365,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-35",
+    "sql": "CREATE INDEX IF NOT EXISTS reward_id ON LaunchpoolRewardProof(rewardAssetId)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15480838,
+        "end": 15480916,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15501224,
+        "end": 15501302,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13424279,
+        "end": 13424357,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13444665,
+        "end": 13444743,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-36",
+    "sql": "CREATE INDEX IF NOT EXISTS asset_id ON TokenLockerPosition(assetId)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15481009,
+        "end": 15481078,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "background.js",
+        "start": 15500152,
+        "end": 15500221,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13424450,
+        "end": 13424519,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13443593,
+        "end": 13443662,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-37",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetAccount (\n    assetID TEXT NOT NULL,\n    accountAddress TEXT NOT NULL,\n    availableBalance TEXT,\n    frozenBalance TEXT,\n    lockedBalance TEXT,\n    rewardsBalance TEXT,\n    stakedBalance TEXT,\n    pendingBalance TEXT,\n    blockedBalance TEXT,\n    claimableBalance TEXT,\n    transferableBalance TEXT,\n    inscribedBalance TEXT,\n    dustBalance TEXT,\n    isRegistered INTEGER DEFAULT 1 NOT NULL,\n    PRIMARY KEY (assetID, accountAddress),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15481972,
+        "end": 15482518,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13425413,
+        "end": 13425959,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-38",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetStatus_new (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isBuyAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSellAvailable INTEGER DEFAULT 0 NOT NULL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15482609,
+        "end": 15482851,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13426050,
+        "end": 13426292,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-39",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetLocalStatus (\n    assetID TEXT NOT NULL,\n    isAddedManually INTEGER DEFAULT 0 NOT NULL,\n    isEnabled INTEGER DEFAULT 1 NOT NULL,\n    walletID TEXT NOT NULL,\n    PRIMARY KEY (assetID, walletID),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15483558,
+        "end": 15483851,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13426999,
+        "end": 13427292,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-40",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetInfo_new (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    type TEXT NOT NULL,\n    name TEXT NOT NULL,\n    symbol TEXT NOT NULL,\n    decimals INTEGER NOT NULL,\n    iconUrl TEXT,\n    updatedAt INTEGER NOT NULL DEFAULT 0\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15484468,
+        "end": 15484725,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13427909,
+        "end": 13428166,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-41",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetStatus_new (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isBuyAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSellAvailable INTEGER DEFAULT 0 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15485424,
+        "end": 15485709,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13428865,
+        "end": 13429150,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-42",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetLocalStatus_new (\n    assetID TEXT NOT NULL,\n    isAddedManually INTEGER DEFAULT 0 NOT NULL,\n    isEnabled INTEGER DEFAULT 1 NOT NULL,\n    walletID TEXT NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, walletID),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15486352,
+        "end": 15486692,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13429793,
+        "end": 13430133,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-43",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetAccount_new (\n    assetID TEXT NOT NULL,\n    accountAddress TEXT NOT NULL,\n    availableBalance TEXT,\n    frozenBalance TEXT,\n    lockedBalance TEXT,\n    rewardsBalance TEXT,\n    stakedBalance TEXT,\n    pendingBalance TEXT,\n    blockedBalance TEXT,\n    claimableBalance TEXT,\n    transferableBalance TEXT,\n    inscribedBalance TEXT,\n    dustBalance TEXT,\n    isRegistered INTEGER DEFAULT 1 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, accountAddress),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15487380,
+        "end": 15487973,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13430821,
+        "end": 13431414,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-44",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetStatus_new (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isBuyAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSellAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSwapAvailable INTEGER DEFAULT 0 NOT NULL,\n    isSwapCrossChainAvailable INTEGER DEFAULT 0 NOT NULL,\n    isStakeAvailable INTEGER DEFAULT 0 NOT NULL,\n    defaultSwapPairFromAssetID TEXT,\n    defaultSwapPairToAssetID TEXT,\n    defaultSwapCrossChainPairFromAssetID TEXT,\n    defaultSwapCrossChainPairToAssetID TEXT,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15489185,
+        "end": 15489796,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13432626,
+        "end": 13433237,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-45",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetAccount_new (\n    assetID TEXT NOT NULL,\n    accountAddress TEXT NOT NULL,\n    availableBalance TEXT,\n    frozenBalance TEXT,\n    lockedBalance TEXT,\n    rewardsBalance TEXT,\n    stakedBalance TEXT,\n    pendingBalance TEXT,\n    blockedBalance TEXT,\n    claimableBalance TEXT,\n    transferableBalance TEXT,\n    inscribedBalance TEXT,\n    dustBalance TEXT,\n    investedBalance TEXT,\n    earnedBalance TEXT,\n    energyBalance TEXT,\n    bandwidthBalance TEXT,\n    energyLimitBalance TEXT,\n    bandwidthLimitBalance TEXT,\n    isRegistered INTEGER DEFAULT 1 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, accountAddress),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15491870,
+        "end": 15492631,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13435311,
+        "end": 13436072,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-46",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetAccount_new (\n    assetID TEXT NOT NULL,\n    accountAddress TEXT NOT NULL,\n    availableBalance TEXT,\n    frozenBalance TEXT,\n    lockedBalance TEXT,\n    rewardsBalance TEXT,\n    stakedBalance TEXT,\n    pendingBalance TEXT,\n    blockedBalance TEXT,\n    claimableBalance TEXT,\n    transferableBalance TEXT,\n    inscribedBalance TEXT,\n    dustBalance TEXT,\n    investedBalance TEXT,\n    earnedBalance TEXT,\n    energyBalance TEXT,\n    bandwidthBalance TEXT,\n    energyLimitBalance TEXT,\n    bandwidthLimitBalance TEXT,\n    reservedBalance TEXT,\n    isRegistered INTEGER DEFAULT 1 NOT NULL,\n    updatedAt INTEGER NOT NULL DEFAULT 0,\n    PRIMARY KEY (assetID, accountAddress),\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15494408,
+        "end": 15495196,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13437849,
+        "end": 13438637,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-47",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetSecurityInfo (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isScanned INTEGER NOT NULL,\n    contractSecurityNumRisks INTEGER,\n    contractSecurityNumWarnings INTEGER,\n    honeypotRiskNumRisks INTEGER,\n    honeypotRiskNumWarnings INTEGER,\n    buyTax REAL,\n    sellTax REAL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15496749,
+        "end": 15497138,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13440190,
+        "end": 13440579,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-48",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolCampaign (\n    id TEXT NOT NULL PRIMARY KEY,\n    tokenLockerId TEXT NOT NULL,\n    groupId INTEGER NOT NULL,\n    timeStart INTEGER NOT NULL,\n    timeEnd INTEGER NOT NULL,\n    title TEXT NOT NULL,\n    subtitle TEXT NOT NULL,\n    campaignUrl TEXT,\n    howToUrl TEXT,\n    reward TEXT NOT NULL,\n    participantsNumber INTEGER NOT NULL,\n    lockPeriod INTEGER NOT NULL,\n    lockAssetId TEXT NOT NULL,\n    rewardAssetId TEXT NOT NULL,\n    canSwapReward INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15499078,
+        "end": 15499597,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13442519,
+        "end": 13443038,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-49",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolReward (\n    rewardAssetId TEXT NOT NULL PRIMARY KEY,\n    tokenAccumulated TEXT NOT NULL,\n    tokenUnclaimed TEXT NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15500314,
+        "end": 15500481,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13443755,
+        "end": 13443922,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-50",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetSecurityInfo_new (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    isScanned INTEGER NOT NULL,\n    provider TEXT,\n    contractSecurityNumRisks INTEGER,\n    contractSecurityNumWarnings INTEGER,\n    honeypotRiskNumRisks INTEGER,\n    honeypotRiskNumWarnings INTEGER,\n    buyTax REAL,\n    sellTax REAL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15501495,
+        "end": 15501908,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13444936,
+        "end": 13445349,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-51",
+    "sql": "CREATE TABLE IF NOT EXISTS LaunchpoolCampaign_new (\n    id TEXT NOT NULL PRIMARY KEY,\n    tokenLockerId TEXT NOT NULL,\n    groupId INTEGER NOT NULL,\n    timeStart INTEGER NOT NULL,\n    timeEnd INTEGER NOT NULL,\n    title TEXT NOT NULL,\n    subtitle TEXT NOT NULL,\n    campaignUrl TEXT,\n    howToUrl TEXT,\n    reward TEXT NOT NULL,\n    participantsNumber INTEGER NOT NULL,\n    lockPeriod INTEGER NOT NULL,\n    lockAssetId TEXT NOT NULL,\n    rewardAssetId TEXT NOT NULL,\n    canSwapReward INTEGER NOT NULL,\n    isUserEligible INTEGER NOT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15502963,
+        "end": 15503524,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13446404,
+        "end": 13446965,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-52",
+    "sql": "CREATE TABLE IF NOT EXISTS AssetHighlights (\n    assetID TEXT NOT NULL PRIMARY KEY,\n    title TEXT NOT NULL,\n    summary TEXT NOT NULL,\n    timestamp INTEGER NOT NULL,\n    FOREIGN KEY(assetID) REFERENCES AssetInfo(assetID) ON DELETE CASCADE\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 15504888,
+        "end": 15505138,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 13448329,
+        "end": 13448579,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-53",
+    "sql": "CREATE TABLE Approval (\n    walletId TEXT NOT NULL,\n    address TEXT NOT NULL,\n    chainName TEXT NOT NULL,\n    chainIconUrl TEXT,\n    spenderAddress TEXT NOT NULL,\n    spenderName TEXT,\n    spenderExplorerUrl TEXT,\n    assetId TEXT NOT NULL,\n    riskLevel TEXT NOT NULL,\n    isUnlimited INTEGER NOT NULL,\n    allowanceAmount TEXT,\n    allowanceAmountInCurrency TEXT,\n    allowanceCurrencyCode TEXT,\n    pendingTimestamp INTEGER,\n    pendingTransactionHash TEXT,\n    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),\n    PRIMARY KEY (walletId, address, spenderAddress, assetId)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 37545199,
+        "end": 37545815,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 35487949,
+        "end": 35488565,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-54",
+    "sql": "CREATE TABLE IF NOT EXISTS Approval_new (\n    walletId TEXT NOT NULL,\n    address TEXT NOT NULL,\n    chainName TEXT NOT NULL,\n    chainIconUrl TEXT,\n    spenderAddress TEXT NOT NULL,\n    spenderName TEXT,\n    spenderExplorerUrl TEXT,\n    assetId TEXT NOT NULL,\n    riskLevel TEXT NOT NULL,\n    isUnlimited INTEGER NOT NULL,\n    allowanceAmount TEXT,\n    allowanceAmountInCurrency TEXT,\n    allowanceCurrencyCode TEXT,\n    pendingTimestamp INTEGER,\n    pendingTransactionHash TEXT,\n    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),\n    PRIMARY KEY (walletId, address, spenderAddress, assetId)\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 37546560,
+        "end": 37547194,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 35489310,
+        "end": 35489944,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-55",
+    "sql": "CREATE TABLE PriceAlertAssets (\n    assetId TEXT NOT NULL PRIMARY KEY,\n    isInWatchList INTEGER NOT NULL DEFAULT 0,\n    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),\n    syncStatus INTEGER NOT NULL DEFAULT 0, -- 0 = needs sync, 1 = synced\n    lastStateChangeTime INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),\n    lastFailureTime INTEGER DEFAULT NULL,\n    syncAttempts INTEGER NOT NULL DEFAULT 0,\n    nextRetryTime INTEGER DEFAULT NULL\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 38443840,
+        "end": 38444320,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 36386408,
+        "end": 36386888,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  },
+  {
+    "id": "DDL-56",
+    "sql": "CREATE TABLE PriceAlertSettings (\n    id INTEGER NOT NULL PRIMARY KEY DEFAULT 1,\n    isEnabled INTEGER NOT NULL DEFAULT 0,\n    lastSyncTimestamp INTEGER NOT NULL DEFAULT 0\n)",
+    "locations": [
+      {
+        "file": "background.js",
+        "start": 38444411,
+        "end": 38444590,
+        "sha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44"
+      },
+      {
+        "file": "chunks/walletkit.service-C_NgWHzp.js",
+        "start": 36386979,
+        "end": 36387158,
+        "sha256": "ddc73f87d6eac6718c2e049674f53f2bb12e52717b9ec86a68719233d3b0d797"
+      }
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+name: harbour-ci
+on:
+  push: { paths: ['harbour-wallet-v2/**'] }
+  pull_request: { paths: ['harbour-wallet-v2/**'] }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: harbour-wallet-v2 } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: harbour-wallet-v2/package-lock.json }
+      - run: npm ci
+      - run: npm run verify

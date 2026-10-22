@@ -1,0 +1,70 @@
+{
+  "method": "Inert AST extraction; exact expressions separated by synthetic semicolon/newline, variable declarators prefixed var. Whole expressions containing credential literals excluded. No target execution.",
+  "inputs": [
+    {
+      "input": "database-0.js",
+      "original": "background.js",
+      "originalSha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44",
+      "sha256": "d38071386c0b3f7d63af5034233816939dfd0ffa414f0bc4748177ab9c6fb7f9",
+      "bytes": 1595,
+      "ranges": [
+        {
+          "name": "onSave",
+          "start": 15442334,
+          "end": 15442446,
+          "sha256": "07d675fa862a700067640dbe04a8559d08d1b53e6a72fb3a66f83a518671edc3",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "initSqlJS",
+          "start": 15443118,
+          "end": 15443193,
+          "sha256": "2c776132e0c2f9a92af0945a38ad7117bd8198ea2330470b081e684c54071c55",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "initChromeDb",
+          "start": 15443193,
+          "end": 15443327,
+          "sha256": "b8b978dfd775bc732aaf0430f266de4a14ca4810e9e8edb1746c1818a9220c82",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "initLocalDb",
+          "start": 15443327,
+          "end": 15443427,
+          "sha256": "b7f47e4d82a985822268da485d4f405356dbbb67924febb9c5e4d40c4bd08cab",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "initSqlDriver",
+          "start": 15443682,
+          "end": 15443802,
+          "sha256": "652041cb8123173b806ff0b56cde92e083bf9920090135829461c5cfc82100c7",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "setStorageKey",
+          "start": 15444588,
+          "end": 15444929,
+          "sha256": "928345aa053fe2f39bfa0b9e3ca8536be1dad2608ad95e2b31821793967eb695",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "getStorageKey",
+          "start": 15444929,
+          "end": 15445628,
+          "sha256": "dbb8f64b6df5ccbc2c9448803185b8f12f3653d21a631586939adcb8f9718ecc",
+          "prefix": "",
+          "suffix": ";\n"
+        }
+      ]
+    }
+  ]
+}

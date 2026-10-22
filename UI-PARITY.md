@@ -362,3 +362,17 @@ Source of truth per area: `harbour-wallet-v2/evidence/NN-*/STATUS.md`. Gate: tsc
 
 
 > **2026-10-19 (cleanup):** older sections above are historical. Current status is in `FEATURE-MATRIX.md`. Stale items removed from the tree: root `content.js`, unused `public/` (build uses `public-production/`), empty `src/popup/provider/`.
+
+## 2026-10-21 — Backend/API documentation only
+
+The user requested REA investigation and a backend specification. Added
+`TRUST-WALLET-BACKEND.md` and `evidence/40-backend-api/2026-10-21/` (source,
+contracts, local SQL, capture projections, verification). No screens, navigation,
+styles or Harbour runtime code changed; screen/state/integration/visual/interaction
+statuses remain unchanged. API discovery is not UI parity or live integration proof.
+
+## 2026-10-21 — Upload packaging correction
+
+Repacked the supplied Desktop Harbour.zip with manifest.json at ZIP root.
+See harbour-wallet-v2/releases/Harbour-root-fixed.validation.json. No UI,
+integration, visual or interaction status changed; Firefox runtime unverified.

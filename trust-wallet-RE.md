@@ -888,6 +888,50 @@ allowance panel, connection management and blacklist. Durable executing claims a
 settlement tombstones fail closed after worker interruption; provider state is refreshed
 on lock/disconnect. Build status is recorded in `harbour-wallet-v2/BUILD-LOG.md`.
 
+## 2026-10-21 — User-requested backend and API specification
+
+The current direct request authorizes a cross-cutting investigation of the supplied
+`/Users/jatinsharma/Desktop/REA/samples/trustwallet-extension/26.41.0_0/26.41.0_0`
+backend surface. Deliverable: [TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md),
+with durable source/range/REA evidence under
+[evidence/40-backend-api/2026-10-21/](evidence/40-backend-api/2026-10-21/README.md).
+This does not close chronological lifecycle gates or establish implemented UI coverage.
+
+- [certain, CODE-CONFIRMED] Recovered 73 ApiService method bodies, gateway HMAC
+  construction/403 recovery, device bootstrap, balance mapping/feed, WebSocket
+  command lifecycle, SQLite drivers/schema and storage helpers. Thirteen bounded
+  REA/Wakaru runs retained; one is deliberately empty after credential-node
+  omission, and two have identical focus-source output, so these are not thirteen
+  independent confirmations. Exact statements and scope are in the evidence registry.
+- [certain, CODE-CONFIRMED] Packaged SQL persistence exports database bytes,
+  deflates/Base64-encodes them and writes Chrome local storage `TrustSDK_DB`.
+  This establishes a client database path, not Trust Wallet's server DB.
+- [certain, OBSERVED-ONLY] Six HAR files yield 5,216 complete records/237 normalized
+  HTTP groups/86 RPC method-host pairs. One capture is truncated; only 3,467
+  complete prefix entries from that file are used. Public chain config has 108
+  rows/86 enabled. Historical capture attribution to this exact version is not
+  independently authenticated. No recorded URL or credential was reused.
+- Static discovery: 238 JS files parsed; 802 combined path-literal locations and
+  2,264 syntactic sink candidates. Duplicates, SDK-only/dead paths and collection
+  `.get()` false positives remain explicit; this is not proof of all active APIs.
+- Verification: exact source/input/recovery hashes and local links checked; six
+  controlled auth-function fixtures pass with synthetic inputs and an explicitly
+  substituted Node HMAC primitive. No full extension/browser runtime or live
+  server/API compatibility was verified in this pass.
+
+UNKNOWN: actual remote server language/framework/DB/cache/deployment, credential
+issuance/authorization internals, risk/quote/VIP algorithms, every dynamic endpoint,
+all populated response/publication schemas and full per-feature reachability.
+Build readiness: Partial for an equivalent backend specification; server internals
+cannot be recovered from a browser package alone. Original target files unchanged.
+
+## 2026-10-21 — Harbour upload support (no new target finding)
+
+Repacked Desktop Harbour.zip to place manifest.json at archive root.
+Details and hashes: harbour-wallet-v2/releases/Harbour-root-fixed.validation.json.
+No Trust Wallet target evidence or feature confidence changed; Firefox port and
+store validation remain unverified. Continue chronological research at #02.
+
 ## Reverse Engineering Status
 
 Updated: 2026-10-15, local audit. This section governs current readiness over
@@ -896,6 +940,7 @@ the older summaries. Build coverage is in `UI-PARITY.md`, not this table.
 | Scope | Audited status | Confidence / remaining gap |
 |---|---|---|
 | Baseline | Local identities/integrity verified | [certain]; official CRX provenance/signature UNKNOWN |
+| 2026-10-21 backend request | Client code and historical contracts documented; Partial overall | [TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md); code-backed auth/local SQLite, 73 methods, bounded inventories; server DB/framework/private algorithms UNKNOWN; lifecycle gates unchanged |
 | 01 Install | CODE-AND-RUNTIME-CONFIRMED for fresh-install entry | [certain]; bundle deposited; update-negative runtime fixture absent |
 | 02 Onboarding | Recovered flow evidence; partial public runtime fixture set | [certain] for captured/code-backed portions; full screens/branches/fixtures incomplete; next active feature |
 | 03–08 Password/vault/account decisions | Historical code/dependency evidence preserved and hash-checked | Per-claim prior confidence retained; full specification/readiness must be audited in order |

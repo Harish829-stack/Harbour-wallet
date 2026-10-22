@@ -1,0 +1,86 @@
+{
+  "method": "Inert AST extraction; exact expressions separated by synthetic semicolon/newline, variable declarators prefixed var. Whole expressions containing credential literals excluded. No target execution.",
+  "inputs": [
+    {
+      "input": "transport-0.js",
+      "original": "background.js",
+      "originalSha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44",
+      "sha256": "8df3f6ad717663adb4ecb8b879f6adaaee274fa052dc86aef89af8f3ea9d52a6",
+      "bytes": 14323,
+      "ranges": [
+        {
+          "name": "getHttpStatus",
+          "start": 194400,
+          "end": 194640,
+          "sha256": "b877bac5c596ddc20f9a21253660652ed66c86bd709439c6998bb90a51e0f645",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "isExpectedApiError",
+          "start": 194962,
+          "end": 195104,
+          "sha256": "0c6c7df66b0c24060895d35c3caee7065f0c9fc675d66cd583105a30d64d9d53",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_storage_service",
+          "start": 4028625,
+          "end": 4030069,
+          "sha256": "540a1ce2dde637facbf3b614ad47827680a2ef5edeea49e71fd68eee2adcd3e7",
+          "prefix": "var ",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_naasSessionRecovery",
+          "start": 39448483,
+          "end": 39448637,
+          "sha256": "c92d6fef156b1adc8f25fc565ddd1aae90099f391e95886a27378dcba6b217b8",
+          "prefix": "var ",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_naas_interceptor",
+          "start": 39449065,
+          "end": 39449235,
+          "sha256": "12b7164643d2e7382ec9ef4f974b4254ff07f786bf33395c588fa3ab0e24def1",
+          "prefix": "var ",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_naasRpcTimeout",
+          "start": 39449819,
+          "end": 39449942,
+          "sha256": "13723c67bb489c2228b7a87d8180d980710cf1d7d0016cd44476c8ad400412ab",
+          "prefix": "var ",
+          "suffix": ";\n"
+        },
+        {
+          "name": "SafeMethod",
+          "start": 39602564,
+          "end": 39603135,
+          "sha256": "aa097951c2d0a2a28e10bee2f519b16ff5f668a58e1c6005249ce41811b2035a",
+          "prefix": "",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_balanceStreamRetry",
+          "start": 39649278,
+          "end": 39649954,
+          "sha256": "da6ce696a440ae6a64ae48eb3c1b9e85a950d417f1db9360b9f2c859ef096dad",
+          "prefix": "var ",
+          "suffix": ";\n"
+        },
+        {
+          "name": "init_realtimeStream_service",
+          "start": 39733863,
+          "end": 39744624,
+          "sha256": "792461b2505ad99cf97436ff9a1fef6e409c5e1d88c1417a9591ddb4717836ac",
+          "prefix": "var ",
+          "suffix": ";\n"
+        }
+      ]
+    }
+  ]
+}

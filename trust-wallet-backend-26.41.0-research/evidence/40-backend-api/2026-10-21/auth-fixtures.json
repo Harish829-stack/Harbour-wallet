@@ -1,0 +1,89 @@
+{
+  "method": "controlled execution of four exact target functions in node:vm, explicit local synthetic dependencies; not full extension runtime or server acceptance",
+  "targetSha256": "a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44",
+  "environment": {
+    "node": "v22.22.3",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "syntheticInputs": {
+    "keyEncoding": "32 all-zero bytes; synthetic public fixture, not a captured credential",
+    "device": "synthetic-device",
+    "nonce": "00000000-0000-4000-8000-000000000000",
+    "date": "Wed, 21 Oct 2026 00:00:00 GMT",
+    "request": {
+      "url": "https://gateway.us.trustwallet.com/v1/assets?b=2&a=1",
+      "method": "post",
+      "params": {
+        "ignored": 3
+      }
+    }
+  },
+  "canonical": "POST;/v1/assets;a=1&b=2;synthetic-device;00000000-0000-4000-8000-000000000000;Wed, 21 Oct 2026 00:00:00 GMT",
+  "syntheticSignature": "IvoVUxU+7I3I7oTURkAujnzXzxRcKhJE8jHp7VASXSk=",
+  "sourceRanges": [
+    {
+      "name": "sortQueryParams",
+      "start": 39372108,
+      "end": 39372423,
+      "sha256": "cca5397f4df9e38be4502ba8497668ef95ed6ebdbbd4bae7ec34a7cf2dd641e4",
+      "prefix": "",
+      "suffix": ";\n"
+    },
+    {
+      "name": "authenticationInterceptor",
+      "start": 39372665,
+      "end": 39373352,
+      "sha256": "97eeaa201aaeafd54ab558c8d9cfc755fb308f8d72fbdad5290b7dd78d43e47b",
+      "prefix": "",
+      "suffix": ";\n"
+    },
+    {
+      "name": "parseApiGatewayUrl",
+      "start": 39372524,
+      "end": 39372665,
+      "sha256": "6f4f194776d5019c0052efab96cb9029d6c577b9ae190bfb29b301eaa9a2bba0",
+      "prefix": "",
+      "suffix": ";\n"
+    },
+    {
+      "name": "isFirstPartyRpcHost",
+      "start": 4641780,
+      "end": 4641940,
+      "sha256": "1726dbedf3374df2c0b19907b34af7cf2bfaa43397923cb97aff9fdea1e1c8f3",
+      "prefix": "",
+      "suffix": ";\n"
+    }
+  ],
+  "checks": [
+    {
+      "name": "duplicate query values retain order within sorted keys",
+      "result": "pass"
+    },
+    {
+      "name": "exact six-field canonical string and Base64 HMAC",
+      "result": "pass"
+    },
+    {
+      "name": "body is not included in this client signature",
+      "result": "pass"
+    },
+    {
+      "name": "gateway origin guard excludes a suffix-lookalike host",
+      "result": "pass"
+    },
+    {
+      "name": "missing device credentials leave request unsigned",
+      "result": "pass"
+    },
+    {
+      "name": "X-Origin helper accepts exact domain and true subdomains only",
+      "result": "pass"
+    }
+  ],
+  "limitations": [
+    "Crypto-browserify is replaced by Node HMAC for this controlled slice; no claim of full dependency/runtime equivalence.",
+    "No actual device registration, server clock policy, nonce replay enforcement or network request tested.",
+    "Only ASCII query-key ordering exercised; locale-sensitive non-ASCII sorting remains untested."
+  ]
+}

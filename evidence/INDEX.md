@@ -90,3 +90,13 @@ evidence `ev_ed3f7468516b784d6ad74966aacfbcb46d2724fd5ae4124e2d7a6b524cb19587`.
 REA inventory parent `ev_aa3b5231cb188455bd7bad54484cd5ebc7b69e7acfe59430533f27b7fdb5eef3`.
 Coverage authority: `UI-PARITY.md`; 105 route/index records, not 105 proven reachable
 screens. Dynamic states/conditions remain open. No later research gate closed.
+
+## 2026-10-21 — Backend/API survey (direct user request, provisional lifecycle coverage)
+
+| Scope | Deposited bundle | Evidence IDs / verification |
+|---|---|---|
+| 40 Backend client, auth, APIs, local DB and stack | [40-backend-api/2026-10-21/README.md](40-backend-api/2026-10-21/README.md): exact selected inputs, source ranges, REA manifests/recovered sources/maps, 73-method client catalogue, HTTP/RPC shapes, SQL and synthetic auth fixtures | ApiService/auth `ev_0566e17732250b791e8179018b916fe06745da732abf8d50736a0d5bcd2e37fc`; SQL/storage `ev_6e2591568b491db7c502fa052d2df11cbadcafff238a7211dbfc769854faf184`; WebSocket `ev_738956378b937de1e1bf3f52338c12a967582d91b9e0c2ae15d9ce99d746c6df`; final HAR summary `ev_f111b0cb05bc5e98d8083c8cd20c329dd90da77f812dc080d227210adeb457e3`; full registry in README |
+
+Client/code and historical observations only. Actual remote server database,
+framework and private algorithms UNKNOWN. Later lifecycle gates and all UI/build
+coverage remain unchanged. Main deliverable: `../TRUST-WALLET-BACKEND.md`.
