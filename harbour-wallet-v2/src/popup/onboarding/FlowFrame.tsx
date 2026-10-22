@@ -56,10 +56,12 @@ export function FlowFrame({ heading, title, labels = [], active = 0, done, art =
     </aside>
     <section className={`fx-main${wide ? ' wide' : ''}`}>
       {labels.length > 0 && <div className="fx-progress" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }}/></div>}
-      <div className="fx-topline">{onBack && <button className="fx-back" onClick={onBack} disabled={busy}><ArrowLeft size={16}/> Back</button>}</div>
-      <div className="fx-stage" key={stageKey}>
-        {title && <h2 className="fx-title">{title}</h2>}
-        {children}
+      <div className="fx-body">
+        <div className="fx-topline">{onBack && <button className="fx-back" onClick={onBack} disabled={busy}><ArrowLeft size={16}/> Back</button>}</div>
+        <div className="fx-stage" key={stageKey}>
+          {title && <h2 className="fx-title">{title}</h2>}
+          {children}
+        </div>
       </div>
     </section>
   </main>;
@@ -86,4 +88,9 @@ export function PasswordMeter({ value }: { value: string }) {
     <div className="fx-meter-row"><span className="fx-level">{value ? { weak: 'Weak', fair: 'Fair', strong: 'Strong' }[level] : 'Password strength'}</span>
       <ul>{checks.map((c) => <li key={c.label} className={c.ok ? 'ok' : ''}><Check size={12} strokeWidth={3}/>{c.label}</li>)}</ul></div>
   </div>;
+}
+
+/** Real Harbour screenshot with light/dark variants; the visible one follows the app theme (data-theme). */
+export function ThemedImg({ name, alt }: { name: string; alt: string }) {
+  return <span className="fx-img"><img className="th-light" src={`/illustrations/onboarding/${name}-light.webp`} alt={alt} loading="lazy" decoding="async"/><img className="th-dark" src={`/illustrations/onboarding/${name}-dark.webp`} alt="" aria-hidden="true" loading="lazy" decoding="async"/></span>;
 }

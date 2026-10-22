@@ -3,6 +3,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, EllipsisVertical, 
 import type { LucideIcon } from 'lucide-react';
 import { ALL_CHAINS, chainById, chainLogo } from '../../core/chains/index';
 import { privateKeyNetworkOptions, type PkNetworkOption } from '../../core/importKey';
+import { ThemedImg } from './FlowFrame';
 import { INSTRUCTIONS, parseInstruction, type InstructionProduct, type InstructionStep } from './instructions';
 
 export const ChainIcon: React.FC<{ id: string; size?: number }> = ({ id, size = 24 }) => {
@@ -52,7 +53,7 @@ export const ImportInstructions: React.FC<{ product: InstructionProduct }> = ({ 
     <div className="ob-instr" data-testid="import-instructions">
       <div className="ob-instr-head">{set.header}</div>
       {set.platforms.length > 1 && <div className="ob-tabs" role="tablist">{set.platforms.map((p, n) => <button key={p.title} type="button" role="tab" className="ob-tab" aria-selected={n === tab} onClick={() => setTab(n)}>{p.title}</button>)}</div>}
-      <div className="ob-instr-art" aria-hidden="true"><Icon size={56} strokeWidth={1.3}/></div>
+      <div className="ob-instr-art" key={step?.id}>{step ? <ThemedImg name={step.image} alt=""/> : <Icon size={56} strokeWidth={1.3}/>}</div>
       <div className="ob-instr-text" aria-live="polite">{step && parseInstruction(step.text).map((s, n) => s.k === 'bold' ? <b key={n}>{s.v}</b> : s.k === 'menu' ? <EllipsisVertical key={n} size={14} style={{ verticalAlign: 'middle' }} aria-label="menu"/> : s.k === 'gear' ? <Settings key={n} size={12} style={{ verticalAlign: 'middle' }} aria-label="settings"/> : <React.Fragment key={n}>{s.v}</React.Fragment>)}</div>
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
         <button type="button" className="ob-arrow" aria-label="Previous step" disabled={i === 0} onClick={() => setI(i - 1)}><ChevronLeft size={16}/></button>

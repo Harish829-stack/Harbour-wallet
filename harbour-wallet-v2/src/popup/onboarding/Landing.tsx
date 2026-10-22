@@ -2,48 +2,20 @@
 // (REA capture_browser_scenario, 2026-10-22): sticky nav → display hero + product mock → live price ticker →
 // 4 coloured feature cards → dark "power" band with stat row → security cards → full-bleed CTA banner → footer.
 // All copy, art and colours are Harbour's own; every claim below is backed by code in this repo.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, ArrowLeftRight, Plus, ShieldCheck, LockKeyhole, KeyRound, ScanEye, PanelRight, Usb, Fingerprint, Fuel, BookUser, Network, Check, QrCode, CircleHelp, Sprout, TrendingUp, Blocks } from 'lucide-react';
 import { Brand } from '../design/components';
 import { bg } from '../api';
-import { ALL_CHAINS, chainLogo } from '../../core/chains/index';
 import { hasBundledAssetLogo } from '../wallet/ui';
 import './landing.css';
+import { NETWORKS, ROW_A, ROW_B, known, reduced, useReveal, CountUp, NetChip, Marquee, usePage, pageHref } from './landingKit';
+import { FeaturesPage, NetworksPage, SecurityPage } from './landingPages';
 
 type Market = { id: string; symbol: string; name: string; price: number; change24h?: number; change?: number };
-const NETWORKS = ALL_CHAINS.filter((c) => !c.testnet);
-const ROW_A = ['bitcoin', 'ethereum', 'solana', 'smartchain', 'polygon', 'arbitrum', 'base', 'optimism', 'avalanchec', 'tron', 'cardano', 'doge', 'aptos', 'sui', 'ton', 'cosmos'];
-const ROW_B = ['litecoin', 'ripple', 'stellar', 'near', 'polkadot', 'zksync', 'linea', 'blast', 'celo', 'fantom', 'cronos', 'kava', 'osmosis', 'algorand', 'tezos', 'filecoin'];
-const known = (ids: string[]) => ids.filter((id) => NETWORKS.some((c) => c.id === id));
 const DAPPS = ['app.uniswap.org', 'app.aave.com', 'pancakeswap.finance', 'opensea.io', 'curve.fi', 'lido.fi', 'jup.ag', 'app.1inch.io', 'raydium.io', 'gmx.io', 'stargate.finance', 'compound.finance'];
 const fmtUsd = (n: number) => n >= 1 ? n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }) : `$${n.toPrecision(3)}`;
 const logo = (sym: string) => { const s = sym.toUpperCase(); return s === 'POL' || s === 'MATIC' ? '/asset-logos/matic.svg' : hasBundledAssetLogo(s) ? `/asset-logos/${s.toLowerCase()}.svg` : null; };
-const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// Adds .in to every [data-reveal] element once it scrolls into view.
-function useReveal(root: React.RefObject<HTMLElement>) {
-  useEffect(() => {
-    const els = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-reveal]') ?? []);
-    if (reduced() || typeof IntersectionObserver === 'undefined') { els.forEach((e) => e.classList.add('in')); return; }
-    const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.18, rootMargin: '0px 0px -40px 0px' });
-    els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
-  }, [root]);
-}
-
-const CountUp: React.FC<{ to: number; suffix?: string }> = ({ to, suffix = '' }) => {
-  const ref = useRef<HTMLSpanElement>(null); const [v, setV] = useState(reduced() ? to : 0);
-  useEffect(() => {
-    const el = ref.current; if (!el || reduced()) return;
-    const io = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) return; io.disconnect();
-      const t0 = performance.now(); const step = (t: number) => { const k = Math.min(1, (t - t0) / 1200); setV(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(step); };
-      requestAnimationFrame(step);
-    }, { threshold: 0.5 });
-    io.observe(el); return () => io.disconnect();
-  }, [to]);
-  return <span ref={ref}>{v}{suffix}</span>;
-};
 
 function useMarkets() {
   const [list, setList] = useState<Market[] | null>(null);
@@ -59,10 +31,6 @@ const Chip: React.FC<{ m: Market }> = ({ m }) => {
   const ch = m.change24h ?? m.change ?? 0;
   return <div className="lp-chip"><img src={logo(m.symbol)!} alt="" width={30} height={30}/><div><b>{m.name}</b><small>{m.symbol.toUpperCase()}</small></div><div className="lp-chip-r"><b>{fmtUsd(m.price)}</b><small className={ch >= 0 ? 'up' : 'down'}>{ch >= 0 ? '+' : ''}{ch.toFixed(2)}%</small></div></div>;
 };
-const NetChip: React.FC<{ id: string }> = ({ id }) => { const c = NETWORKS.find((n) => n.id === id)!; return <div className="lp-netchip"><img src={chainLogo(id)} alt="" width={28} height={28}/><span>{c.name}</span></div>; };
-const Marquee: React.FC<{ children: ReactNode; reverse?: boolean; slow?: boolean }> = ({ children, reverse, slow }) => (
-  <div className="lp-marquee" aria-hidden="true"><div className={`lp-track${reverse ? ' rev' : ''}${slow ? ' slow' : ''}`}>{children}{children}</div></div>
-);
 
 // Product mock in the hero: the Harbour popup, drawn in HTML so it follows the theme (light/dark).
 const WalletMock: React.FC<{ markets: Market[] | null }> = ({ markets }) => {
@@ -88,14 +56,16 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
   const [nudge, setNudge] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const markets = useMarkets();
-  useReveal(root);
+  const page = usePage();
+  useReveal(root, page);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [page]);
   useEffect(() => { const el = root.current; if (!el) return; const f = () => setScrolled(el.scrollTop > 8 || window.scrollY > 8); window.addEventListener('scroll', f, { passive: true }); return () => window.removeEventListener('scroll', f); }, []);
   const go = (f: 'create' | 'import' | 'qr') => {
     if (busy) return;
     if (!terms) { setNudge((n) => n + 1); termsRef.current?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); return; }
     onStart(f);
   };
-  const toTop = () => window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
+  const toTop = () => { if (page !== 'home') { window.location.hash = pageHref('home'); return; } window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); };
   const Ctas = ({ light }: { light?: boolean }) => <div className={`lp-ctas${light ? ' light' : ''}`}>
     <button className="lp-btn primary" disabled={busy} onClick={() => go('create')}>{busy ? 'Creating…' : 'Create new wallet'}<ArrowRight size={18}/></button>
     <button className="lp-btn ghost" disabled={busy} onClick={() => go('import')}>I already have a wallet</button>
@@ -103,12 +73,12 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
 
   return <div className="lp hb-design" ref={root}>
     <header className={`lp-nav${scrolled ? ' scrolled' : ''}`}>
-      <Brand/>
-      <nav aria-label="Sections"><a href="#lp-features">Features</a><a href="#lp-networks">Networks</a><a href="#lp-security">Security</a></nav>
+      <a className="lp-brandlink" href={pageHref('home')} aria-label="Harbour home"><Brand/></a>
+      <nav aria-label="Sections">{(['features', 'networks', 'security'] as const).map((p) => <a key={p} href={pageHref(p)} aria-current={page === p ? 'page' : undefined}>{p[0].toUpperCase() + p.slice(1)}</a>)}</nav>
       <button className="lp-btn primary sm" onClick={toTop}>Get started</button>
     </header>
 
-    <main>
+    {page !== 'home' ? <main key={page}>{page === 'features' ? <FeaturesPage cta={<Ctas light/>}/> : page === 'networks' ? <NetworksPage cta={<Ctas light/>}/> : <SecurityPage cta={<Ctas light/>}/>}</main> : <main>
       <section className="lp-hero">
         <div className="lp-hero-copy">
           <p className="lp-eyebrow lp-in" style={{ ['--d' as any]: '0ms' }}>SELF-CUSTODY WALLET FOR YOUR BROWSER</p>
@@ -138,7 +108,7 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
       </section>
 
       <section className="lp-section" id="lp-features">
-        <div className="lp-head" data-reveal><h2>One wallet.<br/>Every way to move.</h2><p>Send, receive, swap and explore from a single self-custody wallet, in a popup or docked in your browser's side panel.</p></div>
+        <div className="lp-head" data-reveal><h2>One wallet.<br/>Every way to move.</h2><p>Send, receive, swap and explore from a single self-custody wallet, in a popup or docked in your browser's side panel.</p><a className="lp-more" href={pageHref('features')}>Explore all features<ArrowRight size={16}/></a></div>
         <div className="lp-cards">
           <article className="lp-card mint" data-reveal style={{ ['--d' as any]: '0ms' }}>
             <div className="lp-art swap"><img className="c1" src="/asset-logos/eth.svg" alt=""/><span className="lp-swapdot"><ArrowLeftRight size={20}/></span><img className="c2" src="/asset-logos/usdc.svg" alt=""/></div>
@@ -160,7 +130,7 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
       </section>
 
       <section className="lp-networks" id="lp-networks">
-        <div className="lp-head center" data-reveal><h2><CountUp to={NETWORKS.length}/> networks.<br/>One secret phrase.</h2><p>Bitcoin, Ethereum, Solana and the rest, all derived from the same recovery phrase. Add your own EVM networks any time.</p></div>
+        <div className="lp-head center" data-reveal><h2><CountUp to={NETWORKS.length}/> networks.<br/>One secret phrase.</h2><p>Bitcoin, Ethereum, Solana and the rest, all derived from the same recovery phrase. Add your own EVM networks any time.</p><a className="lp-more" href={pageHref('networks')}>Browse all networks<ArrowRight size={16}/></a></div>
         <Marquee>{known(ROW_A).map((id) => <NetChip key={id} id={id}/>)}</Marquee>
         <Marquee reverse>{known(ROW_B).map((id) => <NetChip key={id} id={id}/>)}</Marquee>
       </section>
@@ -181,7 +151,7 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
       </section>
 
       <section className="lp-section" id="lp-security">
-        <div className="lp-head" data-reveal><h2>Security that<br/>stays with you.</h2><p>Harbour is self-custody: nobody else, including us, can move your funds or recover your phrase.</p></div>
+        <div className="lp-head" data-reveal><h2>Security that<br/>stays with you.</h2><p>Harbour is self-custody: nobody else, including us, can move your funds or recover your phrase.</p><a className="lp-more" href={pageHref('security')}>See how Harbour protects you<ArrowRight size={16}/></a></div>
         <div className="lp-sec">
           {([[KeyRound, 'Complete self-custody', 'Your secret phrase is generated on this device and never leaves it.'], [LockKeyhole, 'Encrypted vault', 'Keys are sealed with your password (PBKDF2-SHA256 → AES-GCM) and the wallet locks itself when idle.'], [ScanEye, 'Approval control', 'See which apps can spend your tokens, and revoke access in a tap.']] as const).map(([I, t, d], i) =>
             <article key={t} className="lp-sec-card" data-reveal style={{ ['--d' as any]: `${i * 90}ms` }}><span className="lp-sec-ic"><I size={22}/></span><h3>{t}</h3><p>{d}</p></article>)}
@@ -195,10 +165,10 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
           <img src="/illustrations/harbour.svg" alt="" className="lp-cta-art"/>
         </div>
       </section>
-    </main>
+    </main>}
 
     <footer className="lp-foot">
-      <div className="lp-foot-top"><Brand/><nav aria-label="Footer"><a href="#lp-features">Features</a><a href="#lp-networks">Networks</a><a href="#lp-security">Security</a><a href="/legal.html#terms" target="_blank" rel="noreferrer">Terms of Use</a><a href="/legal.html#privacy" target="_blank" rel="noreferrer">Privacy Policy</a><a href="/legal.html#help" target="_blank" rel="noreferrer"><CircleHelp size={14}/> Help</a></nav></div>
+      <div className="lp-foot-top"><a className="lp-brandlink" href={pageHref('home')} aria-label="Harbour home"><Brand/></a><nav aria-label="Footer"><a href={pageHref('features')}>Features</a><a href={pageHref('networks')}>Networks</a><a href={pageHref('security')}>Security</a><a href="/legal.html#terms" target="_blank" rel="noreferrer">Terms of Use</a><a href="/legal.html#privacy" target="_blank" rel="noreferrer">Privacy Policy</a><a href="/legal.html#help" target="_blank" rel="noreferrer"><CircleHelp size={14}/> Help</a></nav></div>
       <p>© {new Date().getFullYear()} Harbour Wallet. Self-custody means you are responsible for your secret phrase — keep it safe and never share it.</p>
     </footer>
   </div>;

@@ -1,4 +1,3 @@
-import { DappIllustration, SidePanelIllustration, ToolbarIllustration } from './illustrations';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { bg } from '../api';
@@ -13,7 +12,7 @@ import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './I
 import { QrScanner, type StoredKeys } from './qrScanner';
 import { BackupFlow } from './BackupFlow';
 import { Landing } from './Landing';
-import { FlowFrame, StepArt, PasswordMeter, Confetti } from './FlowFrame';
+import { FlowFrame, StepArt, PasswordMeter, Confetti, ThemedImg } from './FlowFrame';
 import { FEATURE_SCREENS } from '../wallet/features';
 import './onboarding.css';
 
@@ -87,6 +86,7 @@ export function Onboarding() {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const importPassword = useRef('');
+  const firstMode = useRef<boolean | null>(null); // add-wallet vs first-run, fixed for the session (status.mode flips once a wallet exists)
   const pendingPasskey = useRef<{ secret: string; credentialId: string } | null>(null);
   const [bioStage, setBioStage] = useState<EnrollStage>('idle');
   const bio = useBiometricAvailability();
@@ -294,8 +294,10 @@ export function Onboarding() {
   const sidebar = step === 'secret' ? <ImportInstructions product={source === 'trust' ? 'trust-wallet' : 'other'}/> : undefined;
   const codeSlots = Array.from({ length: 6 }, (_, i) => code[i] ?? '');
   const LedgerScreen = FEATURE_SCREENS['importLedger'];
-  const labels = additional ? ['Choose a source', 'Import your wallet'] : flow === 'create' ? ['Secure your wallet', 'Ready to explore'] : flow === 'qr' ? ['Secure your wallet', 'Connect to mobile', 'Scan the code', 'Enter the code'] : ['Secure your wallet', 'Choose a source', 'Import your wallet'];
-  const stepNo = flow === 'qr' && step === 'qr-code' && !additional ? 4 : active;
+  if (status && firstMode.current === null) firstMode.current = additional;
+  const addMode = firstMode.current ?? additional;
+  const labels = addMode && flow === 'create' ? ['Create a new wallet'] : addMode ? ['Choose a source', 'Import your wallet'] : flow === 'create' ? ['Secure your wallet', 'Ready to explore'] : flow === 'qr' ? ['Secure your wallet', 'Connect to mobile', 'Scan the code', 'Enter the code'] : ['Secure your wallet', 'Choose a source', 'Import your wallet'];
+  const stepNo = flow === 'qr' && step === 'qr-code' && !addMode ? 4 : active;
   const lede: Partial<Record<Step, string>> = {
     authentication: 'Choose how you will unlock Harbour on this device.',
     password: 'This password unlocks Harbour on this device only. Harbour cannot recover it, so keep it somewhere safe.',
@@ -364,11 +366,10 @@ export function Onboarding() {
       {step === 'boundary' && <div className="ob-error" role="status">This step is not available.</div>}
       {step === 'completed' && <>
         <div className="fx-success"><span className="fx-success-ic"><CheckCircle2 size={26}/></span><div><b>{flow === 'create' ? 'Your new wallet is ready' : 'Your wallet is imported'}</b><span>{qrSummary || 'Everything is encrypted and stored on this device.'}</span></div></div>
-        <div className="ob-explore" key={slide}><div className="ob-explore-image">{slide === 0 ? <DappIllustration /> : slide === 1 ? <SidePanelIllustration /> : <ToolbarIllustration />}</div><div className="ob-explore-copy"><small>{['TOP APP RIGHT NOW','DID YOU KNOW','KEEP IT HANDY'][slide]}</small><h3>{[<>PancakeSwap</>,<>Extension<br/>- in a Side Panel</>,<>Pin us to<br/>your Toolbar</>][slide]}</h3><p>{['Trade, earn, and farm across chains','Interact without losing context','Access it instantly in one click'][slide]}</p><button className="ob-link" onClick={() => {if (slide === 0) window.open('https://pancakeswap.finance/','_blank','noopener,noreferrer'); else if (slide === 1) openSidePanel(); else setPinGuide(true);}}>{slide === 0 ? 'Go to app' : slide === 1 ? 'Open Side Panel' : pinned ? "It's pinned" : 'Guide me'} <ArrowUpRight size={16}/></button></div></div>
-        <div className="ob-carousel"><button aria-label="Previous slide" onClick={() => setSlide(i => (i + 2) % 3)}><ChevronLeft size={18}/></button>{[0,1,2].map(i => <button key={i} aria-label={`Slide ${i + 1}`} aria-current={slide === i} onClick={() => setSlide(i)} className={`ob-dot ${i === slide ? 'active' : ''}`}/>)}<button aria-label="Next slide" onClick={() => setSlide(i => (i + 1) % 3)}><ChevronRight size={18}/></button></div>
+        <div className="ob-explore" key={slide}><div className="ob-explore-image"><ThemedImg name={['explore-dapp', 'explore-side', 'explore-pin'][slide]} alt={['Popular dApps you can connect to with Harbour', 'Harbour docked in the browser side panel', 'Harbour pinned to the browser toolbar'][slide]}/></div><div className="ob-explore-copy"><small>{['TOP APP RIGHT NOW','DID YOU KNOW','KEEP IT HANDY'][slide]}</small><h3>{[<>PancakeSwap</>,<>Extension<br/>- in a Side Panel</>,<>Pin us to<br/>your Toolbar</>][slide]}</h3><p>{['Trade, earn, and farm across chains','Interact without losing context','Access it instantly in one click'][slide]}</p><button className="ob-link fx-pill" onClick={() => {if (slide === 0) window.open('https://pancakeswap.finance/','_blank','noopener,noreferrer'); else if (slide === 1) openSidePanel(); else setPinGuide(true);}}>{slide === 0 ? 'Go to app' : slide === 1 ? 'Open Side Panel' : pinned ? "It's pinned" : 'Guide me'} <ArrowUpRight size={16}/></button></div></div>
+        <div className="fx-explore-bar"><div className="ob-carousel"><button aria-label="Previous slide" onClick={() => setSlide(i => (i + 2) % 3)}><ChevronLeft size={18}/></button>{[0,1,2].map(i => <button key={i} aria-label={`Slide ${i + 1}`} aria-current={slide === i} onClick={() => setSlide(i)} className={`ob-dot ${i === slide ? 'active' : ''}`}/>)}<button aria-label="Next slide" onClick={() => setSlide(i => (i + 1) % 3)}><ChevronRight size={18}/></button></div><button className="ob-primary ob-open" onClick={openSidePanel}>Open my wallet</button></div>
         {pinGuide && <div className="ob-pin-hint" role="dialog" aria-label="Pin Harbour"><button className="ob-link" onClick={() => setPinGuide(false)}>Close</button><p>Open your browser's Extensions menu and pin Harbour Wallet.</p></div>}
         {error && <p className="ob-error" role="alert">{error}</p>}
-        <button className="ob-primary ob-open" onClick={openSidePanel}>Open my wallet</button>
       </>}
   </FlowFrame>;
 }
