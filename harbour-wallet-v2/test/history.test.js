@@ -101,3 +101,20 @@ test('fetchHistory routes per chain, sorts newest first, and reports failures', 
   assert.equal((await M.fetchHistory('mars', ME, { solanaRpc: 'x' }, f)).ok, false);
   assert.equal(M.historySupported('smartchain'), true);
 });
+
+// ---- native movements echoed as nameless tokens must not be listed twice
+const { dropNativeShadows } = M;
+const row = (o) => ({ assetId: 'ethereum', kind: 'receive', status: 'confirmed', timestamp: 1, symbol: 'ETH', ...o });
+test('a nameless token row that mirrors a native transfer is dropped', () => {
+  const native = [row({ id: '0xaaa', amount: '0.01' })];
+  const shadow = row({ id: '0xaaa:0', amount: '0.01', symbol: 'Token', token: { symbol: 'Token', address: undefined } });
+  assert.deepEqual(dropNativeShadows(native, [shadow]), []);
+  assert.deepEqual(dropNativeShadows(native, [row({ id: '0xaaa:1', amount: '0.01', symbol: 'Token', token: { symbol: 'Token', address: '0x' + 'e'.repeat(40) } })]), []);
+});
+test('real tokens are kept, including wrapped ETH in the same transaction and USDC', () => {
+  const native = [row({ id: '0xbbb', amount: '0.01' })];
+  const usdc = row({ id: '0xccc:3', amount: '20', symbol: 'USDC', token: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' } });
+  const weth = row({ id: '0xbbb:5', amount: '0.01', symbol: 'WETH', token: { symbol: 'WETH', address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' } });
+  const sameHashDifferentAmount = row({ id: '0xbbb:6', amount: '5', symbol: 'Token', token: { symbol: 'Token', address: undefined } });
+  assert.deepEqual(dropNativeShadows(native, [usdc, weth, sameHashDifferentAmount]), [usdc, weth, sameHashDifferentAmount]);
+});

@@ -177,6 +177,26 @@ export function historySupportedFor(chain: ChainInfo | undefined): boolean {
 export const historySupported = (assetId: string) => historySupportedFor(chainById(assetId));
 export const historyUnsupportedReason = (chain: ChainInfo): string => HISTORY_UNSUPPORTED_REASON[chain.kind] ?? 'No public history source for this network yet.';
 
+const ADDR = /^0x[0-9a-fA-F]{40}$/;
+const NATIVE_PLACEHOLDER = /^0x(e{40}|0{40})$/i;
+/**
+ * Some explorers echo a native-coin movement in their token-transfer feed as a nameless "token" (no symbol, no real contract).
+ * It has the same tx hash and amount as the native row, so the activity list showed every ETH transfer twice (once as "ETH", once as "Token").
+ * A token row is dropped only when BOTH hold: a native row of the same transaction has the same amount, and the token has no usable identity
+ * (empty/"Token" symbol, or a missing / native-placeholder contract address). Real tokens, including wrapped ETH, are never touched.
+ */
+export function dropNativeShadows(native: HistoryItem[], tokens: HistoryItem[]): HistoryItem[] {
+  if (!native.length || !tokens.length) return tokens;
+  const byHash = new Map<string, Set<string>>();
+  for (const n of native) { const set = byHash.get(n.id) ?? new Set<string>(); set.add(n.amount); byHash.set(n.id, set); }
+  return tokens.filter((t) => {
+    const amounts = byHash.get(t.id.split(':')[0]); if (!amounts?.has(t.amount)) return true;
+    const sym = String(t.token?.symbol ?? '').trim(); const addr = String(t.token?.address ?? '');
+    const anonymous = !sym || sym === 'Token'; const noContract = !ADDR.test(addr) || NATIVE_PLACEHOLDER.test(addr);
+    return !(anonymous || noContract);
+  });
+}
+
 async function evmHistory(chain: ChainInfo, address: string, f: F): Promise<HistoryItem[]> {
   const id = chain.id; let native: HistoryItem[] | null = null; let tokens: HistoryItem[] | null = null; let err: unknown;
   const bs = blockscoutHost(id); const rs = routescanId(id);
@@ -195,7 +215,7 @@ async function evmHistory(chain: ChainInfo, address: string, f: F): Promise<Hist
   } catch (e) { err ??= e; if (esFallback) { try { tokens = mapEtherscanTokens(await get(esV2('tokentx'), f), id, address); } catch { /* keep first error */ } } } };
   await Promise.all([nat(), tok()]);
   if (native === null && tokens === null) throw err ?? new Error('no source');
-  const tk: HistoryItem[] = tokens ?? []; const tokenHashes = new Set(tk.map((x) => x.id.split(':')[0]));
+  const tk: HistoryItem[] = dropNativeShadows((native ?? []) as HistoryItem[], tokens ?? []); const tokenHashes = new Set(tk.map((x) => x.id.split(':')[0]));
   // A zero-value contract call that produced a token transfer is shown once, as the transfer.
   const nt = ((native ?? []) as HistoryItem[]).filter((x) => !(tokenHashes.has(x.id) && (x.kind === 'contract' || Number(x.amount) === 0)));
   return [...nt, ...tk];
