@@ -1,5 +1,6 @@
 // Shared pieces for the ramps / fund / discover screens: external-link helper, cached catalog loader, tiny view-state helpers,
 // per-viewer preferences (localStorage, always try/catch) and small presentational components. Uses only theme tokens (no raw colors).
+import { userText } from '../../../core/errors';
 import React, { useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { Ic, ICON, Skeleton, Btn, Spinner } from '../ui';
@@ -62,7 +63,7 @@ export const Notice: React.FC<{ tone?: 'info' | 'error' | 'warn'; children: Reac
   return (
     <div role={tone === 'error' ? 'alert' : 'note'} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: c.bg, border: `1px solid ${c.line}`, color: c.ink, borderRadius: 14, padding: '10px 12px', fontSize: 13, lineHeight: 1.45, margin: '8px 0' }}>
       <span style={{ marginTop: 1 }}><Ic d={ICON.info} size={16} /></span>
-      <div style={{ flex: 1, minWidth: 0 }}>{children}{action && <div><button type="button" onClick={action.onClick} style={{ border: 'none', background: 'none', padding: '6px 0 0', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>{action.label}</button></div>}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{tone === 'error' && typeof children === 'string' ? userText(children) : children}{action && <div><button type="button" onClick={action.onClick} style={{ border: 'none', background: 'none', padding: '6px 0 0', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>{action.label}</button></div>}</div>
     </div>
   );
 };
@@ -74,7 +75,7 @@ export const Letter: React.FC<{ name: string; size?: number; src?: string }> = (
 export const ListSkeleton: React.FC<{ n?: number }> = ({ n = 6 }) => <>{Array.from({ length: n }, (_, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}><Skeleton w={40} h={40} r={12} /><div style={{ flex: 1 }}><Skeleton w="55%" h={13} /><div style={{ height: 6 }} /><Skeleton w="35%" h={10} /></div></div>)}</>;
 export const ErrorBox: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
   <div role="alert" style={{ textAlign: 'center', padding: '36px 16px', color: T.sub }}>
-    <div style={{ fontWeight: 700, color: T.text, marginBottom: 6 }}>{message}</div>
+    <div style={{ fontWeight: 700, color: T.text, marginBottom: 6 }}>{userText(message)}</div>
     {onRetry && <div style={{ maxWidth: 200, margin: '12px auto 0' }}><Btn variant="ghost" onClick={onRetry}>Try again</Btn></div>}
   </div>
 );

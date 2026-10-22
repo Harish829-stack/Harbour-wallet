@@ -1,3 +1,4 @@
+import { userText } from '../../../core/errors';
 import React, { useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { Ic, ICON, Coin, hasBundledAssetLogo } from '../ui';
@@ -17,7 +18,7 @@ export const networkName = (a: SwapAsset) => domainById(a.domainId)?.name ?? '';
 
 export const Notice: React.FC<{ tone: 'error' | 'warning' | 'info'; children: React.ReactNode }> = ({ tone, children }) => {
   const c = tone === 'error' ? { bg: 'hsl(0 70.9% 58.2% / 0.1)', fg: T.error } : tone === 'warning' ? { bg: 'var(--hb-warn-bg)', fg: 'var(--hb-warn-ink)' } : { bg: T.bgAlt, fg: T.sub };
-  return <div role={tone === 'error' ? 'alert' : undefined} style={{ background: c.bg, color: c.fg, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{children}</div>;
+  return <div role={tone === 'error' ? 'alert' : undefined} style={{ background: c.bg, color: c.fg, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.45, marginTop: 8 }}>{tone === 'error' && typeof children === 'string' ? userText(children) : children}</div>;
 };
 
 export const DetailRow: React.FC<{ label: React.ReactNode; children: React.ReactNode; loading?: boolean; testid?: string }> = ({ label, children, loading, testid }) => (

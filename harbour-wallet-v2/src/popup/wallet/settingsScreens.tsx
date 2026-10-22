@@ -1,3 +1,4 @@
+import { userText } from '../../core/errors';
 import React, { useEffect, useMemo, useState } from 'react';
 import browser from 'webextension-polyfill';
 import { T } from '../theme';
@@ -53,7 +54,7 @@ export const SelectionRow: React.FC<{ label: string; selected: boolean; onClick:
 );
 
 export const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ fontWeight: 700, color: T.sub, fontSize: 13, margin: '14px 2px 2px' }}>{children}</div>;
-export const ErrorLine: React.FC<{ msg: string }> = ({ msg }) => msg ? <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 2px' }}>{msg}</div> : null;
+export const ErrorLine: React.FC<{ msg: string }> = ({ msg }) => msg ? <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 2px' }}>{userText(msg)}</div> : null;
 export const Note: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, margin: '4px 0 12px' }}>{children}</div>;
 const manifestVersion = (): string => { try { return browser.runtime.getManifest().version; } catch { return ''; } };
 

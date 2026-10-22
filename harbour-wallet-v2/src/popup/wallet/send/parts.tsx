@@ -1,3 +1,4 @@
+import { userText } from '../../../core/errors';
 import React, { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
 import { T } from '../../theme';
@@ -11,7 +12,7 @@ import { money } from '../../settingsStore';
 
 /** TW-style inline notice (design-system classes, no raw colours). */
 export const Notice: React.FC<{ kind?: 'info' | 'warning' | 'error'; children: React.ReactNode; testid?: string }> = ({ kind = 'info', children, testid }) => (
-  <div className={`hb-notice ${kind === 'info' ? '' : kind}`} role={kind === 'error' ? 'alert' : 'status'} data-testid={testid} style={{ marginTop: 12 }}>{children}</div>
+  <div className={`hb-notice ${kind === 'info' ? '' : kind}`} role={kind === 'error' ? 'alert' : 'status'} data-testid={testid} style={{ marginTop: 12 }}>{kind === 'error' && typeof children === 'string' ? userText(children) : children}</div>
 );
 
 export const CopyBtn: React.FC<{ text: string; label?: string; copiedLabel?: string; ghost?: boolean }> = ({ text, label = 'Copy', copiedLabel = 'Address copied', ghost }) => {

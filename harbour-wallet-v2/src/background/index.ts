@@ -1,4 +1,5 @@
 import { logError } from '../core/logger';
+import { sanitizeResult } from '../core/errors';
 import { installFailoverFetch } from '../kit/failoverFetch';
 installFailoverFetch(); // RPC failover, circuit breaking and retry for every JSON-RPC call made from the service worker
 // Harbour Wallet background service worker entry. Boot, then route every popup message through the kernel event registry.
@@ -70,7 +71,7 @@ async function handleRequest(raw: unknown, sender: any): Promise<any> {
   const hit = await dispatchEvent('INTERNAL', msg.type, msg, { sender });
   const result = hit !== undefined ? hit : { error: 'unknown_message' };
   syncStore(msg, result);
-  return result;
+  return sanitizeResult(result); // raw failures (HTTP codes, fetch errors) become plain sentences; codes like LOCKED pass through
 }
 browser.runtime.onMessage.addListener((raw: unknown, sender: any) => handleRequest(raw, sender));
 servePort(handleRequest);

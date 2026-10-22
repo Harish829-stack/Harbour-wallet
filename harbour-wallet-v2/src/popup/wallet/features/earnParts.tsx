@@ -1,4 +1,5 @@
 // Shared bits for the Earn screens: amount formatting, validator avatar/picker, "changed" event bus.
+import { userText } from '../../../core/errors';
 import React, { useState } from 'react';
 import { T } from '../../theme';
 import { Sheet, Ic, ICON, Empty } from '../ui';
@@ -67,7 +68,7 @@ export const ValidatorSheet: React.FC<{ chainId: string; symbol: string; decimal
 };
 export const Notice: React.FC<{ tone?: 'warn' | 'error'; children: React.ReactNode; action?: { label: string; onClick: () => void } }> = ({ tone = 'warn', children, action }) => (
   <div role={tone === 'error' ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, margin: '8px 0', background: T.bgAlt, border: `1px solid ${tone === 'error' ? T.error : T.border}`, color: tone === 'error' ? T.error : T.text, fontSize: 13 }}>
-    <div style={{ flex: 1 }}>{children}</div>
+    <div style={{ flex: 1 }}>{tone === 'error' && typeof children === 'string' ? userText(children) : children}</div>
     {action && <button className="hb-tap" onClick={action.onClick} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>{action.label}</button>}
   </div>
 );

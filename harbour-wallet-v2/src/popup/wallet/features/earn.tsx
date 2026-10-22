@@ -1,6 +1,7 @@
 // Earn / native staking screens. Flow follows Trust Wallet v26.41.0 (evidences/re-evidence/34-staking/SPEC.md): Staking list -> asset staking
 // details (staked, APR, delegations, actions) -> Stake / Unstake / Redelegate / Compound / Claim -> confirm -> result.
 // Data: public validators lists + chain RPC via the background `earn*` messages. No static / sample values.
+import { userText } from '../../../core/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
@@ -42,7 +43,7 @@ const StakingListBody: React.FC<{ nav: Nav }> = ({ nav }) => {
     <div data-testid="earn-staking-list-error" style={{ textAlign: 'center', padding: '40px 20px' }}>
       <div style={{ marginBottom: 14 }}>We couldn’t load staking options. Please try again.</div>
       <div style={{ maxWidth: 200, margin: '0 auto' }}><Btn onClick={() => load(true)}>Retry</Btn></div>
-      <div style={{ ...subtle, marginTop: 10 }}>{error}</div>
+      <div style={{ ...subtle, marginTop: 10 }}>{userText(error)}</div>
     </div>
   );
   if (!items.length) return <Empty title="No staking available for the current wallet" icon="leaf" />;
@@ -97,7 +98,7 @@ const StakingDetailsScreen: React.FC<Ctx> = (c) => {
   const [sheet, setSheet] = useState<Position | null>(null);
   const go = (action: StakeAction, extra: Record<string, unknown> = {}) => { setSheet(null); c.nav.push('stakeAction', { chainId, action, details: d, ...extra }); };
   const title = d ? `${d.overview.symbol}` : 'Staking';
-  if (err) return <Screen title="Staking" onBack={c.nav.pop}><div data-testid="earn-staking-details-error" style={{ textAlign: 'center', padding: '40px 20px' }}><div style={{ marginBottom: 14 }}>We couldn’t load staking details. Please try again.</div><div style={{ maxWidth: 200, margin: '0 auto' }}><Btn onClick={load}>Retry</Btn></div><div style={{ ...subtle, marginTop: 10 }}>{err}</div></div></Screen>;
+  if (err) return <Screen title="Staking" onBack={c.nav.pop}><div data-testid="earn-staking-details-error" style={{ textAlign: 'center', padding: '40px 20px' }}><div style={{ marginBottom: 14 }}>We couldn’t load staking details. Please try again.</div><div style={{ maxWidth: 200, margin: '0 auto' }}><Btn onClick={load}>Retry</Btn></div><div style={{ ...subtle, marginTop: 10 }}>{userText(err)}</div></div></Screen>;
   if (!d) return <Screen title={title} onBack={c.nav.pop}><div role="status" aria-label="Loading"><div style={{ background: T.bgAlt, borderRadius: 16, padding: 16 }}>{[0, 1, 2, 3].map((i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}><Skeleton w={90} h={14} /><Skeleton w={80} h={14} /></div>)}</div><div style={{ height: 14 }} /><Skeleton w={120} h={16} /><div style={{ height: 10 }} /><Skeleton w="100%" h={44} /></div></Screen>;
   const o = d.overview; const sym: string = o.symbol; const dec: number = o.decimals; const positions: Position[] = o.positions;
   const has = (v: string) => BigInt(v || '0') > 0n;

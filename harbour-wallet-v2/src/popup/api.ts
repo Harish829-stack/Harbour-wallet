@@ -1,5 +1,6 @@
 // Popup transport: one long-lived `harbour-ui` port with request ids and server-pushed state (plan A5). Falls back to sendMessage.
 import browser from 'webextension-polyfill';
+import { friendlyMessage } from '../core/errors';
 import { useSyncExternalStore } from 'react';
 
 let port: browser.Runtime.Port | null = null;
@@ -28,7 +29,8 @@ function connect(): browser.Runtime.Port | null {
   return port;
 }
 
-export const bg = (msg: any): Promise<any> => {
+export const bg = (msg: any): Promise<any> => rawBg(msg).catch((e) => { throw new Error(friendlyMessage(e)); }); // transport failures read as plain sentences
+const rawBg = (msg: any): Promise<any> => {
   const p = connect();
   if (!p) return browser.runtime.sendMessage(msg) as Promise<any>;
   return new Promise((resolve) => {

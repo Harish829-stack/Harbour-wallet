@@ -1,6 +1,7 @@
 // Collectibles screens: collections grid -> collection (items) -> NFT detail (+ send), Hidden collections. Flow follows TW v26.41.0
 // (evidences/re-evidence/35-nfts/SPEC.md). Data: public indexers via the background `nft*` messages. Images are sanitised in core/nfts/media.ts
 // and rendered with referrerpolicy=no-referrer; nothing is hard-coded.
+import { userText } from '../../../core/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
@@ -25,7 +26,7 @@ export const NftImage: React.FC<{ src: string; alt: string; size?: number | stri
 };
 function useChanged(fn: () => void) { useEffect(() => { window.addEventListener(EVENT, fn); return () => window.removeEventListener(EVENT, fn); }, [fn]); }
 const Retry: React.FC<{ text: string; detail?: string; onRetry: () => void }> = ({ text, detail, onRetry }) => (
-  <div role="alert" style={{ textAlign: 'center', padding: '40px 20px' }}><div style={{ marginBottom: 14 }}>{text}</div><div style={{ maxWidth: 200, margin: '0 auto' }}><Btn onClick={onRetry}>Retry</Btn></div>{detail && <div style={{ ...subtle, marginTop: 10 }}>{detail}</div>}</div>
+  <div role="alert" style={{ textAlign: 'center', padding: '40px 20px' }}><div style={{ marginBottom: 14 }}>{text}</div><div style={{ maxWidth: 200, margin: '0 auto' }}><Btn onClick={onRetry}>Retry</Btn></div>{detail && <div style={{ ...subtle, marginTop: 10 }}>{userText(detail)}</div>}</div>
 );
 
 // ---------------------------------------------------------------- collections list
