@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Harbour Wallet — MV3 crypto wallet (RE-aligned with Trust Wallet; wallet-core crypto)",
+  "description": "Harbour Wallet \u2014 MV3 crypto wallet (RE-aligned with Trust Wallet; wallet-core crypto)",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/prepare-wasm.mjs && node scripts/build-inpage.mjs && node scripts/build-content.mjs && tsc --noEmit && vite build",
     "build:inpage": "node scripts/build-inpage.mjs",
     "test": "node --test test/*.test.js",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "check:rpc": "node scripts/check-rpc.mjs"
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "1.39.0",

@@ -1,4 +1,5 @@
 import { failover } from '../failover';
+import { withLastKnown } from '../lastKnown';
 import { gatewayEnabled, gatewayJson } from '../gateway';
 import { coingeckoPrices, type SimplePrice } from '../providers/coingecko';
 import { defillamaPrices } from '../providers/defillama';
@@ -11,5 +12,6 @@ export async function getPrices(ids: string[]): Promise<Record<string, SimplePri
     { name: 'coingecko', run: () => coingeckoPrices(ids) },
     { name: 'defillama', run: () => defillamaPrices(ids) },
   ];
-  return (await failover(slots)).value;
+  // On total failure the last known prices are returned and the app is flagged as showing stale data.
+  return withLastKnown(`prices:${[...ids].sort().join(',').slice(0, 200)}`, async () => (await failover(slots)).value, (v) => Object.keys(v).length > 0);
 }

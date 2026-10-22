@@ -1,3 +1,4 @@
+import { NetworkBanner } from './NetworkBanner';
 import { SyncWithMobile } from './wallet/syncMobile';
 import { BackupScreen } from './wallet/screens';
 import React, { useEffect, useState } from 'react';
@@ -39,9 +40,8 @@ const Shell: React.FC<{ children: React.ReactNode; header?: boolean }> = ({ chil
 export function App() {
   const [route, setRoute] = useState(window.location.hash);
   useEffect(() => { const change = () => setRoute(window.location.hash); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, []);
-  if (/^#\/notification(?:[/?]|$)/.test(route)) return <ProviderSurface/>;
-  if (/^#\/approval(?:[/?]|$)/.test(route)) return <TokenApprovalsSurface/>;
-  return <WalletApp/>;
+  const body = /^#\/notification(?:[/?]|$)/.test(route) ? <ProviderSurface/> : /^#\/approval(?:[/?]|$)/.test(route) ? <TokenApprovalsSurface/> : <WalletApp/>;
+  return <><NetworkBanner/>{body}</>;
 }
 
 function WalletApp() {

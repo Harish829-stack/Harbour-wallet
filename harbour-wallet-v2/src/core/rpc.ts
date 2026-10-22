@@ -1,46 +1,39 @@
-// Per-chain JSON-RPC endpoints. Public defaults so the wallet works out of the box;
-// override any chain at build time with VITE_RPC_<chainId> (e.g. a user's Alchemy/Infura URL).
-// RE note (§7): Trust Wallet routes RPC through its own NaaS gateway; Harbour uses direct RPC.
-const DEFAULT_RPC: Record<number, string> = {
-  1:        'https://eth.llamarpc.com',                       // Ethereum
-  56:       'https://bsc-dataseed.binance.org',               // BNB Smart Chain
-  137:      'https://polygon-rpc.com',                        // Polygon
-  42161:    'https://arb1.arbitrum.io/rpc',                   // Arbitrum One
-  8453:     'https://mainnet.base.org',                       // Base
-  11155111: 'https://ethereum-sepolia-rpc.publicnode.com',   // Sepolia testnet
-};
+// Per-chain JSON-RPC endpoints. The URL lists live in src/config/rpcEndpoints.json (not in components).
+// Order for a chain: user override, VITE_RPC_<chainId> (comma-separated list allowed), the keyed gateway, then the public providers in the config file.
+// RE note (§7): Trust Wallet routes RPC through its own NaaS gateway; Harbour uses the gateway plus direct public RPC with automatic failover (kit/failoverFetch.ts).
+import endpoints from '../config/rpcEndpoints.json';
+const CONFIG_EVM = endpoints.evm as Record<string, string[]>;
+/** Public fallback RPC URLs from the config file for an EVM chain (empty when the chain is not configured). */
+export const configRpcs = (chainId: number): string[] => CONFIG_EVM[String(chainId)] ?? [];
+const envList = (v: unknown): string[] => (typeof v === 'string' ? v.split(',').map((x) => x.trim()).filter((x) => /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1))/.test(x)) : []);
 
 import { rpcOverride } from './networkRegistry';
 import { GATEWAY_URL } from '../kit/endpoints';
 // Chains the gateway proxies through its server-held Alchemy key (see gateway/worker.ts ALCHEMY_HOSTS).
 export const GATEWAY_EVM_CHAINS = new Set([1, 56, 137, 42161, 8453, 10]);
 export const gatewayRpc = (chainId: number): string | undefined => (GATEWAY_URL && GATEWAY_EVM_CHAINS.has(chainId) ? `${GATEWAY_URL}/alchemy/${chainId}/rpc` : undefined);
-export function rpcUrl(chainId: number): string | undefined {
-  const o = rpcOverride(chainId); if (o) return o;
-  const env = (import.meta as any).env?.[`VITE_RPC_${chainId}`];
-  return (typeof env === 'string' && env) || gatewayRpc(chainId) || DEFAULT_RPC[chainId];
-}
+export function rpcUrl(chainId: number): string | undefined { return rpcUrlList(chainId)[0]; }
 
-/** Ordered RPC URLs for a chain: user override / env, then the gateway (keyed Alchemy), then the public default. */
+/** Ordered RPC URLs for a chain: user override, env, the gateway (keyed Alchemy), then the configured public providers. */
 export function rpcUrlList(chainId: number): string[] {
   const out: string[] = [];
   const o = rpcOverride(chainId); if (o) out.push(o);
-  const env = (import.meta as any).env?.[`VITE_RPC_${chainId}`]; if (typeof env === 'string' && env) out.push(env);
+  out.push(...envList((import.meta as any).env?.[`VITE_RPC_${chainId}`]));
   const gw = gatewayRpc(chainId); if (gw) out.push(gw);
-  if (DEFAULT_RPC[chainId]) out.push(DEFAULT_RPC[chainId]);
+  out.push(...configRpcs(chainId));
   return [...new Set(out)];
 }
 
-// Solana JSON-RPC (public default; override with VITE_RPC_SOLANA, e.g. a user's Helius/QuickNode URL).
-export function solanaRpcUrl(): string {
-  const env = (import.meta as any).env?.VITE_RPC_SOLANA;
-  return (typeof env === 'string' && env) || (GATEWAY_URL ? `${GATEWAY_URL}/helius/rpc` : 'https://api.mainnet-beta.solana.com');
+/** Ordered Solana JSON-RPC URLs: env (VITE_RPC_SOLANA, comma-separated), the keyed gateway, then the configured public providers. */
+export function solanaRpcUrls(): string[] {
+  const out = envList((import.meta as any).env?.VITE_RPC_SOLANA);
+  if (GATEWAY_URL) out.push(`${GATEWAY_URL}/helius/rpc`);
+  out.push(...(endpoints.solana as string[]));
+  return [...new Set(out)];
 }
+export const solanaRpcUrl = (): string => solanaRpcUrls()[0];
 // MEV-protected broadcast endpoints (TW "Best price execution" / "MEV protection" setting).
 // How TW itself implements this is UNKNOWN (it submits through its own backend); Harbour broadcasts
 // through public private-mempool RPCs where they exist and falls back to the normal RPC elsewhere.
-const PROTECTED_RPC: Record<number, string> = {
-  1: 'https://rpc.flashbots.net/fast',    // Flashbots Protect
-  56: 'https://rpc-bsc.48.club',          // 48 Club Puissant builder RPC
-};
-export const protectedRpcUrl = (chainId: number): string | undefined => PROTECTED_RPC[chainId];
+const PROTECTED_RPC = endpoints.protected as Record<string, string>;
+export const protectedRpcUrl = (chainId: number): string | undefined => PROTECTED_RPC[String(chainId)];

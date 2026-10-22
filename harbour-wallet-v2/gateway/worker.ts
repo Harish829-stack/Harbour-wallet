@@ -2,7 +2,7 @@
 // Routes mirror Trust Wallet's gateway paths. Keys are Worker secrets: LIFI_API_KEY, JUP_API_KEY, RELAY_API_KEY, PIMLICO_API_KEY, COINGECKO_KEY, CONFIG_JSON, CONFIG_SIG.
 import { register, unregister, runWatcher } from './push';
 interface KV { get(k: string): Promise<string | null>; put(k: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(k: string): Promise<void>; list(o: { prefix: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string }[]; list_complete: boolean; cursor?: string }> }
-export interface Env { CACHE?: KV; LIFI_API_KEY?: string; JUP_API_KEY?: string; COINGECKO_KEY?: string; HELIUS_API_KEY?: string; ALCHEMY_API_KEY?: string; ETHERSCAN_API_KEY?: string; TRONGRID_API_KEY?: string; TONCENTER_API_KEY?: string; RELAY_API_KEY?: string; PIMLICO_API_KEY?: string; FCM_SERVICE_ACCOUNT?: string; CONFIG_JSON?: string; CONFIG_SIG?: string; ALLOWED_ORIGIN?: string }
+export interface Env { CACHE?: KV; ALLOWED_ORIGINS?: string; LIFI_API_KEY?: string; JUP_API_KEY?: string; COINGECKO_KEY?: string; HELIUS_API_KEY?: string; ALCHEMY_API_KEY?: string; ETHERSCAN_API_KEY?: string; TRONGRID_API_KEY?: string; TONCENTER_API_KEY?: string; RELAY_API_KEY?: string; PIMLICO_API_KEY?: string; FCM_SERVICE_ACCOUNT?: string; CONFIG_JSON?: string; CONFIG_SIG?: string; ALLOWED_ORIGIN?: string }
 
 const RATE_PER_MIN = 120;
 const hits = new Map<string, { n: number; at: number }>(); // per-isolate approximation; KV-backed limiting can replace it
@@ -97,7 +97,7 @@ async function keyed(p: string, url: URL, req: Request, env: Env): Promise<Respo
 export async function handle(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'x-hb-device-id,content-type', 'access-control-allow-methods': 'GET,POST' } });
-  if (url.pathname === '/v1/health') return json({ ok: true });
+  if (url.pathname === '/v1/health' || url.pathname === '/health') return json({ ok: true, service: 'harbour-gateway', kv: Boolean(env.CACHE), time: new Date().toISOString() }, 200, { 'cache-control': 'no-store' });
   // Rate-limit key: the device id when the client sends one (Kit calls), otherwise the caller IP (plain RPC transports cannot add headers).
   const dev = req.headers.get('x-hb-device-id') ?? '';
   const device = /^[0-9a-f-]{16,64}$/i.test(dev) ? dev : `ip:${req.headers.get('cf-connecting-ip') ?? 'unknown'}`;
@@ -182,8 +182,40 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   return json({ error: 'not_found' }, 404);
 }
 
+// ---- edge hardening: restricted CORS, security headers, centralized error handling (no stack or internals ever reach the client) ----
+const SECURITY_HEADERS: Record<string, string> = {
+  'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer',
+  'content-security-policy': "default-src 'none'; frame-ancestors 'none'", 'cross-origin-resource-policy': 'same-site',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains', 'permissions-policy': 'interest-cohort=()',
+};
+/** Origins allowed to call the gateway: ALLOWED_ORIGINS (comma-separated, exact match) or, when unset, any Harbour-style extension origin. Requests with no Origin (non-browser) are rate limited instead. */
+export function originAllowed(origin: string, env: Pick<Env, 'ALLOWED_ORIGINS'>): boolean {
+  const list = (env.ALLOWED_ORIGINS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  return list.length ? list.includes(origin) : /^chrome-extension:\/\/[a-p]{32}$/.test(origin);
+}
+function secure(res: Response, origin: string | null): Response {
+  const h = new Headers(res.headers);
+  h.delete('access-control-allow-origin');
+  if (origin) { h.set('access-control-allow-origin', origin); h.append('vary', 'origin'); }
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) h.set(k, v);
+  if (!h.has('cache-control')) h.set('cache-control', 'no-store');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+export async function respond(req: Request, env: Env): Promise<Response> {
+  const origin = req.headers.get('origin');
+  if (origin && !originAllowed(origin, env)) return secure(json({ error: 'forbidden_origin' }, 403), null);
+  if (req.method === 'OPTIONS')
+    return secure(new Response(null, { status: 204, headers: { 'access-control-allow-headers': 'x-hb-device-id,content-type', 'access-control-allow-methods': 'GET,POST', 'access-control-max-age': '600' } }), origin);
+  try { return secure(await handle(req, env), origin); }
+  catch (e) {
+    const requestId = crypto.randomUUID();
+    console.error('[gateway] unhandled error', requestId, e instanceof Error ? e.name : typeof e); // name only: never the message, URL or key
+    return secure(json({ error: 'internal', requestId }, 500), origin);
+  }
+}
+
 export default {
-  fetch: (req: Request, env: Env) => handle(req, env).catch(() => json({ error: 'internal' }, 500)),
+  fetch: (req: Request, env: Env) => respond(req, env),
   // cron (wrangler.toml [triggers]): push watcher for registered devices
-  scheduled: (_e: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }) => ctx.waitUntil(runWatcher(env).catch(() => undefined)),
+  scheduled: (_e: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }) => ctx.waitUntil(runWatcher(env).catch((e) => console.error('[gateway] watcher failed', e instanceof Error ? e.name : typeof e))),
 };

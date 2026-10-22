@@ -7,6 +7,7 @@ const getStore = () => import('../store'); // lazy: keeps the handler map import
 import { rpcUrl } from '../../core/rpc';
 import { local } from '../../core/storage';
 import { notifyAnnouncements } from '../notify';
+import { netStatus } from '../../kit/netStatus';
 export const CONFIG_ANNOUNCEMENTS_KEY = 'wallet:config:announcements';
 
 const isHexAddr = (a: unknown): a is string => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
@@ -26,6 +27,7 @@ export async function applyRemoteConfig(): Promise<void> {
 }
 
 export const handlers: HandlerMap = {
+  async getNetworkStatus() { return { ok: true, ...netStatus() }; },
   async getRemoteConfig() { const s = (await getStore()).store.getState().sdkFeatureSlice; return { ok: true, ...EMPTY_CONFIG, flags: s.flags, version: s.configVersion, killedProviders: s.killedProviders }; },
   async refreshRemoteConfig() { await applyRemoteConfig(); return { ok: true, version: (await getStore()).store.getState().sdkFeatureSlice.configVersion }; },
   async checkTokenRisk(msg) {

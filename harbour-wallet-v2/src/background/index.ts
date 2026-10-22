@@ -1,4 +1,6 @@
 import { logError } from '../core/logger';
+import { installFailoverFetch } from '../kit/failoverFetch';
+installFailoverFetch(); // RPC failover, circuit breaking and retry for every JSON-RPC call made from the service worker
 // Harbour Wallet background service worker entry. Boot, then route every popup message through the kernel event registry.
 import './globalShims';
 import browser from 'webextension-polyfill';

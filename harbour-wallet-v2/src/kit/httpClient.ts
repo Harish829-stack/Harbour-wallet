@@ -1,4 +1,5 @@
 // Harbour Kit HttpClient (plan A7): retry with backoff + jitter, timeout, TTL cache, per-host token bucket, circuit breaker.
+import { recordNet } from './netStatus';
 export interface HttpOptions {
   retries?: number; timeoutMs?: number; cacheTtlMs?: number; ratePerSec?: number;
   breakerThreshold?: number; breakerCooldownMs?: number;
@@ -48,7 +49,7 @@ export class HttpClient {
           throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status, final: true });
         }
         const data = (await res.json()) as T;
-        br.fails = 0;
+        br.fails = 0; recordNet('api', true, host);
         if (o.cacheTtlMs && cacheKey) this.cache.set(cacheKey, { exp: Date.now() + o.cacheTtlMs, data });
         return data;
       } catch (e: any) {
@@ -57,6 +58,7 @@ export class HttpClient {
         if (i < o.retries) await sleep(backoff(i));
       }
     }
+    recordNet('api', false, host);
     if (++br.fails >= o.breakerThreshold) br.openUntil = Date.now() + o.breakerCooldownMs;
     throw lastErr instanceof Error ? lastErr : new Error('request failed');
   }

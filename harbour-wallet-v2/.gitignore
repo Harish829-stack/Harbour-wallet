@@ -34,3 +34,7 @@ coverage/
 
 # release archives (signed metadata stays tracked)
 releases/*.zip
+
+# Cloudflare Worker local secrets
+.dev.vars
+.wrangler/

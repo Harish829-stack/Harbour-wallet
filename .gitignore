@@ -58,3 +58,7 @@ harbour-config-key.json
 harbour-release-key.json
 *firebase-adminsdk*.json
 *-adminsdk-*.json
+
+# Cloudflare Worker local secrets
+.dev.vars
+.wrangler/
