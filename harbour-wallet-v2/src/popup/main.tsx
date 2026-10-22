@@ -1,5 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { ErrorBoundary } from './ErrorBoundary';
+import { logError } from '../core/logger';
+window.addEventListener('error', (e) => logError('window error', e.error ?? e.message));
+window.addEventListener('unhandledrejection', (e) => logError('unhandled rejection', e.reason));
 // A toolbar popup sizes itself to its content, so a fluid layout collapses to a sliver. Give the popup (not the side panel or a tab,
 // which the browser sizes) a fixed Chrome-legal size. getViews() is synchronous, so this applies before first paint.
 try{
@@ -13,5 +17,5 @@ if(import.meta.env.DEV && new URLSearchParams(location.search).has('design-previ
 }else{
   // Load persisted settings first so the first paint already has the right theme and currency.
   void import('./settingsStore').then(({initSettingsFromStorage})=>initSettingsFromStorage()).catch(()=>{})
-    .then(()=>import('./App')).then(({App})=>root.render(<App/>));
+    .then(()=>import('./App')).then(({App})=>root.render(<ErrorBoundary><App/></ErrorBoundary>));
 }

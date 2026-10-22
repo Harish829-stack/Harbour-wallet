@@ -1,3 +1,4 @@
+import { logError } from '../core/logger';
 // Page-side providers for the non-EVM, non-Solana families (namespace 'multi'): Keplr-style Cosmos, Sui (Wallet Standard), Aptos (Petra-style window.aptos),
 // TronLink-style Tron and Bitcoin (account + message signing). Each is a thin translator: it validates the shape of what the dApp passed and forwards
 // plain JSON to the background; keys, approval and signature packaging live in the background (core/provider/multi.ts).
@@ -93,7 +94,7 @@ export function registerSuiWallet(bridge: Bridge, icon: string) {
       } },
     },
   };
-  const callback = (api: { register(...w: unknown[]): unknown }) => { try { api.register(wallet); } catch (e) { console.error('[harbour] sui wallet register failed', e); } };
+  const callback = (api: { register(...w: unknown[]): unknown }) => { try { api.register(wallet); } catch (e) { logError('sui wallet register failed', e); } };
   try { const ev = new Event('wallet-standard:register-wallet', { bubbles: false, cancelable: false, composed: false }); Object.defineProperty(ev, 'detail', { value: callback }); window.dispatchEvent(ev); } catch { /* unsupported */ }
   try { window.addEventListener('wallet-standard:app-ready', (e: any) => callback(e.detail)); } catch { /* unsupported */ }
   return wallet;

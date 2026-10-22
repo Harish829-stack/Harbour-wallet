@@ -1,3 +1,4 @@
+import { logError } from '../core/logger';
 // Solana provider (window.trustwallet.solana / window.solana) + Wallet Standard registration.
 // Trust Wallet parity: connect / disconnect / signMessage / signTransaction / signAllTransactions / signAndSendTransaction (evidences/re-evidence/12-dapp-provider, Solana adapter).
 import { Emitter, ProviderRpcError } from './emitter';
@@ -104,7 +105,7 @@ export function registerWalletStandard(p: HarbourSolana) {
       'solana:signAndSendTransaction': { version: '1.0.0', supportedTransactionVersions: versions, signAndSendTransaction: async (...inputs: Array<{ transaction: Uint8Array; options?: any }>) => { const out = []; for (const i of inputs) { const r = await p.signAndSendTransaction(i.transaction, i.options); out.push({ signature: b58decode(r.signature) }); } return out; } },
     },
   };
-  const callback = (api: { register(...w: unknown[]): unknown }) => { try { api.register(wallet); } catch (e) { console.error('[harbour] wallet-standard register failed', e); } };
+  const callback = (api: { register(...w: unknown[]): unknown }) => { try { api.register(wallet); } catch (e) { logError('wallet-standard register failed', e); } };
   try { const ev = new Event('wallet-standard:register-wallet', { bubbles: false, cancelable: false, composed: false }); Object.defineProperty(ev, 'detail', { value: callback }); window.dispatchEvent(ev); } catch { /* not supported */ }
   try { window.addEventListener('wallet-standard:app-ready', (e: any) => callback(e.detail)); } catch { /* not supported */ }
   return wallet;

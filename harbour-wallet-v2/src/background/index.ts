@@ -1,3 +1,4 @@
+import { logError } from '../core/logger';
 // Harbour Wallet background service worker entry. Boot, then route every popup message through the kernel event registry.
 import './globalShims';
 import browser from 'webextension-polyfill';
@@ -57,7 +58,7 @@ const ready = bootWith([
   { name: 'queue', run: () => queue.drain() },
   { name: 'config', run: async () => { void applyRemoteConfig(); } }, // refresh in the background; never blocks boot
 ]);
-ready.catch((e) => console.error('[harbour] boot failed', e));
+ready.catch((e) => logError('boot failed', e));
 
 async function handleRequest(raw: unknown, sender: any): Promise<any> {
   if (!isInternalWalletSender(sender, browser.runtime.id)) return { ok: false, error: 'UNAUTHORIZED' };
@@ -73,3 +74,4 @@ browser.runtime.onMessage.addListener((raw: unknown, sender: any) => handleReque
 servePort(handleRequest);
 initProviderBackground();
 initWalletConnectBackground();
+self.addEventListener('unhandledrejection', (e) => { logError('unhandled rejection', (e as PromiseRejectionEvent).reason); });

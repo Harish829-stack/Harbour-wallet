@@ -1,3 +1,4 @@
+import { logWarn } from '../../core/logger';
 // Boot loop, persisted work queue and WASM self-heal guard (plan A6).
 import browser from 'webextension-polyfill';
 import { local } from '../../core/storage';
@@ -27,7 +28,7 @@ export async function selfHeal(reason: string): Promise<boolean> {
   const last = (await local.get<number>(HEAL_KEY)) ?? 0;
   if (Date.now() - last < HEAL_GUARD_MS) return false;
   await local.set(HEAL_KEY, Date.now());
-  console.warn('[harbour] self-heal reload:', reason);
+  logWarn('self-heal reload', reason);
   browser.runtime.reload();
   return true;
 }

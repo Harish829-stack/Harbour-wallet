@@ -1,3 +1,4 @@
+import { logError } from '../../core/logger';
 // Provider wiring inside the service worker: content-script ports (one per frame), event fan-out, approval window, inpage registration.
 // This listener is separate from the internal wallet router (background/index.ts): ports named `harbour-provider` can only reach ProviderService.
 import browser from 'webextension-polyfill';
@@ -158,15 +159,15 @@ async function onPageMessage(port: chrome.runtime.Port, s: SenderInfo, raw: unkn
 export async function registerInpage(): Promise<void> {
   const script: any = { id: INPAGE_ID, js: ['inpage.js'], matches: MATCHES, excludeMatches: EXCLUDE_MATCHES, runAt: 'document_start', world: 'MAIN', allFrames: true, persistAcrossSessions: true };
   try { await chrome.scripting.registerContentScripts([script]); }
-  catch (e: any) { if (!/duplicate script id/i.test(String(e?.message))) { console.error('[harbour] inpage registration failed', e); return; } try { await chrome.scripting.updateContentScripts([script]); } catch (e2) { console.error('[harbour] inpage update failed', e2); } }
+  catch (e: any) { if (!/duplicate script id/i.test(String(e?.message))) { logError('inpage registration failed', e); return; } try { await chrome.scripting.updateContentScripts([script]); } catch (e2) { logError('inpage update failed', e2); } }
 }
 
 async function registerContentBridge(): Promise<void> {
   const script: any = { id: CONTENT_ID, js: ['public-content.js'], matches: MATCHES, excludeMatches: EXCLUDE_MATCHES, runAt: 'document_start', allFrames: true, persistAcrossSessions: true };
   try { await chrome.scripting.registerContentScripts([script]); }
   catch (e: any) {
-    if (!/duplicate script id/i.test(String(e?.message))) { console.error('[harbour] content registration failed', e); return; }
-    try { await chrome.scripting.updateContentScripts([script]); } catch (e2) { console.error('[harbour] content update failed', e2); }
+    if (!/duplicate script id/i.test(String(e?.message))) { logError('content registration failed', e); return; }
+    try { await chrome.scripting.updateContentScripts([script]); } catch (e2) { logError('content update failed', e2); }
   }
 }
 

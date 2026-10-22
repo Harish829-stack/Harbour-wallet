@@ -1,3 +1,4 @@
+import { logError, redact } from '../../core/logger';
 // Event registry: every background message is a named event in the INTERNAL_ (popup only) or PUBLIC_ (provider port) namespace (plan A1/A2).
 export type EventCtx = { sender: any; [k: string]: any };
 export type EventHandler = (msg: any, ctx: EventCtx) => Promise<any> | any;
@@ -27,5 +28,5 @@ export function stripExternalFlags<T extends Record<string, any>>(msg: T): T {
 export async function dispatchEvent(ns: Namespace, name: string, msg: any, ctx: EventCtx): Promise<any> {
   const h = registry.get(eventName(ns, name));
   if (!h) return undefined; // caller falls back to the legacy router
-  try { return await h(msg, ctx); } catch (e: any) { return { ok: false, error: e?.message ?? 'handler failed' }; }
+  try { return await h(msg, ctx); } catch (e: any) { logError(`handler ${name} failed`, e); return { ok: false, error: e?.message ? redact(e.message) : 'handler failed' }; } // log + sanitized text; no stack or secrets reach the UI
 }
