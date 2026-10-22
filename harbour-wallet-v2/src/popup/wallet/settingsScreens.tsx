@@ -32,8 +32,8 @@ export const NavRow: React.FC<{ icon: string; label: string; value?: string; onC
 
 export const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string; disabled?: boolean }> = ({ on, onClick, label, disabled }) => (
   <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={onClick}
-    style={{ width: 46, height: 28, borderRadius: 999, border: 'none', background: on ? T.accent : T.border, position: 'relative', cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background .2s', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
-    <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: 'var(--hb-on-brand)', transition: 'left .2s' }} />
+    style={{ width: 46, height: 28, borderRadius: 999, border: 'none', background: on ? T.accent : T.border, position: 'relative', cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background .25s ease', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
+    <span className="hb-switch-knob" style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: 'var(--hb-on-brand)', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
   </button>
 );
 

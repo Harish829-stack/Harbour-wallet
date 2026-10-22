@@ -32,8 +32,8 @@ export const DetailRow: React.FC<{ label: React.ReactNode; children: React.React
 
 export const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: string; testid?: string }> = ({ on, onChange, label, testid }) => (
   <button type="button" role="switch" aria-checked={on} aria-label={label} data-testid={testid} onClick={() => onChange(!on)}
-    style={{ width: 46, height: 28, borderRadius: 999, border: 'none', padding: 3, cursor: 'pointer', background: on ? T.accent : 'hsl(240 6% 82%)', display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start', transition: 'background .15s', flexShrink: 0 }}>
-    <span style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--hb-on-brand)', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
+    style={{ width: 46, height: 28, borderRadius: 999, border: 'none', padding: 3, cursor: 'pointer', background: on ? T.accent : 'hsl(240 6% 82%)', display: 'flex', transition: 'background .25s ease', flexShrink: 0 }}>
+    <span className="hb-switch-knob" style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--hb-on-brand)', boxShadow: '0 1px 3px rgba(0,0,0,.25)', transform: on ? 'translateX(18px)' : 'none' }} />
   </button>
 );
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs } from './ui';
 import { SWAP_SCREENS } from './swap/screens';
 import { FEATURE_SCREENS } from './features';
 import { SETTINGS_SCREENS } from './settingsScreens';
@@ -70,15 +70,11 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
         </div>
         {/* range pills */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 6 }}>
-          {CHART_RANGES.map((r) => <button key={r} onClick={() => { setScrub(null); setRange(r); }} style={{ border: 'none', background: range === r ? T.bgAlt : 'transparent', color: range === r ? T.text : T.sub, fontWeight: 600, fontSize: 13, padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>{r}</button>)}
+          {CHART_RANGES.map((r) => <button key={r} onClick={() => { setScrub(null); setRange(r); }} className="hb-tap" style={{ border: 'none', background: range === r ? T.bgAlt : 'transparent', color: range === r ? T.text : T.sub, fontWeight: 600, fontSize: 13, padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>{r}</button>)}
         </div>
         {/* tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, padding: '0 16px', marginTop: 8 }}>
-          {(['holdings', 'history', 'about'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 2px', marginRight: 22, fontWeight: 700, fontSize: 15, color: tab === t ? T.text : T.sub, borderBottom: tab === t ? `2px solid ${T.accent}` : '2px solid transparent' }}>{t[0].toUpperCase() + t.slice(1)}</button>
-          ))}
-        </div>
-        <div style={{ padding: '12px 16px' }}>
+        <InkTabs tabs={['holdings', 'history', 'about'] as const} value={tab} onChange={setTab} label={(t) => t[0].toUpperCase() + t.slice(1)} gap={22} pad="12px 2px" style={{ padding: '0 16px', marginTop: 8 }} />
+        <div key={tab} className="hb-tab-fade" style={{ padding: '12px 16px' }}>
           {tab === 'holdings' && <>
             <div style={{ fontWeight: 700, margin: '4px 0 8px' }}>My Balance</div>
             <div style={{ background: T.bgAlt, borderRadius: 14, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>

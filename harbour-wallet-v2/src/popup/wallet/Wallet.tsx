@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TokenApprovalsPanel } from './features/provider';
 import { T } from '../theme';
 import { bg } from '../api';
-import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton } from './ui';
+import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion } from './ui';
 import { SCREENS, type Nav } from './screens';
 import { SwapTab } from './swap/SwapTab';
 import { EarnTab } from './features/earn';
@@ -21,6 +21,36 @@ import { chainByTwId } from '../../core/chains/index';
 // UI/flow reconstructed from the live Trust Wallet extension; neutral branding, no TW assets.
 
 type Tab = 'home' | 'trending' | 'swap' | 'earn';
+const TAB_ORDER: Tab[] = ['home', 'trending', 'swap', 'earn'];
+
+// ---- navigation-stack transitions ----
+// Each stack entry gets a stable id so React keeps the outgoing screen mounted while the next one animates.
+// Only the top screen stays mounted once the animation ends (same remount-on-return semantics as before).
+type Entry = { name: string; params?: any };
+type Phase = 'enter' | 'idle' | 'under' | 'reveal' | 'leave';
+const entryIds = new WeakMap<object, number>(); let entrySeq = 0;
+const eid = (e: object) => { let v = entryIds.get(e); if (v == null) { v = ++entrySeq; entryIds.set(e, v); } return v; };
+function useStackLayers(stack: Entry[]) {
+  const top = stack[stack.length - 1];
+  const [layers, setLayers] = useState<Array<{ e: Entry; phase: Phase }>>(() => (top ? [{ e: top, phase: 'idle' }] : []));
+  const prev = useRef(stack); const timer = useRef<ReturnType<typeof setTimeout>>();
+  useLayoutEffect(() => {
+    const before = prev.current; prev.current = stack;
+    const prevTop = before[before.length - 1];
+    if (prevTop === top) return;
+    clearTimeout(timer.current);
+    const settle = () => setLayers(top ? [{ e: top, phase: 'idle' }] : []);
+    if (reducedMotion()) return settle();
+    const popping = !!prevTop && !stack.includes(prevTop) && (!top || before.includes(top));
+    setLayers(popping
+      ? [...(top ? [{ e: top, phase: 'reveal' as Phase }] : []), { e: prevTop!, phase: 'leave' as Phase }]
+      : [...(prevTop ? [{ e: prevTop, phase: 'under' as Phase }] : []), { e: top!, phase: 'enter' as Phase }]);
+    const ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hb-nav-ms')) || 320;
+    timer.current = setTimeout(settle, ms + 20);
+  }, [stack, top]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return layers;
+}
 const sq = (bg2: string, color: string): React.CSSProperties => ({ width: 52, height: 52, borderRadius: 16, background: bg2, color, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' });
 
 export const Wallet: React.FC<{
@@ -31,6 +61,9 @@ export const Wallet: React.FC<{
 }> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onBackup, onLock }) => {
   injectStyles();
   const [tab, setTab] = useState<Tab>('home');
+  const lastTab = useRef<Tab>('home');
+  const tabDir = TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(lastTab.current) ? 'hb-tab-r' : TAB_ORDER.indexOf(tab) < TAB_ORDER.indexOf(lastTab.current) ? 'hb-tab-l' : 'hb-tab-fade';
+  useEffect(() => { lastTab.current = tab; }, [tab]);
   const fromHash = () => {
     const path = window.location.hash.split('?')[0];
     if (path === '#/settings/connections/blacklist' || path === '#/settings/connections-blacklist') return [{ name: 'connections' }, { name: 'connectionsBlacklist' }];
@@ -76,13 +109,16 @@ export const Wallet: React.FC<{
   const visibleTokens = tokenItems.filter((i) => !(hiddenAssets ?? []).includes(i.token.id) && (!networkFilter || i.token.networkId === networkFilter)
     && !(settings.layout.hideLowBalanceAssets && isLowBalance(i.ok ? i.usd : null)));
   const tokenUsd = tokenItems.reduce((n, i) => n + (i.ok && i.usd != null && !(hiddenAssets ?? []).includes(i.token.id) ? i.usd : 0), 0);
-  const top = stack[stack.length - 1];
-  const Pushed = top ? SCREENS[top.name] : null;
+  const layers = useStackLayers(stack);
+  const total = totalUsd == null ? null : totalUsd + tokenUsd;
+  const shownTotal = useTween(total);
+  const navTabs = TAB_ORDER.filter((id) => id !== 'earn' || earnOk);
 
   const fmtAmt = (s?: string) => { const n = Number(s ?? 0); return n === 0 ? '0' : n < 0.0001 ? '<0.0001' : fmtNumber(n, { maximumFractionDigits: 6 }); };
 
   return (
-    <div className="hb-root" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh', maxHeight: '100dvh' }}>
+    <div className="hb-root hb-enter" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh', maxHeight: '100dvh' }}>
+      <div className={stack.length ? 'hb-home under' : 'hb-home'} aria-hidden={stack.length ? true : undefined}>
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 8px' }}>
         <button className="hb-tap" onClick={() => nav.push('walletSelector')} aria-label="Select wallet" style={{ flex: 1, minWidth: 0, lineHeight: 1.1, cursor: 'pointer', background: 'none', border: 0, padding: 0, textAlign: 'left', color: T.text }}>
@@ -97,7 +133,7 @@ export const Wallet: React.FC<{
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className="hb-fade" key={tab}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className={tabDir} key={tab}>
         {tab === 'home' && <>
           {backupRequired && (
             <div className="hb-tap" onClick={() => nav.push('backup')} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
@@ -105,26 +141,24 @@ export const Wallet: React.FC<{
             </div>
           )}
           <div style={{ padding: '8px 0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontSize: 34, fontWeight: 800 }}>{loading && totalUsd == null ? '…' : (hide ? '••••••' : (totalUsd == null ? '$—' : usd(totalUsd + tokenUsd)))}</div>
-            <IconBtn icon="refresh" size={30} bg="transparent" title="Refresh" onClick={onRefresh} />
+            <div key={hide ? 'h' : 's'} className="hb-unblur" style={{ fontSize: 34, fontWeight: 800 }}>{loading && totalUsd == null ? <Skeleton w={150} h={34} r={10} /> : (hide ? '••••••' : (shownTotal == null ? '$—' : usd(shownTotal)))}</div>
+            <span className={loading ? 'hb-spinning' : ''} style={{ display: 'inline-flex' }}><IconBtn icon="refresh" size={30} bg="transparent" title="Refresh" onClick={onRefresh} /></span>
             <IconBtn icon={hide ? 'eyeoff' : 'eye'} size={30} bg="transparent" title="Hide" onClick={() => setHide(!hide)} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, margin: '16px 0 18px' }}>
             {([['Send', 'send', false, 'send'], ['Receive', 'receive', false, 'receive'], ['Swap', 'swap', false, 'swap'], ['Fund', 'fund', true, 'fund']] as const).map(([label, ic, filled, to]) => (
               <div key={label} style={{ textAlign: 'center', flex: 1 }}>
-                <button className="hb-tap" title={label} aria-label={label} onClick={() => { if (to === 'swap') setTab('swap'); else nav.push(to); }} style={{ ...sq(filled ? T.accent : T.accentSoft, filled ? 'var(--hb-on-brand)' : T.accent), margin: '0 auto' }}><Ic d={ICON[ic]} size={22} /></button>
+                <button className="hb-action" title={label} aria-label={label} onClick={() => { if (to === 'swap') setTab('swap'); else nav.push(to); }} style={{ ...sq(filled ? T.accent : T.accentSoft, filled ? 'var(--hb-on-brand)' : T.accent), margin: '0 auto' }}><Ic d={ICON[ic]} size={22} /></button>
                 <div style={{ fontSize: 12, marginTop: 6, color: T.sub }}>{label}</div>
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${T.border}`, marginBottom: 4 }}>
-            {(['crypto', 'approvals'] as const).map((s) => (
-              <button key={s} onClick={() => setSub(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '10px 2px', marginRight: 18, fontWeight: 700, fontSize: 15, color: sub === s ? T.text : T.sub, borderBottom: sub === s ? `2px solid ${T.accent}` : '2px solid transparent' }}>{s === 'crypto' ? 'Crypto' : 'Approvals'}</button>
-            ))}
+          <InkTabs tabs={['crypto', 'approvals'] as const} value={sub} onChange={setSub} label={(s) => (s === 'crypto' ? 'Crypto' : 'Approvals')} style={{ marginBottom: 4 }}>
             <div style={{ flex: 1 }} />
             {!settings.layout.hideNFTs && <IconBtn icon="nft" size={30} bg="transparent" title="Collectibles" onClick={() => nav.push('nfts')} />}
             <IconBtn icon="history" size={30} bg="transparent" title="Activity" onClick={() => nav.push('activity')} />
-          </div>
+          </InkTabs>
+          <div key={sub} className={sub === 'crypto' ? 'hb-stagger hb-tab-l' : 'hb-tab-r'}>
           {sub === 'crypto' ? (visibleAssets.length + visibleTokens.length === 0 && !loading ? <Empty title="No assets to show" sub="Your Preferences hide assets worth less than $0.01 (USD). Change this in Settings › Preferences." icon="search" /> : visibleAssets.map((a) => {
             const b = balances[a.id];
             return <TokenCell key={a.id} layout={layout} hide={hide} onClick={() => nav.push('tokenDetail', { assetId: a.id })}
@@ -134,6 +168,7 @@ export const Wallet: React.FC<{
             <TokenCell key={i.token.id} layout={layout} hide={hide} onClick={() => nav.push('tokenDetail', { assetId: i.token.id })}
               d={{ name: i.token.name, sym: i.token.symbol, color: tokenColor(i.token.id), evm: true, amount: i.ok ? fmtAmt(i.formatted) : '—', fiatUsd: i.usd, price: i.price, change: i.change }} />
           ))) as any) : <TokenApprovalsPanel send={bg}/>}
+          </div>
         </>}
 
         {tab === 'trending' && <TrendingTab nav={nav} />}
@@ -144,15 +179,17 @@ export const Wallet: React.FC<{
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ display: 'flex', flexShrink: 0, borderTop: `1px solid ${T.border}`, padding: '8px 0 10px', background: T.surface }}>
+      <div className="hb-navbar" style={{ display: 'flex', flexShrink: 0, borderTop: `1px solid ${T.border}`, padding: '6px 0 10px', background: T.surface }}>
+        <span aria-hidden className="hb-nav-pill" style={{ width: `${100 / navTabs.length}%`, transform: `translateX(${Math.max(0, navTabs.indexOf(tab)) * 100}%)` }}><span /></span>
         {([['home', 'Home', ICON.home], ['trending', 'Trending', ICON.trend], ['swap', 'Swap', ICON.swap], ['earn', 'Earn', ICON.leaf]] as const).filter(([id]) => id !== 'earn' || earnOk).map(([id, label, d]) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? T.accent : T.sub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <Ic d={d} size={22} fill={tab === id && id === 'home'} /><span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
+          <button key={id} className={tab === id ? 'hb-nav-btn on' : 'hb-nav-btn'} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? T.accent : T.sub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span className="hb-nav-ic" key={tab === id ? 'on' : 'off'}><Ic d={d} size={22} fill={tab === id && id === 'home'} /></span><span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
           </button>
         ))}
       </div>
+      </div>
 
-      {Pushed && <Pushed {...ctx} params={top!.params} />}
+      {layers.map(({ e, phase }) => { const S = SCREENS[e.name]; return S ? <div key={eid(e)} className={`hb-layer ${phase}`} {...((phase === 'under' || phase === 'leave') ? { inert: '' } : {}) as any}><S {...ctx} params={e.params} /></div> : null; })}
     </div>
   );
 };
@@ -182,7 +219,7 @@ const Dropdown: React.FC<{ label: React.ReactNode; children: (close: () => void)
     <div style={{ position: 'relative' }}>
       <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: open ? T.accentSoft : T.bgAlt, border: 'none', borderRadius: 999, padding: '7px 12px', fontWeight: 700, fontSize: 13, color: open ? T.accent : T.text, cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: 160, transition: 'background .15s' }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span><Ic d={ICON.chevron} size={14} /></button>
       {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />}
-      {open && <div style={{ position: 'absolute', top: 40, [align]: 0, zIndex: 20, maxWidth: 'calc(100vw - 32px)', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, boxShadow: T.shadow, overflow: 'hidden', minWidth, maxHeight: 300, overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>{children(() => setOpen(false))}</div>}
+      {open && <div className="hb-menu" style={{ position: 'absolute', top: 40, [align]: 0, zIndex: 20, maxWidth: 'calc(100vw - 32px)', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, boxShadow: T.shadow, overflow: 'hidden', minWidth, maxHeight: 300, overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>{children(() => setOpen(false))}</div>}
     </div>
   );
 };
@@ -271,7 +308,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}><Skeleton w={34} h={34} r={999} /><div style={{ flex: 1 }}><Skeleton w={80} h={12} /><div style={{ height: 6 }} /><Skeleton w={50} h={10} /></div><Skeleton w={60} h={12} /></div>
       )) : rows.length === 0 ? (
         <Empty title="Token not found" sub="Try a different name or network." icon="search" />
-      ) : rows.map((t: any) => {
+      ) : <div className="hb-stagger" key={`${mode.id}|${net?.coinId ?? ''}`}>{rows.map((t: any) => {
         const ch = t[field] ?? 0;
         return (
           <div key={t.id ?? t.symbol} className="hb-tap hb-trow" onClick={() => nav.push('tokenDetail', { assetId: (ASSETS.find((a) => a.sym === (t.symbol || t.sym))?.id) ?? 'ethereum' })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
@@ -283,7 +320,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
             <div style={{ width: '29%', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap' }}>{compactUsd(t.marketCap)}</div><div style={{ fontSize: 12, color: T.sub }}>Vol: {compactUsd(t.volume24h)}</div></div>
           </div>
         );
-      })}
+      })}</div>}
     </>
   );
 };

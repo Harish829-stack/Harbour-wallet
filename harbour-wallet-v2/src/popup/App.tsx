@@ -8,9 +8,11 @@ import { bg } from './api';
 import { Onboarding } from './onboarding/Onboarding';
 import { ProviderSurface, TokenApprovalsSurface } from './wallet/features/provider';
 import { Wallet } from './wallet/Wallet';
+import { injectStyles } from './wallet/ui';
 import './design/system.css';
 import { Brand } from './design/components';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
+injectStyles(); // shared motion/keyframe CSS for lock, unlock and setup screens too
 
 // Harbour Wallet — light UI, Trust Wallet-style layout (dummy branding). RE §3, §6.1.
 type Screen = 'loading' | 'welcome' | 'password' | 'backup' | 'unlock' | 'home';
@@ -27,12 +29,12 @@ const Logo = ({ size = 28 }: { size?: number }) => <div style={{fontSize:size}}>
 
 // Module-level on purpose: a component declared inside App() gets a new identity every render, so React
 // remounts its whole subtree on each keystroke and inputs lose focus after one character.
-const Shell: React.FC<{ children: React.ReactNode; header?: boolean }> = ({ children, header = true }) => (
+const Shell: React.FC<{ children: React.ReactNode; header?: boolean; k?: string }> = ({ children, header = true, k }) => (
   <div className="hb-root" style={{ background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
     {header && <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px', borderBottom: `1px solid ${T.border}` }}>
       <Logo size={26} /><span style={{ fontWeight: 800, fontSize: 17 }}>Harbour</span>
     </div>}
-    <div style={{ padding: 20, flex: 1 }}>{children}</div>
+    <div key={k} className="hb-enter" style={{ padding: 20, flex: 1 }}>{children}</div>
   </div>
 );
 
@@ -121,9 +123,9 @@ function WalletApp() {
   };
   const doUnlock = async () => { setErr(''); setBusy(true); try { const res = await bg({ type: 'unlock', password: pw }); if (res.ok) setScreen('home'); else setErr(res.error || 'Incorrect password'); } finally { setBusy(false); } };
 
-  if (screen === 'loading') return <Shell header={false}><div style={{ color: T.sub, textAlign: 'center', marginTop: 80 }}>Loading…</div></Shell>;
+  if (screen === 'loading') return <Shell k={screen} header={false}><div style={{ color: T.sub, textAlign: 'center', marginTop: 80 }}>Loading…</div></Shell>;
 
-  if (screen === 'welcome') return <Shell header={false}>
+  if (screen === 'welcome') return <Shell k={screen} header={false}>
     <div style={{ textAlign: 'center', paddingTop: 48 }}>
       <Logo size={72} />
       <h1 style={{ fontSize: 26, margin: '28px 0 8px' }}>Welcome to Harbour</h1>
@@ -139,7 +141,7 @@ function WalletApp() {
     </div>
   </Shell>;
 
-  if (screen === 'password') return <Shell>
+  if (screen === 'password') return <Shell k={screen}>
     <h2 style={{ fontSize: 22, marginTop: 8 }}>Create password</h2>
     <p style={{ color: T.sub, fontSize: 14, marginTop: 4 }}>This encrypts your wallet on this device.</p>
     <input style={input} type="password" placeholder="New password (min 8 characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
@@ -148,7 +150,7 @@ function WalletApp() {
     <button style={primary(!pw || !pw2 || busy)} disabled={!pw || !pw2 || busy} onClick={submitPassword}>{busy ? 'Creating…' : 'Continue'}</button>
   </Shell>;
 
-  if (screen === 'backup') return <Shell>
+  if (screen === 'backup') return <Shell k={screen}>
     <h2 style={{ fontSize: 22, marginTop: 8 }}>Your secret phrase</h2>
     <p style={{ color: T.sub, fontSize: 14, marginTop: 4 }}>Write these 12 words down in order and keep them safe. Anyone with them controls your wallet.</p>
     <div style={{ marginTop: 12 }}><SeedCanvas words={mnemonic.split(' ').filter(Boolean)} revealed /></div>
@@ -161,11 +163,11 @@ function WalletApp() {
 
   if (screen === 'unlock') {
     const bioPrimary = passkey.enabled && !usePassword;
-    return <Shell header={false}>
+    return <Shell k={screen} header={false}>
       <div style={{ textAlign: 'center', paddingTop: 64 }}><Logo size={56} /><h2 style={{ fontSize: 22, margin: '20px 0 0' }}>Welcome back</h2></div>
       <div style={{ marginTop: 28 }}>
         {!bioPrimary && <input style={input} type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doUnlock()} autoFocus />}
-        {err && <div style={{ color: T.error, fontSize: 13, marginTop: 10 }}>{err}</div>}
+        {err && <div key={err} className="hb-shake" role="alert" style={{ color: T.error, fontSize: 13, marginTop: 10 }}>{err}</div>}
         {!bioPrimary && <button style={primary(!pw || busy)} disabled={!pw || busy} onClick={doUnlock}>Unlock</button>}
         {passkey.enabled && <>
           {bioPrimary
@@ -181,10 +183,10 @@ function WalletApp() {
 
   // Opened in a full tab from Settings so the OS biometric sheet can appear without closing the popup.
   // Opened in a full tab from Settings > Sync with Mobile (needs the webcam, which a popup cannot hold on to).
-  if (screen === 'home' && params.get('sync')) return <Shell><SyncWithMobile bg={bg} onClose={() => { window.history.replaceState(null, '', window.location.pathname); window.close(); window.location.reload(); }} /></Shell>;
+  if (screen === 'home' && params.get('sync')) return <Shell k={screen}><SyncWithMobile bg={bg} onClose={() => { window.history.replaceState(null, '', window.location.pathname); window.close(); window.location.reload(); }} /></Shell>;
   // Opened in a full tab from the reveal gate so the OS biometric sheet can appear.
-  if (screen === 'home' && params.get('reveal')) return <Shell><BackupScreen {...({ bg, addrs, balances: {}, nav: { push: () => {}, pop: () => window.close(), home: () => window.close() }, params: { walletId: params.get('wallet') || undefined, autoBiometric: true } } as any)} /></Shell>;
-  if (screen === 'home' && params.get('enroll')) return <Shell><BiometricEnroll bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.location.reload(); }} /></Shell>;
+  if (screen === 'home' && params.get('reveal')) return <Shell k={screen}><BackupScreen {...({ bg, addrs, balances: {}, nav: { push: () => {}, pop: () => window.close(), home: () => window.close() }, params: { walletId: params.get('wallet') || undefined, autoBiometric: true } } as any)} /></Shell>;
+  if (screen === 'home' && params.get('enroll')) return <Shell k={screen}><BiometricEnroll bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.location.reload(); }} /></Shell>;
 
   // Authenticated 4-tab wallet UI (Home/Trending/Swap/Earn) — parity with live TW capture.
   return <Wallet
