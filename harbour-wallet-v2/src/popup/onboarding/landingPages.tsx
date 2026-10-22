@@ -146,7 +146,7 @@ export function NetworksPage({ cta }: { cta: ReactNode }) {
     <section className="lp-section lp-tight">
       <div className="lp-split" data-reveal>
         <div><span className="lp-kicker"><Network size={14}/>Custom networks</span><h2>Not on the list?<br/>Add it yourself.</h2><p>Any EVM network works. Enter its name, RPC URL, chain ID and currency symbol, and Harbour treats it like a built-in one.</p>
-          <ul className="lp-points"><li><Check size={16}/>Works with any EVM-compatible chain</li><li><Check size={16}/>{TESTNET_CHAINS.map((c) => c.name).join(', ')} test network available for trying things safely</li><li><Check size={16}/>Remove it again whenever you like</li></ul></div>
+          <ul className="lp-points"><li><Check size={16}/>Works with any EVM-compatible chain</li><li><Check size={16}/>{TESTNET_CHAINS.length} test networks including {TESTNET_CHAINS.slice(0, 3).map((c) => c.name).join(', ')} available for trying things safely</li><li><Check size={16}/>Remove it again whenever you like</li></ul></div>
         <Pane className="lp-form"><div className="lp-field"><small>Network name</small><div><b>My network</b></div></div><div className="lp-field"><small>RPC URL</small><div><b>https://rpc.example.org</b></div></div><div className="lp-two-f"><div className="lp-field"><small>Chain ID</small><div><b>1234</b></div></div><div className="lp-field"><small>Symbol</small><div><b>ABC</b></div></div></div><div className="lp-fake-btn">Add network</div></Pane>
       </div>
     </section>

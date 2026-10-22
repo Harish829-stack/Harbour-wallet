@@ -130,6 +130,21 @@ test('session_request: maps to the provider, binds the connection to the request
   assert.equal((await t.perms.get('https://app.uniswap.org')).chainId, 137);
   assert.deepEqual(t.kit.calls.at(-1), ['respond', { topic: TOPIC, response: { id: 11, jsonrpc: '2.0', result: '0xsig' } }]);
 });
+test('network change: a new chain is added to the session (updateSession) before chainChanged is emitted; a known chain only emits', async () => {
+  const t = setup(); await seedSession(t, ['eip155:1']); await t.bridge.ensure(); const origin = 'https://app.uniswap.org';
+  const live = { eip155: { chains: ['eip155:1'], accounts: [`eip155:1:${A.evm}`], methods: ['personal_sign'], events: ['chainChanged', 'accountsChanged'] } };
+  t.kit.getActiveSessions = () => ({ [TOPIC]: { namespaces: live } });
+  t.kit.updateSession = async (a) => { t.kit.calls.push(['update', a]); live.eip155 = a.namespaces.eip155; };
+  t.kit.emitSessionEvent = async (a) => { t.kit.calls.push(['emit', a]); };
+  await t.bridge.onChainChanged(origin, 137);
+  assert.deepEqual(t.kit.calls.map((c) => c[0]), ['update', 'emit']);
+  const upd = t.kit.calls[0][1].namespaces.eip155; assert.deepEqual(upd.chains, ['eip155:1', 'eip155:137']); assert.ok(upd.accounts.includes(`eip155:137:${A.evm}`));
+  assert.deepEqual(t.kit.calls[1][1], { topic: TOPIC, event: { name: 'chainChanged', data: 137 }, chainId: 'eip155:137' });
+  assert.ok((await t.bridge.sessions())[0].chains.includes('eip155:137'));
+  t.kit.calls.length = 0; await t.bridge.onChainChanged(origin, 137); assert.deepEqual(t.kit.calls.map((c) => c[0]), ['emit']);
+  t.kit.calls.length = 0; await t.bridge.onChainChanged('https://other.example', 1); assert.equal(t.kit.calls.length, 0);
+  live.eip155.events = []; await t.bridge.onChainChanged(origin, 137); assert.equal(t.kit.calls.length, 0);
+});
 test('session_request: refuses unknown sessions, unapproved methods/chains, unavailable networks and removed connections', async () => {
   const t = setup(); await t.bridge.ensure();
   t.kit.handlers.session_request({ id: 1, topic: 'ee'.repeat(32), params: { chainId: 'eip155:1', request: { method: 'personal_sign', params: [] } } }); await flush();

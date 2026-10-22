@@ -1,0 +1,16 @@
+
+## Addendum 2 — Wakaru 1.14.0 recovery (cloud workspace; REA's own `recover_javascript_sources` could not run on the Mac: no Wakaru there)
+Readable sources: `recovery/ui/*` (6 UI chunks) and `recovery/background/*` (TransactionHistoryService, FetchMissingTransactions, FetchAssetsTransactionHistoryWalk, GenericBroadcasterService; brace-matched slices of the 42 MB `background.js`). Names are still minified in the UI chunks; the background keeps real class/method names. Runtime equivalence not verified.
+
+### txhub event schema (inferred from `mapTransactionEvent`, [certain] for fields read)
+| event.type | event.data fields used | → client type |
+|---|---|---|
+| transfer / utxo_transfer / contract_call / stake_* | `asset, from, to, value, direction?, input?` | Send / Utxo / Contract / Delegate… ; a `transfer` whose `to` == own address and `from` != own becomes **Receive** |
+| token_approval | `asset, owner, spender, amount, is_unlimited` | Approve (`isUnlimited`) |
+| token_revoke | `asset, owner, spender` | Revoke |
+| swap | `from, to, sent{asset,value}, received{asset,value}` (+`bridge`) | Swap; if only `received` asset is known → Receive; only `sent` → Send |
+Transaction envelope: `{hash, chain, status: completed|error, created_at, fees[{asset,value}], events[]}`.
+Airdrop flag: an incoming `transfer` of a token (`asset` contains `_t`) that is not enabled / zero balance, `to`==me, `from`!=me → `metadata.airdrop=true` (then hidden from the all-assets feed by the UI filter).
+Unknown assets referenced by events are fetched from the asset service and **auto-enabled** (`pendingAutoEnable`), so a faucet-minted token becomes visible in the wallet after the history refresh.
+### All-chains refresh (`fetchAllChainsMissingTransactions`) [certain]
+Range [from,to] is cut into 29-day windows, each window follows `next_token` recursively, all merged with `txSlice.updateTxs`; the covered period is cached (`updateAllChainsCachedTransactionsPeriod`) ONLY when no window failed.

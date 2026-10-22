@@ -20,6 +20,8 @@ export interface KitLike {
   respondSessionRequest(a: { topic: string; response: { id: number; jsonrpc: '2.0'; result?: unknown; error?: { code: number; message: string } } }): Promise<unknown>;
   disconnectSession(a: { topic: string; reason: { code: number; message: string } }): Promise<unknown>;
   getActiveSessions(): Record<string, any>;
+  updateSession(a: { topic: string; namespaces: Record<string, any> }): Promise<unknown>;
+  emitSessionEvent(a: { topic: string; event: { name: string; data: unknown }; chainId: string }): Promise<unknown>;
   rejectSessionAuthenticate?(a: { id: number; reason: { code: number; message: string } }): Promise<unknown>;
 }
 export interface KV { get<T>(k: string): Promise<T | undefined>; set(k: string, v: unknown): Promise<void> }
@@ -142,6 +144,31 @@ export class WalletConnectBridge {
     }
     const topic = documentId.slice(3); const id = Number(reqId); if (!topic || !Number.isInteger(id)) return false;
     await this.respond(topic, id, outcome); return true;
+  }
+
+  // ---------------------------------------------------------------- network changes
+  /**
+   * The wallet moved this site to another EVM network (silent switch, auto-switch, Connection details). A WalletConnect dApp only learns of it through
+   * the relay: add the chain to the session when it is new (updateSession is append-only), then emit `chainChanged`.
+   */
+  async onChainChanged(origin: string, chainId: number): Promise<void> {
+    const recs = (await this.sessions()).filter((x) => x.origin === origin); if (!recs.length || !Number.isSafeInteger(chainId) || chainId <= 0) return;
+    const kit = this.kit ?? (await this.ensure().catch(() => null)); if (!kit) return;
+    const caip = `eip155:${chainId}`;
+    for (const rec of recs) {
+      try {
+        const ns = kit.getActiveSessions()[rec.topic]?.namespaces?.eip155; if (!ns) continue;                  // the session has no EVM namespace
+        const accounts: string[] = Array.isArray(ns.accounts) ? ns.accounts : [];
+        const chains: string[] = Array.isArray(ns.chains) && ns.chains.length ? ns.chains : Array.from(new Set(accounts.map((a) => a.split(':').slice(0, 2).join(':'))));
+        if (!chains.includes(caip)) {
+          const address = accounts[0]?.split(':')[2]; if (!address) continue;
+          const live = kit.getActiveSessions()[rec.topic].namespaces;
+          await kit.updateSession({ topic: rec.topic, namespaces: { ...live, eip155: { ...ns, chains: [...chains, caip], accounts: [...accounts, `${caip}:${address}`] } } });
+          rec.chains = Array.from(new Set([...rec.chains, caip])); await this.putSession(rec);
+        }
+        if ((ns.events ?? []).includes('chainChanged')) await kit.emitSessionEvent({ topic: rec.topic, event: { name: 'chainChanged', data: chainId }, chainId: caip });
+      } catch { /* dApp offline or it refused the update: its next request will name the chain it wants */ }
+    }
   }
 
   // ---------------------------------------------------------------- ending sessions

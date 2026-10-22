@@ -121,6 +121,12 @@ async function deliver(t: DeliverTarget, reqId: string, outcome: Outcome): Promi
 function emit(origin: string, ns: Namespace, name: string, data?: unknown) {
   if (!isAllowedEvent(ns, name)) return;
   for (const l of live.values()) if (l.sender.origin === origin) send(l.port, { t: 'evt', ns, name, data });
+  // WalletConnect sessions have no page port: the relay carries chainChanged (and adds the chain to the session first when needed).
+  if (ns === 'evm' && name === 'chainChanged' && typeof data === 'string') { try { void wc.onChainChanged(origin, Number(BigInt(data))).catch(() => {}); } catch { /* malformed id */ } }
+}
+/** Settings > Connections: the user moved a site to another network. */
+export function announceChain(origin: string, chainId: number): void {
+  const hex = `0x${chainId.toString(16)}`; emit(origin, 'evm', 'chainChanged', hex); emit(origin, 'evm', 'networkChanged', String(chainId));
 }
 function senderOf(port: chrome.runtime.Port): SenderInfo | null {
   const sd = port.sender; if (!sd || sd.id !== browser.runtime.id || !sd.tab || typeof sd.tab.id !== 'number' || typeof sd.frameId !== 'number') return null;

@@ -4,7 +4,7 @@ import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
 import { fetchNativePrices, fetchTrending, fetchHot, fetchTrendingNetworks } from '../../core/priceService';
 import { solanaRpcUrl } from '../../core/rpc';
 import { CHART_RANGES, fetchChart, fetchInfo, type ChartRange } from '../../core/marketData';
-import { fetchHistory } from '../../core/txHistory';
+import { fetchActivity } from '../../core/activity/index';
 import { rateStore } from '../settingsService';
 import { getRate, CURRENCY_CODES } from '../../core/fiat';
 import { customNetworks } from '../../core/networkRegistry';
@@ -76,8 +76,8 @@ export const handlers: HandlerMap = {
  {
       // public address + asset id only; validated so it cannot steer the explorer URL
       const id = String(msg.assetId ?? ''); const addr = String(msg.address ?? '');
-      if (!/^[a-z0-9_]{3,40}$/.test(id) || !/^[A-Za-z0-9._-]{10,120}$/.test(addr)) return { ok: false, error: 'No address for this network.' };
-      const r = await fetchHistory(id, addr, { solanaRpc: solanaRpcUrl() }); return r.ok ? { ok: true, items: r.items } : r;
+      if (!/^[a-z0-9_-]{3,40}$/.test(id) || !/^[A-Za-z0-9._-]{10,120}$/.test(addr)) return { ok: false, error: 'No address for this network.' };
+      const r = await fetchActivity(id, addr, { solanaRpc: solanaRpcUrl() }); return r.ok ? { ok: true, items: r.items } : r;
     }
   },
   getFiatRate: async (msg, ctx) => {

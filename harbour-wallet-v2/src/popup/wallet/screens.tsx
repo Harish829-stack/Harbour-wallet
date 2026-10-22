@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs } from './ui';
 import { SWAP_SCREENS } from './swap/screens';
@@ -13,7 +13,8 @@ import { networkByChainId } from '../../core/customTokens';
 import { useChart, PriceChart, useHistory, HistoryList, HistoryRow, useInfo, AboutPanel } from './tokenData';
 import { CHART_RANGES, type ChartRange } from '../../core/marketData';
 import type { HistoryItem } from '../../core/txHistory';
-import { historySupported } from '../../core/txHistory';
+import { activitySupported } from '../../core/activity/index';
+import { mergeActivity, activityNetworks, orderChains } from '../../core/activityFeed';
 import { chainById } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
@@ -103,36 +104,83 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
 const TokenHistory: React.FC<{ c: Ctx; assetId: string; address: string; color?: string }> = ({ c, assetId, address, color }) => <HistoryList s={useHistory(c.bg, assetId, address)} color={color} />;
 const TokenAbout: React.FC<{ c: Ctx; assetId: string; sym: string; name: string }> = ({ c, assetId, sym, name }) => <AboutPanel s={useInfo(c.bg, assetId, true)} sym={sym} name={name} />;
 
-// ---------- Activity (real: aggregated native-asset history across the active account's networks) ----------
-// Every visible network whose public history source is wired (core/txHistory.historySupported), fetched with bounded concurrency.
-const ACTIVITY_MAX_CHAINS = 30;
+// ---------- Activity (real: history of every network the active account holds, with a per-network filter) ----------
+// Every visible network whose public history source is wired (core/txHistory.historySupported) is fetched with bounded concurrency and
+// streamed into one feed. Networks are queried in priority order (the filtered network, then funded ones) so a cap can never starve them.
+const ACTIVITY_MAX_CHAINS = 150;      // upper bound on networks queried per open (registry + testnets is well below this today)
+const ACTIVITY_CONCURRENCY = 8;
+const ACTIVITY_ALL_LIMIT = 100;       // rows shown in the "All networks" feed; a single network shows everything it returned
+type ChainResult = { items: HistoryItem[]; failed: boolean };
+const names = (list: string[]) => list.length <= 3 ? list.join(', ').replace(/, ([^,]*)$/, list.length > 1 ? ' and $1' : ', $1') : `${list.slice(0, 3).join(', ')} and ${list.length - 3} more`;
 export const ActivityScreen: React.FC<Ctx> = (c) => {
-  const [state, setState] = useState<{ items: HistoryItem[] | null; failed: string[] }>({ items: null, failed: [] });
-  const [nonce, setNonce] = useState(0);
+  const cRef = useRef(c); cRef.current = c;
+  const hidden = c.hiddenAssets ?? [];
+  const tokenItems = useTokenItems().items;
+  // A network is in scope when it is not hidden, or when one of its tokens is still shown (hiding a coin must not hide that token's transfers).
+  const visibleTokenNets = new Set(tokenItems.filter((i) => !hidden.includes(i.token.id)).map((i) => i.token.networkId));
+  const funded = new Set(allAssets().filter((a) => { const b = c.balances?.[a.id]; return b?.ok !== false && Number(b?.formatted) > 0; }).map((a) => a.id));
+  const eligible = allAssets().filter((a) => a.native && (!hidden.includes(a.id) || visibleTokenNets.has(a.id)) && activitySupported(a.id) && !!assetAddr(c, a)).map((a) => a.id);
+  const ids = orderChains(eligible, c.networkFilter, funded).slice(0, ACTIVITY_MAX_CHAINS);
+  const scope = [...ids].sort().map((id) => `${id}@${assetAddr(c, assetOf(id)!)}`).join('|');   // account / visibility / network set only; fetch ORDER (balances, filter) must not retrigger a reload
+  const idsRef = useRef(ids); idsRef.current = ids;
+
+  const [results, setResults] = useState<Record<string, ChainResult>>({});
+  const [remaining, setRemaining] = useState(ids.length);
+  const gen = useRef(0);
+  const [picked, setPicked] = useState<string | null>(c.networkFilter && ids.includes(c.networkFilter) ? c.networkFilter : null);
+
+  // Fetches `targets` with a small worker pool; a result is applied only if the scope has not changed since it was requested.
+  const load = (targets: string[], g: number) => {
+    let next = 0;
+    const worker = async () => { while (next < targets.length) {
+      const id = targets[next++]; const cur = cRef.current; const a = assetOf(id); const address = a ? assetAddr(cur, a) : '';
+      let res: ChainResult;
+      try { const r = address ? await cur.bg({ type: 'txHistory', assetId: id, address }) : null; res = r?.ok ? { items: r.items as HistoryItem[], failed: false } : { items: [], failed: true }; }
+      catch { res = { items: [], failed: true }; }
+      if (gen.current !== g) return;
+      setResults((p) => ({ ...p, [id]: res })); setRemaining((n) => Math.max(0, n - 1));
+    } };
+    void Promise.all(Array.from({ length: Math.min(ACTIVITY_CONCURRENCY, targets.length) }, worker));
+  };
   useEffect(() => {
-    let dead = false; setState({ items: null, failed: [] });
-    const ids = ASSETS.map((a) => a.id).filter((id) => !(c.hiddenAssets ?? []).includes(id) && historySupported(id) && !!assetAddr(c, assetOf(id)!)).slice(0, ACTIVITY_MAX_CHAINS);
-    const results: Array<{ id: string; items: HistoryItem[]; failed?: boolean }> = []; let next = 0;
-    const one = async () => { while (next < ids.length) {
-      const id = ids[next++]; const a = assetOf(id)!; const address = assetAddr(c, a);
-      try { const r = await c.bg({ type: 'txHistory', assetId: id, address }); results.push(r?.ok ? { id, items: r.items as HistoryItem[] } : { id, items: [], failed: true }); }
-      catch { results.push({ id, items: [], failed: true }); } } };
-    Promise.all(Array.from({ length: Math.min(6, ids.length) }, one)).then(() => {
-      if (dead) return; const rs = results;
-      const seen = new Set<string>(); const items: HistoryItem[] = [];
-      for (const r of rs) for (const x of r.items) { const k = `${x.assetId}:${x.id}`; if (!seen.has(k)) { seen.add(k); items.push(x); } }
-      items.sort((x, y) => y.timestamp - x.timestamp);
-      setState({ items: items.slice(0, 100), failed: rs.filter((r: any) => r.failed).map((r) => assetOf(r.id)!.name) });
-    });
-    return () => { dead = true; };
-  }, [nonce]); // eslint-disable-line react-hooks/exhaustive-deps
-  const colorOf = (id: string) => assetOf(id)?.color;
+    const g = ++gen.current; setResults({}); setRemaining(idsRef.current.length); load(idsRef.current, g);
+    return () => { gen.current++; }; // eslint-disable-line react-hooks/exhaustive-deps -- gen is a request counter, not a DOM ref
+  }, [scope]);
+  const failedIds = ids.filter((id) => results[id]?.failed);
+  const retry = (only?: string[]) => {
+    const targets = (only ?? failedIds).filter((id) => results[id]?.failed); if (!targets.length) return;
+    setResults((p) => { const n = { ...p }; for (const id of targets) delete n[id]; return n; }); setRemaining((n) => n + targets.length); load(targets, gen.current);
+  };
+
+  const feed = useMemo(() => mergeActivity(ids.map((id) => results[id]?.items ?? [])), [results, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loading = remaining > 0;
+  const sel = picked && ids.includes(picked) ? picked : null;                 // a stale pick (account / visibility change) falls back to All
+  const nameOf = (id: string) => assetOf(id)?.name ?? id;
+  const chips = activityNetworks(feed).map((n) => n.assetId); if (sel && !chips.includes(sel)) chips.push(sel);
+  const rows = sel ? feed.filter((x) => x.assetId === sel) : feed.slice(0, ACTIVITY_ALL_LIMIT);
+  const truncated = !sel && feed.length > ACTIVITY_ALL_LIMIT;
+  const selFailed = !!sel && !!results[sel]?.failed;
+  const pill = (on: boolean): React.CSSProperties => ({ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${on ? T.accent : T.border}`, background: on ? T.accentSoft : 'transparent', color: on ? T.accent : T.text, borderRadius: 999, padding: '6px 12px 6px 8px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' });
+  const banner = (msg: React.ReactNode, onRetry: () => void) => <div role="status" style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, marginBottom: 6 }}>{msg} <button type="button" onClick={onRetry} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Retry</button></div>;
+  const skeleton = [0, 1, 2, 3].map((i) => <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', alignItems: 'center' }}><Skeleton w={40} h={40} r={999} /><div style={{ flex: 1 }}><Skeleton w={120} h={12} /><div style={{ height: 6 }} /><Skeleton w={80} h={10} /></div></div>);
+
   return <Screen title="Activity" onBack={c.nav.pop}>
-    {state.items == null ? [0, 1, 2, 3].map((i) => <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', alignItems: 'center' }}><Skeleton w={40} h={40} r={999} /><div style={{ flex: 1 }}><Skeleton w={120} h={12} /><div style={{ height: 6 }} /><Skeleton w={80} h={10} /></div></div>)
-      : <>
-        {state.failed.length > 0 && <div style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, marginBottom: 6 }}>Couldn't load history for {state.failed.join(', ')}. <button type="button" onClick={() => setNonce((n) => n + 1)} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Retry</button></div>}
-        {state.items.length === 0 ? <Empty title="No transactions yet" sub="Your activity will appear here." icon="history" /> : state.items.map((x) => <HistoryRow key={`${x.assetId}:${x.id}`} x={x} color={colorOf(x.assetId)} />)}
-      </>}
+    {chips.length > 0 && <div role="tablist" aria-label="Filter by network" className="scrollbar-hide" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10 }}>
+      <button type="button" role="tab" aria-selected={!sel} onClick={() => setPicked(null)} style={{ ...pill(!sel), padding: '6px 14px' }}>All networks</button>
+      {chips.map((id) => <button key={id} type="button" role="tab" aria-selected={sel === id} onClick={() => setPicked(id)} style={pill(sel === id)}><Coin sym={assetOf(id)?.sym ?? ''} assetId={id} size={22} color={assetOf(id)?.color} />{nameOf(id)}</button>)}
+    </div>}
+    {loading && ids.length > 1 && rows.length > 0 && <div style={{ color: T.sub, fontSize: 12, padding: '0 2px 6px' }}>Loading {remaining} more network{remaining === 1 ? '' : 's'}…</div>}
+    {!loading && !sel && failedIds.length > 0 && banner(<>Couldn't load history for {names(failedIds.map(nameOf))}.</>, () => retry())}
+    {rows.length > 0 ? <>
+      {selFailed && !loading && banner(<>Couldn't load all history for {nameOf(sel!)}.</>, () => retry([sel!]))}
+      {rows.map((x) => <HistoryRow key={`${x.assetId}:${x.id}`} x={x} color={assetOf(x.assetId)?.color} network={sel ? undefined : nameOf(x.assetId)} />)}
+      {truncated && <div style={{ color: T.sub, fontSize: 12.5, textAlign: 'center', padding: '14px 8px' }}>Showing the latest {ACTIVITY_ALL_LIMIT} transactions. Pick a network to see more.</div>}
+    </>
+      : loading && (!sel || !results[sel]) ? skeleton
+      : selFailed ? <div style={{ textAlign: 'center', padding: '28px 12px', color: T.sub, fontSize: 14 }}>Couldn't load history for {nameOf(sel!)} right now.<div><button type="button" className="hb-tap" onClick={() => retry([sel!])} style={{ marginTop: 12, border: `1px solid ${T.border}`, background: T.surface, borderRadius: 999, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', color: T.text }}>Retry</button></div></div>
+      : ids.length > 0 && failedIds.length === ids.length ? <div style={{ textAlign: 'center', padding: '28px 12px', color: T.sub, fontSize: 14 }}>Couldn't load your activity right now.<div><button type="button" className="hb-tap" onClick={() => retry()} style={{ marginTop: 12, border: `1px solid ${T.border}`, background: T.surface, borderRadius: 999, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', color: T.text }}>Retry</button></div></div>
+      : sel ? <Empty title={`No transactions on ${nameOf(sel)}`} sub="Activity on this network will appear here." icon="history" />
+      : <Empty title="No transactions yet" sub="Your activity will appear here." icon="history" />}
   </Screen>;
 };
 

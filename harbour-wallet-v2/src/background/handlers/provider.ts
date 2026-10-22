@@ -2,7 +2,7 @@
 // Website-originated requests never reach this file: they arrive on the `harbour-provider` port and are handled by background/provider/service.ts.
 import { formatUnits } from 'viem';
 import type { HandlerMap } from './types';
-import { disconnectOrigin, getProvider, pending, perms, rpc, viewDeps, wrapSigner } from '../provider/index';
+import { announceChain, disconnectOrigin, getProvider, pending, perms, rpc, viewDeps, wrapSigner } from '../provider/index';
 import { buildView } from '../provider/view';
 import { evmNetwork } from '../provider/networks';
 import { normalizeOrigin, displayHost } from '../../core/provider/origin';
@@ -67,7 +67,8 @@ export const handlers: HandlerMap = {
     const c = await perms.getById(String(m.id ?? '')); if (!c) return bad('NOT_FOUND');
     let activeAccount: number | null = null, activeWalletId: string | null = null;
     try { const st: any = await ctx.vault.getState(); activeWalletId = st.activeWalletId ?? null; const w = st.wallets?.[st.activeWalletId]; activeAccount = typeof w?.activeAccount === 'number' ? w.activeAccount : 0; } catch { /* locked */ }
-    return { ok: true, item: conView(c), isActiveAccount: activeWalletId === c.walletId && activeAccount === c.accountIndex, canUseAccount: activeAccount !== null && activeWalletId === c.walletId };
+    const networks = viewDeps().networks.list().map((n) => ({ chainId: n.chainId, name: n.name, testnet: n.testnet }));
+    return { ok: true, networks, item: conView(c), isActiveAccount: activeWalletId === c.walletId && activeAccount === c.accountIndex, canUseAccount: activeAccount !== null && activeWalletId === c.walletId };
   },
   // Home header: the connection (if any) of the site in the active browser tab, TW-style "connected dApp" indicator.
   async providerCurrentSite() {
@@ -78,6 +79,14 @@ export const handlers: HandlerMap = {
       const net = viewDeps().networks.get(c.chainId);
       return { ok: true, item: { ...conView(c), chainId: c.chainId, networkName: net?.name ?? `Chain ${c.chainId}`, tabId: tabs[0]?.id ?? null } };
     } catch { return { ok: true, item: null }; }
+  },
+  // Connection details: move a site to another network (injected pages get chainChanged; WalletConnect sessions get updateSession + chainChanged).
+  async providerSetChain(m) {
+    const c = await perms.getById(String(m.id ?? '')); if (!c) return bad('NOT_FOUND');
+    const chainId = Number(m.chainId); if (!Number.isSafeInteger(chainId) || !evmNetwork(chainId)) return bad('This network is not available in Harbour.');
+    if (!c.namespaces.includes('evm')) return bad('This site is not connected with an Ethereum account.');
+    if (c.chainId !== chainId) await perms.update(c.origin, { chainId });
+    announceChain(c.origin, chainId); return { ok: true };
   },
   async providerDisconnect(m) { const c = await perms.getById(String(m.id ?? '')); if (!c) return bad('NOT_FOUND'); await disconnectOrigin(c.origin); return { ok: true }; },
   async providerDisconnectAll() { const all = await perms.all(); for (const c of all) await disconnectOrigin(c.origin); return { ok: true, count: all.length }; },

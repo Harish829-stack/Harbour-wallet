@@ -2,9 +2,11 @@
 // Order for a chain: user override, VITE_RPC_<chainId> (comma-separated list allowed), the keyed gateway, then the public providers in the config file.
 // RE note (§7): Trust Wallet routes RPC through its own NaaS gateway; Harbour uses the gateway plus direct public RPC with automatic failover (kit/failoverFetch.ts).
 import endpoints from '../config/rpcEndpoints.json';
+import { chainByEvmId } from './chains/index';
 const CONFIG_EVM = endpoints.evm as Record<string, string[]>;
 /** Public fallback RPC URLs from the config file for an EVM chain (empty when the chain is not configured). */
-export const configRpcs = (chainId: number): string[] => CONFIG_EVM[String(chainId)] ?? [];
+// Falls back to the chain registry's own public RPCs (testnets such as Base Sepolia have no entry in the config file).
+export const configRpcs = (chainId: number): string[] => CONFIG_EVM[String(chainId)] ?? chainByEvmId(chainId)?.rpcs ?? [];
 const envList = (v: unknown): string[] => (typeof v === 'string' ? v.split(',').map((x) => x.trim()).filter((x) => /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1))/.test(x)) : []);
 
 import { rpcOverride } from './networkRegistry';

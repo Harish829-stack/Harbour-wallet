@@ -278,7 +278,7 @@ test('wallet_requestPermissions / getPermissions / revokePermissions (EIP-2255 s
 test('read RPC is proxied to the origin chain; params must be an array', async () => {
   const ctx = setup(); const s = sender();
   assert.deepEqual((await ctx.svc.handle(s, req('eth_blockNumber'))).outcome, { result: '0x10' }); assert.equal(ctx.log.rpc[0][0], 1);
-  await connect(ctx, s); await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }])); await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
+  await connect(ctx, s); await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }]));
   await ctx.svc.handle(s, req('eth_blockNumber')); assert.equal(ctx.log.rpc.at(-1)[0], 137);
   assert.equal((await ctx.svc.handle(s, req('eth_call', { to: ADDR0 }))).outcome.error.code, -32602);
 });
@@ -303,12 +303,19 @@ test('personal_sign / eth_sign / typed data require a connection, the connected 
   await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x' + 'ee'.repeat(32)])); p = await pendingOf(ctx); await ctx.svc.resolve(p.id, { approve: true }); assert.equal(ctx.log.signed.at(-1)[3], 'rawHash');
   await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(MAIL)])); p = await pendingOf(ctx); assert.equal(p.kind, 'typed'); await ctx.svc.resolve(p.id, { approve: true }); assert.equal(ctx.log.delivered.at(-1).outcome.result, '0xtyped');
 });
-test('typed data / tx with a different chainId than the connected chain are refused (-32602)', async () => {
-  const ctx = setup(); const s = sender(); await connect(ctx, s);
+test('typed data / tx naming another known chain switch a connected site there first; unknown chains are refused (-32602)', async () => {
+  const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.events.length = 0;
   const td = { ...MAIL, domain: { ...MAIL.domain, chainId: 137 } };
-  assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(td)]))).outcome.error.code, -32602);
-  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x89' }]))).outcome.error.code, -32602);
-  assert.equal((await ctx.pending.list()).length, 0);
+  assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(td)]))).done, false);
+  assert.equal((await ctx.perms.get(s.origin)).chainId, 137); assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
+  assert.equal((await pendingOf(ctx)).kind, 'typed');
+  const c2 = setup(); await connect(c2, s);
+  assert.equal((await c2.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x89' }]))).done, false);
+  assert.equal((await c2.perms.get(s.origin)).chainId, 137); assert.equal((await pendingOf(c2)).kind, 'tx');
+  const c3 = setup(); await connect(c3, s);
+  assert.equal((await c3.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify({ ...MAIL, domain: { ...MAIL.domain, chainId: 56 } })]))).outcome.error.code, -32602);
+  assert.equal((await c3.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x38' }]))).outcome.error.code, -32602);
+  assert.equal((await c3.pending.list()).length, 0); assert.equal((await c3.perms.get(s.origin)).chainId, 1);
 });
 test('eth_sendTransaction: approval signs/broadcasts with the connected account and tracks approve() calls', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.delivered.length = 0;
@@ -328,13 +335,17 @@ test('a signing failure reaches the dApp as a -32603 error without leaking inter
 });
 
 // ------------------------------------------------------------------ service: chains, assets
-test('wallet_switchEthereumChain: 4902 for unknown chains, null for the current one, event + null after approval', async () => {
+test('wallet_switchEthereumChain: 4902 for unknown chains; a connected site switches silently (no approval), an unconnected one gets 4100', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.events.length = 0;
   assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x38' }]))).outcome.error.code, 4902);
   assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome, { result: null });
-  await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }])); await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
-  assert.equal(ctx.log.delivered.at(-1).outcome.result, null); assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
+  assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x1']);   // current chain is re-announced, like Trust Wallet
+  ctx.log.events.length = 0;
+  assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }]))).outcome, { result: null });
+  assert.equal(await pendingOf(ctx), undefined);
+  assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
   assert.equal((await ctx.perms.get(s.origin)).chainId, 137);
+  const c2 = setup(); const un = await c2.svc.handle(sender('https://new.example'), req('wallet_switchEthereumChain', [{ chainId: '0x89' }])); assert.equal(un.outcome.error.code, 4100);
 });
 test('wallet_addEthereumChain: validates, checks the RPC chain id, saves, then switches', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s);
@@ -349,8 +360,8 @@ test('wallet_addEthereumChain: validates, checks the RPC chain id, saves, then s
   assert.deepEqual((await ctx3.svc.handle(s, req('wallet_addEthereumChain', chain({ chainId: '0x89' })))).outcome, { result: null });
   assert.equal(await pendingOf(ctx3), undefined);
   assert.equal(ctx3.log.saved.length, 0);
-  assert.equal((await ctx3.perms.get(s.origin)).chainId, 1);
-  assert.equal(ctx3.log.events.length, 0);
+  assert.equal((await ctx3.perms.get(s.origin)).chainId, 137);   // a chain the wallet already has is a switch (Trust Wallet WalletAddEthereumChain)
+  assert.deepEqual(ctx3.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
 });
 test('ChainList repeat add uses the saved chain ID, never its new label or RPC', async () => {
   const saved = { chainId: 84532, id: 'custom-84532', name: 'Crynux on Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['https://saved.example/rpc'], testnet: true, custom: true };
@@ -362,22 +373,21 @@ test('ChainList repeat add uses the saved chain ID, never its new label or RPC',
   assert.equal(await pendingOf(ctx), undefined);
   assert.equal(ctx.log.opened, 1, 'only the initial connect approval opened');
   assert.deepEqual(ctx.log.saved, []);
-  assert.equal((await ctx.perms.get(s.origin)).chainId, 1);
-  assert.deepEqual(ctx.log.events, []);
+  assert.equal((await ctx.perms.get(s.origin)).chainId, 84532);
+  assert.deepEqual(ctx.log.events, [[s.origin, 'evm', 'chainChanged', '0x14a34'], [s.origin, 'evm', 'networkChanged', '84532']]);
   assert.equal(saved.rpcs[0], 'https://saved.example/rpc');
   const sw = await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]));
-  assert.equal(sw.done, false);
-  await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
+  assert.equal(sw.done, true);
   assert.equal((await ctx.perms.get(s.origin)).chainId, 84532);
 });
 test('a pending add cannot overwrite a network added in Settings before approval', async () => {
   let added;
   const ctx = setup({ networks: { list: () => [...NETS, ...(added ? [added] : [])], get: (id) => [...NETS, ...(added ? [added] : [])].find((n) => n.chainId === id) } });
   const s = sender(); await connect(ctx, s);
-  const r = await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x14a34', chainName: 'Base Sepolia Testnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://site.example/rpc'] }]));
+  const r = await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x1092', chainName: 'Test Chain Testnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://site.example/rpc'] }]));
   assert.equal(r.done, false);
   const p = await pendingOf(ctx);
-  added = { chainId: 84532, id: 'custom-84532', name: 'My saved Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['https://saved.example/rpc'], testnet: true, custom: true };
+  added = { chainId: 4242, id: 'custom-4242', name: 'My saved Test Chain', symbol: 'ETH', decimals: 18, rpcs: ['https://saved.example/rpc'], testnet: true, custom: true };
   await ctx.svc.resolve(p.id, { approve: true });
   assert.deepEqual(ctx.log.saved, []);
   assert.equal((await ctx.perms.get(s.origin)).chainId, 1);

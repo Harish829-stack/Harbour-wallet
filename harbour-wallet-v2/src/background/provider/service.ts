@@ -108,7 +108,7 @@ export class ProviderService {
     const conn = await this.d.perms.get(s.origin);
     const evmConn = conn && conn.namespaces.includes('evm') && conn.evmAddress ? conn : undefined;
     const solConn = conn && conn.namespaces.includes('solana') && conn.solanaAddress ? conn : undefined;
-    const chainId = conn?.chainId ?? DEFAULT_CHAIN;
+    let chainId = conn?.chainId ?? DEFAULT_CHAIN;
     void this.d.perms.touch(s.origin).catch(() => {});
 
     if (req.ns === 'evm') {
@@ -139,18 +139,20 @@ export class ProviderService {
           const n = normalizeTypedData(req.method, req.params, me);
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           const dc = (n.typedData.domain as any)?.chainId;
-          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.');
+          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = Number(dc); }
           return this.queue(s, req, 'typed', n, evmConn);
         }
         case 'tx': {
           const tx = normalizeSendTx(req.params, me);
-          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.');
+          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
           return this.queue(s, req, 'tx', { tx, chainId }, evmConn);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
           if (!this.d.networks.get(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
+          // Trust Wallet (SwitchNetwork handler): a connected site is switched silently; only an unconnected site is prompted.
+          if (evmConn) { await this.applyChain(s.origin, target, target === chainId); return ok(null); }
           if (target === chainId) return ok(null);
           return this.queue(s, req, 'switchChain', { chainId: target }, evmConn);
         }
@@ -160,7 +162,8 @@ export class ProviderService {
           // must call wallet_switchEthereumChain for that).
           const candidate = Array.isArray(req.params) ? req.params[0] : null;
           const requestedId = parseChainIdHex(candidate?.chainId);
-          if (this.d.networks.get(requestedId)) return ok(null);
+          // Trust Wallet (WalletAddEthereumChain): a chain the wallet already has is handled as wallet_switchEthereumChain.
+          if (this.d.networks.get(requestedId)) { if (evmConn && requestedId != null) await this.applyChain(s.origin, requestedId, requestedId === chainId); return ok(null); }
           const a = normalizeAddChain(req.params);
           const rpcUrl = a.rpcUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
           if (!rpcUrl || !rpcUrl.ok) throw new ProviderError(ERR.INVALID_PARAMS, 'rpcUrls must contain at least one https:// URL.');
@@ -270,6 +273,18 @@ export class ProviderService {
   }
 
   /** A WalletConnect session proposal enters the same approval queue as an injected connect request. */
+  /** Make `chainId` the connection's network and tell the site (EIP-1193 chainChanged + legacy networkChanged). `quiet` re-announces without a write. */
+  private async applyChain(origin: string, chainId: number, same = false): Promise<void> {
+    if (!same) await this.d.perms.update(origin, { chainId });
+    this.d.emit(origin, 'evm', 'chainChanged', hex(chainId)); this.d.emit(origin, 'evm', 'networkChanged', String(chainId));
+  }
+  /** Trust Wallet `autoSwitchDappChain`: a connected site whose request names another known chain switches the wallet there first. */
+  private async autoSwitch(origin: string, conn: Connection | undefined, raw: unknown): Promise<boolean> {
+    if (!conn) return false;
+    let target: number; try { target = typeof raw === 'string' && /^0x/i.test(raw) ? Number(BigInt(raw)) : Number(raw); } catch { return false; }
+    if (!Number.isSafeInteger(target) || target <= 0 || !this.d.networks.get(target)) return false;
+    await this.applyChain(origin, target); return true;
+  }
   async queueWcSession(s: SenderInfo, proposalId: number, params: Record<string, unknown>): Promise<void> {
     const req: PageRequest = { id: `proposal:${proposalId}`, ns: 'evm', method: 'wc_sessionProposal', params: [] };
     await this.queue(s, req, 'wcSession', { proposalId, ...params });
@@ -419,7 +434,7 @@ export class ProviderService {
       }
       case 'switchChain': {
         const { chainId } = p.params as { chainId: number }; if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
-        await this.needConn(p, 'evm'); await perms.update(p.origin, { chainId }); this.d.emit(p.origin, 'evm', 'chainChanged', hex(chainId)); this.d.emit(p.origin, 'evm', 'networkChanged', String(chainId)); return null;
+        await this.needConn(p, 'evm'); await this.applyChain(p.origin, chainId); return null;
       }
       case 'addChain': {
         const { chainId, known, network } = p.params as { chainId: number; known: boolean; network?: { name: string; rpcUrl: string; symbol: string; explorerUrl: string } };

@@ -3,7 +3,7 @@
 import type { HandlerMap } from './types';
 import { chainById, ALL_CHAINS, TESTNET_CHAINS } from '../../core/chains/index';
 import { addressFor, fetchNativeBalance, BALANCE_ADAPTERS } from '../../core/chains/adapters';
-import { fetchHistory, historySupportedFor, historyUnsupportedReason } from '../../core/txHistory';
+import { activitySupported, activityUnsupportedReason, fetchActivity } from '../../core/activity/index';
 import { fetchGasQuote } from '../../core/gasFees';
 import { fetchNativePrices } from '../../core/priceService';
 import { probeChainToken, chainTokenBalance, validTokenAddress, TOKEN_CHAINS, type TokenStandard } from '../../core/chains/adapters/tokens';
@@ -25,7 +25,7 @@ export const handlers: HandlerMap = {
   /** Per-chain capability table so the UI can say "unavailable" explicitly instead of showing a fake zero. */
   chainDataCapabilities: () => ({
     ok: true,
-    chains: Object.fromEntries([...ALL_CHAINS, ...TESTNET_CHAINS].map((c) => [c.id, { balance: !!BALANCE_ADAPTERS[c.kind], history: historySupportedFor(c), historyReason: historySupportedFor(c) ? undefined : historyUnsupportedReason(c), tokens: c.kind === 'evm' || !!TOKEN_CHAINS[c.id], gas: c.kind === 'evm' }])),
+    chains: Object.fromEntries([...ALL_CHAINS, ...TESTNET_CHAINS].map((c) => [c.id, { balance: !!BALANCE_ADAPTERS[c.kind], history: activitySupported(c.id), historyReason: activitySupported(c.id) ? undefined : activityUnsupportedReason, tokens: c.kind === 'evm' || !!TOKEN_CHAINS[c.id], gas: c.kind === 'evm' }])),
   }),
   chainDataBalance: async (msg, ctx) => {
     const chain = chainById(String(msg.chainId ?? '')); if (!chain) return { ok: false, error: 'Unknown network' };
@@ -35,7 +35,7 @@ export const handlers: HandlerMap = {
   chainDataHistory: async (msg, ctx) => {
     const chain = chainById(String(msg.chainId ?? '')); if (!chain) return { ok: false, error: 'Unknown network' };
     const address = addressFor(chain, await activeAddresses(ctx, msg.addresses)); if (!address) return { ok: false, error: 'No address for this network.' };
-    return fetchHistory(chain, address);
+    return fetchActivity(chain, address);
   },
   chainDataGas: async (msg) => {
     const chain = chainById(String(msg.chainId ?? '')); if (!chain) return { ok: false, error: 'Unknown network' };

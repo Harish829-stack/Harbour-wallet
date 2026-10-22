@@ -25,8 +25,10 @@ import { handlers as sendEvents } from './modules/send';
 import { handlers as settingsCoreEvents } from './modules/settingsCore';
 import { allExtraHandlers } from './handlers';
 import { ACTIVITY_ALARM, pollActivity, syncRemotePush, wireNotifications } from './notify';
+import { ACTIVITY_PENDING_ALARM, startActivityRecording, reconcilePendingActivity } from './activityRuntime';
 import { initProviderBackground, initWalletConnectBackground } from './provider/index'; // dApp provider (content-script ports, approval window, inpage registration)
 
+startActivityRecording(); // record every EVM transaction this wallet broadcasts (pending row now, settled from the receipt later)
 const CONFIG_ALARM = 'harbour:remote-config';
 const ONBOARDING_URL = 'src/popup/index.html#/onboarding'; // RE §3.0: full-page onboarding
 
@@ -38,6 +40,7 @@ browser.alarms.create(CONFIG_ALARM, { periodInMinutes: 360 });
 browser.alarms.onAlarm.addListener(async (a) => {
   if (a.name === CONFIG_ALARM) { void applyRemoteConfig(); void syncRemotePush(vaultState); return; }
   if (a.name === ACTIVITY_ALARM) { void pollActivity(vaultState); return; }
+  if (a.name === ACTIVITY_PENDING_ALARM) { void reconcilePendingActivity(); return; }
   if (a.name !== LOCK_ALARM) return;
   try { await new VaultService(await getCore()).lock(); } catch { /* already locked */ }
   store.dispatch(actions.wallet.patch({ unlocked: false }));

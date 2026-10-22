@@ -12,7 +12,7 @@ import { chainById, explorerTxUrl } from './chains/index';
 import { NON_EVM_HISTORY, HISTORY_UNSUPPORTED_REASON } from './chains/adapters/history';
 import { firstOf } from './chains/adapters/types';
 import { GATEWAY_URL } from '../kit/endpoints';
-export type TxKind = 'send' | 'receive' | 'self' | 'contract';
+export type TxKind = 'send' | 'receive' | 'self' | 'contract' | 'approve' | 'revoke' | 'swap';
 export interface HistoryItem {
   id: string; assetId: string; kind: TxKind; status: 'confirmed' | 'failed' | 'pending';
   timestamp: number;            // ms epoch (0 if unknown)
@@ -22,6 +22,14 @@ export interface HistoryItem {
   token?: { symbol: string; address?: string; decimals?: number };
   /** Fiat value at transaction time, ONLY when the explorer reports it (never today's price). */
   usd?: number;
+  // ---- set by the activity engine (core/activity); explorer rows leave them undefined ----
+  /** Transaction hash (row ids can carry a log suffix); falls back to `id` up to the first ':'. */
+  hash?: string; block?: number; fee?: string; tokenId?: string;
+  /** approve / revoke: the spender and whether the allowance is effectively unlimited. */
+  spender?: string; unlimited?: boolean;
+  /** swap: what left and what arrived (amounts in human units). */
+  swap?: { sent: { symbol: string; amount: string; address?: string }; received: { symbol: string; amount: string; address?: string } };
+  source?: 'local' | 'logs' | 'explorer';
 }
 
 export const EXPLORER_TX: Record<string, string> = {
@@ -163,8 +171,18 @@ const BLOCKSCOUT_MORE: Record<string, string> = {
   blast: 'https://blast.blockscout.com', celo: 'https://celo.blockscout.com',
 };
 const ROUTESCAN_MORE: Record<string, number> = { avalanchec: 43114 };
-const blockscoutHost = (id: string) => BLOCKSCOUT[id] ?? BLOCKSCOUT_MORE[id];
-const routescanId = (id: string) => ROUTESCAN_CHAIN[id] ?? ROUTESCAN_MORE[id];
+// Testnets: faucet mints / airdrops arrive as incoming ERC-20 transfers, so every testnet needs a source or its Activity stays empty.
+// Blockscout hosts follow each project's public naming; Routescan serves the Avalanche / BNB testnets under /network/testnet. Live-unverified.
+const BLOCKSCOUT_TESTNET: Record<string, string> = {
+  'base-sepolia': 'https://base-sepolia.blockscout.com', 'arbitrum-sepolia': 'https://arbitrum-sepolia.blockscout.com', 'optimism-sepolia': 'https://optimism-sepolia.blockscout.com',
+  'unichain-sepolia': 'https://unichain-sepolia.blockscout.com', 'scroll-sepolia': 'https://scroll-sepolia.blockscout.com', 'zksync-sepolia': 'https://zksync-sepolia.blockscout.com',
+  'gnosis-chiado': 'https://gnosis-chiado.blockscout.com', 'ink-sepolia': 'https://explorer-sepolia.inkonchain.com', 'mantle-sepolia': 'https://explorer.sepolia.mantle.xyz',
+  'worldchain-sepolia': 'https://worldchain-sepolia.explorer.alchemy.com', 'hoodi': 'https://eth-hoodi.blockscout.com', 'polygon-amoy': 'https://polygon-amoy.blockscout.com',
+};
+const ROUTESCAN_TESTNET: Record<string, number> = { 'avalanche-fuji': 43113, 'smartchain-testnet': 97 };
+const blockscoutHost = (id: string) => BLOCKSCOUT[id] ?? BLOCKSCOUT_MORE[id] ?? BLOCKSCOUT_TESTNET[id];
+const routescanId = (id: string) => ROUTESCAN_CHAIN[id] ?? ROUTESCAN_MORE[id] ?? ROUTESCAN_TESTNET[id];
+const routescanBase = (id: string) => `https://api.routescan.io/v2/network/${id in ROUTESCAN_TESTNET ? 'testnet' : 'mainnet'}/evm/${routescanId(id)}/etherscan/api`;
 const nativeSymbol = (id: string) => SYMBOL[id] ?? chainById(id)?.symbol ?? '';
 
 /** True when a keyless public history source is wired for this chain (EVM explorers, Esplora, or a non-EVM family adapter). */
@@ -207,11 +225,11 @@ async function evmHistory(chain: ChainInfo, address: string, f: F): Promise<Hist
     if (bs) { const b = await get(`${bs}/api/v2/addresses/${address}/transactions`, f); native = mapBlockscout(b, id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
       // Blockscout reports the exchange rate valid at the transaction's block when it has one; today's rate is never used.
       for (const t of Array.isArray(b?.items) ? b.items : []) { const r = Number(t?.historic_exchange_rate); const x = native.find((n) => n.id === t.hash); if (x && Number.isFinite(r) && r > 0 && Number(x.amount) > 0) x.usd = Number(x.amount) * r; } }
-    else if (rs) native = mapEtherscanLike(await get(`https://api.routescan.io/v2/network/mainnet/evm/${rs}/etherscan/api?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50`, f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
+    else if (rs) native = mapEtherscanLike(await get(`${routescanBase(id)}?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50`, f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
   } catch (e) { err = e; if (esFallback) { try { native = mapEtherscanLike(await get(esV2('txlist'), f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) })); err = undefined; } catch { /* keep first error */ } } } };
   const tok = async () => { try {
     if (bs) tokens = mapBlockscoutTokens(await get(`${bs}/api/v2/addresses/${address}/token-transfers?type=ERC-20`, f), id, address);
-    else if (rs) tokens = mapEtherscanTokens(await get(`https://api.routescan.io/v2/network/mainnet/evm/${rs}/etherscan/api?module=account&action=tokentx&address=${address}&sort=desc&page=1&offset=50`, f), id, address);
+    else if (rs) tokens = mapEtherscanTokens(await get(`${routescanBase(id)}?module=account&action=tokentx&address=${address}&sort=desc&page=1&offset=50`, f), id, address);
   } catch (e) { err ??= e; if (esFallback) { try { tokens = mapEtherscanTokens(await get(esV2('tokentx'), f), id, address); } catch { /* keep first error */ } } } };
   await Promise.all([nat(), tok()]);
   if (native === null && tokens === null) throw err ?? new Error('no source');

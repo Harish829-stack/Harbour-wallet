@@ -79,16 +79,26 @@ const when = (t: number) => {
 };
 const trim = (amt: string) => { const n = Number(amt); return !amt ? '' : n === 0 ? '0' : n < 0.0001 ? '<0.0001' : n.toLocaleString(undefined, { maximumFractionDigits: 6 }); };
 
-export const HistoryRow: React.FC<{ x: HistoryItem; color?: string }> = ({ x, color }) => {
-  const title = x.kind === 'send' ? 'Sent' : x.kind === 'receive' ? 'Received' : x.kind === 'self' ? 'Sent to self' : (x.method && x.method !== 'Transaction' ? x.method.replace(/([a-z])([A-Z])/g, '$1 $2') : 'Contract interaction');
-  const sign = x.kind === 'send' ? '-' : x.kind === 'receive' ? '+' : '';
-  const amt = trim(x.amount);
-  const icon = x.kind === 'send' ? 'send' : x.kind === 'receive' ? 'receive' : 'swap';
+export const HistoryRow: React.FC<{ x: HistoryItem; color?: string; network?: string }> = ({ x, color, network }) => {
+  const minted = x.kind === 'receive' && x.method === 'Mint';
+  const title = x.kind === 'send' ? 'Sent' : x.kind === 'receive' ? (minted ? 'Minted' : 'Received') : x.kind === 'self' ? 'Sent to self' : x.kind === 'approve' ? 'Approved' : x.kind === 'revoke' ? 'Revoked' : x.kind === 'swap' ? 'Swapped'
+    : (x.method && x.method !== 'Transaction' ? x.method.replace(/([a-z])([A-Z])/g, '$1 $2') : 'Contract interaction');
+  const sign = x.kind === 'send' ? '-' : x.kind === 'receive' || x.kind === 'swap' ? '+' : '';
+  const amt = x.kind === 'approve' && x.unlimited ? 'Unlimited' : trim(x.amount);
+  const icon = x.kind === 'send' ? 'send' : x.kind === 'receive' ? 'receive' : x.kind === 'approve' ? 'check' : x.kind === 'revoke' ? 'close' : 'swap';
+  const who = x.kind === 'swap' && x.swap ? `-${trim(x.swap.sent.amount)} ${x.swap.sent.symbol}`
+    : (x.kind === 'approve' || x.kind === 'revoke') ? (x.spender ? `Spender ${short(x.spender)}` : undefined)
+    : x.counterparty && !minted ? `${x.kind === 'receive' ? 'From' : 'To'} ${short(x.counterparty)}` : undefined;
+  const chip = x.status === 'failed' ? <span style={{ color: T.error, fontWeight: 600 }}>Failed</span> : x.status === 'pending' ? <span style={{ fontWeight: 600 }}>Pending</span> : null;
+  const detail = chip ? (who ? <>{chip} · {who}</> : chip) : who;
+  // In the all-networks feed the row also names its network, since the same address and symbol repeat across chains.
+  const sub = network ? (detail ? <>{detail} · {network}</> : network) : detail;
+  const good = (x.kind === 'receive' || x.kind === 'swap') && x.status !== 'failed';
   return (
     <Row onClick={x.url ? () => window.open(x.url, '_blank', 'noopener,noreferrer') : undefined}
       left={<div style={{ position: 'relative' }}><Coin sym={x.symbol} color={color} /><span style={{ position: 'absolute', right: -2, bottom: -2, width: 18, height: 18, borderRadius: 999, background: T.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.sub }}><Ic d={ICON[icon]} size={12} /></span></div>}
-      title={title} sub={x.status === 'failed' ? <span style={{ color: T.error }}>Failed</span> : x.counterparty ? `${x.kind === 'receive' ? 'From' : 'To'} ${short(x.counterparty)}` : x.status === 'pending' ? 'Pending' : undefined}
-      right={amt ? <span style={{ color: x.kind === 'receive' && x.status !== 'failed' ? T.success : T.text }}>{sign}{amt} {x.symbol}</span> : undefined} rightSub={when(x.timestamp)} />
+      title={title} sub={sub}
+      right={amt ? <span style={{ color: good ? T.success : T.text }}>{sign}{amt} {x.symbol}</span> : undefined} rightSub={when(x.timestamp)} />
   );
 };
 
