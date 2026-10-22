@@ -14,7 +14,6 @@ import { solanaRpcUrl } from '../../core/rpc';
 import { MAX_WALLETS, WALLET_LIMIT_ERROR, canCreateWallet, classifySecret, normalizeMnemonic, validatePrivateKey, hasDuplicateAddress, pickSolanaVariants, solanaHasHistory, evmFamily, validateWalletName, defaultWalletName, IMPORT_ERRORS, type SolanaVariant } from '../../core/importKey';
 import { onboardingMode } from '../../core/onboardingRules';
 import { decryptStoredKeys } from '../../core/qrImport';
-import { ensureAccounts } from '../walletState';
 
 const PENDING_TTL_MS = 10 * 60_000;
 type PendingMnemonic = { kind: 'mnemonic'; mnemonic: string; at: number };

@@ -13,7 +13,6 @@ interface State { settings: Settings; fiat: FiatCtx; sidePanelSupported: boolean
 
 let state: State = { settings: DEFAULT_SETTINGS(typeof navigator !== 'undefined' ? navigator.language : 'en'), fiat: { ...USD_CTX }, sidePanelSupported: false, loaded: false, rateStale: false };
 const listeners = new Set<() => void>();
-const emit = () => { state = { ...state }; listeners.forEach((l) => l()); };
 export const getSettingsState = () => state;
 export const subscribeSettings = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 export const useSettingsState = () => useSyncExternalStore(subscribeSettings, getSettingsState, getSettingsState);

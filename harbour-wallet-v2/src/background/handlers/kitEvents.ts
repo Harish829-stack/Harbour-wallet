@@ -2,7 +2,6 @@
 import type { HandlerMap } from './types';
 import { refreshConfig, EMPTY_CONFIG } from '../../kit/remoteConfig';
 import { checkToken, checkAddress, simulateCall } from '../../kit/clients/securityClient';
-import { isKilled } from '../../kit/failover';
 const getStore = () => import('../store'); // lazy: keeps the handler map importable outside the extension runtime
 import { rpcUrl } from '../../core/rpc';
 import { local } from '../../core/storage';
@@ -11,8 +10,6 @@ import { netStatus } from '../../kit/netStatus';
 export const CONFIG_ANNOUNCEMENTS_KEY = 'wallet:config:announcements';
 
 const isHexAddr = (a: unknown): a is string => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
-const flagOn = async (name: string) => (await getStore()).store.getState().sdkFeatureSlice.flags[name] === true;
-const off = { ok: false, error: 'FEATURE_DISABLED' };
 
 export async function applyRemoteConfig(): Promise<void> {
   const { store, actions } = await getStore();

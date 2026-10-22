@@ -145,11 +145,13 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
 const useLoad = (c: Ctx, type: string, extra: any = {}) => {
   const [data, setData] = useState<any>(null); const [error, setError] = useState('');
   const load = async () => { try { const r = await c.bg({ type, ...extra }); if (!r?.ok) throw new Error(r?.error || 'Could not load data.'); setData(r); } catch (e: any) { setError(e.message); } };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [type, extra.id]);
   return { data, error, setError, load };
 };
 export const ConnectionsScreen: React.FC<Ctx> = (c) => {
   const { data, error, setError, load } = useLoad(c, 'providerConnections'); const [busy, setBusy] = useState(false); const [confirm, setConfirm] = useState(false); const [prefs, setPrefs] = useState<any>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { c.bg({ type: 'providerPrefs' }).then((r) => { if (r.ok) setPrefs(r.prefs); }).catch(() => setError('Could not load default-wallet preference.')); }, []);
   const disconnectAll = async () => { setBusy(true); try { const r = await c.bg({ type: 'providerDisconnectAll' }); if (!r.ok) throw new Error(r.error); setConfirm(false); await load(); } catch (e: any) { setError(e.message); } finally { setBusy(false); } };
   return <Screen title="Connections" onBack={c.nav.pop}><Note>Sites can see the public addresses you connect. Disconnecting stops future requests; it does not revoke token allowances.</Note><Group><NavRow first icon="scan" label="WalletConnect" onClick={() => c.nav.push('walletConnect')}/></Group>{prefs && <Group><SwitchRow first icon="wallet" label="Use Harbour as default wallet" sub="Offer Harbour as the injected Ethereum provider on new page loads." on={prefs.defaultWallet} onToggle={() => { void c.bg({ type: 'providerPrefs', defaultWallet: !prefs.defaultWallet }).then((r) => { if (r.ok) setPrefs(r.prefs); else setError(r.error || 'Update failed.'); }).catch(() => setError('Update failed.')); }}/><SwitchRow icon="shield" label="Biometric approval for signatures" sub="Ask for biometrics before signing or sending anything a site requests. Needs biometrics set up." on={!!prefs.biometricApproval} onToggle={() => { void c.bg({ type: 'providerPrefs', biometricApproval: !prefs.biometricApproval }).then((r) => { if (r.ok) setPrefs(r.prefs); else setError(r.error || 'Update failed.'); }).catch(() => setError('Update failed.')); }}/></Group>}<Group><NavRow first icon="shield" label="Blocked sites" onClick={() => c.nav.push('connectionsBlacklist')}/></Group>{data === null ? <Spinner/> : data.items.length === 0 ? <Empty title="No connected sites" sub="Connect Harbour from a dApp to see it here." icon="globe"/> : <>{data.items.map((x: any) => <Row key={x.id} left={<Ic d="globe"/>} title={x.host} sub={`${x.walletName} · ${x.accountName} · ${x.chainName}`} right={<Ic d="chevron"/>} onClick={() => c.nav.push('connectionDetail', { id: x.id })}/>)}{confirm ? <><Warning>Disconnect all {data.items.length} sites?</Warning><Btn disabled={busy} onClick={() => { void disconnectAll(); }}>{busy ? 'Disconnecting…' : 'Disconnect all'}</Btn><Btn variant="ghost" style={{ marginTop: 8 }} onClick={() => setConfirm(false)}>Cancel</Btn></> : <Btn variant="ghost" style={{ marginTop: 16 }} onClick={() => setConfirm(true)}>Disconnect all</Btn>}</>}<ErrorLine msg={error}/></Screen>;
@@ -171,6 +173,7 @@ export const SCREENS_provider: Record<string, React.FC<Ctx>> = { connections: Co
 export function TokenApprovalsPanel({ send = bg }: { send?: Ctx['bg'] }) {
   const [items, setItems] = useState<any[] | null>(null); const [error, setError] = useState(''); const [selected, setSelected] = useState<any>(null); const [busy, setBusy] = useState(false); const [hash, setHash] = useState('');
   const load = async () => { setError(''); try { const r = await send({ type: 'providerApprovals' }); if (!r?.ok) throw new Error(r?.error || 'Could not load allowances.'); setItems(r.items ?? []); } catch (e: any) { setError(e.message); } };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, []);
   const revoke = async () => {
     if (!selected || busy) return; setBusy(true); setError('');

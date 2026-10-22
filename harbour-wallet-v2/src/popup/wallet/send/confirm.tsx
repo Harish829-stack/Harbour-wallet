@@ -6,7 +6,7 @@ import { useDraft, resetDraft, setDraft } from './store';
 import { sendTarget, useQuote, fmtAmount, priceUsd, fiatToCrypto, shortAddr, MEMO_LABEL, tierOf, TIER_LABEL } from './lib';
 import { useRecipient } from './prepare';
 import { Notice, FeeRow, FeeSheet, CopyBtn } from './parts';
-import { money, getSettingsState } from '../../settingsStore';
+import { money } from '../../settingsStore';
 import { chainById } from '../../../core/chains/index';
 
 /** Documented assumption: TW shows no value threshold publicly; 1,000 USD-equivalent triggers the extra review step. */
@@ -39,8 +39,7 @@ const Line: React.FC<{ k: string; children: React.ReactNode; testid?: string }> 
 export const SendConfirm: React.FC<Ctx> = (c) => {
   const assetId: string = c.params?.assetId ?? ''; const d = useDraft();
   const { a, chain, chainId, tokenId } = useMemo(() => sendTarget(assetId), [assetId]);
-  const decimals = a?.token?.decimals ?? a?.decimals ?? chain?.decimals ?? 18; const price = a ? priceUsd(c, assetId) : null; const usdPer = getSettingsState().fiat.usdPer;
-  const rcp = useRecipient(c.bg, chainId, d.to);
+  const decimals = a?.token?.decimals ?? a?.decimals ?? chain?.decimals ?? 18; const price = a ? priceUsd(c, assetId) : null;   const rcp = useRecipient(c.bg, chainId, d.to);
   const typed = d.amount.replace(/\.$/, ''); const cryptoAmount = d.isMax ? '' : d.fiat ? (price ? fiatToCrypto(typed, price, decimals) : '') : typed;
   const req = chainId && rcp.status === 'valid' && (d.isMax || Number(cryptoAmount) > 0) ? { chainId, tokenId, to: rcp.address!, amount: cryptoAmount, memo: d.memo.trim(), isMax: d.isMax, tier: d.tier } : null;
   const q = useQuote(c.bg, req, { refreshMs: 10000 });

@@ -28,6 +28,7 @@ export const TransactionScreen: React.FC<Ctx> = (c) => {
     if (my !== seq.current) return; setLoading(false);
     if (r?.ok) { setD(r); setError(''); } else if (!silent || !d) setError(r?.error ?? 'Could not load this transaction. Check your connection and try again.');
   }, [id, hash, chainId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(false); return () => { seq.current++; }; }, [load]);
   const state = d?.status.state ?? 'unknown'; const rec = d?.record ?? null;
   useEffect(() => { if (state !== 'pending' && !(state === 'unknown' && rec)) return; const t = setInterval(() => void load(true), POLL_MS); return () => clearInterval(t); }, [state, !!rec, load]); // eslint-disable-line react-hooks/exhaustive-deps

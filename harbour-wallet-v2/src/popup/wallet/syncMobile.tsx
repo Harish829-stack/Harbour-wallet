@@ -14,7 +14,7 @@ type Step = 'intro' | 'scan' | 'code' | 'done';
 
 export const SyncWithMobile: React.FC<{ bg: (m: any) => Promise<any>; onClose: () => void; onImported?: () => void }> = ({ bg, onClose, onImported }) => {
   const [step, setStep] = useState<Step>('intro');
-  const [qr, setQr] = useState(''); const [err, setErr] = useState('');
+  const [qr, setQr] = useState(''); const [, setErr] = useState('');
   const keysRef = useRef<any[] | null>(null);
   const [result, setResult] = useState<{ imported: number; duplicates: number; skipped: number } | null>(null);
   useEffect(() => { void QRCode.toDataURL(SYNC_LINK, { margin: 1, width: 220 }).then(setQr).catch(() => {}); }, []);

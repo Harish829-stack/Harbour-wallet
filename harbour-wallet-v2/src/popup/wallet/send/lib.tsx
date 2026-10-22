@@ -1,5 +1,5 @@
 // Popup-side helpers for Send / Receive / Transaction detail. Imports only `core/chains/send/{types,util}` (no wallet-core) so the popup bundle stays light.
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { assetOf, type Asset } from '../data';
 import { tokenItem } from '../tokensStore';
 import { customNetworks } from '../../../core/networkRegistry';
@@ -48,6 +48,7 @@ export function useSendSupport(bg: Ctx['bg'], needId?: string): Record<string, S
     if (supportCache && (!needId || supportCache[needId])) return; // a network added after the first fetch must trigger a refresh
     supportPending ??= bg({ type: 'sendSupport' }).then((r) => { if (r?.ok) supportCache = Object.fromEntries((r.chains as SupportInfo[]).map((c) => [c.id, c])); }).catch(() => {}).finally(() => { supportPending = null; });
     void supportPending.then(() => force((n) => n + 1));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bg]);
   return supportCache;
 }

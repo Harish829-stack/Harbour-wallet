@@ -14,7 +14,6 @@ const TOKEN = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 const OWNER = '0x7e80c8405dc2d4fc45c1a9220842620f24ff0e75';
 const SEL = { name: '0x06fdde03', symbol: '0x95d89b41', decimals: '0x313ce567', balanceOf: '0x70a08231' };
 const str = (v) => M.encodeAbiParameters([{ type: 'string' }], [v]);
-const u = (t, v) => M.encodeAbiParameters([{ type }].map(() => ({ type: t })), [v]);
 
 // Mock JSON-RPC node. `contracts[addr]` = { name, symbol, decimals, balance, bytes32 }, `code` decides eth_getCode.
 function node({ code = {}, contracts = {}, balance = 10n ** 18n, gas = 50_000n, gasPrice = 1_000_000_000n, fail = false, estimateFails = false } = {}) {

@@ -2,7 +2,7 @@
 // Tokens: legacy coins (`0x1::aptos_account::transfer_coins<T>`) and fungible assets (primary-store transfer by metadata address).
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
+import type { BuiltTx, FeeTierId, SendFamily, SendQuote, TxStatus } from './types';
 import { SendError } from './types';
 import { isMoveCoinType } from '../adapters/tokens';
 import { firstOf, fundsIssues, issue, jget, jpost, sub0, trimUrl } from './util';

@@ -5,11 +5,11 @@ import { bg } from '../api';
 import { validatePassword } from '../../core/passwordPolicy';
 import { Animation } from './Animation';
 import { Brand, PasswordField } from '../design/components';
-import { ChevronRight, ChevronLeft, ArrowLeft, ArrowRight, Eye, LockKeyhole, Wallet, QrCode, Smartphone, CircleHelp, ArrowUpRight, Usb } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ArrowLeft, Eye, LockKeyhole, Wallet, QrCode, Smartphone, CircleHelp, ArrowUpRight, Usb } from 'lucide-react';
 import { registerBiometrics, useBiometricAvailability, BiometricEnroll, type EnrollStage } from '../biometricsUi';
 import { isUserCancel, toHex } from '../../core/passkey';
-import { classifySecret, defaultWalletName, validateWalletName, MAX_WALLETS, PRIVATE_KEY_MIN_LENGTH, type PkNetworkOption } from '../../core/importKey';
-import { createIdleGuard, onboardingMode, restoreStep, serializeStep, STEP_KEY, type OnboardingFlow, type OnboardingMode, type OnboardingStep } from '../../core/onboardingRules';
+import { classifySecret, validateWalletName, MAX_WALLETS, type PkNetworkOption } from '../../core/importKey';
+import { createIdleGuard, restoreStep, serializeStep, STEP_KEY, type OnboardingFlow, type OnboardingMode, type OnboardingStep } from '../../core/onboardingRules';
 import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './ImportSecret';
 import { QrScanner, type StoredKeys } from './qrScanner';
 import { BackupFlow } from './BackupFlow';
@@ -286,7 +286,6 @@ export function Onboarding() {
     </div></div>
   </main>;
 
-  const importing = flow !== 'create';
   const heading = step === 'completed' ? <>Brilliant,<br/>your wallet is ready!</> : step === 'authentication' || step === 'password' || step === 'biometrics' ? 'Secure your wallet' : step === 'qr-mobile' || step === 'qr-scan' || step === 'qr-code' ? 'Connect to mobile' : step === 'ledger' ? 'Connect your Ledger' : additional ? 'Add a wallet' : 'Import a wallet';
   const title = step === 'authentication' ? 'Select an option' : step === 'password' ? 'Create password' : step === 'biometrics' ? 'Biometric authentication' : step === 'sources' ? 'Select your existing wallet' : step === 'trust-method' ? 'Select a method' : step === 'secret' ? 'Import with Secret Phrase or Private Key' : step === 'solana' ? 'Choose your Solana wallet' : step === 'qr-mobile' ? 'Scan this QR code with your mobile phone camera' : step === 'qr-scan' ? 'Scan the QR code shown in your mobile app' : step === 'qr-code' ? 'Enter the encryption code' : step === 'ledger' ? 'Import from a hardware wallet' : step === 'completed' ? 'Start exploring' : 'Integration requires further verification';
   const total = additional ? 2 : flow === 'create' ? 2 : flow === 'qr' ? 4 : 3;

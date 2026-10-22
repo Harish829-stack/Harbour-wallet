@@ -3,7 +3,7 @@
 // read-only adapter (core/chains/adapters). Existential deposit: Max leaves it in the account; sending below it to an empty account is blocked.
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
+import type { BuiltTx, SendEnv, SendFamily, SendQuote } from './types';
 import { SendError } from './types';
 import { bigToBytes, bytesToHex, firstOf, fundsIssues, hexToBytes, issue, rpc, sub0, trimUrl, formatUnits } from './util';
 import { fetchNativeBalance } from '../adapters';

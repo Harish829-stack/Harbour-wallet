@@ -12,6 +12,7 @@ const run = (name, cmd, args) => {
   const ok = r.status === 0; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
   if (!ok) { console.log((r.stdout + r.stderr).split('\n').slice(-25).join('\n')); process.exit(1); }
 };
+run('lint (no warnings)', 'npx', ['eslint', '.', '--max-warnings', '0']);
 run('tsc (extension)', 'npx', ['tsc', '--noEmit']);
 run('tsc (gateway)', 'npx', ['tsc', '-p', 'gateway/tsconfig.json']);
 if (!process.argv.includes('--skip-tests')) run('unit tests', 'npm', ['test', '--silent']);

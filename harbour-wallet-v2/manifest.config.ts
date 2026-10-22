@@ -1,8 +1,4 @@
 import { defineManifest } from '@crxjs/vite-plugin';
-import { BLOCKED_DOMAINS } from './src/core/provider/origin';
-// Sites where no provider is ever injected (Trust Wallet's list, evidence/12-dapp-provider) + captcha/ad frames. The page provider itself (public/inpage.js) is
-// registered at runtime with chrome.scripting.registerContentScripts({ world: 'MAIN' }) — see src/background/provider/index.ts — so it needs no web_accessible_resources entry.
-const EXCLUDE = [...BLOCKED_DOMAINS.map((d) => `*://*.${d}/*`), '*://*.recaptcha.net/recaptcha/*', '*://www.google.com/recaptcha/*', '*://*.hcaptcha.com/*', '*://*.challenges.cloudflare.com/*', '*://*.captcha-delivery.com/*', '*://*.arkoselabs.com/*', '*://*.funcaptcha.com/*', '*://*.doubleclick.net/*', '*://*.googlesyndication.com/*', '*://*.amazon-adsystem.com/*', '*://*.magic.link/*'];
 export default defineManifest({
   manifest_version: 3,
   name: 'Harbour Wallet',

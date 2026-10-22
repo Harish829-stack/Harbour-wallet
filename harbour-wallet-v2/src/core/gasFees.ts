@@ -7,7 +7,7 @@
 import type { ChainInfo } from './chains/types';
 import { getRpcUrls } from './chains/rpcUrls';
 import { rpc } from './chains/adapters/net';
-import { firstOf, formatUnits } from './chains/adapters/types';
+import { firstOf } from './chains/adapters/types';
 
 type F = typeof fetch;
 export interface GasTier { id: 'slow' | 'standard' | 'fast'; label: string; maxFeePerGas: string; priorityFee: string; /** wei strings */ costWei: string /** for a plain transfer (21,000 gas) at maxFeePerGas */ }

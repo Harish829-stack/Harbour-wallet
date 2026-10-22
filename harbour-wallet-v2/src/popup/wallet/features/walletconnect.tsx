@@ -20,6 +20,7 @@ const SiteDot: React.FC<{ s: Session }> = ({ s }) => {
 export const WalletConnectScreen: React.FC<Ctx> = (c) => {
   const [configured, setConfigured] = useState<boolean | null>(null); const [sessions, setSessions] = useState<Session[]>([]);
   const [uri, setUri] = useState(''); const [projectId, setProjectId] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [info, setInfo] = useState(''); const [scan, setScan] = useState(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(async () => { try { const r = await c.bg({ type: 'wcStatus' }); if (!r?.ok) throw new Error(r?.error || 'Could not load WalletConnect.'); setConfigured(!!r.configured); setSessions(r.sessions ?? []); } catch (e: any) { setErr(e.message); setConfigured(false); } }, [c.bg]);
   useEffect(() => { void load(); const t = setInterval(() => void load(), 3000); return () => clearInterval(t); }, [load]);
 

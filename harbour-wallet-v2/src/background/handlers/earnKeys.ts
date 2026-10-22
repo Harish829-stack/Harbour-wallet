@@ -21,7 +21,7 @@ export function earnAvailability(info: ActiveInfo | null): { available: boolean;
 
 /** Runs `fn` with the wallet-core private key bytes for coin `ctName` of the active account, then zeroes and frees everything. */
 export async function withCoinKey<T>(ctx: HandlerCtx, ctName: string, fn: (key: Uint8Array, address: string) => Promise<T> | T): Promise<T> {
-  const { core, vault, wallet } = ctx;
+  const { core, wallet } = ctx;
   const passwordKey = await session.get<string>(KEYS.PASSWORD);
   if (!passwordKey) throw new Error('Wallet is locked');
   const info = await activeInfo(ctx); if (!info) throw new Error('No wallet found');

@@ -53,7 +53,6 @@ export function inputUtxo(p: Psbt, i: number): TxOut | null {
   const w = findKV(p.inputs[i], 0x01); if (!w) return null; const r = new Reader(w.value); const value = r.u64(); const script = r.take(r.varint()); return { value, script };
 }
 export const p2wpkhScript = (pubkey: Uint8Array) => cat(Uint8Array.of(0x00, 0x14), hash160(pubkey));
-const isP2wpkh = (s: Uint8Array) => s.length === 22 && s[0] === 0 && s[1] === 0x14;
 
 /** BIP-143 digest for a P2WPKH input, SIGHASH_ALL. */
 export function bip143Digest(p: Psbt, i: number, utxo: TxOut): Uint8Array {

@@ -1,54 +1,30 @@
-import browser from 'webextension-polyfill';
-import { getCore } from '../../core/walletCore';
-import { VaultService } from '../../core/vaultService';
-import { WalletService } from '../../core/walletService';
 import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
-import { ALL_CHAINS, TESTNET_CHAINS, chainById, chainByEvmId, DEFAULT_HOME_CHAINS } from '../../core/chains/index';
-import { getRpcUrls } from '../../core/chains/rpcUrls';
-import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
-import { fetchNativePrices, fetchTrending } from '../../core/priceService';
-import { createWalletClient, http, parseEther, defineChain } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { rpcUrl, solanaRpcUrl } from '../../core/rpc';
-import { CHART_RANGES, fetchChart, fetchInfo, type ChartRange } from '../../core/marketData';
-import { fetchHistory } from '../../core/txHistory';
-import * as swapSvc from '../swapService';
-import { loadSettings, saveSettings, armLockTimer, clearLockTimer, applySidePanel, sidePanelSupported, cachedRate, rateStore, LOCK_ALARM } from '../settingsService';
-import { getRate, CURRENCY_CODES } from '../../core/fiat';
+import { armLockTimer, clearLockTimer } from '../settingsService';
 import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
-import { probeToken, clientFor, tokenBalance, formatTokenAmount } from '../../core/erc20';
-import { readTokens, sanitizeToken, upsertToken, removeToken, networkByChainId, type CustomToken } from '../../core/customTokens';
-import { fetchTokenPrices } from '../../core/tokenPrice';
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
-import { setNetworkState, getNetworkState, customNetwork, customNetworks } from '../../core/networkRegistry';
-import { validateNetwork, checkNetwork, isBuiltinChain, normalizeUrl, BUILTIN_EVM } from '../../core/networks';
 import { verifyPasskeySecret } from '../../core/passkeyService';
-import { estimateSend, buildTransfer, validRecipient, resolveSendChain, customChainInfo } from '../../core/sendService';
-import { nativeSymbol } from '../../core/balanceService';
-import { readEntries, sanitizeEntry, upsertEntry, removeEntry, type AddressBookCoin } from '../../core/addressBook';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 import type { HandlerMap } from '../handlers/types';
-import { defaultHiddenAssets, saveNetworks } from './shared';
 import { dispatchEvent } from '../kernel/events';
 
 let creatingWallet = false;
 export const handlers: HandlerMap = {
   status: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
       return { hasVault: await vault.exists(), unlocked: await vault.isUnlocked() };
   },
   generateMnemonic: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { wallet } = ctx as any;
       return { mnemonic: await wallet.generateMnemonic() };
   },
   validateMnemonic: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { wallet } = ctx as any;
       return { valid: wallet.isValidMnemonic(msg.mnemonic) };
   },
   createWallet: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault, wallet } = ctx as any;
  {
       const newlyGenerated = msg.newlyGenerated === true;
       if (typeof msg.password !== 'string' || !validatePassword(msg.password).valid ||
@@ -81,7 +57,7 @@ export const handlers: HandlerMap = {
     }
   },
   unlock: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try { const state = await vault.unlock(msg.password); await armLockTimer().catch(() => {}); return { ok: true, state }; }
       catch (e: any) { return { ok: false, error: e.message }; }
@@ -95,7 +71,7 @@ export const handlers: HandlerMap = {
     }
   },
   passkeyEnroll: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // Wallet must be unlocked: the unlock material being sealed is the live session's.
       try {
@@ -106,7 +82,7 @@ export const handlers: HandlerMap = {
     }
   },
   passkeyUnlock: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         if (!(await passkeyMeta())) return { ok: false, error: 'BIOMETRICS_NOT_SET_UP' };
@@ -117,7 +93,7 @@ export const handlers: HandlerMap = {
     }
   },
   passkeyDisable: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // Turning biometrics off needs an unlocked wallet; a generated-password wallet cannot (its password is unknown).
       if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
@@ -127,11 +103,11 @@ export const handlers: HandlerMap = {
     }
   },
   lock: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  await vault.lock(); await session.remove(KEYS.REVEAL); await clearLockTimer().catch(() => {}); return { ok: true };
   },
   activity: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // UI activity ping (TW: react-idle-timer onAction -> RESET_TIMER). Only counts while unlocked.
       if (await vault.isUnlocked()) await armLockTimer().catch(() => {});
@@ -139,7 +115,7 @@ export const handlers: HandlerMap = {
     }
   },
   getAccounts: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // Public addresses for the ACTIVE account of the active wallet (requires unlock).
       try {
@@ -154,7 +130,7 @@ export const handlers: HandlerMap = {
     }
   },
   addAccount: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { core, vault, wallet } = ctx as any;
  {
       // Derive the next account from the same seed (TW: last path component + 1), persist, activate.
       try {
@@ -184,7 +160,7 @@ export const handlers: HandlerMap = {
     }
   },
   switchAccount: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const idx = Number(msg.index);
@@ -202,7 +178,7 @@ export const handlers: HandlerMap = {
     }
   },
   qrSyncImport: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { core, vault, sender } = ctx as any;
  {
       // Decrypt wallets exported by the mobile app with the 6-character one-time code, then add each seed phrase like `addWallet`.
       // msg.dryRun only verifies the code. Only mnemonic wallets are imported; others are counted as skipped.
@@ -234,7 +210,7 @@ export const handlers: HandlerMap = {
     }
   },
   addWallet: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault, wallet } = ctx as any;
  {
       // Create (generate) or import an ADDITIONAL seed-phrase wallet. Vault already unlocked.
       if (creatingWallet) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
@@ -274,7 +250,7 @@ export const handlers: HandlerMap = {
     }
   },
   switchWallet: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const id = String(msg.walletId ?? '');
@@ -289,7 +265,7 @@ export const handlers: HandlerMap = {
     }
   },
   listWallets: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // All seed-phrase wallets with their accounts (for the selector + manage-wallets screen).
       try {
@@ -306,7 +282,7 @@ export const handlers: HandlerMap = {
     }
   },
   revealAuth: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // Re-authenticate before the secret phrase can be shown. Grants a one-shot, 2-minute permission held in session storage.
       try {
@@ -319,7 +295,7 @@ export const handlers: HandlerMap = {
     }
   },
   revealMnemonic: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { core, vault } = ctx as any;
  {
       // Return a wallet's secret phrase for the backup flow (requires an unlocked session).
       try {
@@ -340,7 +316,7 @@ export const handlers: HandlerMap = {
     }
   },
   renameWallet: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const id = String(msg.walletId ?? '');
@@ -355,7 +331,7 @@ export const handlers: HandlerMap = {
     }
   },
   removeWallet: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       // Delete keystore + drop from vault; re-point active wallet (TW removeWallet). Vault unlocked.
       try {
@@ -378,7 +354,7 @@ export const handlers: HandlerMap = {
     }
   },
   renameAccount: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const name = String(msg.name ?? '').trim();
@@ -397,7 +373,7 @@ export const handlers: HandlerMap = {
     }
   },
   markBackedUp: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const state: any = await vault.getState();

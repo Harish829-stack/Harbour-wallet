@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { TokenApprovalsPanel } from './features/provider';
 import { T } from '../theme';
 import { bg } from '../api';
-import { injectStyles, Ic, ICON, IconBtn, Coin, Btn, Empty, Skeleton } from './ui';
+import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton } from './ui';
 import { SCREENS, type Nav } from './screens';
 import { SwapTab } from './swap/SwapTab';
 import { EarnTab } from './features/earn';
-import { ASSETS, allAssets, usd, pct } from './data';
+import { ASSETS, allAssets, usd } from './data';
 import { syncNetworks } from './networkStore';
 import { useTokenItems, refreshTokens, tokenColor } from './tokensStore';
 import { useSettingsState, updateSettings, refreshSettings, startActivityPings, moneyPrice, moneyCompact, fmtNumber } from '../settingsStore';
@@ -72,14 +72,13 @@ export const Wallet: React.FC<{
     && !(settings.layout.hideLowBalanceAssets && isLowBalance(balances[a.id]?.ok === false ? null : balances[a.id]?.usd)));
   // Custom tokens (per active wallet/account). Re-fetched whenever the native balances refresh.
   const tokenItems = useTokenItems().items;
-  useEffect(() => { void refreshTokens(bg); }, [balances, activeAccount]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void refreshTokens(bg); }, [balances, activeAccount]);  
   const visibleTokens = tokenItems.filter((i) => !(hiddenAssets ?? []).includes(i.token.id) && (!networkFilter || i.token.networkId === networkFilter)
     && !(settings.layout.hideLowBalanceAssets && isLowBalance(i.ok ? i.usd : null)));
   const tokenUsd = tokenItems.reduce((n, i) => n + (i.ok && i.usd != null && !(hiddenAssets ?? []).includes(i.token.id) ? i.usd : 0), 0);
   const top = stack[stack.length - 1];
   const Pushed = top ? SCREENS[top.name] : null;
 
-  const mask = (s: string) => (hide ? '••••' : s);
   const fmtAmt = (s?: string) => { const n = Number(s ?? 0); return n === 0 ? '0' : n < 0.0001 ? '<0.0001' : fmtNumber(n, { maximumFractionDigits: 6 }); };
 
   return (

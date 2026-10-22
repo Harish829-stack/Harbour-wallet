@@ -2,7 +2,7 @@
 // first, the rest is burned in TRX), 1 TRX account-activation fee for fresh recipients, fee_limit cap for TRC-20.
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendParams, SendQuote, TxStatus } from './types';
+import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
 import { SendError } from './types';
 import { MSG, bigToBytes, bytesToHex, firstOf, fundsIssues, hexToBytes, issue, jpost, sub0, trimUrl, formatUnits } from './util';
 

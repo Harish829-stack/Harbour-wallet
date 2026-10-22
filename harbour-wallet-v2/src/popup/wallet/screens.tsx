@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Spinner, Skeleton, SuccessCheck, Empty, useDebouncedLoading } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty } from './ui';
 import { SWAP_SCREENS } from './swap/screens';
 import { FEATURE_SCREENS } from './features';
 import { SETTINGS_SCREENS } from './settingsScreens';
 import { NETWORK_SCREENS } from './networkScreens';
 import { RevealGate } from './revealGate';
 import { TOKEN_SCREENS, CustomTokenDetailScreen } from './tokenScreens';
-import { tokenItem, refreshTokens, useTokenItems } from './tokensStore';
+import { refreshTokens, useTokenItems } from './tokensStore';
 import { networkByChainId } from '../../core/customTokens';
 import { useChart, PriceChart, useHistory, HistoryList, HistoryRow, useInfo, AboutPanel } from './tokenData';
 import { CHART_RANGES, type ChartRange } from '../../core/marketData';
@@ -17,7 +16,7 @@ import { historySupported } from '../../core/txHistory';
 import { chainById } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
-import { ASSETS, allAssets, explorerTx, assetOf, networkOptions, usd, pct, short } from './data';
+import { ASSETS, allAssets, assetOf, networkOptions, usd, pct, short } from './data';
 import { syncNetworks } from './networkStore';
 
 export type Nav = { push: (name: string, params?: any) => void; pop: () => void; home: () => void; lock?: () => void; backup?: () => void };
@@ -29,23 +28,12 @@ const evmAddr = (c: Ctx) => c.addrs.ethereum ?? Object.values(c.addrs)[0] ?? '';
 const assetAddr = (c: Ctx, a: { id: string; evm: boolean }) => { const ch = chainById(a.id); return ch ? addressFor(ch, c.addrs) : (a.evm ? evmAddr(c) : (c.addrs[a.id] ?? '')); };
 
 // ---------- Sparkline ----------
-const Spark: React.FC<{ data: number[]; up: boolean; w?: number; h?: number }> = ({ data, up, w = 320, h = 90 }) => {
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - v * (h - 8) - 4}`).join(' ');
-  const col = up ? T.success : T.error;
-  return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-      <polyline points={pts} fill="none" stroke={col} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <polygon points={`0,${h} ${pts} ${w},${h}`} fill={col} opacity="0.08" />
-    </svg>
-  );
-};
 
 // ---------- Send / Receive / Transaction detail: implemented in ./send (feature 33); thin re-exports keep the old imports working ----------
 export { SendScreen, ReceiveScreen } from './send';
 import { SendScreen, ReceiveScreen } from './send';
 
 // ---------- Token detail (exact TW layout: price, range pills, Holdings/History/About, bottom actions) ----------
-const RANGES = ['1H', '1D', '1W', '1M', '1Y', 'All'];
 export const TokenDetailScreen: React.FC<Ctx> = (c) => (assetOf(c.params?.assetId)?.token ? <CustomTokenDetailScreen {...c} /> : <NativeTokenDetailScreen {...c} />);
 const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
   const a = assetOf(c.params?.assetId) ?? ASSETS[0];
@@ -58,7 +46,6 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
   const price: number | null = scrub?.p ?? b?.price ?? chart.data?.last ?? null;
   const change: number | null = chart.data?.changePct ?? b?.change ?? null;
   const up = (change ?? 0) >= 0;
-  const bal = b ? Number(b.formatted) : 0;
   const address = assetAddr(c, a);
   return (
     <div className="hb-screen" style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', zIndex: 20 }}>
@@ -165,6 +152,7 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
   const [cq, setCq] = useState('');
   const [net, setNet] = useState<string | null>(null);
   const [hidden, setHidden] = useState<string[]>(c.hiddenAssets ?? []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { c.bg({ type: 'getUiPrefs' }).then((r) => { if (r?.ok) setHidden(r.hiddenAssets ?? []); }); }, []);
   const toggleAsset = async (id: string) => {
     const willHide = !hidden.includes(id);
@@ -271,6 +259,7 @@ export const WalletSelectorScreen: React.FC<Ctx> = (c) => {
     const r = await c.bg({ type: 'listWallets' });
     if (r?.ok) { setWallets(r.wallets ?? []); setActiveWalletId(r.activeWalletId ?? null); }
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
   const addAccount = async (walletId: string) => {
     if (busy) return; setBusy(true);
@@ -355,6 +344,7 @@ export const AddWalletScreen: React.FC<Ctx> = (c) => {
 // ---------- Manage wallets (list seed phrases, each with a backup link) ----------
 export const ManageWalletsScreen: React.FC<Ctx> = (c) => {
   const [wallets, setWallets] = useState<any[] | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { c.bg({ type: 'listWallets' }).then((r) => { if (r?.ok) setWallets(r.wallets ?? []); }); }, []);
   return (
     <Screen title="Manage wallets" onBack={c.nav.pop}>
@@ -438,6 +428,7 @@ export const EditWalletScreen: React.FC<Ctx> = (c) => {
     const r = await c.bg({ type: 'listWallets' });
     if (r?.ok) { const w = (r.wallets ?? []).find((x: any) => x.id === walletId); if (w) { setWallet(w); setLabel(w.label); } }
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
   const saveName = async () => {
     const name = nameDraft.trim(); if (!name) return;

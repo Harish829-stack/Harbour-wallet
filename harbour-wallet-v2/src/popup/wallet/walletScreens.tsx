@@ -10,8 +10,7 @@ import { Group, NavRow, SectionLabel, ErrorLine, Note, SelectionRow } from './se
 import { validateWalletName } from '../../core/importKey';
 import { chainById } from '../../core/chains/index';
 import {
-  WALLET_KIND_LABEL, walletKind, groupWallets, canAddAccount, canBackupPhrase, canRevealPrivateKey, shortAddress,
-  emptyMigration, pickSource, pickDestination, destinationOptions, toggleAsset, selectAllAssets, migratableAssets, migrationQueue,
+  WALLET_KIND_LABEL, walletKind, groupWallets, canAddAccount, canBackupPhrase, canRevealPrivateKey, shortAddress, pickSource, pickDestination, destinationOptions, toggleAsset, selectAllAssets, migratableAssets, migrationQueue,
   canContinueFromSource, canContinueFromDestination, canMigrate, type MigrationAsset, type MigrationState,
 } from '../../core/settingsExtra';
 import type { Ctx } from './screens';

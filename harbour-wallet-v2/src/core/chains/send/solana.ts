@@ -2,7 +2,7 @@
 // recent blockhash, compute-budget priority fee (slow/average/fast from getRecentPrioritizationFees). Signing: wallet-core.
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendParams, SendQuote, TxStatus } from './types';
+import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
 import { SendError } from './types';
 import { MSG, firstOf, fundsIssues, issue, rpc, sub0, formatUnits } from './util';
 import { solanaRpcUrl } from '../../rpc';

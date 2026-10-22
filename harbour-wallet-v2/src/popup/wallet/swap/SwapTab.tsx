@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Btn, Ic, ICON, IconBtn } from '../ui';
@@ -53,6 +53,7 @@ export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
     const list = [from, to, from ? nativeAsset(from.domainId) : null].filter(Boolean);
     if (!list.length) return;
     bg({ type: 'swapBalances', assets: list }).then((r) => { if (r?.ok) setSwap({ balances: { ...getSwap().balances, ...r.balances } }); }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from?.assetId, to?.assetId]);
 
   const atomic = from ? toAtomic(amount, from.decimals) : null;

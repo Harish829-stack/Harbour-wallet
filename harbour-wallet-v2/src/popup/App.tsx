@@ -14,7 +14,6 @@ import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, op
 // Harbour Wallet — light UI, Trust Wallet-style layout (dummy branding). RE §3, §6.1.
 type Screen = 'loading' | 'welcome' | 'password' | 'backup' | 'unlock' | 'home';
 
-const card: React.CSSProperties = { background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 20, boxShadow: T.shadow };
 const primary = (disabled = false): React.CSSProperties => ({
   width: '100%', padding: '14px 16px', borderRadius: 999, border: 'none',
   background: disabled ? T.bgAlt : T.accent, color: disabled ? T.sub : '#fff',
@@ -109,7 +108,7 @@ function WalletApp() {
   };
   useEffect(() => {
     if (screen === 'unlock' && passkey.enabled && params.get('biometrics') && !popup && !autoBio.current) { autoBio.current = true; void doBiometric(); }
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  });  
   if (window.location.hash.startsWith('#/onboarding')) return <Onboarding/>;
 
   const startCreate = async () => { setBusy(true); try { const { mnemonic } = await bg({ type: 'generateMnemonic' }); setMnemonic(mnemonic); setScreen('password'); } finally { setBusy(false); } };

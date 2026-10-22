@@ -16,7 +16,6 @@ export interface AddressBookEntry { id: string; name: string; addresses: Partial
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
 export function cleanName(raw: unknown): string {
-  // eslint-disable-next-line no-control-regex
   return String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 

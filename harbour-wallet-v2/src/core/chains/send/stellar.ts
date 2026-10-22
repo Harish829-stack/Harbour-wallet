@@ -1,7 +1,7 @@
 // Stellar (Horizon). Native XLM payments, create-account for unfunded recipients, text / numeric memo, reserve-aware max.
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
+import type { BuiltTx, FeeTierId, SendFamily, SendQuote, TxStatus } from './types';
 import { SendError } from './types';
 import { MSG, firstOf, fundsIssues, issue, jget, sub0, trimUrl, formatUnits, parseUnits } from './util';
 

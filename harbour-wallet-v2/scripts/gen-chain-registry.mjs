@@ -41,7 +41,6 @@ const OTHER = { 0: ['https://mempool.space/api', 'https://blockstream.info/api']
   818: ['https://mainnet.vechain.org'], 1023: ['https://api.harmony.one'], 74: ['https://ctz.solidwallet.io/api/v3'], 313: ['https://api.zilliqa.com'], 235: ['https://fio.eosusa.io'],
   508: ['https://gateway.multiversx.com'], 1024: ['https://dappnode1.ont.io:10336'], 500: ['https://theta-node-rpc.thetatoken.org/rpc'], 501: ['https://api.mainnet-beta.solana.com'],
   223: ['https://ic0.app'], 304: ['https://api.iotex.one:443'] };
-const EXPLORER_FIX = {}; // explorer base URLs come from wallet-core; txPath/accountPath preserved.
 
 const rows = [];
 for (const h of har.chains.filter((c) => c.enabled)) {

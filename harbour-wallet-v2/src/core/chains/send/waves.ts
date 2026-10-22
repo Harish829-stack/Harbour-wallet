@@ -1,7 +1,7 @@
 // Waves (node REST). WAVES + issued-asset transfers, flat 0.001 WAVES fee, optional attachment (memo).
 import { TW } from './proto';
 import type { ChainInfo } from '../types';
-import type { BuiltTx, SendEnv, SendFamily, SendQuote, TxStatus } from './types';
+import type { BuiltTx, SendFamily, SendQuote, TxStatus } from './types';
 import { SendError } from './types';
 import { firstOf, fundsIssues, jget, jpost, sub0, trimUrl, utf8 } from './util';
 

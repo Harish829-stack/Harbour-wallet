@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
 import { SCREENS, type Ctx } from '../screens';
-import { Screen, Row, Btn, Skeleton, Ic } from '../ui';
+import { Screen, Row, Skeleton, Ic } from '../ui';
 import { T } from '../../theme';
 import { BackupFlow } from '../../onboarding/BackupFlow';
 import { MAX_WALLETS, canCreateWallet } from '../../../core/importKey';

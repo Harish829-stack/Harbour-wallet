@@ -1,38 +1,9 @@
-import browser from 'webextension-polyfill';
 import { applyNotifySchedule, syncRemotePush, showNotification, notifyStatus } from '../notify';
-import { getCore } from '../../core/walletCore';
-import { VaultService } from '../../core/vaultService';
-import { WalletService } from '../../core/walletService';
-import { local, session, KEYS } from '../../core/storage';
-import { validatePassword } from '../../core/passwordPolicy';
-import { ALL_CHAINS, TESTNET_CHAINS, chainById, chainByEvmId, DEFAULT_HOME_CHAINS } from '../../core/chains/index';
-import { getRpcUrls } from '../../core/chains/rpcUrls';
-import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
-import { fetchNativePrices, fetchTrending } from '../../core/priceService';
-import { createWalletClient, http, parseEther, defineChain } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { rpcUrl, solanaRpcUrl } from '../../core/rpc';
-import { CHART_RANGES, fetchChart, fetchInfo, type ChartRange } from '../../core/marketData';
-import { fetchHistory } from '../../core/txHistory';
-import * as swapSvc from '../swapService';
-import { loadSettings, saveSettings, armLockTimer, clearLockTimer, applySidePanel, sidePanelSupported, cachedRate, rateStore, LOCK_ALARM } from '../settingsService';
-import { getRate, CURRENCY_CODES } from '../../core/fiat';
-import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
-import { probeToken, clientFor, tokenBalance, formatTokenAmount } from '../../core/erc20';
-import { readTokens, sanitizeToken, upsertToken, removeToken, networkByChainId, type CustomToken } from '../../core/customTokens';
-import { fetchTokenPrices } from '../../core/tokenPrice';
-import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
-import { setNetworkState, getNetworkState, customNetwork, customNetworks } from '../../core/networkRegistry';
-import { validateNetwork, checkNetwork, isBuiltinChain, normalizeUrl, BUILTIN_EVM } from '../../core/networks';
-import { verifyPasskeySecret } from '../../core/passkeyService';
-import { estimateSend, buildTransfer, validRecipient, resolveSendChain, customChainInfo } from '../../core/sendService';
-import { nativeSymbol } from '../../core/balanceService';
+import { local, KEYS } from '../../core/storage';
+import { loadSettings, saveSettings, sidePanelSupported, cachedRate } from '../settingsService';
 import { readEntries, sanitizeEntry, upsertEntry, removeEntry, type AddressBookCoin } from '../../core/addressBook';
-import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
-import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 import type { HandlerMap } from '../handlers/types';
-import { defaultHiddenAssets, saveNetworks } from './shared';
-import { dispatchEvent } from '../kernel/events';
+import { defaultHiddenAssets } from './shared';
 
 export const handlers: HandlerMap = {
   getSettings: async (msg, ctx) => {
@@ -47,7 +18,7 @@ export const handlers: HandlerMap = {
   notifyTest: async () => { await showNotification('Harbour notifications are on', 'You will see incoming transfers and announcements here.'); return { ok: true }; },
   notifyStatus: async () => ({ ok: true, ...(await notifyStatus()) }),
   setSettings: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const r = await saveSettings(msg.patch);
@@ -61,14 +32,14 @@ export const handlers: HandlerMap = {
     }
   },
   addressBookList: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try { const st: any = await vault.getState(); return { ok: true, items: readEntries(st.addressBook) }; }
       catch (e: any) { return { ok: false, error: e?.message === 'LOCKED' ? 'Wallet is locked' : 'Address book unavailable', items: [] }; }
     }
   },
   addressBookSave: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { core, vault } = ctx as any;
  {
       try {
         const isValid = (coin: AddressBookCoin, addr: string) => { try { return core.AnyAddress.isValid(addr, core.CoinType[coin]); } catch { return false; } };
@@ -83,7 +54,7 @@ export const handlers: HandlerMap = {
     }
   },
   addressBookRemove: async (msg, ctx) => {
-    const { core, vault, wallet, sender } = ctx as any;
+    const { vault } = ctx as any;
  {
       try {
         const st: any = await vault.getState();
