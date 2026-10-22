@@ -8,11 +8,11 @@ parity. Inventory is incomplete until all reachable screens and states are trace
 
 Chromium 141.0.7390.37, 1365×900, new isolated profiles, first-run light theme,
 no wallets created. Script: `tools/capture-first-run.mjs`. Images and sanitized
-DOM/button states: `audit/screens/reference/` and `audit/screens/harbour/`.
+DOM/button states: `evidences/audit/screens/reference/` and `evidences/audit/screens/harbour/`.
 
 | Feature/state | Target evidence and observed contract | Harbour mismatch | Parity |
 |---|---|---|---|
-| 01 Fresh install | `reference/00-install.json`: one automatically opened `home.html#/onboarding` tab; exact startup code ranges in `evidence/01-install/2026-10-15-local/` | Different internal filename is acceptable only as an intentional implementation choice; surface/behavior still compared | Positive target runtime captured; build comparison incomplete |
+| 01 Fresh install | `reference/00-install.json`: one automatically opened `home.html#/onboarding` tab; exact startup code ranges in `evidences/re-evidence/01-install/2026-10-15-local/` | Different internal filename is acceptable only as an intentional implementation choice; surface/behavior still compared | Positive target runtime captured; build comparison incomplete |
 | 02 Welcome | `reference/01-welcome.*`: large full-page composition, illustration left, content right; Import before Create, both disabled until terms; QR action enabled | 375px panel, generic styling/copy, opposite action order, QR absent, terms links lack destinations | Fail |
 | 02 Authentication selection | `reference/02-create-entry.*`: “Secure your wallet”, Back, “Select an option”, Password option | Skips this screen and generates a mnemonic before password setup | Fail |
 | 02/03 Create password | `reference/03-password.*`: left sidebar/stepper, right form, Back, masked fields, visibility controls, Continue disabled initially | Generic panel, missing stepper/Back/visibility controls; full policy absent | Fail |
@@ -26,7 +26,7 @@ DOM/button states: `audit/screens/reference/` and `audit/screens/harbour/`.
 | 17 Buy/swap/stake/NFT | Split and enumerate on reaching lifecycle gate | Inert Buy/Swap controls; remaining screens absent | Not implemented |
 | 18 Hardware | Import and signing screen matrix pending | No implementation | Not implemented |
 
-All screenshots above are relative to `audit/screens/`. Earlier feature sections
+All screenshots above are relative to `evidences/audit/screens/`. Earlier feature sections
 and bundled module filenames are discovery aids, not claims of complete UI.
 
 ## Required record for each screen
@@ -57,7 +57,7 @@ Behavioral equivalence still requires target evidence. No complete-wallet claim.
 
 REA artifact analysis: `ev_aa3b5231cb188455bd7bad54484cd5ebc7b69e7acfe59430533f27b7fdb5eef3`
 (selected keepAlive source only; complete file inventory, partial semantic graph).
-Router recovery: `evidence/00-screen-structure/2026-10-16/REA-result.json`
+Router recovery: `evidences/re-evidence/00-screen-structure/2026-10-16/REA-result.json`
 and `REA-<chunk>.json`. Exact original inputs, byte ranges, source hashes, recovered
 modules/maps and manifests are co-located. `discovery.json` is inert AST discovery
 evidence, not a second implementation tracker.
@@ -89,7 +89,7 @@ Screenshots/tests: none in this pass except onboarding observations below.
 
 I = implementation classification; G = integration; V = inspected render;
 T = interaction/lifecycle. A component name establishes no completion.
-Source paths below are relative to `artifacts/reference-26.41.0/`; Harbour
+Source paths below are relative to `evidences/extension/reference-26.41.0/`; Harbour
 component names are in `src/popup/wallet/screens.tsx` unless a path is given.
 
 | Stable ID | Parent / gate | Target route → element | Source : byte / REA ID | Harbour | I | G | V | T |
@@ -227,7 +227,7 @@ authorized. Later routes remain behind chronological research gates.
 
 ### Onboarding state and branch inventory — gate #02
 
-Source locations are recovered filenames in `evidence/02-onboarding-flow/` and
+Source locations are recovered filenames in `evidences/re-evidence/02-onboarding-flow/` and
 `03-auth-password/`; fresh QR/completion evidence is under
 `02-onboarding-flow/2026-10-16-branches/REA-*.json` with exact byte ranges.
 Runtime paths below use `2026-10-16-runtime` unless marked historical. Every row
@@ -269,7 +269,7 @@ screens. Fields not established in the contract cell remain UNKNOWN.
 Current lower bound: **105 route/index records + 27 onboarding state groups**. These overlap (onboarding route contains its groups); do not sum them as unique screens. No exhaustive state or reachability claim.
 
 ## Swap tab update (2026-10-16)
-Swap tab, settings sheet, providers sheet, token picker, confirm/approve, status and history are implemented from recovered TW logic; see harbour-wallet-v2/evidence/25-swap/SWAP-SPEC.md. Implementation and build verified; live APIs and visual/interaction QA still pending.
+Swap tab, settings sheet, providers sheet, token picker, confirm/approve, status and history are implemented from recovered TW logic; see evidences/re-evidence/25-swap/SWAP-SPEC.md. Implementation and build verified; live APIs and visual/interaction QA still pending.
 
 ## 2026-10-16 — Local logos and rendered v2 review
 
@@ -277,16 +277,16 @@ The structural inventory remains **105 route/index records plus 27 overlapping o
 
 | Harbour item | Implementation / integration | Visual inspection | Interaction check | Open gap |
 |---|---|---|---|---|
-| OB-001/002 welcome | Terms gate and create/import entry are wired | Built MV3 `audit/onboarding-v2/create-complete/01-welcome.png` inspected | Terms → Create in disposable profile passed | Target QR branch and all return paths incomplete |
+| OB-001/002 welcome | Terms gate and create/import entry are wired | Built MV3 `evidences/audit/onboarding-v2/create-complete/01-welcome.png` inspected | Terms → Create in disposable profile passed | Target QR branch and all return paths incomplete |
 | OB-003 authentication | Password branch wired | `02-authentication.png` inspected | Password selection passed | Biometrics/passkey branches unresolved |
 | OB-004 password | Local validation and wallet creation wired | `03-password.png` inspected | Valid disposable password → create passed | Invalid/common/mismatch, reload and failure fixtures incomplete |
 | OB-021 completion | Creation result and carousel wired | `04-completed.png` inspected | Creation reached; carousel/pin/sidepanel actions not checked | Target assets and browser-specific pin states incomplete |
 | Home popup | Public balance/market adapters for supported chains, local logos | `05-wallet-popup.png` inspected after settling | Opened in built extension; no funds or send tested | Full chain support, loading/errors, price outage, receive/send and lifecycle gaps |
 | Settings/currency | Local settings and bundled USD/EUR/GBP/BTC/ETH/BNB marks | `06-settings-popup.png`, `07-currency-popup.png` inspected | Navigation into both screens passed; mutation not checked | Many settings branches and persistence/lifecycle remain |
-| Portfolio/send/approval design fixtures | Development-only render and feedback, excluded from production | `audit/design/2026-10-16/*.png` inspected | Nine fixture checks passed in `checks.json` | Send/provider integration and actual extension approval surface unimplemented |
+| Portfolio/send/approval design fixtures | Development-only render and feedback, excluded from production | `evidences/audit/design/2026-10-16/*.png` inspected | Nine fixture checks passed in `checks.json` | Send/provider integration and actual extension approval surface unimplemented |
 | Buy, staking, NFTs, dApp discovery | Static financial/provider/collection cards removed from production; explicit empty state | Not yet inspected after this change | Not checked | Live provider/position/ownership/catalog adapters and target flows missing |
 
-Asset source/usage is in `ASSET-LEDGER.md`; visual rationale in `REFERENCE-LEDGER.md` and `DESIGN-SYSTEM.md`. Known native/curated swap contract icons are local; dynamic unknown assets retain an image URL with a neutral failure fallback, so provenance/loading remains partial. Production sample price/change fallback was removed. The popup captures exercise a new disposable wallet only and prove no live transaction or approval behavior. Screenshot counts above are **7 built-extension surfaces** and **5 fixture surfaces**; state variants are not all covered. Chronological detailed research remains at #02.
+Asset source/usage is in `docs/re/ASSET-LEDGER.md`; visual rationale in `docs/re/REFERENCE-LEDGER.md` and `docs/re/DESIGN-SYSTEM.md`. Known native/curated swap contract icons are local; dynamic unknown assets retain an image URL with a neutral failure fallback, so provenance/loading remains partial. Production sample price/change fallback was removed. The popup captures exercise a new disposable wallet only and prove no live transaction or approval behavior. Screenshot counts above are **7 built-extension surfaces** and **5 fixture surfaces**; state variants are not all covered. Chronological detailed research remains at #02.
 
 ## 2026-10-19 — Recomputed implementation status (code-inspected; NOT runtime-verified)
 
@@ -326,7 +326,7 @@ Legend: **Real** = wired to a service, no static data · **Partial** = real but 
 Route-record tally (105 records): the per-route "Harbour" column above this section is historical; use this table.
 
 ### Newly noted discrepancies (2026-10-19)
-- Onboarding palette differs from popup palette (see DESIGN-SYSTEM.md "Conflict #1").
+- Onboarding palette differs from popup palette (see docs/re/DESIGN-SYSTEM.md "Conflict #1").
 - Home header hard-codes "Seed Phrase 1".
 - `ASSETS`/`NETWORKS` constants in `data.ts` still drive the home list for native assets.
 - `Wallet.tsx` has an "approvals" sub-tab with no provider behind it.
@@ -337,7 +337,7 @@ Latest user scope: finish the UI/UX of existing screens; do not implement new wa
 
 Corrections to the code-inspected snapshot above: onboarding's later CSS already maps its active palette to Harbour `--hb-*`; the old blue declarations are overridden. Home already reads the active wallet label. `ASSETS`/`NETWORKS` now derive from the 86-chain registry. The 82 downloaded chain logos were absent from the built extension because they lived in `public/`, outside Vite's configured `public-production/` directory; this is now fixed. These are dated corrections, not retroactive edits to the earlier table.
 
-Visual/interaction evidence: `audit/ui/2026-10-19/` contains **27 built-extension captures** (25 popup states at 375×600, including Send invalid-input and asset-picker sheet plus Trending loading/settled, and 320×600/480×800 dark Home variants) and `checks.json`. The audit created a disposable wallet in an isolated Chromium profile, navigated existing controls, and stored no seed/password. It reached Home, Send form/validation/sheet, Buy, Receive selector/QR, network selector, Search Crypto/DApps, asset detail, Activity, Collectibles, Trending, Swap, Earn, wallet selector, Settings, Currency, Preferences, Color Mode, and dark variants. Every captured state was inspected; no page errors, missing images, or body horizontal overflow remained after repair. `audit/onboarding-v2/create-complete/` and `audit/onboarding-v2/import-other/` provide additional inspected full-page welcome/auth/password/completion/import captures. These checks establish rendered/navigation scope only, not transaction, integration, or exhaustive state parity.
+Visual/interaction evidence: `evidences/audit/ui/2026-10-19/` contains **27 built-extension captures** (25 popup states at 375×600, including Send invalid-input and asset-picker sheet plus Trending loading/settled, and 320×600/480×800 dark Home variants) and `checks.json`. The audit created a disposable wallet in an isolated Chromium profile, navigated existing controls, and stored no seed/password. It reached Home, Send form/validation/sheet, Buy, Receive selector/QR, network selector, Search Crypto/DApps, asset detail, Activity, Collectibles, Trending, Swap, Earn, wallet selector, Settings, Currency, Preferences, Color Mode, and dark variants. Every captured state was inspected; no page errors, missing images, or body horizontal overflow remained after repair. `evidences/audit/onboarding-v2/create-complete/` and `evidences/audit/onboarding-v2/import-other/` provide additional inspected full-page welcome/auth/password/completion/import captures. These checks establish rendered/navigation scope only, not transaction, integration, or exhaustive state parity.
 
 | Existing UI area | Implementation/integration after this pass | Visual inspection | Interaction check | Remaining gap |
 |---|---|---|---|---|
@@ -351,22 +351,22 @@ Visual/interaction evidence: `audit/ui/2026-10-19/` contains **27 built-extensio
 Build/typecheck passes. Focused settings/chain tests: 32/32. Full `npm test`: 147/156 passed; nine failures are in history and staking/signing suites, outside the UI-only edits. No UI parity claim is made for routes or states not captured here, nor for missing feature screens.
 
 ## 2026-10-19 (evening) — status after worker round 2
-Source of truth per area: `harbour-wallet-v2/evidence/NN-*/STATUS.md`. Gate: tsc clean, 334/334 tests, `vite build` OK. ALL network paths are mock-tested only (live-unverified); no Chrome visual QA yet.
+Source of truth per area: `evidences/re-evidence/NN-*/STATUS.md`. Gate: tsc clean, 334/334 tests, `vite build` OK. ALL network paths are mock-tested only (live-unverified); no Chrome visual QA yet.
 - 31 dApp provider (EIP-1193/6963, Solana, approvals, connections, blacklist): built; MAIN-world injection never loaded in real Chrome. Gaps: SIWS, biometric in approval window, Ledger signing, per-origin (not wallet-wide) chain.
 - 33 Send/Receive/Tx detail: real for EVM(45), BTC, SOL, TRON, 14 Cosmos+THOR, XRP, ALGO; native-only for ~16 other families; explicit unsupported: ICP, FIO, Nimiq, Aion, Ontology. Bridge/Inscribe = documented gap.
 - 34 Staking: 12 Cosmos chains, SOL, ETH(Lido), BNB(StakeHub). Not done: Tron/Polkadot/Cardano staking.
 - 35 NFTs: Blockscout (15 EVM), Solana DAS/Magic Eden; ERC-721/1155 + SOL send.
 - 38 Onboarding/settings/theme: import branches, QR import, passkey/backup flows, wallet management, developer settings, faucets, notifications (prefs only); theme tokenised light/dark. Gaps: dark-mode visual audit, hardware-wallet route placeholder, migration params must be honoured by Send.
 - Unassigned: Ledger (stub only).
-- 2026-10-19 WalletConnect v2: BUILT (not Chrome-verified, no live relay): Settings › Connections › WalletConnect screen (`walletConnect`: paste/scan `wc:` link, project ID entry, session list + Disconnect); session-proposal approval in the standard approval window (kind `wcSession`); requests reuse the injected-dApp approval screens. TW 26.41.0 has no such screen (see evidence/16 addendum), so there is no capture to compare against.
+- 2026-10-19 WalletConnect v2: BUILT (not Chrome-verified, no live relay): Settings › Connections › WalletConnect screen (`walletConnect`: paste/scan `wc:` link, project ID entry, session list + Disconnect); session-proposal approval in the standard approval window (kind `wcSession`); requests reuse the injected-dApp approval screens. TW 26.41.0 has no such screen (see evidences/re-evidence/16 addendum), so there is no capture to compare against.
 
 
-> **2026-10-19 (cleanup):** older sections above are historical. Current status is in `FEATURE-MATRIX.md`. Stale items removed from the tree: root `content.js`, unused `public/` (build uses `public-production/`), empty `src/popup/provider/`.
+> **2026-10-19 (cleanup):** older sections above are historical. Current status is in `docs/project/FEATURE-MATRIX.md`. Stale items removed from the tree: root `content.js`, unused `public/` (build uses `public-production/`), empty `src/popup/provider/`.
 
 ## 2026-10-21 — Backend/API documentation only
 
 The user requested REA investigation and a backend specification. Added
-`TRUST-WALLET-BACKEND.md` and `evidence/40-backend-api/2026-10-21/` (source,
+`docs/re/TRUST-WALLET-BACKEND.md` and `evidences/re-evidence/40-backend-api/2026-10-21/` (source,
 contracts, local SQL, capture projections, verification). No screens, navigation,
 styles or Harbour runtime code changed; screen/state/integration/visual/interaction
 statuses remain unchanged. API discovery is not UI parity or live integration proof.

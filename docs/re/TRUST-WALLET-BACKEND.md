@@ -13,21 +13,21 @@ Evidence labels throughout:
 - **UNKNOWN**: unavailable or unresolved evidence. No original server implementation is inferred from a response format.
 - **PROPOSED**: an implementation design for an equivalent backend, separate from recovered Trust Wallet facts.
 
-The supplied `background.js` is 42,723,770 bytes, SHA-256 `a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44`. The manifest declares MV3/version 26.41.0. Its public-key-derived extension ID is `egjidjbpglichdcondbcbdnbeeppgdph`. These files match the workspace's existing reference copies. **Official CRX signature/authenticity remains UNKNOWN.** Full identities are in [provenance.json](evidence/40-backend-api/2026-10-21/provenance.json).
+The supplied `background.js` is 42,723,770 bytes, SHA-256 `a6dc88b6583df8488ba549ed7228a8a0d47db0488c0484078cef1f34b6b49d44`. The manifest declares MV3/version 26.41.0. Its public-key-derived extension ID is `egjidjbpglichdcondbcbdnbeeppgdph`. These files match the workspace's existing reference copies. **Official CRX signature/authenticity remains UNKNOWN.** Full identities are in [provenance.json](evidences/re-evidence/40-backend-api/2026-10-21/provenance.json).
 
 ### Reading order and deliverables
 
 | Artifact | What it contains |
 |---|---|
 | This document | Backend boundaries, architecture, auth, database, end-to-end flows, implementation design and unresolved work |
-| [API-CATALOG.md](evidence/40-backend-api/2026-10-21/API-CATALOG.md) | Every inventoried historical HTTP route, RPC method/host pair, and static path occurrence; source offsets and counts |
-| [CLIENT-CONTRACTS.md](evidence/40-backend-api/2026-10-21/CLIENT-CONTRACTS.md) | All **73 recovered `ApiService` methods**, including exact parameter construction, defaults, paths and returns |
-| [HAR-SCHEMAS.md](evidence/40-backend-api/2026-10-21/HAR-SCHEMAS.md) | Value-free request/response shapes, header names, status counts and capture ordinals for all **237** historical route groups |
-| [har-contracts.json](evidence/40-backend-api/2026-10-21/har-contracts.json) | Machine-readable shape variants, observed lengths, MIME types, status counts, source files and every record reference |
-| [local-schema-unique.sql](evidence/40-backend-api/2026-10-21/local-schema-unique.sql) | **56 distinct packaged DDL statements**, including alternative/migration definitions; not a server schema or a linear migration script |
-| [local-schema-index.json](evidence/40-backend-api/2026-10-21/local-schema-index.json) | Every DDL statement mapped to its original file/hash/byte ranges |
-| [chain-capabilities.json](evidence/40-backend-api/2026-10-21/chain-capabilities.json) | Allowlisted public capability response: 108 chain rows; 86 enabled, 49 database-lookup enabled and 49 WebSocket-supported in that capture |
-| [Evidence README](evidence/40-backend-api/2026-10-21/README.md) | REA evidence IDs, tool identities, repeat commands, coverage, redactions, verification and limitations |
+| [API-CATALOG.md](evidences/re-evidence/40-backend-api/2026-10-21/API-CATALOG.md) | Every inventoried historical HTTP route, RPC method/host pair, and static path occurrence; source offsets and counts |
+| [CLIENT-CONTRACTS.md](evidences/re-evidence/40-backend-api/2026-10-21/CLIENT-CONTRACTS.md) | All **73 recovered `ApiService` methods**, including exact parameter construction, defaults, paths and returns |
+| [HAR-SCHEMAS.md](evidences/re-evidence/40-backend-api/2026-10-21/HAR-SCHEMAS.md) | Value-free request/response shapes, header names, status counts and capture ordinals for all **237** historical route groups |
+| [har-contracts.json](evidences/re-evidence/40-backend-api/2026-10-21/har-contracts.json) | Machine-readable shape variants, observed lengths, MIME types, status counts, source files and every record reference |
+| [local-schema-unique.sql](evidences/re-evidence/40-backend-api/2026-10-21/local-schema-unique.sql) | **56 distinct packaged DDL statements**, including alternative/migration definitions; not a server schema or a linear migration script |
+| [local-schema-index.json](evidences/re-evidence/40-backend-api/2026-10-21/local-schema-index.json) | Every DDL statement mapped to its original file/hash/byte ranges |
+| [chain-capabilities.json](evidences/re-evidence/40-backend-api/2026-10-21/chain-capabilities.json) | Allowlisted public capability response: 108 chain rows; 86 enabled, 49 database-lookup enabled and 49 WebSocket-supported in that capture |
+| [Evidence README](evidences/re-evidence/40-backend-api/2026-10-21/README.md) | REA evidence IDs, tool identities, repeat commands, coverage, redactions, verification and limitations |
 
 There are **802 static path-literal occurrences** across the combined passes, not 802 independent APIs. The scan parsed **238 JavaScript files** without parse errors. A separate pass found **2,264 syntactic network-call candidates**; collection `.get()` calls and unresolved receivers produce false positives. Six historical HAR files supplied **5,216 complete entries**, grouped into **237 host/method/normalized-path groups**, including unrelated browser resources. There are **86 RPC method/host pairs**. These sets are intentionally separate: neither a string nor a captured resource proves an active extension API. Dynamic paths, remote configuration, unexercised branches and minified Ktor calls prevent a defensible claim that every possible API has been identified.
 
@@ -52,7 +52,7 @@ The graph depicts observed client boundaries. The server box is deliberately opa
 
 | Responsibility | Established client behavior | Server detail available? |
 |---|---|---|
-| Custody | Local wallet/vault and Wallet Core dependency; prior crypto evidence retained under `evidence/04-06-vault-crypto`, `evidence/07-walletcore-usage` and `evidence/08-derivation` | No evidence supports server custody of seeds/private keys |
+| Custody | Local wallet/vault and Wallet Core dependency; prior crypto evidence retained under `evidences/re-evidence/04-06-vault-crypto`, `evidences/re-evidence/07-walletcore-usage` and `evidences/re-evidence/08-derivation` | No evidence supports server custody of seeds/private keys |
 | Wallet registry | Registers public account addresses and numeric coin identifiers; associates additional addresses | Storage engine, ownership checks and registry internals UNKNOWN |
 | Device auth | Fingerprint registration, device ID, per-device hash key, HMAC request headers | Issuance algorithm, server key protection/revocation/anti-abuse UNKNOWN |
 | Asset discovery | Public addresses/coins/publicKey fields sent; incremental `from_time`; `docs` response | Indexer architecture and discovery algorithms UNKNOWN |
@@ -70,7 +70,7 @@ The graph depicts observed client boundaries. The server box is deliberately opa
 | Extension runtime | JavaScript, Chrome MV3, service worker, popup/side-panel, extension storage | [certain, CODE-CONFIRMED], manifest and storage adapter |
 | Client HTTP | Axios instance; fetch adapter; `crypto-browserify` HMAC call site | [certain, CODE-CONFIRMED], `focus-extra-1` transport initializers and `background-05` auth |
 | Shared wallet SDK | Kotlin/JS-generated functions/coroutines, Trust SDK modules, serialization, Ktor-style HTTP client setup | [certain] for bundled constructs; exact compiler/Ktor versions UNKNOWN in this pass |
-| Cryptographic dependency | Shipped `wallet-core.wasm`; earlier workspace evidence binds it byte-for-byte to `@trustwallet/wallet-core@4.8.2` | Current hash rechecked in provenance; original dependency investigation remains in `evidence/07-walletcore-usage` and `audit/verification-summary.json` |
+| Cryptographic dependency | Shipped `wallet-core.wasm`; earlier workspace evidence binds it byte-for-byte to `@trustwallet/wallet-core@4.8.2` | Current hash rechecked in provenance; original dependency investigation remains in `evidences/re-evidence/07-walletcore-usage` and `evidences/audit/verification-summary.json` |
 | Local SQL | sql.js-style WASM loader, `JsSqlDriver`, generated query/schema adapters, SQLite SQL | [certain, CODE-CONFIRMED], `background-04` and `database-0`; precise sql.js/SQLite/generated-query-library versions UNKNOWN |
 | Local persistence | `chrome.storage.local` for compressed exported SQL bytes; extension storage adapter for other state | [certain, CODE-CONFIRMED], detailed below; not a remote DB |
 | Realtime protocol | WebSocket, `centrifuge-json`, newline-delimited JSON commands | [certain, CODE-CONFIRMED], `transport-0`; protocol compatibility does not prove the server binary is Centrifugo |
@@ -79,7 +79,7 @@ The graph depicts observed client boundaries. The server box is deliberately opa
 | Server DB/cache/queue | **UNKNOWN** | No proof of PostgreSQL, MySQL, MongoDB, Redis, Kafka or any other server product |
 | Hosting/deployment | **UNKNOWN** | No recovered container manifests, server package manifests, DB migrations or private server source |
 
-**[certain, OBSERVED-ONLY]** Allowlisted response headers in the E2E HAR report `server: istio-envoy` on several twnodes hosts, `server: cloudflare` on CDN/platform/wallet-kit hosts, and CloudFront cache hints on some resources. Cardano GraphQL, Kusama and Polkadot node responses include `x-powered-by: Express`. These are bounded infrastructure/framework **hints** for those responses; headers can be rewritten and do not establish the main gateway's application stack, a Kubernetes deployment, origin hosting, or any database. Exact hosts and record ordinals are in [server-header-hints.json](evidence/40-backend-api/2026-10-21/server-header-hints.json).
+**[certain, OBSERVED-ONLY]** Allowlisted response headers in the E2E HAR report `server: istio-envoy` on several twnodes hosts, `server: cloudflare` on CDN/platform/wallet-kit hosts, and CloudFront cache hints on some resources. Cardano GraphQL, Kusama and Polkadot node responses include `x-powered-by: Express`. These are bounded infrastructure/framework **hints** for those responses; headers can be rewritten and do not establish the main gateway's application stack, a Kubernetes deployment, origin hosting, or any database. Exact hosts and record ordinals are in [server-header-hints.json](evidences/re-evidence/40-backend-api/2026-10-21/server-header-hints.json).
 
 ## 4. Hosts and external boundaries
 
@@ -140,7 +140,7 @@ X-TW-CREDENTIAL = deviceId
 Authorization = "HMAC-SHA256 Signature=" + signature
 ```
 
-This pseudocode reconstructs `background-05` sortQueryParams/authenticationInterceptor; original function ranges are in [auth-fixtures.json](evidence/40-backend-api/2026-10-21/auth-fixtures.json). The **request body is absent from this client's signature string**. This says nothing about additional server-side validation. URL query takes precedence over `config.params`; do not silently replace this behavior with a different signing convention. String encoding of server-issued hash_key is passed through the crypto dependency; its issuance/entropy/storage on the server is UNKNOWN.
+This pseudocode reconstructs `background-05` sortQueryParams/authenticationInterceptor; original function ranges are in [auth-fixtures.json](evidences/re-evidence/40-backend-api/2026-10-21/auth-fixtures.json). The **request body is absent from this client's signature string**. This says nothing about additional server-side validation. URL query takes precedence over `config.params`; do not silently replace this behavior with a different signing convention. String encoding of server-issued hash_key is passed through the crypto dependency; its issuance/entropy/storage on the server is UNKNOWN.
 
 **Controlled verification:** six checks execute the four exact target functions with synthetic device data, an all-zero public fixture key, fixed time/nonce and Node's HMAC primitive. They cover duplicate-query ordering, canonical string/signature, body exclusion, host rejection, missing credentials and first-party suffix checks. This is a controlled function fixture, **not** full-extension runtime, crypto-browserify equivalence proof, or successful authentication to a real server.
 
@@ -191,11 +191,11 @@ The DDL extraction contains 174 occurrences across duplicated bundles, **56 dist
 | Price alerts | PriceAlert, PriceAlertAssets, PriceAlertSettings; sync status, attempts, last failure and next retry fields in PriceAlertAssets |
 | Bundled perpetuals | PerpetualAssetIcon, PerpetualBracketRisk, PerpetualExchangeSymbol, PerpetualFavoriteSymbol, PerpetualOrderedSymbol, PerpetualUserLeverage |
 
-Exact types, keys, foreign keys, defaults and alternative/migration definitions are in [the SQL evidence](evidence/40-backend-api/2026-10-21/local-schema-unique.sql). Presence of a table does not prove its corresponding feature is enabled. **None of these tables establish Trust Wallet's server schema.**
+Exact types, keys, foreign keys, defaults and alternative/migration definitions are in [the SQL evidence](evidences/re-evidence/40-backend-api/2026-10-21/local-schema-unique.sql). Presence of a table does not prove its corresponding feature is enabled. **None of these tables establish Trust Wallet's server schema.**
 
 ## 7. API families and client decisions
 
-All methods and complete request construction are retained in [CLIENT-CONTRACTS.md](evidence/40-backend-api/2026-10-21/CLIENT-CONTRACTS.md), avoiding a lossy paraphrase. The catalogue separately lists SDK path candidates and historical traffic. **[certain, CODE-CONFIRMED]** representative interfaces:
+All methods and complete request construction are retained in [CLIENT-CONTRACTS.md](evidences/re-evidence/40-backend-api/2026-10-21/CLIENT-CONTRACTS.md), avoiding a lossy paraphrase. The catalogue separately lists SDK path candidates and historical traffic. **[certain, CODE-CONFIRMED]** representative interfaces:
 
 | Family | Method and path | Request contract / important choice |
 |---|---|---|

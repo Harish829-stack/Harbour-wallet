@@ -44,7 +44,7 @@ the artifact, not inferred from convention, upstream source, or UI labels.
    in the wallet's lifecycle (install → onboarding → vault → account/address
    derivation → unlock/session → home/balances → send/sign/broadcast → dApp
    provider → message signing → WalletConnect → …), exactly as numbered in
-   `rebuild-tracker.md`. Do **not** reorder, prioritize, or jump ahead to a more
+   `docs/project/rebuild-tracker.md`. Do **not** reorder, prioritize, or jump ahead to a more
    interesting feature. The next target is always the next unfinished row in the
    chronological list.
 2. **One at a time, gated.** Do not start a feature until the previous one is
@@ -65,14 +65,14 @@ the artifact, not inferred from convention, upstream source, or UI labels.
    in using it: which functions, arguments, parameters, derivation/encryption
    options, call sites, and version. The library's internals stay out of scope; how
    Trust Wallet *drives* it is part of the feature and must be established, not guessed.
-6. **Reload context every step.** Read this `AGENTS.md` (and both working docs) at
+6. **Reload context every step.** Read this `docs/project/AGENTS.md` (and both working docs) at
    the start of every step, so scope, chronological order, and method are clear
    before any action.
 7. **Deposit evidence on completion.** When a feature reaches the REA-genuine bar,
    its recovered source, the exact slice fed to REA, and the REA manifest are
-   copied into `Desktop/REA/evidence/NN-<feature>/`, and `evidence/INDEX.md` is
+   copied into `Desktop/REA/evidences/re-evidence/NN-<feature>/`, and `evidences/re-evidence/INDEX.md` is
    updated with the feature → file → evidence-ID row. The handoff bundle
-   (`trust-wallet-RE.md` specs + `evidence/` sources + `rebuild-tracker.md`
+   (`docs/re/trust-wallet-RE.md` specs + `evidence/` sources + `docs/project/rebuild-tracker.md`
    coverage) must stay self-contained: a dev reads the recovered source in
    `evidence/`, not the 42 MB shipped `background.js`. Never leave a feature's
    evidence only in the working container.
@@ -112,15 +112,15 @@ implementation claim. Hypotheses guide searches; they never appear as facts.
 
 Two living documents in the workspace. Read both at the start of every session.
 
-1. **`trust-wallet-RE.md`** — the evidence base and per-feature implementation
+1. **`docs/re/trust-wallet-RE.md`** — the evidence base and per-feature implementation
    specifications: target identity, tooling/provenance, architecture map,
    findings with confidence tags, and the specs a future build will consume.
    History-preserving: append dated corrections at the end of the relevant
    section; never silently rewrite a finding. Keep a `Reverse Engineering Status`
    table as the last section.
-2. **`rebuild-tracker.md`** — the **feature-coverage tracker**: one row per
+2. **`docs/project/rebuild-tracker.md`** — the **feature-coverage tracker**: one row per
    feature with RE progress, verified-from-binary (Yes/Partial/No), confidence,
-   evidence/tools used, and remaining gap. This tracks *documentation* progress,
+   evidences/re-evidence/tools used, and remaining gap. This tracks *documentation* progress,
    not build progress.
 
 Keep both concise; link large outputs to durable evidence files. Never record
@@ -182,7 +182,7 @@ with no REA route before switching tools.
 Keep the original target untouched. Any runtime work uses an isolated profile
 with disposable wallets and test networks — never the real wallet or real funds.
 
-## Implementation specification (per feature, in `trust-wallet-RE.md`)
+## Implementation specification (per feature, in `docs/re/trust-wallet-RE.md`)
 
 The core deliverable. For each feature, document the following, citing target
 evidence for every established detail and marking gaps `UNKNOWN`:
@@ -219,7 +219,7 @@ unbuildable until a gap is closed.
 
 ## Feature inventory
 
-The authoritative, numbered **chronological** list lives in `rebuild-tracker.md`
+The authoritative, numbered **chronological** list lives in `docs/project/rebuild-tracker.md`
 and governs order. Investigate each as a question, not an assumption that it
 exists. Work strictly top-to-bottom; a feature is only started when the one above
 it is genuinely RE'd (see "Working method"). Expand the list when the package
@@ -252,9 +252,9 @@ with the same UI (all screens and UX) as the provided Trust Wallet extension,
 reusing this research. It supersedes the earlier documentation-only scope above.
 Replacement branding/assets are permitted where originals cannot be fetched.
 Evidence rules, isolated runtime work, local custody and chronological gates
-remain in force. The governing build plan is `IMPLEMENTATION-PLAN.md`; visual and
-interaction acceptance is tracked separately in `UI-PARITY.md`. Research progress
-in `rebuild-tracker.md` must never be presented as implemented wallet coverage.
+remain in force. The governing build plan is `docs/project/IMPLEMENTATION-PLAN.md`; visual and
+interaction acceptance is tracked separately in `docs/re/UI-PARITY.md`. Research progress
+in `docs/project/rebuild-tracker.md` must never be presented as implemented wallet coverage.
 Do not reduce scope to a generic design, a small chain subset, fake data or inert
 controls. Preserve earlier findings and record corrections with dated addenda.
 
@@ -272,7 +272,7 @@ explicit gaps → official extension design research and licensed asset ledger �
 shared system rendered at real dimensions → chronological implementation,
 interaction/lifecycle verification and repair. Whole-target structural discovery
 is authorized before gate #02; it does not close later feature research gates.
-`UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
+`docs/re/UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
 implementation, integration, visual inspection and interaction separately. Sample
 data and development previews never count as live integration. Resume detailed
 research at #02; preserve later evidence as provisional. Continue independent
@@ -284,14 +284,14 @@ The user now wants a **fully functional, secure, modular Trust Wallet–equivale
 unimplemented** relative to Trust Wallet v26.41.0, non-static/non-dummy data, Trust-Wallet-like architecture, and publicly
 available logos/photos/assets. Rules for every working session:
 
-1. **Theme is user-owned and was updated by the user.** Read `DESIGN-SYSTEM.md` ("Current theme as found 2026-10-19") before
+1. **Theme is user-owned and was updated by the user.** Read `docs/re/DESIGN-SYSTEM.md` ("Current theme as found 2026-10-19") before
    touching any UI. Do not re-theme; reuse the `--hb-*` tokens. Record any theme facts discovered later there.
 2. **Docs may be incomplete or wrong.** When a doc claim, a route row or a feature spec is doubtful, resolve it with REA
-   (recover the chunk under `artifacts/reference-26.41.0/`) and write a dated correction. Do not silently replace history.
-3. **Fill gaps before new features.** Incomplete/incorrect existing screens and flows (see `UI-PARITY.md` 2026-10-19 table) are
+   (recover the chunk under `evidences/extension/reference-26.41.0/`) and write a dated correction. Do not silently replace history.
+3. **Fill gaps before new features.** Incomplete/incorrect existing screens and flows (see `docs/re/UI-PARITY.md` 2026-10-19 table) are
    fixed before starting features that do not exist yet.
-4. **Update the docs at each step**: `harbour-wallet-v2/BUILD-LOG.md` (what changed + verification), `UI-PARITY.md`
-   (screen status), `rebuild-tracker.md` (research status), and `evidence/NN-*` for any new REA recovery.
+4. **Update the docs at each step**: `harbour-wallet-v2/BUILD-LOG.md` (what changed + verification), `docs/re/UI-PARITY.md`
+   (screen status), `docs/project/rebuild-tracker.md` (research status), and `evidences/re-evidence/NN-*` for any new REA recovery.
 5. **Public resources are allowed** where Trust Wallet's behaviour is proprietary or its internals cannot be recovered
    (CoinGecko, public RPCs, block explorers, LI.FI/Jupiter, trustwallet/assets logos). Equivalent providers must be named and
    the deviation recorded. Trust Wallet's authenticated gateway (`gateway.us.trustwallet.com`) is still NOT called and its
@@ -303,4 +303,4 @@ available logos/photos/assets. Rules for every working session:
 8. **Honest status only.** "Built" means code exists and `tsc`/build/tests pass; "verified" means exercised in Chrome. Never
    claim live-API verification when network egress was blocked. Never claim a screen has parity without a capture.
 9. The strict chronological research gate in this file still governs *research ordering*; the build order is in
-   `IMPLEMENTATION-PLAN.md` (2026-10-19 section).
+   `docs/project/IMPLEMENTATION-PLAN.md` (2026-10-19 section).

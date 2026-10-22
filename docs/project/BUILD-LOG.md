@@ -106,7 +106,7 @@
 - `/approval` is implemented as the target's allowance-management surface, with
   on-chain rechecks and explicit revocation confirmation. Connections, connection
   detail, blacklist, and default-wallet settings are wired to real background stores.
-- Evidence: REA recovery and source ranges in `../evidence/30-dapp-approvals/2026-10-19/recovery/`;
+- Evidence: REA recovery and source ranges in `../evidences/re-evidence/30-dapp-approvals/2026-10-19/recovery/`;
   the original 53 MB HAR was preserved and analyzed through the sanitized 1,049,392-byte
   projection (`ev_551b146661f76ad4aeba38f5a5c3feb79f998e627d6b4c43e2cda4f46f188ce3`).
   The HAR shows Sepolia JSON-RPC reads, gas estimation, raw broadcast and receipt
@@ -191,7 +191,7 @@ buy providers, swap quotes — all labelled in-UI.
 Wired the previously-dead "Add account" action in the wallet selector. It was a no-op
 (`onClick={() => {}}`) and the core had no account-index concept (always derived index 0).
 
-**Evidence**: evidence/08-derivation (decompiled TW `getPrivateKeyForWallet`). TW derives
+**Evidence**: evidences/re-evidence/08-derivation (decompiled TW `getPrivateKeyForWallet`). TW derives
 additional accounts by taking the coin's default path and replacing its LAST "0" with the
 account index — e.g. ethereum `m/44'/60'/0'/0/0` → `…/0/1` — then `HDWallet.getKey(coin, path)`.
 Replicated exactly (not the "logical" account' component).
@@ -218,7 +218,7 @@ canonical address. `npm test` (9/9) green; `tsc --noEmit` + `vite build` clean.
 Harbour only ever supported ONE wallet (`vault.create` throws if a vault exists; every handler
 read `wallets[0]`), so "Add new wallet"/"Create new wallet" had nothing behind it.
 
-**Evidence**: evidence/08-derivation (TW wallet slice) — wallets keyed by uuid, each `{id, type,
+**Evidence**: evidences/re-evidence/08-derivation (TW wallet slice) — wallets keyed by uuid, each `{id, type,
 name, accountId}`; `accountsPerWallet[id]`; active wallet+account via `setWalletId`; new mnemonics
 deduped by checking the ethereum address isn't already present (`MNEMONIC_ALREADY_EXISTS`);
 `persistWallet` seeds "Account 1".
@@ -283,8 +283,8 @@ share"), a blurred word grid with "Tap to reveal", button Show → Proceed. Proc
 
 These flows were NOT in the existing evidence, so they were recovered with REA's engine
 (Wakaru 1.14.0) run directly on the shipped TW chunks (the REA wrapper had no binary
-configured). New evidence: evidence/19-search-manage-crypto, 20-dapp-discovery, 21-network-filter,
-+ evidence/REA-RECOVERY-NOTE.md.
+configured). New evidence: evidences/re-evidence/19-search-manage-crypto, 20-dapp-discovery, 21-network-filter,
++ evidences/re-evidence/REA-RECOVERY-NOTE.md.
 
 Recovered from chunks manage-crypto-CZfZXrkn.js, dapps-D5KacSOR.js, HorizontalNetworksFilter-D_mSA3oc.js:
 - Search = TW "ManageCrypto": tabs Crypto|DApps; Crypto placeholder "Token name or contract
@@ -312,7 +312,7 @@ Concern: Harbour UI not responsive. Root cause (not a missing TW feature): App.t
 Wallet.tsx were hardcoded to `width: 375` / `minHeight: 600` (const W = 375), so the UI never
 filled a taller side panel / full tab and could clip in smaller windows.
 
-REA grounding (evidence/22-window-context, recovered window-COx4dq7s.js): TW never pins a pixel
+REA grounding (evidences/re-evidence/22-window-context, recovered window-COx4dq7s.js): TW never pins a pixel
 box — it fills its container with viewport-relative sizing (`h-full`, `h-[65vh]`) and detects
 context via `isPopupOpened()` / side panel / tab (`useIsCompactView`) to switch modals to
 fullscreen when compact.
@@ -328,7 +328,7 @@ width, capped at 480 and centered on wide screens; popup still renders ~360.
 ## 2026-10-16 — Trending tab (TW TrendingTokens parity, fresh REA recovery)
 
 Recovered via REA engine (Wakaru 1.14.0) from App-D29UTaP5.js (`--unpack` -> entry.js module).
-Evidence: evidence/23-trending/bundle.js (TrendingTokens page, PriceChangeSelect, table column
+Evidence: evidences/re-evidence/23-trending/bundle.js (TrendingTokens page, PriceChangeSelect, table column
 defs, MarketSentiment, CategoriesSelect).
 
 Recovered structure: title "Trending"; search (dashboard.tokens.input-placeholder); a controls
@@ -353,7 +353,7 @@ feed (TW's CategoriesSelect + FETCH_TRENDING_NETWORKS). Noted as a gap.
 ## 2026-10-16 — Trending: all 3 dropdowns (Networks / Trending category / timeframe)
 
 Follow-up: the first Trending pass had only the 24H dropdown. RE'd the other two from the
-recovered entry.js (evidence/23-trending): BlockchainSelect (Networks) and CategoriesSelect
+recovered entry.js (evidences/re-evidence/23-trending): BlockchainSelect (Networks) and CategoriesSelect
 (Trending category).
 
 - BlockchainSelect: compact "Networks" button -> dropdown with "Network Name" search, "All
@@ -396,13 +396,13 @@ or expand TW to a full tab (home.html) and record Network there. Look for
 gateway.us.trustwallet.com requests (hot tokens / categories / trending networks).
 
 ## HAR-driven Trending alignment (network-log.har)
-- Evidence: evidence/24-har-api-contract/API-CONTRACT.md (34 distinct TW gateway calls), test/fixtures/tw-listings.json.
+- Evidence: evidences/re-evidence/24-har-api-contract/API-CONTRACT.md (34 distinct TW gateway calls), test/fixtures/tw-listings.json.
 - TW Trending = GET gateway.us.trustwallet.com/v1/assets/listings (category_id, networks, sort_field, sort_direction, limit, version=27). Auth is a TW device credential; Harbour deliberately does NOT call it (impersonation/ToS).
 - Implemented: src/core/twTaxonomy.ts (real network coin ids, category ids, default network set, listing response shape + adapter); Trending dropdowns now use TW network coin ids + category ids; data stays CoinGecko.
 - Unmapped: category 'bstocks' (no verified public equivalent); HyperEVM/Robinhood/Arc networks have no CoinGecko category so are hidden from the network dropdown.
 
 ## Swap tab rebuild (2026-10-16)
-- Evidence: evidence/25-swap/ (serializer schemas, TW strings, SWAP-SPEC.md with confidence tags, gaps and deviations).
+- Evidence: evidences/re-evidence/25-swap/ (serializer schemas, TW strings, SWAP-SPEC.md with confidence tags, gaps and deviations).
 - Core: src/core/swap/* (types, domains, amount, errors, rules, tokens, lifi, jupiter, engine, safety). Background: src/background/{keys,swapService}.ts + message cases swapState/SetSettings/SearchTokens/Balances/Max/Quote/Approve/Submit/Status/History (old 0x getSwapQuote removed).
 - UI: src/popup/wallet/swap/{SwapTab,parts,sheets,screens,swapStore}; old hardcoded SwapTab (Wallet.tsx) and SwapConfirmScreen (screens.tsx) deleted.
 - Sources: LI.FI (EVM + single-tx bridge), Jupiter lite-api (Solana), trustwallet/assets logos, public RPCs. TW's gateway is NOT used.
@@ -418,15 +418,15 @@ gateway.us.trustwallet.com requests (hot tokens / categories / trending networks
 
 ---
 ## 2026-10-19 — Documentation sync and new mandate
-- Re-read all REA docs and the source. Recomputed screen status in `UI-PARITY.md` (code-inspected); noted the user-updated
-  theme and two palette conflicts in `DESIGN-SYSTEM.md`; added governing rules to `AGENTS.md`; new research items #30–#39 in
-  `rebuild-tracker.md`; revised build order in `IMPLEMENTATION-PLAN.md`.
+- Re-read all REA docs and the source. Recomputed screen status in `docs/re/UI-PARITY.md` (code-inspected); noted the user-updated
+  theme and two palette conflicts in `docs/re/DESIGN-SYSTEM.md`; added governing rules to `docs/project/AGENTS.md`; new research items #30–#39 in
+  `docs/project/rebuild-tracker.md`; revised build order in `docs/project/IMPLEMENTATION-PLAN.md`.
 - Verification: `npx tsc --noEmit` clean on the current tree before any new work.
 
 ---
 ## 2026-10-19 — Chain registry: Trust Wallet's 86 enabled chains (gap-fill #1)
 - Found user's refreshed `network-log.har` (151 MB, 3,467 entries, last entry truncated) with `/v1/balances/chains` (86 enabled). Mapped every
-  chain id to wallet-core CoinType (all 86 present in 4.8.2). Generator + evidence in `evidence/30-chain-registry/`.
+  chain id to wallet-core CoinType (all 86 present in 4.8.2). Generator + evidence in `evidences/re-evidence/30-chain-registry/`.
 - New modules: `src/core/chains/{types,index,registry.json,rpcUrls}.ts`, `src/core/chains/adapters/{types,index,evm,solana}.ts`.
   `core/chains.ts` is now a legacy view over the registry. Home/Search/Networks/Activity assets derive from the registry (`popup/wallet/data.ts`);
   no hard-coded prices remain for natives. `getBalances` now reads balances through per-family adapters and prices via CoinGecko ids (`fetchNativePrices`).
@@ -440,15 +440,15 @@ gateway.us.trustwallet.com requests (hot tokens / categories / trending networks
 ---
 ## 2026-10-19 — UI-only polish and built-extension visual audit
 - User narrowed this session to existing UI/UX; no new wallet feature, route, background contract, approval flow, or network adapter was added.
-- Fixed the asset packaging path: 82 chain marks downloaded under `public/chains/` had never entered Vite's `public-production/` bundle. Copied them to `public-production/chains/`, retargeted `scripts/fetch-chain-logos.mjs`, and passed chain IDs to the shared Coin view in Receive, Send, Search, network selection, token detail, and token-network rows. Removed fragile remote Trending image hotlinks in favor of curated bundled marks and neutral fallback. Hash manifest: `audit/ui/2026-10-19/chain-logo-manifest.json`; provenance/rights limits: `ASSET-LEDGER.md`.
+- Fixed the asset packaging path: 82 chain marks downloaded under `public/chains/` had never entered Vite's `public-production/` bundle. Copied them to `public-production/chains/`, retargeted `scripts/fetch-chain-logos.mjs`, and passed chain IDs to the shared Coin view in Receive, Send, Search, network selection, token detail, and token-network rows. Removed fragile remote Trending image hotlinks in favor of curated bundled marks and neutral fallback. Hash manifest: `evidences/audit/ui/2026-10-19/chain-logo-manifest.json`; provenance/rights limits: `docs/re/ASSET-LEDGER.md`.
 - Unified the existing controls further: accessible wallet-select button and sheet dialog/Escape semantics, input/number formatting and reduced-motion treatment, consistent wallet avatar, a clearer empty state, and removal of an inert Send scanner affordance.
 - Removed production display of static provider quotes, staking APRs/positions, sample NFT ownership, and invented DApps. Those existing views now explain their unavailable integration without presenting fixtures as live.
-- Ran the built MV3 extension in disposable Chromium profiles and captured/inspected 27 popup states/layouts at 320/375/480 px (including Send invalid-input/sheet and Trending loading/settled) plus create/import onboarding screens. `audit/ui/2026-10-19/checks.json`: 27 captures, zero page errors, zero missing images, zero horizontal-overflow checks after repair. Navigation and dark-mode selection were exercised; financial operations were not.
+- Ran the built MV3 extension in disposable Chromium profiles and captured/inspected 27 popup states/layouts at 320/375/480 px (including Send invalid-input/sheet and Trending loading/settled) plus create/import onboarding screens. `evidences/audit/ui/2026-10-19/checks.json`: 27 captures, zero page errors, zero missing images, zero horizontal-overflow checks after repair. Navigation and dark-mode selection were exercised; financial operations were not.
 - Validation: `npm run build` passes; focused settings/chain tests 32/32 pass. Full suite currently 147/156: 9 failures in history and staking/signing tests unrelated to the UI edits. They remain open; no whole-wallet success claim.
 
 ---
 ## 2026-10-19 — Multi-chain data adapters (worker NN=32)
-- Evidence/status: `evidence/32-chain-data/STATUS.md` (per-family Real/Unsupported, endpoints, live-unverified); `evidence/30-chain-registry/ADAPTERS.md` rewritten.
+- Evidence/status: `evidences/re-evidence/32-chain-data/STATUS.md` (per-family Real/Unsupported, endpoints, live-unverified); `evidences/re-evidence/30-chain-registry/ADAPTERS.md` rewritten.
 - Balances: every registry family now has a native-balance adapter (`core/chains/adapters/{utxo,cosmos,substrate,others}.ts`, helpers `codec.ts`, `net.ts`); only Nimiq and Aion are explicit "unsupported". Polkadot/Kusama use Asset Hub (relay-chain registry endpoints would return a stale 0).
 - Tokens: SPL + TRC-20 balances/probes (`adapters/tokens.ts`), handlers `chainDataToken*`, vault field `customChainTokens`, new screen `addChainToken` (Select network lists Solana/Tron), Home merges them with EVM tokens (`tokensStore.ts`), detail screen branches on `token.chain`.
 - History: `fetchHistory(chain|id, address)` in `core/txHistory.ts` now covers EVM (+ERC-20, optional explorer-reported USD), Esplora and 17 non-EVM families (`adapters/history.ts`); `HistoryItem` gained `token?`/`usd?`. Activity screen aggregates all visible supported chains.
@@ -471,7 +471,7 @@ gateway.us.trustwallet.com requests (hot tokens / categories / trending networks
 - Verification: `npx tsc --noEmit` and `npm run build` pass; focused network/settings tests pass (22/22). Chrome interaction with a live custom RPC remains pending.
 
 ## 2026-10-19 — dApp provider stack (worker NN=31)
-- Evidence/status: `evidence/31-dapp-provider/STATUS.md` (Real/Partial/Gap per screen and flow).
+- Evidence/status: `evidences/re-evidence/31-dapp-provider/STATUS.md` (Real/Partial/Gap per screen and flow).
 - Page: `src/inpage/*` (EIP-1193, EIP-6963, `window.trustwallet`, Solana + Wallet Standard), bundled by `scripts/build-inpage.mjs` into `public/inpage.js`; `src/content/content.ts` is a validating relay.
 - Core/background: `src/core/provider/*` (protocol, methods, stores, decode, typed, siwe, solanaTx, phishing, evmSign), `src/background/provider/*` (service, ports, approval window, rpc, fees, signer), handler `handlers/provider.ts`.
 - UI: `features/provider.tsx` (approval surface at `#/notification`, Connections, Blacklist, Connection detail, token approvals panel).
@@ -479,7 +479,7 @@ gateway.us.trustwallet.com requests (hot tokens / categories / trending networks
 - Verification: `tsc` clean; `test/provider.test.js` 60/60; full `npm test` 328/328. Not verified: any live RPC/phishing list, MAIN-world injection in a real Chrome profile, visual QA, Solana page object in a browser.
 
 ## 2026-10-19 — Send / Receive / Transaction detail (worker NN=33)
-- Evidence: `evidence/33-send-receive/{SPEC,STATUS}.md`, `tw-strings.json` (68 recovered TW strings).
+- Evidence: `evidences/re-evidence/33-send-receive/{SPEC,STATUS}.md`, `tw-strings.json` (68 recovered TW strings).
 - Core: `src/core/chains/send/*` (one module per family, `index.ts` support matrix), `src/core/sendService.ts` (records, ENS/SNS, payment URIs, recipient risk). Background: `handlers/chainSend.ts`, `keys.ts` gained `privateKeyFor` (key returned as a copy, zeroed by the handler).
 - UI: `popup/wallet/send/*` (select, prepare, confirm, transaction, receive, extras, parts, lib, store), registered in `features/send.tsx`; `screens.tsx` Send/Receive blocks replaced by thin re-exports.
 - Verification: `npx tsc --noEmit` clean for these files (remaining errors are in `onboarding/ImportSecret.tsx`, another worker); `npm test` 334/334 including 48 send tests (mocked fetch, no broadcasts). Not verified: any live network, visual QA in Chrome, camera QR on a device.
@@ -488,7 +488,7 @@ gateway.us.trustwallet.com requests (hot tokens / categories / trending networks
 ## 2026-10-19 — Earn/Staking (34) + NFTs (35)
 - Core: `src/core/staking/*` (registry, validators + bundled snapshot, cosmos, solana, evm [Lido, BNB StakeHub], service), `src/core/nfts/*` (media sanitiser, spam heuristic, blockscout, solana DAS/Magic Eden, transfer builders, service).
 - Background: `handlers/earn.ts` (+`earnKeys.ts`, `earnEvm.ts`), `handlers/nfts.ts`. UI: `features/earn.tsx`, `earnParts.tsx`, `nfts.tsx`. Wallet.tsx Earn tab -> `EarnTab` (hidden for hardware/non-mnemonic wallets); static StakingScreen/NftsScreen and STAKING/NFTS constants deleted (screens.tsx, data.ts).
-- Public equivalents used: trustwallet/assets validators lists, chain LCD/RPC, Lido, StakeHub, Blockscout v2, Solana DAS/Magic Eden. TW gateway not used. Evidence: evidence/34-staking, evidence/35-nfts.
+- Public equivalents used: trustwallet/assets validators lists, chain LCD/RPC, Lido, StakeHub, Blockscout v2, Solana DAS/Magic Eden. TW gateway not used. Evidence: evidences/re-evidence/34-staking, evidences/re-evidence/35-nfts.
 - Verification: tsc clean; `npm test` 334/334 (test/staking.test.js 15, test/nfts.test.js 12). Signing vectors are self-generated regression pins, not official.
 - NOT verified: any live network call, any broadcast, visual QA in Chrome, StakeHub ABI/addresses, Magic Eden access.
 
@@ -508,7 +508,7 @@ Uniswap swap failed with `Invalid value.` (normalizeSendTx rejected a leading-ze
 Home header shows the active tab's connected site (icon + green dot) beside the Networks button; tap opens a card (network + Connected, site icon/name/host, Disconnect). New background message `providerCurrentSite` (chrome.tabs active tab -> perms.get(origin)); Disconnect reuses `providerDisconnect`. `add-cutom-network.har` contains only network traffic (no UI), so layout follows the supplied Trust Wallet screenshot; the HAR confirms one `validate/url` site check for chainlist.org and an RPC call to the custom network. Verified: tsc/tests/build only, not in Chrome.
 
 ## 2026-10-19 — WalletConnect v2 (Harbour-side equivalent)
-**Evidence correction:** TW 26.41.0 ships no pairing/relay/session client (only a Kotlin request mapper) — `evidence/16-walletconnect-BLOCKED/README.md` addendum (scripted search, not REA).
+**Evidence correction:** TW 26.41.0 ships no pairing/relay/session client (only a Kotlin request mapper) — `evidences/re-evidence/16-walletconnect-BLOCKED/README.md` addendum (scripted search, not REA).
 **Built:** `@reown/walletkit@1.6.0` + `@walletconnect/core@2.25.0` (+`utils@2.25.0`) in the service worker.
 - `src/core/walletconnect/index.ts` — pure policy: `wc:` URI validation (v2/irn only, expiry), `negotiate` (required namespace/chain/method/event that Harbour can't meet refuses the proposal; optional narrowed; nothing unrequested granted), `mapRequest` allowlist (EVM: personal_sign, eth_sign, eth_signTypedData[_v3/_v4], eth_sendTransaction, wallet_switch/addEthereumChain, wallet_watchAsset; Solana: signMessage, signTransaction; no eth_signTransaction/Cosmos), Solana result shape mapping.
 - `src/background/walletconnect/{bridge,kit}.ts` — relay events -> `ProviderService` via a synthetic sender (`tabId -1`, `documentId wc:<topic>`); outcomes routed back by `deliver()` in provider/index.ts; sessions indexed in `harbour:wc:sessions`; WalletKit storage on chrome.storage.local; resume + 30 s alarm while sessions exist; origin disconnect / session_delete end both sides.
@@ -519,13 +519,13 @@ Home header shows the active tab's connected site (icon + green dot) beside the 
 **NOT verified / UNKNOWN:** any live relay session (needs a Reown Cloud project ID, entered in the screen or `VITE_WC_PROJECT_ID`; I have none); Chrome runtime behaviour of the worker while idle; Reown Cloud domain allow-list vs `chrome-extension://` origin; wallet metadata URL is the placeholder `https://harbour.invalid`. Known limits: concurrent WC requests on different chains can invalidate each other's binding (safe: they fail with "connection changed"); WC request expiry is not honoured (15 min pending TTL); `session_authenticate` (SIWE) is rejected as unsupported; no accountsChanged/chainChanged events are pushed to WC sessions.
 
 ## 2026-10-19 — Cleanup
-Removed stale `content.js`, `public/`, empty `src/popup/provider/`; fixed path comment in `scripts/build-inpage.mjs`. Unreferenced-module scan found no other dead files. Added `FEATURE-MATRIX.md`. Gate: tsc clean, 349/349, build OK.
+Removed stale `content.js`, `public/`, empty `src/popup/provider/`; fixed path comment in `scripts/build-inpage.mjs`. Unreferenced-module scan found no other dead files. Added `docs/project/FEATURE-MATRIX.md`. Gate: tsc clean, 349/349, build OK.
 
 ## 2026-10-21 — Backend reverse-engineering documentation (no build change)
 
 User scope: use REA on supplied Trust Wallet v26.41.0 for backend, DB, stack and
-end-to-end API documentation. Deliverables: root `TRUST-WALLET-BACKEND.md` and
-`evidence/40-backend-api/2026-10-21/` with 73 recovered ApiService methods,
+end-to-end API documentation. Deliverables: root `docs/re/TRUST-WALLET-BACKEND.md` and
+`evidences/re-evidence/40-backend-api/2026-10-21/` with 73 recovered ApiService methods,
 historical HTTP/RPC shape catalogues, exact local SQL/storage and bounded auth,
 streaming, WebSocket/device evidence. Actual server DB/framework remain UNKNOWN;
 a proposed equivalent architecture is explicitly separated from recovered facts.
@@ -736,7 +736,7 @@ Mainnet test with small amounts before release.
 - Ledger signing: there is no device here.
 
 ## Phase 8 — security, hardening, release (2026-10-21)
-Simulation previews (`eth_simulateV1`), GoPlus + ScamSniffer address/approval checks, approval scanner with revoke, `tabs` permission removed, `npm audit` to 0 high/critical, reproducible builds (`scripts/repro.mjs`), deterministic zip + Ed25519-signed release metadata (`scripts/release.mjs`, `verify-release.mjs`). See `SECURITY.md`, `RELEASE.md`, `STORE-LISTING.md`. Commits `a99c7f0`, `112d811`.
+Simulation previews (`eth_simulateV1`), GoPlus + ScamSniffer address/approval checks, approval scanner with revoke, `tabs` permission removed, `npm audit` to 0 high/critical, reproducible builds (`scripts/repro.mjs`), deterministic zip + Ed25519-signed release metadata (`scripts/release.mjs`, `verify-release.mjs`). See `docs/harbour/SECURITY.md`, `docs/harbour/RELEASE.md`, `docs/harbour/STORE-LISTING.md`. Commits `a99c7f0`, `112d811`.
 
 ## Final gap sweep (2026-10-22)
 - Non-EVM custom tokens: TON jettons, Sui coins, Aptos coins and fungible assets — probe, balance, add-token UI and send (`adapters/tokens.ts`, `send/{ton,sui,aptos}.ts`). `test/tokens-nonevm.test.js` (7 tests). Total 410 tests pass; `tsc --noEmit` clean.

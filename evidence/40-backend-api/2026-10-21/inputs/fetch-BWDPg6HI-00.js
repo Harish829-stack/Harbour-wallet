@@ -1,4 +1,0 @@
-tt="undefined"!=typeof window&&"undefined"!=typeof document,rt="object"==typeof navigator&&navigator||void 0,nt=tt&&(!rt||["ReactNative","NativeScript","NS"].indexOf(rt.product)<0),ot="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope&&"function"==typeof self.importScripts,st=tt&&window.location.href||"http://localhost";
-function isFirstPartyRpcHost(e){try{const{hostname:t}=new URL(e??"");return yn.some(e=>t===e||t.endsWith(`.${e}`))}catch{return!1}};
-async function getFingerprintIdentifier(){let e=getAuthIdentifier();return e||(e=await async function createIdentifier(){let e=crypto.randomUUID();const t=(0,hn.createHash)("sha256").update(e).digest("hex").substring(0,4);return e+=`-${t}`,e}(),p.dispatch(f.actions.setAuthIdentifier(e))),e};
-var Rn="/v2/devices/fingerprint";

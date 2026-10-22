@@ -26,7 +26,7 @@ document *that it is used and with what parameters/call sites*, not its internal
 **Evidence rules:** never invent params/formats/behavior; every claim cites target
 evidence (REA/WABT/controlled execution) with a confidence tag; a failed search ≠
 absence; mark gaps `UNKNOWN` rather than filling them; wallet-core support ≠ proof
-the extension uses it. Documentation progress is tracked in `rebuild-tracker.md`.
+the extension uses it. Documentation progress is tracked in `docs/project/rebuild-tracker.md`.
 
 ---
 
@@ -36,7 +36,7 @@ the extension uses it. Documentation progress is tracked in `rebuild-tracker.md`
 |---|---|
 | Last updated | 2026-10-15 |
 | Primary target | Trust Wallet Chrome extension (Manifest V3) |
-| Version analyzed | **26.41.0** (zip `26.41.0_0.zip`, sha256 `9e1401e8…7054096`) |
+| Version analyzed | **26.41.0** (zip `evidences/extension/26.41.0_0.zip`, sha256 `9e1401e8…7054096`) |
 | Source | Unpacked extension from user's Chrome profile |
 | Method | Static: REA `analyze_javascript_application` + `recover_javascript_sources` (Wakaru 1.14.0), plus direct reads of bundled JS |
 | Android APK | Provided but **not yet analyzed** (deferred by user) |
@@ -498,7 +498,7 @@ here is the policy + lock mechanism, not the countdown scheduler.
 ## 5. Features #10–#18 — Implementation specifications (REA-genuine)
 
 Each sub-section is backed by REA `recover_javascript_sources`; recovered source
-shipped in `evidence/NN-*/`. Runtime/server contracts are marked `UNKNOWN` per the
+shipped in `evidences/re-evidence/NN-*/`. Runtime/server contracts are marked `UNKNOWN` per the
 static-analysis boundary.
 
 ### 5.10 Home — assets / balances / tokens / prices / history (#10)
@@ -570,7 +570,7 @@ Evidence ev_1db92cac (`17-swap/`), `SwapService`. [certain]
 - Decision: swaps go through a provider/quote model with slippage handling, then
   submit as a normal transaction (§5.11). [certain]
 - `UNKNOWN`: the swap provider API endpoints/quote responses (runtime/server). 
-- **Correction 2026-10-16:** the endpoint UNKNOWN above is superseded. Recovered: walletkit `TrustSwapClient` (`/v2.1/swap`, `/v2.1/swap/quote`), Amber routing API, Thorchain service, approval service; 69 serializer schemas. Server-side behavior and TW defaults remain UNKNOWN. See `harbour-wallet-v2/evidence/25-swap/SWAP-SPEC.md`.
+- **Correction 2026-10-16:** the endpoint UNKNOWN above is superseded. Recovered: walletkit `TrustSwapClient` (`/v2.1/swap`, `/v2.1/swap/quote`), Amber routing API, Thorchain service, approval service; 69 serializer schemas. Server-side behavior and TW defaults remain UNKNOWN. See `evidences/re-evidence/25-swap/SWAP-SPEC.md`.
 
 ### 5.18 Hardware wallet — Ledger (#18)
 Evidence ev_153b6ed2 (`18-ledger/`), from the `import-ledger` chunk. [certain]
@@ -672,7 +672,7 @@ Internal event bus (`Tn("…")` / `vn.emit`):
 **Harness:** the extension was loaded unpacked into headful Chromium 1194 (via
 Playwright + `xvfb`) in the analysis container, with a fresh profile and a
 **throwaway wallet** (random seed, no funds). Storage, console, and network were
-captured. Evidence: `evidence/runtime/` (storage schema redacted — secrets/
+captured. Evidence: `evidences/re-evidence/runtime/` (storage schema redacted — secrets/
 ciphertext/salt stripped; KDF/cipher parameters kept, not secret). [certain]
 
 ### 6.1 Onboarding UI — confirmed at runtime [certain]
@@ -727,7 +727,7 @@ default coin set (§4.8) — ~40+ coin types present in `activeAccounts`.
 
 Captured from a HAR of the real extension on open internet (throwaway wallet, 240
 requests). Resolves the egress-blocked gaps for #10/#15/#17. Full map:
-`evidence/runtime/api-contracts.md`. [certain]
+`evidences/re-evidence/runtime/api-contracts.md`. [certain]
 
 - **Main API gateway: `gateway.us.trustwallet.com`.** Asset-id scheme
   `c<coinType>` (native) / `c<coinType>_t<tokenAddr>` (token). Key endpoints:
@@ -751,7 +751,7 @@ requests). Resolves the egress-blocked gaps for #10/#15/#17. Full map:
 
 Updated: 2026-10-15. Target: Trust Wallet extension v26.41.0 · wallet-core 4.8.2.
 Method per row: REA = `recover_javascript_sources`; EXEC = controlled execution of
-byte-identical wallet-core 4.8.2; WABT = wasm decode. Evidence in `evidence/NN-*/`.
+byte-identical wallet-core 4.8.2; WABT = wasm decode. Evidence in `evidences/re-evidence/NN-*/`.
 
 | # | Feature | Status | Method | Spec | Evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -771,7 +771,7 @@ byte-identical wallet-core 4.8.2; WABT = wasm decode. Evidence in `evidence/NN-*
 | 14 | content↔inpage↔background bridge | Established | REA | §5.14 | ev_6b52a033 |
 | 15 | Network / RPC (twnodes NaaS map) | Established | REA+HAR | §5.15/§7 | ev_de93124b + HAR |
 | 16 | WalletConnect / QR sync | Blocked | — | §5.16 | Kotlin/JS-compiled |
-| 17 | Swaps / staking / NFTs | Partial | REA+HAR | §5.17/§7 | ev_1db92cac + HAR (staking/NFT yes); swap client/UI recovered 2026-10-16, see evidence/25-swap/SWAP-SPEC.md |
+| 17 | Swaps / staking / NFTs | Partial | REA+HAR | §5.17/§7 | ev_1db92cac + HAR (staking/NFT yes); swap client/UI recovered 2026-10-16, see evidences/re-evidence/25-swap/SWAP-SPEC.md |
 | 18 | Hardware (Ledger) | Partial | REA | §5.18 | ev_153b6ed2 |
 
 Summary: 13 Established, 4 Partial (client RE'd; runtime/vendored part UNKNOWN),
@@ -784,16 +784,16 @@ Blocked feature is built from the WalletConnect SDK directly.
 This dated addendum supersedes conflicting scope/status prose above while
 preserving its history. The user now explicitly authorizes full implementation
 with the same screens and UX, and permits substitute branding/assets where
-necessary. See `IMPLEMENTATION-PLAN.md`, `UI-PARITY.md` and
-`audit/CURRENT-STATUS.md`. The research and build completion states remain separate.
+necessary. See `docs/project/IMPLEMENTATION-PLAN.md`, `docs/re/UI-PARITY.md` and
+`evidences/audit/CURRENT-STATUS.md`. The research and build completion states remain separate.
 
 - **Target identity [certain]:** the supplied ZIP hashes to
   `028160c250aa65591d54fd3ec123181db612cc6cdb6963431a870d35b3bcdf31`,
   58,673,602 bytes. The earlier ZIP hash is not the local ZIP's identity. This
   does not prove a different payload: the 23 historical REA source input hashes
   all have matching local files (artifact chunks or the saved carved slices).
-  Original ZIP preserved; extraction in `artifacts/reference-26.41.0/`;
-  `audit/reference-inventory.json`, `audit/source-input-integrity.json`.
+  Original ZIP preserved; extraction in `evidences/extension/reference-26.41.0/`;
+  `evidences/audit/reference-inventory.json`, `evidences/audit/source-input-integrity.json`.
   CRX signature/official acquisition provenance remains **UNKNOWN** for this ZIP.
 - **Evidence integrity [certain]:** all 46 historical recovered JS/map files
   listed by manifests match their recorded digests. Verified input snapshots are
@@ -807,21 +807,21 @@ necessary. See `IMPLEMENTATION-PLAN.md`, `UI-PARITY.md` and
   adapter rejects macOS, so an isolated Linux x64 Docker environment was built
   and verified. See `tools/README.md`; installation failures and resolutions are
   recorded there. REA WABT inspection of smaller sql-wasm succeeds
-  (`audit/rea-sql-wasm-probe.json`); wallet-core still exceeds REA's 8 MiB cap.
+  (`evidences/audit/rea-sql-wasm-probe.json`); wallet-core still exceeds REA's 8 MiB cap.
 - **#01 revalidation [certain], CODE-AND-RUNTIME-CONFIRMED within tested scope:**
   exact original install listener, init function and startup initializer ranges
   were re-extracted without dependency mocks. `source-ranges.json` binds them to
   original half-open UTF-8 byte offsets. REA evidence
   `ev_a13180a7e6eb023cb2aa10adc16d7550a0b9c2d436adc075c054cae62fd17a1b`
   and full input/recovery/manifest bundle are in
-  `evidence/01-install/2026-10-15-local/`. Fresh install in isolated Chromium
+  `evidences/re-evidence/01-install/2026-10-15-local/`. Fresh install in isolated Chromium
   opens one `home.html#/onboarding` tab without manual navigation:
-  `audit/screens/reference/00-install.json`. Update/non-install behavior is
+  `evidences/audit/screens/reference/00-install.json`. Update/non-install behavior is
   code-confirmed, not separately runtime-tested.
 - **#02 public screen observations [certain], OBSERVED-ONLY:** at 1365×900,
   welcome uses full-page columns, terms gate Import/Create, QR is enabled;
   Create enters “Select an option” with a “Password” control before the password
-  form. Screenshots and sanitized DOM: `audit/screens/reference/01–03-*`.
+  form. Screenshots and sanitized DOM: `evidences/audit/screens/reference/01–03-*`.
   Implementation correspondence: recovered onboarding/auth chunks. Remaining
   onboarding branches and a complete per-screen spec are still required.
 - **Coverage correction [certain]:** the historical table contains 14 Established,
@@ -839,7 +839,7 @@ necessary. See `IMPLEMENTATION-PLAN.md`, `UI-PARITY.md` and
 
 ## 2026-10-16 — REA installation verification
 
-REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
+REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](evidences/re-evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
 
 
 ## 2026-10-16 — Complete v2 coverage and enhanced Harbour presentation
@@ -856,7 +856,7 @@ explicit gaps → official extension design research and licensed asset ledger �
 shared system rendered at real dimensions → chronological implementation,
 interaction/lifecycle verification and repair. Whole-target structural discovery
 is authorized before gate #02; it does not close later feature research gates.
-`UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
+`docs/re/UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
 implementation, integration, visual inspection and interaction separately. Sample
 data and development previews never count as live integration. Resume detailed
 research at #02; preserve later evidence as provisional. Continue independent
@@ -868,7 +868,7 @@ REA recovery of the supplied v26.41.0 target distinguishes the routes: `/notific
 (`notification-C0DFw0BI.js`, `notification-ui.js`) is the dApp request decision surface;
 `/approval` (`approval-detail-CuYqbU-I.js`) is token allowance management. Connection,
 blacklist and popup-confirmation slices are preserved under
-`evidence/30-dapp-approvals/2026-10-19/recovery/`, with source ranges and REA manifests.
+`evidences/re-evidence/30-dapp-approvals/2026-10-19/recovery/`, with source ranges and REA manifests.
 This corrects older Harbour notes that treated both routes as absent or treated
 `/approval` as the dApp request route. [certain, CODE-CONFIRMED]
 
@@ -892,9 +892,9 @@ on lock/disconnect. Build status is recorded in `harbour-wallet-v2/BUILD-LOG.md`
 
 The current direct request authorizes a cross-cutting investigation of the supplied
 `/Users/jatinsharma/Desktop/REA/samples/trustwallet-extension/26.41.0_0/26.41.0_0`
-backend surface. Deliverable: [TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md),
+backend surface. Deliverable: [docs/re/TRUST-WALLET-BACKEND.md](docs/re/TRUST-WALLET-BACKEND.md),
 with durable source/range/REA evidence under
-[evidence/40-backend-api/2026-10-21/](evidence/40-backend-api/2026-10-21/README.md).
+[evidences/re-evidence/40-backend-api/2026-10-21/](evidences/re-evidence/40-backend-api/2026-10-21/README.md).
 This does not close chronological lifecycle gates or establish implemented UI coverage.
 
 - [certain, CODE-CONFIRMED] Recovered 73 ApiService method bodies, gateway HMAC
@@ -935,12 +935,12 @@ store validation remain unverified. Continue chronological research at #02.
 ## Reverse Engineering Status
 
 Updated: 2026-10-15, local audit. This section governs current readiness over
-the older summaries. Build coverage is in `UI-PARITY.md`, not this table.
+the older summaries. Build coverage is in `docs/re/UI-PARITY.md`, not this table.
 
 | Scope | Audited status | Confidence / remaining gap |
 |---|---|---|
 | Baseline | Local identities/integrity verified | [certain]; official CRX provenance/signature UNKNOWN |
-| 2026-10-21 backend request | Client code and historical contracts documented; Partial overall | [TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md); code-backed auth/local SQLite, 73 methods, bounded inventories; server DB/framework/private algorithms UNKNOWN; lifecycle gates unchanged |
+| 2026-10-21 backend request | Client code and historical contracts documented; Partial overall | [docs/re/TRUST-WALLET-BACKEND.md](docs/re/TRUST-WALLET-BACKEND.md); code-backed auth/local SQLite, 73 methods, bounded inventories; server DB/framework/private algorithms UNKNOWN; lifecycle gates unchanged |
 | 01 Install | CODE-AND-RUNTIME-CONFIRMED for fresh-install entry | [certain]; bundle deposited; update-negative runtime fixture absent |
 | 02 Onboarding | Recovered flow evidence; partial public runtime fixture set | [certain] for captured/code-backed portions; full screens/branches/fixtures incomplete; next active feature |
 | 03–08 Password/vault/account decisions | Historical code/dependency evidence preserved and hash-checked | Per-claim prior confidence retained; full specification/readiness must be audited in order |

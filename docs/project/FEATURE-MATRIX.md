@@ -1,5 +1,5 @@
 # Harbour Wallet — Feature Matrix (2026-10-19, after cleanup)
-Gate: `tsc` clean · `npm test` 349/349 · `vite build` OK. Evidence: code inspection + mocked tests. **Nothing is live-network-verified and no Chrome visual QA has been done since onboarding.** Per-area detail: `harbour-wallet-v2/evidence/NN-*/STATUS.md`.
+Gate: `tsc` clean · `npm test` 349/349 · `vite build` OK. Evidence: code inspection + mocked tests. **Nothing is live-network-verified and no Chrome visual QA has been done since onboarding.** Per-area detail: `evidences/re-evidence/NN-*/STATUS.md`.
 
 ## 1. Implemented (code complete, mock-tested)
 | Area | Status | Notes |

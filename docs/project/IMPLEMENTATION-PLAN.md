@@ -12,13 +12,13 @@ user where originals cannot be obtained. A generic wallet redesign, a seven-chai
 MVP, inert controls or invented balances do not satisfy this objective.
 
 This latest user instruction supersedes earlier documentation-only scope in
-AGENTS.md and the research notes. Their evidence, chronology, custody and
-confidence rules remain. `rebuild-tracker.md` continues to measure research;
+docs/project/AGENTS.md and the research notes. Their evidence, chronology, custody and
+confidence rules remain. `docs/project/rebuild-tracker.md` continues to measure research;
 it must never be used as a claim that the wallet is implemented.
 
 ## Current baseline
 
-See [current status](audit/CURRENT-STATUS.md) for verified findings and limitations.
+See [current status](evidences/audit/CURRENT-STATUS.md) for verified findings and limitations.
 `harbour-wallet/` is the implementation candidate; `wallet-clone/` is a historical
 core PoC, not a second production target. Keep the originals and both projects
 preserved. There is no justified “all screens” or functional-parity completion claim.
@@ -43,7 +43,7 @@ from website JSON-RPC requests.
 
 ## Feature loop — one lifecycle feature at a time
 
-1. Reload AGENTS.md, both research docs, this plan and the current UI parity row.
+1. Reload docs/project/AGENTS.md, both research docs, this plan and the current UI parity row.
 2. Check original artifact identities. Reuse prior evidence only after binding
    inputs and outputs to the current target by hash/offset/manifest.
 3. Resolve the feature's code paths with REA/recovery; establish exact dependency
@@ -114,7 +114,7 @@ explicit gaps → official extension design research and licensed asset ledger �
 shared system rendered at real dimensions → chronological implementation,
 interaction/lifecycle verification and repair. Whole-target structural discovery
 is authorized before gate #02; it does not close later feature research gates.
-`UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
+`docs/re/UI-PARITY.md` is the sole screen/state/navigation coverage authority. Track
 implementation, integration, visual inspection and interaction separately. Sample
 data and development previews never count as live integration. Resume detailed
 research at #02; preserve later evidence as provisional. Continue independent
@@ -122,20 +122,20 @@ work when a dependency blocks a gate. Append durable evidence and build records.
 
 ## 2026-10-16 — Asset and rendered implementation pass
 
-Local CC0 crypto/fiat marks, Inter and Lucide are recorded in `ASSET-LEDGER.md`.
+Local CC0 crypto/fiat marks, Inter and Lucide are recorded in `docs/re/ASSET-LEDGER.md`.
 The original Harbour illustration, shared controls, and popup tokens are in
-`DESIGN-SYSTEM.md`; inspected Trust and four-extension research is in
-`REFERENCE-LEDGER.md`. Portfolio/send/approval development fixtures were
+`docs/re/DESIGN-SYSTEM.md`; inspected Trust and four-extension research is in
+`docs/re/REFERENCE-LEDGER.md`. Portfolio/send/approval development fixtures were
 rendered at popup size and interaction-checked, but are not production coverage.
-Built MV3 onboarding and popup captures are in `audit/onboarding-v2/` and the
-current statuses remain in `UI-PARITY.md`. Production static price, APR,
+Built MV3 onboarding and popup captures are in `evidences/audit/onboarding-v2/` and the
+current statuses remain in `docs/re/UI-PARITY.md`. Production static price, APR,
 on-ramp, NFT and dApp rows were removed while real adapters are unfinished.
 Next implementation gate remains #02 onboarding, with QR reader/background,
 private-key import, Solana history choice and other branches unresolved.
 
 ## 2026-10-19 — Revised build order (user mandate: no screen left; gaps first)
 
-**Session scope amendment, 2026-10-19:** The latest user request pauses new feature implementation and asks for UI/UX completion on existing screens only. The broader build order below remains the long-term plan; this session's rendered coverage, design corrections, and unresolved UI gaps are recorded in `UI-PARITY.md` and `harbour-wallet-v2/BUILD-LOG.md`. Do not treat visually polished unavailable states as feature completion.
+**Session scope amendment, 2026-10-19:** The latest user request pauses new feature implementation and asks for UI/UX completion on existing screens only. The broader build order below remains the long-term plan; this session's rendered coverage, design corrections, and unresolved UI gaps are recorded in `docs/re/UI-PARITY.md` and `harbour-wallet-v2/BUILD-LOG.md`. Do not treat visually polished unavailable states as feature completion.
 
 Phase 0 — Docs sync (done 2026-10-19).
 Phase 1 — **Fill gaps in what exists**: (a) chain registry → Trust Wallet's enabled set with real derivation/addresses;
@@ -151,7 +151,7 @@ equivalents), discover, market sentiment, gas station.
 Phase 5 — Remaining settings (help, developer, UTXO, security migration), WalletConnect v2, Ledger.
 Phase 6 — Verification pass in Chrome (screenshots TW vs Harbour), parity ledger update, security review.
 
-Each step: REA recovery when uncertain → spec in `evidence/NN-*` → implementation → `tsc` + build + tests → BUILD-LOG + parity
+Each step: REA recovery when uncertain → spec in `evidences/re-evidence/NN-*` → implementation → `tsc` + build + tests → BUILD-LOG + parity
 ledger entry. Module boundaries: `core/` (pure logic, no DOM), `background/` (router, services, approvals), `popup/` (UI),
 `content/` + `inpage/` (provider bridge). New background messages must pass `accessPolicy` (UI-only) unless explicitly part of the
 provider allowlist.

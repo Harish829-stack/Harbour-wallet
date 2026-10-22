@@ -1,1 +1,0 @@
-function getAssetImageUrls(e,a){const{address:s}=H(e);return s?{assetImageUrl:`${U}/blockchains/${a}/assets/${s}/logo.png`,chainImageUrl:`${U}/blockchains/${a}/info/logo.png`}:{assetImageUrl:`${U}/blockchains/${a}/info/logo.png`}};

@@ -1,6 +1,6 @@
 # 10 - Comparison with Harbour Wallet
 
-Sources: Trust Wallet 26.41.0 analysis (docs 01-09) vs `FEATURE-MATRIX.md` (Harbour, 2026-10-19). Harbour claims come from that file and are not re-verified here.
+Sources: Trust Wallet 26.41.0 analysis (docs 01-09) vs `docs/project/FEATURE-MATRIX.md` (Harbour, 2026-10-19). Harbour claims come from that file and are not re-verified here.
 
 ## 1. Architecture alignment
 

@@ -20,6 +20,7 @@ harbour-wallet-v2/public-production/wallet-core.wasm
 
 # ---- network captures: session tokens, device IDs, very large ----
 *.har
+/evidences/network-logs/
 
 # ---- binary archives and packaged extensions ----
 *.zip
@@ -30,10 +31,9 @@ harbour-wallet-v2/public-production/wallet-core.wasm
 
 # ---- third-party material that is re-fetchable and should not be republished ----
 # The supplied Trust Wallet extension (original package + extracted copy). Provenance/hashes live in trust-wallet-RE.md and evidence/INDEX.md.
-/26.41.0_0.zip
-/artifacts/reference-26.41.0/
+/evidences/extension/
 # Upstream clone of trustwallet/wallet-core (pinned dependency, see AGENTS.md); has its own .git
-/wallet-core/
+/evidences/reference/wallet-core/
 # Local analysis toolchain: downloaded browsers, compilers, vendored REA/WABT clones, module caches. Keep only the scripts in tools/.
 /tools/browsers/
 /tools/toolchain/
@@ -50,9 +50,6 @@ npm-debug.log*
 .idea/
 .vscode/
 *.swp
-/samples
-# ---- third-party reverse-engineering inputs (never commit) ----
-samples/
 
 harbour-keys.env
 harbour-config-key.json

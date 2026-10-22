@@ -1,1 +1,0 @@
-const App=()=>{const e=useDisableAddCustomNetwork();return(0,Ot.jsxs)(D,{children:[(0,Ot.jsx)(j,{index:!0,element:(0,Ot.jsx)(Networks,{})}),!e&&(0,Ot.jsx)(j,{path:"/custom",element:(0,Ot.jsx)(AddCustomNetwork,{})})]})};

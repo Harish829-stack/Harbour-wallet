@@ -1,6 +1,6 @@
 # 11 - End-to-End Plan: Making Harbour a Close Trust Wallet Clone
 
-Inputs: Trust Wallet 26.41.0 reverse engineering (docs 01-10) and the current `harbour-wallet-v2` tree (about 19.6k lines of TS/TSX, `FEATURE-MATRIX.md` dated 2026-10-19).
+Inputs: Trust Wallet 26.41.0 reverse engineering (docs 01-10) and the current `harbour-wallet-v2` tree (about 19.6k lines of TS/TSX, `docs/project/FEATURE-MATRIX.md` dated 2026-10-19).
 Goal: match Trust Wallet's **architecture, structure and features** as closely as practical. Where Trust Wallet relies on its private gateway or paid vendors, use **free third-party services** (or free tiers) instead.
 
 Free-tier facts below were checked on 2026-10-21 where a source is cited. Others are marked "verify", because free tiers change often.
