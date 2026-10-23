@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { T } from '../theme';
 import { Screen, Btn, Row } from '../wallet/ui';
-import type { Ctx } from '../wallet/screens';
+import type { Ctx } from '../wallet/types';
 
 const PATHS = { ethereum: "44'/60'/0'/0/0", bitcoin: "84'/0'/0'/0/0", solana: "44'/501'/0'" } as const;
 type Ct = keyof typeof PATHS;

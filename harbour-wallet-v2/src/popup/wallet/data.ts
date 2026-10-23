@@ -35,8 +35,6 @@ export const EXPLORER: Record<number, string> = Object.fromEntries([...ALL_CHAIN
 const explorerBase = (chainId?: number) => (chainId ? EXPLORER[chainId] ?? customExplorer(chainId) : undefined);
 export const explorerTx = (chainId: number | undefined, hash: string) => { const c = chainByEvmId(chainId); if (c) return explorerTxUrl(c, hash); const b = explorerBase(chainId); return b ? `${b}/tx/${hash}` : ''; };
 export const explorerAddress = (chainId: number | undefined, addr: string) => { const c = chainByEvmId(chainId); if (c) return explorerAddressUrl(c, addr); const b = explorerBase(chainId); return b ? `${b}/address/${addr}` : ''; };
-/** Explorer links for any chain by registry id (non-EVM chains included). */
-export const explorerTxById = (id: string, hash: string) => explorerTxUrl(chainById(id), hash);
 export const explorerAddressById = (id: string, addr: string) => explorerAddressUrl(chainById(id), addr);
 
 // (Static trending/dApp/buy-provider samples removed: real data now comes from features/ramps + features/discover.)
@@ -45,15 +43,7 @@ export const NETWORKS = ASSETS.map((a) => ({ id: a.id, name: a.name, sym: a.sym,
 export const networkOptions = () => allAssets().filter((a) => a.native).map((a) => ({ id: a.id, name: a.name, sym: a.sym, color: a.color, chainId: a.chainId }));
 
 export interface Activity { id: string; type: 'send' | 'receive' | 'swap'; sym: string; color: string; amount: string; sub: string; usd: string; time: string; status: 'confirmed' | 'pending'; }
-export const ACTIVITY: Activity[] = [
-  { id: 'a1', type: 'receive', sym: 'ETH', color: '#6372f0', amount: '+0.250 ETH', sub: 'From 0x7a…3Df1', usd: '$795.11', time: 'Today 10:24', status: 'confirmed' },
-  { id: 'a2', type: 'send', sym: 'POL', color: '#8247e5', amount: '-120 POL', sub: 'To 0x19…9c0b', usd: '$62.40', time: 'Yesterday', status: 'confirmed' },
-  { id: 'a3', type: 'swap', sym: 'BNB', color: '#d9a21b', amount: '0.5 BNB → 1.2k CAKE', sub: 'PancakeDEX', usd: '$306.05', time: 'Mar 12', status: 'confirmed' },
-  { id: 'a4', type: 'send', sym: 'ETH', color: '#6372f0', amount: '-0.05 ETH', sub: 'To 0xab…77e2', usd: '$159.02', time: 'Mar 10', status: 'confirmed' },
-];
 
-// A 24-point sample sparkline (0..1) for token-detail charts.
-export const SPARK = [0.42, 0.45, 0.4, 0.5, 0.55, 0.52, 0.6, 0.58, 0.63, 0.7, 0.66, 0.72, 0.68, 0.75, 0.8, 0.78, 0.74, 0.82, 0.88, 0.85, 0.9, 0.86, 0.92, 1.0];
 
 // All app values are USD internally; this converts + formats into the user's base currency (Settings > Currency).
 export const usd = (n: number) => money(n);

@@ -22,7 +22,6 @@ export class ProviderError extends Error {
   code: number; data?: unknown;
   constructor(code: number, message?: string, data?: unknown) { super(message ?? DEFAULT_MESSAGE[code] ?? 'Unknown error.'); this.name = 'ProviderError'; this.code = code; this.data = data; }
 }
-export const providerError = (code: number, message?: string, data?: unknown) => new ProviderError(code, message, data);
 
 export interface WireError { code: number; message: string; data?: unknown }
 const MAX_MSG = 300;

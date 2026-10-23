@@ -65,7 +65,6 @@ export const isBridgeNamespaced = (m: string): boolean => /^(?:PUBLIC|INTERNAL)_
 const bad = (msg: string): never => { throw new ProviderError(ERR.INVALID_PARAMS, msg); };
 export const isHexAddress = (s: unknown): s is string => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 export const isHexData = (s: unknown): s is string => typeof s === 'string' && /^0x([0-9a-fA-F]{2})*$/.test(s);
-export const isHexQuantity = (s: unknown): s is string => typeof s === 'string' && /^0x(0|[1-9a-fA-F][0-9a-fA-F]{0,63})$/.test(s);
 export const sameAddress = (a: unknown, b: unknown): boolean => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 export const hexToBytes = (h: string): Uint8Array => { const s = h.slice(2); const out = new Uint8Array(s.length / 2); for (let i = 0; i < out.length; i++) out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16); return out; };
 export const bytesToHex = (b: Uint8Array): string => '0x' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');

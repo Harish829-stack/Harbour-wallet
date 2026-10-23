@@ -31,8 +31,6 @@ export function acceptSlippageInput(prev: string, next: string): string {
   return Number(next) > SLIPPAGE_MAX ? String(SLIPPAGE_MAX) : next;
 }
 export const isHighSlippage = (s: string) => (Number(s) || 0) > HIGH_SLIPPAGE_ABOVE;
-// Slippage.effective (Kotlin): userSelected ?: suggested ?: 3
-export const effectiveSlippage = (userSelected?: number | null, suggested?: number | null) => userSelected ?? suggested ?? 3;
 // isOrderPollDue: <15s -> 2s, <40s -> 5s, else 10s
 export const pollDelayMs = (elapsedMs: number) => (elapsedMs < 15e3 ? 2e3 : elapsedMs < 4e4 ? 5e3 : 1e4);
 

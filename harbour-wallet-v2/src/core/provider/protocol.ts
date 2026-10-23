@@ -29,8 +29,6 @@ export const EVENT_ALLOWLIST: Record<Namespace, readonly string[]> = {
   multi: ['connect', 'disconnect'],
 };
 
-export const MAX_ID_LEN = 64;
-export const MAX_METHOD_LEN = 64;
 export const MAX_PARAMS_BYTES = 256 * 1024;
 const ID_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
 const METHOD_RE = /^[A-Za-z0-9_]{1,64}$/;

@@ -15,8 +15,6 @@ export function registerEvent(ns: Namespace, name: string, handler: EventHandler
 export function registerEvents(ns: Namespace, map: Record<string, EventHandler>): void {
   for (const [name, h] of Object.entries(map)) registerEvent(ns, name, h);
 }
-export const hasEvent = (ns: Namespace, name: string) => registry.has(eventName(ns, name));
-export const listEvents = () => [...registry.keys()];
 
 // Senders outside our own UI must never be able to claim internal status (mirrors TW stripExternalTrustFlags).
 export function stripExternalFlags<T extends Record<string, any>>(msg: T): T {

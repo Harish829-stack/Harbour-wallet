@@ -9,7 +9,7 @@
 // Only NATIVE-asset movements are listed; ERC-20/SPL transfers are not (documented gap).
 import type { ChainInfo } from './chains/types';
 import { chainById, explorerTxUrl } from './chains/index';
-import { NON_EVM_HISTORY, HISTORY_UNSUPPORTED_REASON } from './chains/adapters/history';
+import { NON_EVM_HISTORY } from './chains/adapters/history';
 import { firstOf } from './chains/adapters/types';
 import { GATEWAY_URL } from '../kit/endpoints';
 export type TxKind = 'send' | 'receive' | 'self' | 'contract' | 'approve' | 'revoke' | 'swap';
@@ -193,7 +193,6 @@ export function historySupportedFor(chain: ChainInfo | undefined): boolean {
   return !!NON_EVM_HISTORY[chain.kind];
 }
 export const historySupported = (assetId: string) => historySupportedFor(chainById(assetId));
-export const historyUnsupportedReason = (chain: ChainInfo): string => HISTORY_UNSUPPORTED_REASON[chain.kind] ?? 'No public history source for this network yet.';
 
 const ADDR = /^0x[0-9a-fA-F]{40}$/;
 const NATIVE_PLACEHOLDER = /^0x(e{40}|0{40})$/i;

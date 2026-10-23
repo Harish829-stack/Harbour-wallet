@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { T } from '../../theme';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, Btn, Coin, Ic, ICON, Row, Sheet, Empty } from '../ui';
 import { Notice, Chip, ChipRow, SearchBox, Letter, ListSkeleton, ErrorBox, Busy, openHttps, useAsync, useDebounced, loadRampCfg, type KeyProvider } from './rampKit';
 

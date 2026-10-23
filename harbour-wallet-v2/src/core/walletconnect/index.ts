@@ -33,8 +33,6 @@ export function parseWcUri(raw: unknown, nowSec = Math.floor(Date.now() / 1000))
   return { ok: true, value: { topic: mm[1].toLowerCase(), version: 2, symKey: symKey.toLowerCase(), relayProtocol: relay, ...(expiryN !== undefined ? { expiry: expiryN } : {}) } };
 }
 
-// ---------------------------------------------------------------- namespaces
-export interface WalletChain { chainId: number }
 export interface WcAccountInfo { evm?: string; solana?: string }
 export interface WcNamespaceReq { chains?: string[]; methods: string[]; events: string[] }
 export interface ProposalLike { requiredNamespaces?: Record<string, WcNamespaceReq>; optionalNamespaces?: Record<string, WcNamespaceReq> }

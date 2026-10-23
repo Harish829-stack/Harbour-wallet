@@ -9,7 +9,7 @@ import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
 import { ADDRESS_BOOK_COINS, ADDRESS_BOOK_COIN_LABEL, MAX_NAME_LENGTH, type AddressBookEntry, type AddressBookCoin } from '../../core/addressBook';
 import { TokenCell } from './tokenCell';
 import { BiometricEnroll, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from '../biometricsUi';
-import type { Ctx } from './screens';
+import type { Ctx } from './types';
 
 // Settings, rebuilt from the Trust Wallet extension's own Settings routes (RE: evidences/re-evidence/26-settings/SETTINGS-SPEC.md).
 // Every row here changes real state. Rows TW has that Harbour cannot back with a real feature yet (dApp connections,

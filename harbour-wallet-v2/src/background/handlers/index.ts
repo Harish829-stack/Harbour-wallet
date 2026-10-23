@@ -1,6 +1,6 @@
 // Pluggable background message handlers. The core router (background/index.ts) keeps wallet/vault/balance/swap cases;
 // every other feature registers its messages in its own module here, so features stay modular and independently testable.
-import type { Msg, HandlerCtx, HandlerMap } from './types';
+import type { HandlerMap } from './types';
 import { handlers as provider } from './provider';
 import { handlers as chainSend } from './chainSend';
 import { handlers as chainData } from './chainData';
@@ -19,8 +19,3 @@ import { handlers as approvals } from './approvals';
 
 const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...earn, ...nfts, ...ramps, ...discover, ...onboardingExtra, ...settingsExtra, ...walletconnect, ...ledger, ...kitEvents, ...perps, ...predictions, ...approvals };
 export const allExtraHandlers = (): HandlerMap => ALL;
-export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
-  const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;
-  if (!h) return { error: 'unknown_message' };
-  try { return await h(msg, ctx); } catch (e: any) { return { ok: false, error: e?.message ?? 'handler failed' }; }
-}

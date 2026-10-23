@@ -13,7 +13,6 @@ export const ChainIcon: React.FC<{ id: string; size?: number }> = ({ id, size = 
 };
 const StackedIcons: React.FC<{ ids: string[] }> = ({ ids }) => <span className="ob-stack">{ids.map((id) => <ChainIcon key={id} id={id} size={24}/>)}</span>;
 
-export interface PkNetwork { option: PkNetworkOption }
 /** Private-key network picker: "EVM chains" group first, then every other chain; search by name/symbol; empty state. */
 export const PkNetworkSelect: React.FC<{ value: PkNetworkOption | null; onSelect: (o: PkNetworkOption) => void; disabled?: boolean }> = ({ value, onSelect, disabled }) => {
   const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const root = useRef<HTMLDivElement>(null);

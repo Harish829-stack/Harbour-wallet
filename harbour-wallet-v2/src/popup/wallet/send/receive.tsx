@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { T } from '../../theme';
 import { Screen, Coin, Row, Empty, Skeleton, Btn } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { allAssets, assetOf } from '../data';
 import { useTokenItems } from '../tokensStore';
 import { chainOfAsset } from './lib';

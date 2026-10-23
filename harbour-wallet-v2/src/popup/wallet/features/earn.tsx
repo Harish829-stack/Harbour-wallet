@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, Spinner } from '../ui';
-import type { Ctx, Nav } from '../screens';
+import type { Ctx, Nav } from '../types';
 import type { StakeListItem, Position, StakeAction } from '../../../core/staking/types';
 import { fmtRaw, pctText, remaining, notifyEarnChanged, onEarnChanged, ValidatorAvatar, ValidatorSheet, Notice, type ValidatorView } from './earnParts';
 

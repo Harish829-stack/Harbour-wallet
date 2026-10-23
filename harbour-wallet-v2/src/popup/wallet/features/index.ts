@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { SCREENS_provider } from './provider';
 import { SCREENS_send } from './send';
 import { SCREENS_earn } from './earn';

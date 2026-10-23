@@ -29,7 +29,6 @@ function buildPools(now = Date.now()): Pools {
   pools = { byUrl, urls }; builtAt = now;
   return pools;
 }
-export const invalidatePools = (): void => { pools = null; };
 
 const repos = new Map<string, NodeRepository>();
 const repoFor = (key: string, list: string[]): NodeRepository => {

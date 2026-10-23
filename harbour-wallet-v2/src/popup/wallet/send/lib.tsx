@@ -8,7 +8,7 @@ import type { ChainInfo } from '../../../core/chains/types';
 import type { FeeTierId, IssueCode, MemoKind } from '../../../core/chains/send/types';
 import { formatUnits } from '../../../core/chains/send/util';
 import { getSettingsState } from '../../settingsStore';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 
 export interface WireTier { id: FeeTierId; fee: string; feeMax?: string; max: string; detail?: string }
 export interface WireIssue { code: IssueCode; message: string; blocking: boolean }
@@ -39,7 +39,6 @@ export function fiatToCrypto(fiatText: string, price: number, decimals: number):
   const f = Number(fiatText); if (!(f > 0) || !(price > 0)) return '';
   const usd = f * fiatCtx().usdPer; return (usd / price).toFixed(Math.min(decimals, 12)).replace(/\.?0+$/, '');
 }
-export const cryptoToFiat = (amount: string, price: number): number => Number(amount) * price;
 
 let supportCache: Record<string, SupportInfo> | null = null; let supportPending: Promise<void> | null = null;
 export function useSendSupport(bg: Ctx['bg'], needId?: string): Record<string, SupportInfo> | null {

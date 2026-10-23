@@ -3,7 +3,7 @@
 // `rampsCheckout` (address always from the vault). See evidences/re-evidence/36-ramps/SPEC.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, Btn, Coin, Ic, ICON, Skeleton, SuccessCheck, Sheet } from '../ui';
 import { useTokenItems } from '../tokensStore';
 import { Notice, Chip, ChipRow, Letter, loadRampCfg, readPrefs, writePrefs, useDebounced, openHttps, download, fmtCrypto, fmtFiat, ON_BRAND, Busy, ErrorBox, type RampCfg } from './rampKit';

@@ -207,11 +207,6 @@ export const Empty: React.FC<{ title: string; sub?: string; icon?: string }> = (
   </div>
 );
 
-export function useDebouncedLoading(initial = true, ms = 700) {
-  const [loading, setLoading] = useState(initial);
-  useEffect(() => { const t = setTimeout(() => setLoading(false), ms); return () => clearTimeout(t); }, [ms]);
-  return loading;
-}
 
 // ---------- motion helpers ----------
 export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

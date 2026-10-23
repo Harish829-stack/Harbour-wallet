@@ -1,7 +1,7 @@
 // Screens for feature "walletconnect": pair with a dApp (paste / scan a wc: link), list and disconnect WalletConnect sessions.
 // Proposals and requests themselves are approved in the standard approval window (features/provider.tsx), never here.
 import React, { useCallback, useEffect, useState } from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { T } from '../../theme';
 import { Btn, Screen, Spinner } from '../ui';
 import { ErrorLine, Group, Note, SectionLabel } from '../settingsScreens';

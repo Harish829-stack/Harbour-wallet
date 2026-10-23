@@ -1,7 +1,7 @@
 // Feature "gas" — Gas station (TW route /gas-station/:assetId): live fee tiers for an EVM network from its public JSON-RPC.
 // Data: background `chainDataGas` (core/gasFees.ts). No static numbers: loading / error / retry states, refreshes while open.
 import React, { useEffect, useRef, useState } from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { T } from '../../theme';
 import { Screen, Skeleton, Btn, Coin } from '../ui';
 import { evmChains, chainById } from '../../../core/chains/index';

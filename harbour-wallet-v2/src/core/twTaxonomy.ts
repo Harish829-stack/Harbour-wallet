@@ -16,8 +16,6 @@ export const TW_NETWORKS: TwNetwork[] = [
   { coinId: 10004663, name: 'Robinhood Chain' },
   { coinId: 10005042, name: 'Arc' },
 ];
-// TW's default "All networks" set, exactly as sent in the capture.
-export const TW_DEFAULT_NETWORKS = [20000714, 501, 60, 8453, 10004663, 10005042, 10000999];
 // category_id values seen in the capture. `cg` is the closest public equivalent.
 export interface TwCategory { id: string; name: string; sortField: 'volume_24h' | 'market_cap'; cg?: string }
 export const TW_CATEGORIES: TwCategory[] = [
@@ -35,8 +33,3 @@ export interface TwListingDoc {
   price: { price: number; percent_change_1h: number; percent_change_24h: number; percent_change_7d: number; percent_change_30d: number };
 }
 export interface TwMarketRow { id: string; symbol: string; name: string; image: string; price: number; change: number; change1h: number; change24h: number; change7d: number; change30d: number; marketCap: number; volume24h: number; network: number }
-export function fromListingDoc(d: TwListingDoc): TwMarketRow {
-  return { id: d.asset.asset_id, symbol: d.asset.symbol, name: d.asset.name, image: d.asset.icon_url ?? '', price: d.price.price, change: d.price.percent_change_24h,
-    change1h: d.price.percent_change_1h, change24h: d.price.percent_change_24h, change7d: d.price.percent_change_7d, change30d: d.price.percent_change_30d,
-    marketCap: d.market.market_cap, volume24h: d.market.volume_24h, network: d.asset.network };
-}

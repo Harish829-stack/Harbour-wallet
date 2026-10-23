@@ -1,7 +1,7 @@
 // Screens for feature "settings": developer settings, faucets, notifications, wallet management, security migration.
 import React, { useEffect, useState } from 'react';
 import { T } from '../../theme';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, Skeleton } from '../ui';
 import { Group, NavRow, SwitchRow, ErrorLine, Note, SectionLabel } from '../settingsScreens';
 import { WALLET_SCREENS } from '../walletScreens';

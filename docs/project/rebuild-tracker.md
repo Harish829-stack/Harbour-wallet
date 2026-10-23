@@ -112,7 +112,7 @@ basis of historical labels. No complete-wallet or complete-UI claim is supported
 
 ## 2026-10-16 — REA installation verification
 
-REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](evidences/re-evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
+REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](../../evidences/re-evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
 
 
 ## 2026-10-16 — Complete v2 coverage and enhanced Harbour presentation
@@ -172,8 +172,8 @@ See `docs/project/FEATURE-MATRIX.md`. WalletConnect v2 now implemented (Reown, n
 ## 2026-10-21 — Backend/API documentation request (cross-cutting)
 
 The user's direct request authorizes this backend-specific survey without claiming
-later lifecycle gates complete. See [docs/re/TRUST-WALLET-BACKEND.md](docs/re/TRUST-WALLET-BACKEND.md)
-and [evidence registry](evidences/re-evidence/40-backend-api/2026-10-21/README.md).
+later lifecycle gates complete. See [docs/re/TRUST-WALLET-BACKEND.md](../re/TRUST-WALLET-BACKEND.md)
+and [evidence registry](../../evidences/re-evidence/40-backend-api/2026-10-21/README.md).
 
 | Scope | RE progress / verified from target | Confidence and remaining gap |
 |---|---|---|

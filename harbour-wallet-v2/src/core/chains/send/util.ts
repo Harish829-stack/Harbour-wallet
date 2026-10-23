@@ -1,4 +1,4 @@
-import type { Fetcher, SendIssue, IssueCode, FeeTier, FeeTierId } from './types';
+import type { Fetcher, SendIssue, IssueCode } from './types';
 import { TIER_IDS } from './types';
 export { TIER_IDS };
 
@@ -27,8 +27,6 @@ export function formatUnits(raw: bigint, decimals: number): string {
   const frac = (v % base).toString().padStart(decimals, '0').replace(/0+$/, '');
   return `${neg ? '-' : ''}${v / base}${frac ? '.' + frac : ''}`;
 }
-export const maxBig = (a: bigint, b: bigint) => (a > b ? a : b);
-export const minBig = (a: bigint, b: bigint) => (a < b ? a : b);
 export const sub0 = (a: bigint, b: bigint) => (a > b ? a - b : 0n);
 
 // ---- bytes ----
@@ -66,10 +64,6 @@ export async function firstOf<T>(urls: string[], run: (u: string) => Promise<T>)
 }
 export const trimUrl = (u: string) => u.replace(/\/+$/, '');
 
-/** Build three fee tiers from one base fee: slow / average / fast multipliers (percent). */
-export function tiersFrom(fees: Record<FeeTierId, bigint>, maxFor: (fee: bigint) => bigint, detail?: Record<FeeTierId, string>, feeMax?: Record<FeeTierId, bigint>): FeeTier[] {
-  return TIER_IDS.map((id) => ({ id, fee: fees[id], feeMax: feeMax?.[id], max: maxFor(feeMax?.[id] ?? fees[id]), detail: detail?.[id] }));
-}
 /** n x multiplier (1.5 = +50%), exact to 3 decimals. */
 export const scale = (n: bigint, mult: number) => (n * BigInt(Math.round(mult * 1000))) / 1000n;
 /** Common balance/fee validation shared by families (native fee asset == native coin). */

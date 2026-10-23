@@ -24,10 +24,3 @@ export async function fetchNativeBalance(chainId: number, address: string): Prom
   }
 }
 
-// Fetch many chains in parallel for a single EVM address.
-export async function fetchEvmBalances(chainIds: number[], evmAddress: string): Promise<Record<number, NativeBalance>> {
-  const results = await Promise.all(chainIds.map((id) => fetchNativeBalance(id, evmAddress)));
-  const out: Record<number, NativeBalance> = {};
-  results.forEach((b) => { out[b.chainId] = b; });
-  return out;
-}

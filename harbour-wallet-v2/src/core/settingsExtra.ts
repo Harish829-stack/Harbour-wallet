@@ -2,7 +2,6 @@
 
 // ---------- wallet kinds ----------
 export type WalletKind = 'mnemonic' | 'privateKey' | 'hardware';
-export interface WalletLike { id: string; label: string; type?: string; accounts?: Array<{ name?: string; addresses?: Record<string, string> }>; backupRequired?: boolean; blockchain?: string }
 export const walletKind = (w: { type?: string }): WalletKind => {
   const t = String(w.type ?? 'mnemonic').toLowerCase();
   if (t === 'privatekey') return 'privateKey';

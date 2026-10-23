@@ -839,7 +839,7 @@ necessary. See `docs/project/IMPLEMENTATION-PLAN.md`, `docs/re/UI-PARITY.md` and
 
 ## 2026-10-16 — REA installation verification
 
-REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](evidences/re-evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
+REA 6.5.0 is already installed. Scoped Codex registration/skill checks pass; setup preview has no actions. Live MCP responds as 6.5.0 (207 tools). See [installation check](../../evidences/re-evidence/tooling/2026-10-16-rea-install-check/README.md) for commands, checksum, saved checks and limitations. No feature coverage changed; prior paused work and chronological next steps remain unchanged.
 
 
 ## 2026-10-16 — Complete v2 coverage and enhanced Harbour presentation
@@ -892,9 +892,9 @@ on lock/disconnect. Build status is recorded in `harbour-wallet-v2/BUILD-LOG.md`
 
 The current direct request authorizes a cross-cutting investigation of the supplied
 `/Users/jatinsharma/Desktop/REA/samples/trustwallet-extension/26.41.0_0/26.41.0_0`
-backend surface. Deliverable: [docs/re/TRUST-WALLET-BACKEND.md](docs/re/TRUST-WALLET-BACKEND.md),
+backend surface. Deliverable: [docs/re/TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md),
 with durable source/range/REA evidence under
-[evidences/re-evidence/40-backend-api/2026-10-21/](evidences/re-evidence/40-backend-api/2026-10-21/README.md).
+[evidences/re-evidence/40-backend-api/2026-10-21/](../../evidences/re-evidence/40-backend-api/2026-10-21/README.md).
 This does not close chronological lifecycle gates or establish implemented UI coverage.
 
 - [certain, CODE-CONFIRMED] Recovered 73 ApiService method bodies, gateway HMAC
@@ -940,7 +940,7 @@ the older summaries. Build coverage is in `docs/re/UI-PARITY.md`, not this table
 | Scope | Audited status | Confidence / remaining gap |
 |---|---|---|
 | Baseline | Local identities/integrity verified | [certain]; official CRX provenance/signature UNKNOWN |
-| 2026-10-21 backend request | Client code and historical contracts documented; Partial overall | [docs/re/TRUST-WALLET-BACKEND.md](docs/re/TRUST-WALLET-BACKEND.md); code-backed auth/local SQLite, 73 methods, bounded inventories; server DB/framework/private algorithms UNKNOWN; lifecycle gates unchanged |
+| 2026-10-21 backend request | Client code and historical contracts documented; Partial overall | [docs/re/TRUST-WALLET-BACKEND.md](TRUST-WALLET-BACKEND.md); code-backed auth/local SQLite, 73 methods, bounded inventories; server DB/framework/private algorithms UNKNOWN; lifecycle gates unchanged |
 | 01 Install | CODE-AND-RUNTIME-CONFIRMED for fresh-install entry | [certain]; bundle deposited; update-negative runtime fixture absent |
 | 02 Onboarding | Recovered flow evidence; partial public runtime fixture set | [certain] for captured/code-backed portions; full screens/branches/fixtures incomplete; next active feature |
 | 03–08 Password/vault/account decisions | Historical code/dependency evidence preserved and hash-checked | Per-claim prior confidence retained; full specification/readiness must be audited in order |

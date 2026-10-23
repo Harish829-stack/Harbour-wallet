@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Coin, Skeleton, Spinner, Empty } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { fmtAmount, shortAddr, openExternal } from './lib';
 import { Notice, CopyBtn } from './parts';
 import { chainById, explorerTxUrl } from '../../../core/chains/index';

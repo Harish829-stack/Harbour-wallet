@@ -13,7 +13,7 @@ import {
   WALLET_KIND_LABEL, walletKind, groupWallets, canAddAccount, canBackupPhrase, canRevealPrivateKey, shortAddress, pickSource, pickDestination, destinationOptions, toggleAsset, selectAllAssets, migratableAssets, migrationQueue,
   canContinueFromSource, canContinueFromDestination, canMigrate, type MigrationAsset, type MigrationState,
 } from '../../core/settingsExtra';
-import type { Ctx } from './screens';
+import type { Ctx } from './types';
 
 interface DAccount { index: number; derivationIndex: number; name: string; addresses: Record<string, string> }
 interface DWallet { id: string; label: string; type: string; kind: string; blockchain: string | null; activeAccount: number; backupRequired: boolean; accounts: DAccount[] }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner } from './ui';
 import { syncNetworks } from './networkStore';
-import type { Ctx } from './screens';
+import type { Ctx } from './types';
 
 // Settings > Custom Networks, after Trust Wallet 26.41.0 [certain: layout from screenshots]: empty state "No custom networks added /
 // Tap "Add Custom Network" to get started!", "Built-in network RPCs" list with a pencil per row, bottom "Add custom network" button.

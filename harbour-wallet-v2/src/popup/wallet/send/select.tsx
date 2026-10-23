@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Coin, Row, Empty, Skeleton, Ic, ICON } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { allAssets } from '../data';
 import { useTokenItems, tokenItem } from '../tokensStore';
 import { chainOfAsset, useSendSupport, fmtAmount } from './lib';

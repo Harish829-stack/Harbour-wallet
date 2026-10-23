@@ -25,7 +25,6 @@ export function evmTransferData(to: string, amount: bigint): Hex { return encode
 const balanceOfData = (owner: string): Hex => ('0x70a08231' + owner.replace(/^0x/, '').toLowerCase().padStart(64, '0')) as Hex;
 
 interface Ctx { nonce: number; gas: bigint; legacy: boolean; base: bigint; prio: Record<FeeTierId, bigint>; gasPrice: bigint; l1Fee: bigint; data?: Hex; value: bigint; toAddr: string }
-export type { Ctx as EvmCtx };
 const TIER_MULT: Record<FeeTierId, number> = { slow: 1.125, average: 1.5, fast: 2 };
 const LEGACY_MULT: Record<FeeTierId, number> = { slow: 0.9, average: 1, fast: 1.3 };
 

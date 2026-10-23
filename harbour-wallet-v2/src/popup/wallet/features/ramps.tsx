@@ -1,6 +1,6 @@
 // Screens for feature "ramps": Fund menu, Buy/Sell/P2P/Recurring, Deposit from exchange, Ramp API keys.
 import React, { useState } from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen } from '../ui';
 import { RampFlow } from './rampFlow';
 import { FundScreen, FundCexScreen, FundCexPlatformScreen, FundCexAssetsScreen, FundCexQrScreen, RampApiKeysScreen, Tabs } from './rampFund';

@@ -211,4 +211,4 @@ export function viewDeps(): ViewDeps {
   return { perms, rpc: (c, m, p) => networksReady.then(() => rpc(c, m, p)), networks: { list: () => evmNetworks(), get: (id) => evmNetwork(id) }, signer: wrapSigner(), kv: kvSession, tokenMeta: (c, a) => svc.tokenMeta(c, a),
     probeChainId: async (url) => { const r = await probeRpcChainId(url); if (!r.ok) throw new Error(r.error); return r.chainId; } };
 }
-export { signer as rawSigner, wrapSigner, ensureCtx };
+export { wrapSigner, ensureCtx };

@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, IconBtn } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { chainById } from '../../../core/chains/index';
 import { fmtRaw, Notice } from './earnParts';
 

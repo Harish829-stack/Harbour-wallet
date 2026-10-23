@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Spinner, Empty, SuccessCheck, IconBtn } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { useRecipient } from './prepare';
 import { Notice, AddressScanner, FeeRow, FeeSheet } from './parts';
 import { fmtAmount, shortAddr, tierOf, type WireQuote } from './lib';

@@ -1,7 +1,6 @@
 // Popup transport: one long-lived `harbour-ui` port with request ids and server-pushed state (plan A5). Falls back to sendMessage.
 import browser from 'webextension-polyfill';
 import { friendlyMessage } from '../core/errors';
-import { useSyncExternalStore } from 'react';
 
 let port: browser.Runtime.Port | null = null;
 let seq = 0;
@@ -40,8 +39,3 @@ const rawBg = (msg: any): Promise<any> => {
   });
 };
 
-/** Subscribes a component to a worker-store selector (the popup holds a read-only mirror). */
-export function useWorkerState<T>(select: (s: Record<string, any>) => T): T {
-  connect();
-  return useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => select(state));
-}

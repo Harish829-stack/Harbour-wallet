@@ -21,9 +21,8 @@ import { DappsPanel } from './features/dappsPanel';
 import { ASSETS, allAssets, assetOf, networkOptions, usd, pct, short } from './data';
 import { syncNetworks } from './networkStore';
 
-export type Nav = { push: (name: string, params?: any) => void; pop: () => void; home: () => void; lock?: () => void; backup?: () => void };
-export interface Account { derivationIndex: number; name: string; addresses: Record<string, string> }
-export interface Ctx { addrs: Record<string, string>; balances: Record<string, any>; bg: (m: any) => Promise<any>; params: any; nav: Nav; accounts?: Account[]; activeAccount?: number; hiddenAssets?: string[]; networkFilter?: string | null; refresh?: () => void }
+import type { Nav, Account, Ctx } from './types';
+export type { Nav, Account, Ctx };
 
 const evmAddr = (c: Ctx) => c.addrs.ethereum ?? Object.values(c.addrs)[0] ?? '';
 // Address of the account that holds an asset: the chain's own address (registry), or the EVM address for custom tokens.

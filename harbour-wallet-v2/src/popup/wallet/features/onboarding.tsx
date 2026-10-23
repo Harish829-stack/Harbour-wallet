@@ -3,7 +3,7 @@
 //  - backup: re-authentication, reveal, then the verify-the-words step (TW BACKUP_SEEDPHRASE).
 import React, { useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
-import { SCREENS, type Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, Row, Skeleton, Ic } from '../ui';
 import { T } from '../../theme';
 import { BackupFlow } from '../../onboarding/BackupFlow';
@@ -34,7 +34,7 @@ export const AddWalletOnboardingScreen: React.FC<Ctx> = (c) => {
         <div style={{ color: T.sub, fontSize: 12, marginBottom: 8 }}>{count} of {MAX_WALLETS} wallets</div>
         <Row left={<Ic d="plus" size={20}/>} title="Create new wallet" sub="Generate a new secret phrase" onClick={allowed ? createNew : undefined}/>
         <Row left={<Ic d="receive" size={20}/>} title="I already have a wallet" sub="Secret phrase, private key or QR code" onClick={allowed ? () => void openOnboarding() : undefined}/>
-        <Row left={<Ic d="shield" size={20}/>} title="Connect your Ledger" sub="Hardware wallet" onClick={allowed ? () => (SCREENS['importLedger'] ? c.nav.push('importLedger') : void openOnboarding()) : undefined}/>
+        <Row left={<Ic d="shield" size={20}/>} title="Connect your Ledger" sub="Hardware wallet" onClick={allowed ? () => c.nav.push('importLedger') : undefined}/>
         {err && <div role="alert" style={{ color: T.error, marginTop: 12, fontSize: 13 }}>{err}</div>}
         {busy && <div role="status" style={{ color: T.sub, marginTop: 12, fontSize: 13 }}>Creating wallet...</div>}
       </>}

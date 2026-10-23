@@ -7,7 +7,6 @@ import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 
 const PATH = /^m?\/?(\d+'?\/){2,5}\d+'?$/;
 const norm = (p: string) => p.replace(/^m\//, '');
-export const LEDGER_DEFAULT_PATHS = { ethereum: "44'/60'/0'/0/0", bitcoin: "84'/0'/0'/0/0", solana: "44'/501'/0'" };
 
 export const handlers: HandlerMap = {
   /** Add a Ledger wallet from addresses the device reported: { accounts: { ethereum?, bitcoin?, solana? : { address, path } }, model? } */

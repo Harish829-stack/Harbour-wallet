@@ -1,7 +1,7 @@
 // Real dApp directory UI (DeFiLlama): sections + categories + chain filter + search + detail sheet. Used by the Discover screen and by SearchScreen's DApps tab.
 import React, { useMemo, useState } from 'react';
 import { T } from '../../theme';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { dappLogoPath } from '../../../core/assetLogos';
 import { Sheet, Btn, Empty, Ic, ICON } from '../ui';
 import { Notice, Chip, ChipRow, SearchBox, Letter, ListSkeleton, ErrorBox, openHttps, useAsync, useDebounced, ago } from './rampKit';

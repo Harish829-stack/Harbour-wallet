@@ -13,13 +13,6 @@ const COINGECKO_ID: Record<number, string> = {
 };
 const timeout = () => AbortSignal.timeout(8000);
 
-// Prices keyed by chainId (back-compat with getBalances USD math).
-export async function fetchUsdPrices(chainIds: number[]): Promise<Record<number, number>> {
-  const m = await fetchMarket(chainIds);
-  const out: Record<number, number> = {};
-  for (const [id, v] of Object.entries(m)) out[Number(id)] = v.price;
-  return out;
-}
 
 // Price + 24h change keyed by chainId.
 export async function fetchMarket(chainIds: number[]): Promise<Record<number, { price: number; change: number }>> {

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Btn, Ic, ICON, IconBtn } from '../ui';
-import type { Nav } from '../screens';
+import type { Nav } from '../types';
 import type { SwapQuoteResult, SwapRoute, SwapStep } from '../../../core/swap/types';
 import { toAtomic, fromAtomic, fmtToken, fmtUsd, rateOf } from '../../../core/swap/amount';
 import { priceImpactSeverity, resolveCta, isHighSlippage, QUOTE_REFRESH_SECONDS } from '../../../core/swap/rules';

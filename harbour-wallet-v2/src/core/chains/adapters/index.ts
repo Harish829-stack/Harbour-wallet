@@ -23,7 +23,6 @@ export const BALANCE_ADAPTERS: Partial<Record<ChainKind, BalanceAdapter>> = {
   // Registered by core/chains/adapters/<kind>.ts as they are implemented (see evidences/re-evidence/30-chain-registry/ADAPTERS.md):
   // utxo, cosmos, tron, ton, aptos, sui, near, algorand, ripple, stellar, substrate, tezos, filecoin, waves, vechain, harmony, icon, zilliqa, …
 };
-export function registerBalanceAdapter(kind: ChainKind, a: BalanceAdapter) { BALANCE_ADAPTERS[kind] = a; }
 
 export async function fetchNativeBalance(chain: ChainInfo, address: string, f: Fetcher = fetch): Promise<NativeBalanceResult> {
   const a = BALANCE_ADAPTERS[chain.kind];

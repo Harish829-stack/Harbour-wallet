@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Coin, Spinner, IconBtn, Empty } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { useTokenItems } from '../tokensStore';
 import { useDraft, setDraft, resetDraft, getDraft } from './store';
 import { sendTarget, useSendSupport, useQuote, fmtAmount, decimalOnly, priceUsd, fiatToCrypto, shortAddr, MEMO_LABEL, tierOf } from './lib';

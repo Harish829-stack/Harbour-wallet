@@ -1,7 +1,7 @@
 // Harbour provider approval surfaces. Requests and permissions always come from the background;
 // URL parameters select a request, never provide signing data or an origin.
 import React, { useEffect, useState } from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { T } from '../../theme';
 import { bg } from '../../api';
 import { Btn, Empty, Ic, injectStyles, Row, Screen, Sheet, Spinner } from '../ui';
@@ -101,7 +101,7 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
     catch (e: any) { if (!isUserCancel(e)) setBioErr(e?.message || 'Biometric verification failed'); return false; }
   };
   const resolve = async (d: any) => { if (d.approve && v.bio?.required && !(await bio())) return; return resolveRaw(d); };
-  const [account, setAccount] = useState(v.lockedIndex ?? v.activeAccount ?? 0); const [chain, setChain] = useState(v.selectedChainId ?? 1);
+  const [account, setAccount] = useState(v.lockedIndex ?? v.activeAccount ?? 0); const [chain] = useState(v.selectedChainId ?? 1);
   const [feeLevel, setFeeLevel] = useState(v.defaultFeeLevel ?? 'average'); const [gas, setGas] = useState(v.gasLimit ?? ''); const [ack, setAck] = useState(false);
   const executing = v.stage === 'executing';
   const connect = ['connect', 'permissions', 'solConnect', 'multiConnect', 'wcSession'].includes(v.kind); const addrOf = (a: any) => (v.ns === 'solana' ? a?.solana : v.ns === 'multi' ? a?.multi?.[v.multiChain ?? v.chain?.id] : a?.evm); const wcs = v.kind === 'wcSession';

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Coin, Spinner, Sheet, SuccessCheck, Empty } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { useDraft, resetDraft, setDraft } from './store';
 import { sendTarget, useQuote, fmtAmount, priceUsd, fiatToCrypto, shortAddr, MEMO_LABEL, tierOf, TIER_LABEL } from './lib';
 import { useRecipient } from './prepare';

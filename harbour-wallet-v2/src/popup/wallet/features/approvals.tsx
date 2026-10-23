@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Row, Empty, Spinner } from '../ui';
 import { Notice } from './earnParts';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { chainById } from '../../../core/chains/index';
 
 const ApprovalsScreen: React.FC<Ctx> = (c) => {

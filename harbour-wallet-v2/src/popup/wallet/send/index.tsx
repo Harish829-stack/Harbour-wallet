@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { SendSelect } from './select';
 import { SendPrepare } from './prepare';
 import { ReceiveScreen } from './receive';

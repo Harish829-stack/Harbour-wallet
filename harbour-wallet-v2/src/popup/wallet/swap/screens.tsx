@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Row, Spinner, SuccessCheck, Empty, Ic, ICON } from '../ui';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import type { SwapAsset, SwapHistoryItem, SwapRoute } from '../../../core/swap/types';
 import { SWAP_DOMAINS, domainById } from '../../../core/swap/domains';
 import { fromAtomic, fmtToken, fmtUsd, rateOf } from '../../../core/swap/amount';

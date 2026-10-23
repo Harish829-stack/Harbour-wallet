@@ -10,7 +10,7 @@ import type { ChartRange } from '../../core/marketData';
 import { validTokenAddress, TOKEN_CHAINS, STANDARD_LABEL, type TokenStandard } from '../../core/chains/adapters/tokens';
 import { refreshTokens, tokenItem, useTokenItems } from './tokensStore';
 import { money, moneyPrice, fmtNumber } from '../settingsStore';
-import type { Ctx } from './screens';
+import type { Ctx } from './types';
 
 // Custom token import, rebuilt from the Trust Wallet extension's `custom-asset` chunk (REA, evidences/re-evidence/27-custom-token):
 //   /select-network  -> list of networks with customTokensEnabled

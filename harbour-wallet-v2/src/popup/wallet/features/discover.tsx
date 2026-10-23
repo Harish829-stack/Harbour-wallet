@@ -1,6 +1,6 @@
 // Screens for feature "discover": dApp directory, market sentiment, help.
 import React from 'react';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, IconBtn } from '../ui';
 import { DappsPanel } from './dappsPanel';
 import { MarketSentimentScreen, HelpScreen } from './sentimentHelp';

@@ -18,7 +18,7 @@ it must never be used as a claim that the wallet is implemented.
 
 ## Current baseline
 
-See [current status](evidences/audit/CURRENT-STATUS.md) for verified findings and limitations.
+See the audit data in [evidences/audit/](../../evidences/audit/) for verified findings and limitations.
 `harbour-wallet/` is the implementation candidate; `wallet-clone/` is a historical
 core PoC, not a second production target. Keep the originals and both projects
 preserved. There is no justified “all screens” or functional-parity completion claim.

@@ -1,7 +1,7 @@
 // Market sentiment screen + Help screen.
 import React, { useState } from 'react';
 import { T } from '../../theme';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 import { Screen, Btn, Empty, Ic, ICON, Row, Sheet, Coin } from '../ui';
 import { Notice, Chip, ChipRow, ListSkeleton, ErrorBox, openHttps, useAsync, ago } from './rampKit';
 

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Row, Empty, Spinner } from '../ui';
 import { Notice } from './earnParts';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 
 const usd = (n: number, d = 2) => (Number.isFinite(n) ? `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })}` : '—');
 const cents = (p?: number) => (p == null ? '—' : `${Math.round(p * 1000) / 10}¢`);

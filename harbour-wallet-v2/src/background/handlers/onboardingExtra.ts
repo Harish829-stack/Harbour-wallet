@@ -21,7 +21,7 @@ type PendingKey = { kind: 'privateKey'; bytes: Uint8Array; ct: string; group: bo
 const pending = new Map<string, PendingMnemonic | PendingKey>();
 const sweep = () => { const now = Date.now(); for (const [id, p] of pending) if (now - p.at > PENDING_TTL_MS) { if (p.kind === 'privateKey') p.bytes.fill(0); pending.delete(id); } };
 const forget = (id: string) => { const p = pending.get(id); if (p?.kind === 'privateKey') p.bytes.fill(0); pending.delete(id); };
-export const _pendingCount = () => pending.size; // test hook
+ // test hook
 
 let busy = false;
 

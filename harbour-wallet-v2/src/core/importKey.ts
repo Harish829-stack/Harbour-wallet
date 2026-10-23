@@ -28,12 +28,6 @@ export function classifySecret(input: string): SecretKind {
 }
 export const normalizeMnemonic = (s: string): string => String(s ?? '').trim().split(/\s+/).join(' ').toLowerCase();
 export const mnemonicWordCount = (s: string): number => (String(s ?? '').trim() ? String(s).trim().split(/\s+/).length : 0);
-/** TW useValidateSeedPhrase: only 12, 18 and 24 words are checked; more than 24 is a length error. */
-export function mnemonicLengthState(s: string): 'short' | 'ok' | 'toolong' {
-  const n = mnemonicWordCount(s);
-  if (n > 24) return 'toolong';
-  return n === 12 || n === 18 || n === 24 ? 'ok' : 'short';
-}
 
 // ---------- wallet name ----------
 export function defaultWalletName(existing: string[]): string {

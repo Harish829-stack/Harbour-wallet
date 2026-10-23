@@ -71,8 +71,4 @@ export function knownLogoSymbol(asset: SwapAsset): string | null {
   const known = (TOKENS[asset.domainId] ?? []).find(([address]) => address.toLowerCase() === asset.address.toLowerCase());
   return known?.[1] === asset.symbol ? known[1] : null;
 }
-export const defaultPair = (): { from: SwapAsset; to: SwapAsset } => ({
-  from: nativeAsset('ethereum'),
-  to: popularAssets('ethereum').find((a) => a.symbol === 'USDC')!,
-});
 export const sameAsset = (a?: SwapAsset | null, b?: SwapAsset | null) => !!a && !!b && a.assetId === b.assetId;

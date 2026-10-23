@@ -1,7 +1,6 @@
 // Human-readable decoding of EVM calldata for the approval screen (ERC-20 / ERC-721 / ERC-1155 / WETH basics). Unknown calls stay "unknown".
 import { decodeAbiParameters, type Hex } from 'viem';
 
-export const MAX_UINT256 = (1n << 256n) - 1n;
 /** Spending limits at or above 2^159 are treated as "unlimited" (covers uint256 max, uint160 max used by Permit2, and "infinite" conventions). */
 export const isUnlimited = (v: bigint): boolean => v >= 1n << 159n;
 

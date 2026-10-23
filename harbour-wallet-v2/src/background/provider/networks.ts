@@ -12,5 +12,3 @@ export function evmNetworks(): EvmNetwork[] {
   return [...builtin, ...custom];
 }
 export const evmNetwork = (chainId: number): EvmNetwork | undefined => evmNetworks().find((n) => n.chainId === chainId);
-export const DEFAULT_DAPP_CHAIN = 1;
-export const txUrl = (n: EvmNetwork | undefined, hash: string): string => (n?.explorer ? n.explorer.replace(/\/$/, '') + (n.txPath ?? '/tx/{id}').replace('{id}', hash) : '');

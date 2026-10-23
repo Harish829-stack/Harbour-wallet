@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { T } from '../../theme';
 import { Screen, Btn, Row, Empty, Spinner, Skeleton } from '../ui';
 import { Notice } from './earnParts';
-import type { Ctx } from '../screens';
+import type { Ctx } from '../types';
 
 const usd = (n: number | null | undefined, d = 2) => (n == null || !Number.isFinite(n) ? '—' : `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 const px = (n: number) => (n >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 1 }) : n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 4 }) : n.toPrecision(4));

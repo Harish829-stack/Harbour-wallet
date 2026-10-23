@@ -14,7 +14,7 @@ export const MAX_TOKENS = 100;
 const BUILTIN_NETWORKS = [...CHAINS, ...TESTNETS].filter((c) => c.kind === 'evm' && c.chainId);
 // Built-in EVM chains plus the user's custom networks (see core/networkRegistry.ts).
 export const tokenNetworks = () => [...BUILTIN_NETWORKS, ...customNetworks().map((n) => ({ id: `custom-${n.chainId}`, name: n.name, ct: 'ethereum', kind: 'evm' as const, chainId: n.chainId, testnet: false, custom: true }))];
-export const TOKEN_NETWORKS = BUILTIN_NETWORKS; // legacy export (built-ins only)
+ // legacy export (built-ins only)
 export const networkByChainId = (chainId?: number) => tokenNetworks().find((n) => n.chainId === chainId);
 export const tokenId = (chainId: number, address: string) => `${chainId}_t${address.toLowerCase()}`;
 
