@@ -82,7 +82,7 @@ export const SecretForm: React.FC<{
         <small className={p.nameError ? '' : 'ob-muted'}>{p.nameError ?? 'You can edit this later'}</small>
       </label>
       <label className={`ob-field ${p.check.state === 'invalid' && p.check.error ? 'has-error' : ''}`}><span>{INSTRUCTIONS[p.product].inputLabel}</span>
-        <textarea data-testid="secret-input" autoFocus value={p.secret} onChange={(e) => p.onSecret(e.target.value)} disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
+        <textarea data-testid="secret-input" autoFocus value={p.secret} onChange={(e) => p.onSecret(e.target.value)} disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
         {/* eslint-disable-next-line no-constant-condition -- secret toggle is always offered */}
         {p.kind !== 'mnemonic' || true ? <button type="button" className="ob-link ob-secret-toggle" onClick={() => setVisible(!visible)} aria-pressed={visible}>{visible ? <EyeOff size={14}/> : <Eye size={14}/>}{visible ? 'Hide' : 'Show'}</button> : null}
         {p.check.state === 'invalid' && p.check.error ? <small role="alert">{p.check.error}</small> : <small className="ob-muted" data-testid="secret-caption">{detected ?? hint.map((h, n) => <React.Fragment key={n}>{h}{n < hint.length - 1 && <br/>}</React.Fragment>)}</small>}

@@ -353,7 +353,7 @@ export const WalletSelectorScreen: React.FC<Ctx> = (c) => {
 // ---------- Add new wallet (create fresh seed, or import existing) ----------
 export const AddWalletScreen: React.FC<Ctx> = (c) => {
   const [mode, setMode] = useState<'choose' | 'import'>('choose');
-  const [phrase, setPhrase] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const [phrase, setPhrase] = useState(''); const [showPhrase, setShowPhrase] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const createNew = async () => {
     if (busy) return; setBusy(true); setErr('');
     try {
@@ -370,7 +370,8 @@ export const AddWalletScreen: React.FC<Ctx> = (c) => {
   if (mode === 'import') return (
     <Screen title="Import wallet" onBack={() => setMode('choose')}>
       <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 10px' }}>Enter your 12 or 24-word secret phrase, words separated by spaces.</div>
-      <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={4} placeholder="word1 word2 word3 …" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 12, border: `1px solid ${T.border}`, padding: 12, fontSize: 14, resize: 'vertical', fontFamily: 'inherit' }} />
+      <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={4} placeholder="word1 word2 word3 …" spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" aria-label="Secret phrase" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 12, border: `1px solid ${T.border}`, padding: 12, fontSize: 14, resize: 'vertical', fontFamily: 'inherit', ...(showPhrase ? {} : { WebkitTextSecurity: 'disc' } as React.CSSProperties) }} />
+      <button type="button" onClick={() => setShowPhrase(!showPhrase)} aria-pressed={showPhrase} style={{ background: 'none', border: 0, color: T.sub, fontSize: 12, cursor: 'pointer', marginTop: 6, float: 'right' }}>{showPhrase ? 'Hide' : 'Show'}</button>
       {err && <div style={{ color: T.error, fontSize: 13, marginTop: 8 }}>{err}</div>}
       <Btn onClick={importExisting} disabled={busy || phrase.trim().split(/\s+/).filter(Boolean).length < 12} style={{ marginTop: 14 }}>{busy ? 'Importing…' : 'Import wallet'}</Btn>
     </Screen>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, ShieldAlert, PenLine, EyeOff, UserX, CheckCircle2, Undo2 } from 'lucide-react';
 import { Confetti } from './FlowFrame';
 import { RevealGate } from '../wallet/revealGate';
-import { SeedCanvas } from '../wallet/SeedCanvas';
+import { SeedCanvas, SecretWord } from '../wallet/SeedCanvas';
 import { chipWord, shuffleWords, verifySelection } from '../../core/backupVerify';
 
 type Phase = 'auth' | 'reveal' | 'verify' | 'done';
@@ -47,10 +47,10 @@ export const BackupFlow: React.FC<{ bg: (m: any) => Promise<any>; walletId?: str
   return (
     <div className="ob-backup" data-testid="backup-verify">
       <div className="fx-callout"><ShieldAlert size={18}/><span><b>Confirm your secret phrase.</b> Tap the words in the order you wrote them down. {picked.length} of {words.length} placed.</span></div>
-      <ol className="ob-seed-grid ob-picked" aria-label="Selected words">{words.map((_, i) => <li key={i} className={picked[i] ? 'ob-word filled' : 'ob-word'} style={state.firstWrong === i ? { borderColor: 'var(--hb-error)' } : undefined}><small>{i + 1}</small> {picked[i] ? chipWord(picked[i]) : ''}</li>)}</ol>
+      <ol className="ob-seed-grid ob-picked" aria-label="Selected words">{words.map((_, i) => <li key={i} aria-label={`Position ${i + 1}, ${picked[i] ? 'filled' : 'empty'}`} className={picked[i] ? 'ob-word filled' : 'ob-word'} style={state.firstWrong === i ? { borderColor: 'var(--hb-error)' } : undefined}><small>{i + 1}</small> {picked[i] ? <SecretWord word={chipWord(picked[i])}/> : null}</li>)}</ol>
       {state.firstWrong >= 0 && <p className="ob-error" role="alert">That word is not in the right place. Remove it and try again.</p>}
       {err && <p className="ob-error" role="alert">{err}</p>}
-      <div className="ob-chips">{chips.map((c) => <button key={c} type="button" className="ob-chip" disabled={picked.includes(c)} onClick={() => setPicked([...picked, c])}>{chipWord(c)}</button>)}</div>
+      <div className="ob-chips">{chips.map((c, n) => <button key={c} type="button" className="ob-chip" aria-label={`Word option ${n + 1}`} disabled={picked.includes(c)} onClick={() => setPicked([...picked, c])}><SecretWord word={chipWord(c)}/></button>)}</div>
       <div className="fx-row">
         <button className="ob-secondary" disabled={!picked.length} onClick={() => setPicked(picked.slice(0, -1))}><Undo2 size={16}/> Undo</button>
         <button className="ob-primary" disabled={!state.complete || busy} onClick={finish} data-testid="backup-verify-submit">{busy ? 'Saving...' : 'Verify'}</button>
