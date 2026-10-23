@@ -20,6 +20,7 @@ export function normalizeUrl(raw: unknown, { optional = false }: { optional?: bo
   return { ok: true, url: s.replace(/\/+$/, '') };
 }
 
+import { isPrivateNetworkUrl } from './provider/origin';
 export type NetInput = { name?: unknown; rpcUrl?: unknown; chainId?: unknown; symbol?: unknown; explorerUrl?: unknown };
 export function validateNetwork(input: NetInput, existing: CustomNetwork[] = customNetworks(), editing?: number): { ok: true; network: Omit<CustomNetwork, 'addedAt'> } | { ok: false; error: string; field?: string } {
   const name = cleanText(input.name, 40); if (!name) return { ok: false, error: 'Enter a network name.', field: 'name' };
@@ -39,9 +40,11 @@ export function validateNetwork(input: NetInput, existing: CustomNetwork[] = cus
 
 type F = typeof fetch;
 // A wrong RPC is the most common mistake, so confirm the node really reports the chain id the user typed.
-export async function probeRpcChainId(rpcUrl: string, f: F = fetch): Promise<{ ok: true; chainId: number } | { ok: false; code: 'RPC_UNREACHABLE' | 'RPC_INVALID'; error: string }> {
+export async function probeRpcChainId(rpcUrl: string, f: F = fetch, opts: { fromSite?: boolean } = {}): Promise<{ ok: true; chainId: number } | { ok: false; code: 'RPC_UNREACHABLE' | 'RPC_INVALID'; error: string }> {
   try {
-    const res = await f(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }), signal: AbortSignal.timeout(8000) });
+    // A URL chosen by a website must be https, must not point into a private network and may not redirect somewhere else.
+    if (opts.fromSite && (!/^https:\/\//i.test(rpcUrl) || isPrivateNetworkUrl(rpcUrl))) return { ok: false, code: 'RPC_UNREACHABLE', error: 'This RPC address is not allowed for a site-supplied network.' };
+    const res = await f(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }), signal: AbortSignal.timeout(8000), credentials: 'omit', ...(opts.fromSite ? { redirect: 'error' as const } : {}) });
     if (!res.ok) return { ok: false, code: 'RPC_UNREACHABLE', error: `The RPC answered with HTTP ${res.status}.` };
     const j: any = await res.json(); const hex = j?.result;
     if (typeof hex !== 'string' || !/^0x[0-9a-fA-F]+$/.test(hex)) return { ok: false, code: 'RPC_INVALID', error: 'This URL did not answer like an Ethereum JSON-RPC node.' };

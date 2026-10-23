@@ -68,6 +68,13 @@ export function derSig(rs: Uint8Array): Uint8Array {
   const body = cat(int(rs.slice(0, 32)), int(rs.slice(32, 64))); return cat(Uint8Array.of(0x30, body.length), body, Uint8Array.of(0x01));
 }
 
+/** Hard ceiling on the fee Harbour will sign for (0.01 BTC), and never more than 20% of the inputs. */
+export const MAX_FEE_SATS = 1_000_000n;
+/** Fee in sats when every input amount is known, else null. */
+export function psbtFee(p: Psbt): bigint | null {
+  let inSum = 0n; for (let i = 0; i < p.ins.length; i++) { const u = inputUtxo(p, i); if (!u) return null; inSum += u.value; }
+  return inSum - p.outs.reduce((a, o) => a + o.value, 0n);
+}
 export interface PsbtPlan { psbt: Psbt; inputs: Array<{ index: number; digest: Uint8Array }> }
 /** Which inputs we will sign: P2WPKH inputs paying to OUR key (optionally limited to `only`). Refuses anything but SIGHASH_ALL. */
 export function planPsbtSigning(p: Psbt, pubkey: Uint8Array, only?: number[]): PsbtPlan {
@@ -75,8 +82,17 @@ export function planPsbtSigning(p: Psbt, pubkey: Uint8Array, only?: number[]): P
   p.ins.forEach((_, i) => {
     if (only && !only.includes(i)) return; const u = inputUtxo(p, i); if (!u || !eq(u.script, mine)) { if (only) bad(`Input ${i} does not belong to the connected account.`); return; }
     const st = findKV(p.inputs[i], 0x03); if (st && new DataView(st.value.buffer, st.value.byteOffset).getUint32(0, true) !== 1) bad(`Input ${i} requests a sighash type Harbour does not sign.`);
+    // If the PSBT also carries the full previous transaction (BIP-174 non_witness_utxo), it must hash to the input's txid and agree with witness_utxo.
+    const nw = findKV(p.inputs[i], 0x00);
+    if (nw) {
+      let prev; try { prev = parseTx(nw.value); } catch { return bad(`Input ${i} carries a previous transaction Harbour cannot read.`); }
+      const o = prev.outs[p.ins[i].vout];
+      if (!eq(sha256d(nw.value), p.ins[i].txid) || !o || o.value !== u.value || !eq(o.script, u.script)) bad(`Input ${i}: the previous transaction does not match the amount or script shown.`);
+    }
     inputs.push({ index: i, digest: bip143Digest(p, i, u) });
   });
+  const fee = psbtFee(p);
+  if (fee !== null && (fee < 0n || fee > MAX_FEE_SATS || fee * 5n > p.ins.reduce((a, _, i) => a + inputUtxo(p, i)!.value, 0n))) bad('This PSBT pays an unusually large or negative fee. Harbour will not sign it.');
   if (!inputs.length) bad('No input in this PSBT can be signed by the connected account.');
   return { psbt: p, inputs };
 }
@@ -109,10 +125,10 @@ export function scriptToAddress(s: Uint8Array): string | null {
   if (s.length === 23 && s[0] === 0xa9 && s[1] === 0x14 && s[22] === 0x87) return b58check(0x05, s.slice(2, 22));
   return null;
 }
-export function describePsbt(p: Psbt, pubkey: Uint8Array, signable: number[]): { outputs: Array<{ address: string; sats: string; yours: boolean }>; feeSats: string | null; inputSats: string | null; signing: number; inputs: number } {
+export function describePsbt(p: Psbt, pubkey: Uint8Array, signable: number[]): { outputs: Array<{ address: string; sats: string; yours: boolean }>; feeSats: string | null; inputSats: string | null; signing: number; inputs: number; warnings: string[] } {
   const mine = p2wpkhScript(pubkey); let inSum = 0n, known = true;
   p.ins.forEach((_, i) => { const u = inputUtxo(p, i); if (u) inSum += u.value; else known = false; });
   const outSum = p.outs.reduce((a, o) => a + o.value, 0n);
-  return { outputs: p.outs.map((o) => ({ address: scriptToAddress(o.script) ?? `script ${hex(o.script).slice(0, 40)}…`, sats: o.value.toString(), yours: eq(o.script, mine) })), feeSats: known ? (inSum - outSum).toString() : null, inputSats: known ? inSum.toString() : null, signing: signable.length, inputs: p.ins.length };
+  return { outputs: p.outs.map((o) => ({ address: scriptToAddress(o.script) ?? `script ${hex(o.script).slice(0, 40)}…`, sats: o.value.toString(), yours: eq(o.script, mine) })), feeSats: known ? (inSum - outSum).toString() : null, inputSats: known ? inSum.toString() : null, signing: signable.length, inputs: p.ins.length, warnings: [...(known ? [] : ['Some input amounts are not in the PSBT, so the fee cannot be checked.']), ...(p.outs.some((o) => scriptToAddress(o.script) === null) ? ['An output uses a script Harbour cannot turn into an address (could be OP_RETURN or a custom script).'] : []), ...(p.ins.length > signable.length ? [`${p.ins.length - signable.length} input(s) belong to someone else and will not be signed.`] : []), ...(p.outs.length > 1 && !p.outs.some((o) => eq(o.script, mine)) && signable.length > 0 ? ['No output returns change to your address.'] : [])] };
 }
 export const psbtToB64 = (p: Psbt) => bytesToB64(encodePsbt(p)); export const psbtToHex = (p: Psbt) => hex(encodePsbt(p));

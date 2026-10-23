@@ -13,12 +13,19 @@ export type DecodedCall =
   | { kind: 'setApprovalForAll'; operator: string; approved: boolean }
   | { kind: 'nftTransfer'; standard: 'erc721' | 'erc1155'; from: string; to: string; id: bigint; amount?: bigint }
   | { kind: 'permit'; owner: string; spender: string; value: bigint; deadline: bigint }
+  | { kind: 'permit2Approve'; token: string; spender: string; amount: bigint; expiration: bigint }
+  | { kind: 'multicall'; calls: DecodedCall[]; truncated: boolean }
   | { kind: 'wrap'; fn: 'deposit' | 'withdraw'; amount?: bigint }
   | { kind: 'unknown'; selector: string; bytes: number };
 
 const addr = (v: unknown): string => String(v);
 function dec(types: string[], data: string): any[] { return [...decodeAbiParameters(types.map((type) => ({ type })), ('0x' + data) as Hex)]; }
 
+const MULTI_MAX = 20;
+function multi(items: readonly string[]): DecodedCall {
+  const calls = items.slice(0, MULTI_MAX).map((x) => decodeCalldata(x));
+  return { kind: 'multicall', calls, truncated: items.length > MULTI_MAX };
+}
 export function decodeCalldata(data: string): DecodedCall {
   if (!/^0x([0-9a-fA-F]{2})*$/.test(data) || data.length <= 2) return { kind: 'none' };
   const sel = data.slice(2, 10).toLowerCase(); const body = data.slice(10);
@@ -36,6 +43,10 @@ export function decodeCalldata(data: string): DecodedCall {
       case 'f242432a': { const [from, to, id, amount] = dec(['address', 'address', 'uint256', 'uint256', 'bytes'], body); return { kind: 'nftTransfer', standard: 'erc1155', from: addr(from), to: addr(to), id, amount }; }
       case 'a22cb465': { const [operator, approved] = dec(['address', 'bool'], body); return { kind: 'setApprovalForAll', operator: addr(operator), approved: !!approved }; }
       case 'd505accf': { const [owner, spender, value, deadline] = dec(['address', 'address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'], body); return { kind: 'permit', owner: addr(owner), spender: addr(spender), value, deadline }; }
+      case '87517c45': { const [token, spender, amount, expiration] = dec(['address', 'address', 'uint160', 'uint48'], body); return { kind: 'permit2Approve', token: addr(token), spender: addr(spender), amount, expiration }; }
+      case 'ac9650d8': return multi(dec(['bytes[]'], body)[0]);
+      case '5ae401dc': return multi(dec(['uint256', 'bytes[]'], body)[1]);
+      case '1f0464d1': return multi(dec(['bytes32', 'bytes[]'], body)[1]);
       case 'd0e30db0': return { kind: 'wrap', fn: 'deposit' };
       case '2e1a7d4d': { const [amount] = dec(['uint256'], body); return { kind: 'wrap', fn: 'withdraw', amount }; }
       default: return unknown;
@@ -51,3 +62,6 @@ export function decodeString(hex: string): string {
 export const encodeAllowanceCall = (owner: string, spender: string): string => SEL.allowance + owner.slice(2).toLowerCase().padStart(64, '0') + spender.slice(2).toLowerCase().padStart(64, '0');
 export const encodeBalanceCall = (owner: string): string => SEL.balanceOf + owner.slice(2).toLowerCase().padStart(64, '0');
 export const encodeApprove = (spender: string, amount: bigint): string => '0x095ea7b3' + spender.slice(2).toLowerCase().padStart(64, '0') + amount.toString(16).padStart(64, '0');
+
+/** Flatten a decoded call (looking inside multicalls, one level of nesting max is enough in practice but recursion is bounded by MULTI_MAX per level and calldata size). */
+export function flattenCalls(c: DecodedCall, depth = 0): DecodedCall[] { return c.kind === 'multicall' && depth < 3 ? c.calls.flatMap((x) => flattenCalls(x, depth + 1)) : [c]; }

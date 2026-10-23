@@ -59,6 +59,7 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
   const risks: string[] = [];
   if (issues.some((i) => i.code === 'smart-contract') || quote?.recipientIsContract) risks.push('The recipient is a smart contract. Sending to a contract that cannot handle this asset can permanently lock your funds.');
   if (q.data?.risk?.flagged) risks.push(`Security warning: this address is flagged as malicious (${(q.data.risk.flags ?? []).slice(0, 3).join(', ') || 'scam list'}). Sending to it will very likely lose your funds.`);
+  if (q.data?.risk?.lookalike) risks.push(`Possible address poisoning: this address looks like ${q.data.risk.lookalike} (an address you have used) but is different. Compare every character before sending.`);
   if (q.data?.risk?.newRecipient) risks.push('You have not sent to this address before. Check every character with the person or service you are paying.');
   if (q.data?.risk?.selfSend) risks.push('The recipient is your own address. You will only pay the network fee.');
   if (price && usdVal >= HIGH_VALUE_USD) risks.push(`This transfer is worth about ${money(usdVal)}. Transactions cannot be reversed.`);
@@ -68,7 +69,7 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
     if (busy.current || !req) return; busy.current = true; setGuard(false); setPhase('sending'); setFail('');
     try {
       const cap = base ? ((base.fee * 125n) / 100n + 1n).toString() : undefined;
-      const r = (await isLedgerWallet(c)) ? await sendWithLedger(c, req, setFail) : await c.bg({ type: 'sendSubmit', ...req, feeCap: cap });
+      const r = (await isLedgerWallet(c)) ? await sendWithLedger(c, req, setFail) : await c.bg({ type: 'sendSubmit', ...req, feeCap: cap, planHash: q.data?.planHash });
       if (r?.ok) { setRes({ id: r.id, hash: r.hash }); setPhase('done'); c.refresh?.(); } else { setFail(r?.error ?? 'The transaction was not sent.'); setPhase('failed'); busy.current = false; }
     } catch (e: any) { setFail(e?.message ?? 'The transaction was not sent.'); setPhase('failed'); busy.current = false; }
   };

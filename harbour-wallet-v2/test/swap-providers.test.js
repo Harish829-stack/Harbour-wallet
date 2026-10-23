@@ -36,6 +36,8 @@ test('THORChain route mapping, fresh-quote checks and router calldata', () => {
   assert.equal(route.source, 'thorchain'); assert.equal(st.to.amount, '150000'); assert.equal(st.to.minAmount, '148500'); assert.equal(st.executionSeconds, 900);
   assert.doesNotThrow(() => M.checkThorQuote(thorQuote, st, BTCADDR, 1));
   assert.throws(() => M.checkThorQuote({ ...thorQuote, memo: '=:BTC.BTC:bc1qattacker:0/1/0' }, st, BTCADDR, 1), (e) => e.code === 'unsafe_transaction');
+  assert.throws(() => M.checkThorQuote({ ...thorQuote, memo: `=:BTC.BTC:${BTCADDR}:0/1/0:aff:50` }, st, BTCADDR, 1), (e) => e.code === 'unsafe_transaction');   // affiliate fields
+  assert.throws(() => M.checkThorQuote({ ...thorQuote, memo: `=:ETH.ETH:${BTCADDR}:0/1/0` }, st, BTCADDR, 1), (e) => e.code === 'unsafe_transaction');          // different output asset
   assert.throws(() => M.checkThorQuote({ ...thorQuote, expected_amount_out: '140000' }, st, BTCADDR, 1), (e) => e.code === 'price_moved');
   const call = M.thorRouterCall(thorQuote, st);
   assert.equal(call.to, '0x3333333333333333333333333333333333333333'); assert.equal(call.value, 10000000000000000n);
@@ -67,7 +69,7 @@ test('Relay route mapping and pre-sign validation of the fresh quote', () => {
   const route = M.mapRelayRoute(relayQ(), r);
   const st = route.steps[0];
   assert.equal(route.source, 'relay'); assert.equal(st.approval.spender.toLowerCase(), '0x4444444444444444444444444444444444444444'); assert.equal(st.to.minAmount, '1980000000000000');
-  const ctx = { ourAddress: ME, chainId: 1, slippagePct: 1 };
+  const ctx = { ourAddress: ME, chainId: 1, slippagePct: 1, targets: new Set(['0x4444444444444444444444444444444444444444']) };
   const plan = M.relayTransactions(relayQ(), st, ctx);
   assert.deepEqual(plan.txs.map((t) => t.kind), ['approve', 'execute']); assert.equal(plan.requestId, '0xreq');
   const evil = relayQ(); evil.steps[0].items[0].data.data = '0x095ea7b3' + '0'.repeat(24) + '9'.repeat(40) + 'f'.repeat(64);
@@ -99,4 +101,19 @@ test('dust picker keeps priced non-native balances between 1 cent and the thresh
   const t = (sym, bal, price) => ({ asset: { ...USDC, assetId: sym, symbol: sym }, balance: bal, priceUsd: price });
   const out = M.pickDust([t('A', '2000000', 1), t('B', '4000000', 1), t('C', '9000000', 1), t('D', '5000', 1), { asset: ETH, balance: '1', priceUsd: 3000 }, t('E', '1000000', undefined)]);
   assert.deepEqual(out.map((x) => x.asset.symbol), ['B', 'A']);
+});
+
+test('THORChain vault/router must be confirmed by two independent nodes; Relay targets come from Relay itself', async () => {
+  const r = req(ETH, BTC, '10000000000000000'); const st = M.mapThorRoute(thorQuote, r).steps[0];
+  const node = (entry) => async () => ({ ok: true, json: async () => [entry] });
+  const good = { chain: 'ETH', address: thorQuote.inbound_address, router: thorQuote.router };
+  await M.verifyThorInbound(thorQuote, st, node(good));                                           // all configured nodes agree
+  await assert.rejects(() => M.verifyThorInbound(thorQuote, st, node({ ...good, address: '0x9999999999999999999999999999999999999999' })), (e) => e.code === 'unsafe_transaction');
+  await assert.rejects(() => M.verifyThorInbound(thorQuote, st, node({ ...good, halted: true })), (e) => e.code === 'unsafe_transaction');
+  await assert.rejects(() => M.verifyThorInbound(thorQuote, st, async () => { throw new Error('down'); }), (e) => e.code === 'unsafe_transaction');   // nobody can confirm: refuse
+  const t = await M.relayTargets(8453, async () => ({ ok: true, json: async () => ({ chains: [{ id: 8453, protocol: { v2: { depository: '0x5555555555555555555555555555555555555555' } } }] }) }));
+  assert.ok(t.has('0x5555555555555555555555555555555555555555'));
+  assert.equal((await M.relayTargets(56, async () => { throw new Error('down'); })).size, 0);
+  const st2 = M.mapRelayRoute(relayQ(), req(USDC, M.nativeAsset('base'), '5000000')).steps[0];
+  assert.throws(() => M.relayTransactions(relayQ(), st2, { ourAddress: ME, chainId: 1, slippagePct: 1, targets: new Set() }), (e) => e.code === 'unsafe_transaction');
 });

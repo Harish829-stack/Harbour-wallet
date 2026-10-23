@@ -19,7 +19,7 @@ export const evmRpcs = (chain: ChainInfo): string[] => {
 };
 const call = (env: SendEnv, chain: ChainInfo, method: string, params: unknown[] = []) => firstOf(evmRpcs(chain), (u) => rpc(env.fetch, u, method, params));
 const big = (h: any): bigint => (h == null || h === '0x' ? 0n : BigInt(h));
-export const validEvmAddress = (a: string) => /^0x[0-9a-fA-F]{40}$/.test(a ?? '') && isAddress(a, { strict: false });
+export const validEvmAddress = (a: string) => /^0x[0-9a-fA-F]{40}$/.test(a ?? '') && isAddress(a, { strict: true });
 
 export function evmTransferData(to: string, amount: bigint): Hex { return encodeFunctionData({ abi: ERC20_TRANSFER, functionName: 'transfer', args: [getAddress(to.toLowerCase()), amount] }); }
 const balanceOfData = (owner: string): Hex => ('0x70a08231' + owner.replace(/^0x/, '').toLowerCase().padStart(64, '0')) as Hex;

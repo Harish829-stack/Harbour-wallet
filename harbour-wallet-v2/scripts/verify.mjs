@@ -27,7 +27,7 @@ for (const f of [path.join(root, '..', 'harbour-keys.env'), path.join(root, '.en
     const m = l.match(/^([A-Z_]+)=(.+)$/); if (m && m[2].length > 12 && !/^(VITE_|TEST_)/.test(m[1])) secrets.push(m[2].trim());
   }
 }
-const SHAPES = [/sk_(live|test)_[A-Za-z0-9]{16,}/, /x-lifi-api-key/i, /api[-_]?key=[A-Za-z0-9]{16,}/i];
+const SHAPES = [/sk_(live|test)_[A-Za-z0-9]{16,}/, /x-lifi-api-key/i, /api[-_]?key=[A-Za-z0-9]{16,}/i, /infura\.io\/v3\/[0-9a-f]{32}/i, /\.alchemy\.com\/v2\/[A-Za-z0-9_-]{20,}/i, /helius-rpc\.com\/?\?api-key=/i, /api\.pimlico\.io\/[^"' ]*apikey=/i];
 const walk = (d) => readdirSync(d).flatMap((n) => { const p = path.join(d, n); return statSync(p).isDirectory() ? walk(p) : /\.(js|html|json|css|map)$/.test(n) ? [p] : []; });
 const hits = [];
 for (const f of walk(out)) { const t = readFileSync(f, 'utf8'); if (secrets.some((s) => t.includes(s)) || SHAPES.some((re) => re.test(t))) hits.push(path.relative(out, f)); }

@@ -49,7 +49,7 @@ export const isNetworkError = (e: any): boolean => /fetch|network|timeout|timed 
 
 export async function probeToken(client: PublicClient | null, rawAddress: string): Promise<ProbeResult> {
   const addr = String(rawAddress ?? '').trim();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(addr) || !isAddress(addr, { strict: false })) return { ok: false, code: 'INVALID_ADDRESS', error: 'Enter a valid contract address.' };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr) || !isAddress(addr, { strict: true })) return { ok: false, code: 'INVALID_ADDRESS', error: 'Enter a valid contract address.' };
   if (!client) return { ok: false, code: 'UNSUPPORTED_NETWORK', error: 'This network is not supported.' };
   const address = getAddress(addr.toLowerCase());
   try {

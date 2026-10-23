@@ -28,7 +28,18 @@ export class VaultService {
     if (!unlockKey) throw new Error('LOCKED');
     await local.set(KEYS.VAULT, await passworder.encrypt(unlockKey, state));
   }
-  async unlock<T=any>(password: string): Promise<T> {
+  // Password attempts are serialized (TW UnlockThrottleService.guard): without this, parallel guesses would all read the same
+  // failed-attempt counter before any of them arms the lockout, and the throttle could be bypassed.
+  private chain: Promise<unknown> = Promise.resolve();
+  private serial<R>(fn: () => Promise<R>): Promise<R> {
+    const run = this.chain.then(fn, fn);
+    this.chain = run.then(() => undefined, () => undefined);
+    return run;
+  }
+  unlock<T=any>(password: string): Promise<T> { return this.serial(() => this.unlockInner<T>(password)); }
+  checkPassword(password: string): Promise<void> { return this.serial(() => this.checkPasswordInner(password)); }
+
+  private async unlockInner<T=any>(password: string): Promise<T> {
     const t = await this.throttle();
     if (t.lockedUntil > Date.now()) throw new Error('TOO_MANY_ATTEMPTS');
     const pb = await local.get<{ salt: string; iterations: number }>(KEYS.PBKDF2);
@@ -46,7 +57,7 @@ export class VaultService {
   }
   // Re-authentication for sensitive actions (reveal phrase): verifies the password against the stored vault WITHOUT touching the
   // session, with the same throttling as the lock screen.
-  async checkPassword(password: string): Promise<void> {
+  private async checkPasswordInner(password: string): Promise<void> {
     const t = await this.throttle();
     if (t.lockedUntil > Date.now()) throw new Error('TOO_MANY_ATTEMPTS');
     const pb = await local.get<{ salt: string; iterations: number }>(KEYS.PBKDF2);

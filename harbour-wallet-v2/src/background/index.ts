@@ -36,6 +36,8 @@ browser.runtime.onInstalled.addListener((d) => {
   if (d.reason === 'install') browser.tabs.create({ url: browser.runtime.getURL(ONBOARDING_URL) }).catch(() => {});
 });
 // Auto-lock: the alarm fires `lockTimeInMinutes` after the last activity ping; it drops the session keys.
+// Unlock keys live in storage.session: pin it to trusted extension contexts so content scripts can never read it, even if the default changes.
+try { void (chrome.storage.session as any).setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' }); } catch { /* older Chrome */ }
 browser.alarms.create(CONFIG_ALARM, { periodInMinutes: 360 });
 browser.alarms.onAlarm.addListener(async (a) => {
   if (a.name === CONFIG_ALARM) { void applyRemoteConfig(); void syncRemotePush(vaultState); return; }
@@ -45,6 +47,14 @@ browser.alarms.onAlarm.addListener(async (a) => {
   try { await new VaultService(await getCore()).lock(); } catch { /* already locked */ }
   store.dispatch(actions.wallet.patch({ unlocked: false }));
 });
+// Lock as soon as the operating system locks the screen (not only after the auto-lock timeout).
+try {
+  chrome.idle?.onStateChanged?.addListener(async (state) => {
+    if (state !== 'locked') return;
+    try { await new VaultService(await getCore()).lock(); } catch { /* already locked */ }
+    store.dispatch(actions.wallet.patch({ unlocked: false }));
+  });
+} catch { /* idle API unavailable */ }
 void loadSettings().then((st) => applySidePanel(st.preferSidePanel)).catch(() => {});
 // Public account metadata (addresses) for the notification watcher; readable while the wallet is locked.
 async function vaultState(): Promise<any> { return new VaultService(await getCore()).getState(); }

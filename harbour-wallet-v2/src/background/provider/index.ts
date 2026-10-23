@@ -22,6 +22,7 @@ import { multiBackend } from './multiBuild';
 import { ProviderService, type DeliverTarget } from './service';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
+import { loadSettings } from '../settingsService';
 import { WalletConnectBridge, WC_TAB, SESSIONS_KEY } from '../walletconnect/bridge';
 import { createKit, readProjectId } from '../walletconnect/kit';
 
@@ -76,7 +77,8 @@ export function getProvider(): ProviderService {
     vaultStatus: async () => { await ensureCtx(); const v = ctxCache!.vault; return { hasVault: await v.exists(), unlocked: await v.isUnlocked() }; },
     openApproval: () => approvalWindow.open(), closeApprovalIfIdle: () => approvalWindow.closeIfIdle(),
     deliver, emit, wc: wc.host, multi: multiBackend,
-    probeChainId: async (url) => { const r = await probeRpcChainId(url); if (!r.ok) throw new Error(r.error); return r.chainId; },
+    ethSignEnabled: async () => (await loadSettings()).developerSettings.isEthSignEnabled === true,
+    probeChainId: async (url) => { const r = await probeRpcChainId(url, fetch, { fromSite: true }); if (!r.ok) throw new Error(r.error); return r.chainId; },
     saveCustomNetwork: async (n) => {
       // A second approval may have added this ID while the first RPC probe ran.
       if (evmNetwork(n.chainId)) return;
@@ -208,7 +210,7 @@ export async function disconnectOrigin(origin: string, ns?: Namespace): Promise<
 
 export function viewDeps(): ViewDeps {
   const svc = getProvider();
-  return { perms, rpc: (c, m, p) => networksReady.then(() => rpc(c, m, p)), networks: { list: () => evmNetworks(), get: (id) => evmNetwork(id) }, signer: wrapSigner(), kv: kvSession, tokenMeta: (c, a) => svc.tokenMeta(c, a),
+  return { perms, rpc: (c, m, p) => networksReady.then(() => rpc(c, m, p)), networks: { list: () => evmNetworks(), get: (id) => evmNetwork(id) }, signer: wrapSigner(), kv: kvSession, tokenMeta: (c, a) => svc.tokenMeta(c, a), solRpc,
     probeChainId: async (url) => { const r = await probeRpcChainId(url); if (!r.ok) throw new Error(r.error); return r.chainId; } };
 }
 export { signer as rawSigner, wrapSigner, ensureCtx };

@@ -19,14 +19,26 @@ import { lifiStepTransaction, lifiStatus, lifiToken } from '../core/swap/lifi';
 import { popularAssets, nativeAsset } from '../core/swap/tokens';
 import { pickDust, DUST_DEFAULT_USD, type DustCandidate } from '../core/swap/dust';
 import { jupiterSwapTransaction } from '../core/swap/jupiter';
-import { validateLifiTransaction, parseSolanaTx, attachSolanaSignature, b64ToBytes, bytesToB64, JUPITER_PROGRAM } from '../core/swap/safety';
+import { validateLifiTransaction, isAllowedLifiTarget, parseSolanaTx, attachSolanaSignature, b64ToBytes, bytesToB64, JUPITER_PROGRAM } from '../core/swap/safety';
+import { parseSolTx, resolveLookupTables, guardSolSwapTx, SWAP_BASE_PROGRAMS } from '../core/provider/solanaTx';
+import { simulateSolTx, solAccountData } from '../core/provider/solSim';
 import { SWAP_WATCH_TIMEOUT_MS, normalizeSlippage } from '../core/swap/rules';
-import { relayQuote, relayTransactions, relayStatus } from '../core/swap/relay';
-import { thorQuote, checkThorQuote, thorRouterCall, thorStatus } from '../core/swap/thorchain';
+import { relayQuote, relayTransactions, relayStatus, relayTargets } from '../core/swap/relay';
+import { thorQuote, checkThorQuote, verifyThorInbound, thorRouterCall, thorStatus } from '../core/swap/thorchain';
 import { utxoFamily } from '../core/chains/send/utxo';
 import { chainById } from '../core/chains/index';
 import { sign as signDigestRaw, serializeSignature } from 'viem/accounts';
 import { sendGasless, bundlerUrl, GASLESS_FLAG, type Call } from '../core/swap/gasless';
+/** Refuse a third-party-built Solana transaction unless every instruction is understood and a dry run succeeds without draining more SOL than the sale. */
+async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep, o: { strictPrograms: boolean }): Promise<void> {
+  const bad = swapError('unsafe_transaction');
+  let tx; try { tx = await resolveLookupTables(parseSolTx(bytes), (a) => solAccountData(solRpc, a)); } catch { throw bad; }
+  const sell = step.from.asset.address === 'native' ? BigInt(step.from.amount) : 0n;
+  if (guardSolSwapTx(tx, { wallet, sellLamports: sell, programs: o.strictPrograms ? [...SWAP_BASE_PROGRAMS, JUPITER_PROGRAM] : undefined, allowTokenTransfers: !o.strictPrograms })) throw bad;
+  const sim = await simulateSolTx(solRpc, bytes, wallet);
+  if (!sim.ok) throw swapError('simulation_failed');
+  if (sim.solDelta !== undefined && -sim.solDelta > sell + 20_000_000n) throw bad;
+}
 const getStore = () => import('./store'); // same chunk as the background entry: Rollup inlines this (no runtime import())
 
 const SETTINGS_KEY = 'wallet:swap:settings';
@@ -247,6 +259,10 @@ export async function approve(deps: SwapDeps, p: { route: SwapRoute; stepIndex: 
     const raw: any = step.raw;
     // the spender must be the one the aggregator named for this very quote
     if (expectedSpender(p.route.source, raw).toLowerCase() !== a.spender.toLowerCase()) { keys.dispose(); throw swapError('unsafe_transaction'); }
+    // ...and it must be a contract we can verify independently of that response
+    if (p.route.source === 'lifi' && !isAllowedLifiTarget(d.chainId!, a.spender)) { keys.dispose(); throw swapError('unsafe_transaction'); }
+    if (p.route.source === 'relay' && !(await relayTargets(d.chainId!)).has(a.spender.toLowerCase())) { keys.dispose(); throw swapError('unsafe_transaction'); }
+    if (p.route.source === 'thorchain') { try { await verifyThorInbound({ inbound_address: raw?.quote?.inbound_address, router: raw?.quote?.router }, step); } catch (e) { keys.dispose(); throw e; } }
     // gasless swaps batch the approval into the sponsored user operation (approve + swap in one op)
     if (await gaslessActive(d.chainId!)) { keys.dispose(); return { ok: true as const, skipped: true, deferred: true }; }
     try {
@@ -314,6 +330,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const feePayer = deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]);
         const programs = parsed.accountKeys.map((k) => deps.core.Base58.encodeNoCheck(k));
         if (feePayer !== address || parsed.sigSlots !== 1 || !programs.includes(JUPITER_PROGRAM)) throw swapError('unsafe_transaction');
+        await guardSolanaSwap(bytes, address, step, { strictPrograms: true });
         const sig: Uint8Array = key.sign(parsed.message, deps.core.Curve.ed25519);
         const signed = attachSolanaSignature(bytes, parsed, sig);
         hash = await solRpc('sendTransaction', [bytesToB64(signed), { encoding: 'base64', skipPreflight: false, maxRetries: 3, preflightCommitment: 'confirmed' }]);
@@ -321,7 +338,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
         const raw: any = step.raw;
         const fresh = await relayQuote({ ...raw.request, from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress: address, toAddress: ownTo });
-        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct });
+        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
         const account = privateKeyToAccount(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
         const { chain, client } = evmClient(d.chainId!);
@@ -359,6 +376,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         // THORChain asks for a fresh quote right before sending (vault addresses rotate)
         const fresh = await thorQuote({ ...raw.request, from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress: address, toAddress: ownTo });
         checkThorQuote(fresh, step, ownTo, slippagePct);
+        await verifyThorInbound(fresh, step);
         if (d.kind === 'utxo') {
           const chain = btcChain(); const env = sendEnv(deps.core);
           const sp: any = { chain, from: address, to: String(fresh.inbound_address), amount: BigInt(step.from.amount), asset: { kind: 'native' }, memo: String(fresh.memo) };
@@ -396,12 +414,13 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const bytes = b64ToBytes(b64); const parsed = parseSolanaTx(bytes);
         const { key } = keys.solanaKey();
         if (deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]) !== address || parsed.sigSlots !== 1) throw swapError('unsafe_transaction');
+        await guardSolanaSwap(bytes, address, step, { strictPrograms: false });
         const sig: Uint8Array = key.sign(parsed.message, deps.core.Curve.ed25519);
         hash = await solRpc('sendTransaction', [bytesToB64(attachSolanaSignature(bytes, parsed, sig)), { encoding: 'base64', skipPreflight: false, maxRetries: 3, preflightCommitment: 'confirmed' }]);
       } else {
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
         const refreshed = await lifiStepTransaction(step.raw);
-        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct });
+        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: domainById(step.toDomainId)?.kind });
         if (bad) throw bad;
         const account = privateKeyToAccount(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');

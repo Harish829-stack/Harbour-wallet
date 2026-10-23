@@ -13,7 +13,7 @@ import type { Ctx } from '../screens';
 export interface WireTier { id: FeeTierId; fee: string; feeMax?: string; max: string; detail?: string }
 export interface WireIssue { code: IssueCode; message: string; blocking: boolean }
 export interface WireQuote { tiers: WireTier[]; defaultTier: FeeTierId; feeSymbol: string; feeDecimals: number; nativeBalance: string; assetBalance: string; issues: WireIssue[]; reserve?: string; recipientIsContract?: boolean; recipientInactive?: boolean }
-export interface QuoteResp { ok: true; quote: WireQuote; tier: FeeTierId; amountRaw: string; from: string; to: string; memoKind: MemoKind; symbol: string; decimals: number; assetKey: string; risk: null | { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean ; flagged?: boolean; flags?: string[] } }
+export interface QuoteResp { ok: true; planHash?: string | null; quote: WireQuote; tier: FeeTierId; amountRaw: string; from: string; to: string; memoKind: MemoKind; symbol: string; decimals: number; assetKey: string; risk: null | { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean ; lookalike?: string; flagged?: boolean; flags?: string[] } }
 export interface SupportInfo { id: string; supported: boolean; reason?: string; memo: MemoKind; tokens: boolean }
 
 export const chainOfAsset = (a: Asset | undefined): ChainInfo | undefined => (a ? (a.token ? resolveSendChain(undefined, a.token.chainId, customNetworks()) : resolveSendChain(a.id, undefined, customNetworks())) : undefined);

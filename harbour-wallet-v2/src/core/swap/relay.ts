@@ -2,6 +2,7 @@
 // from 2026-10-02 every call needs an API key, which harbour-gateway adds (`/relay/*`). The quote carries ready-made
 // step items (approve, then deposit/swap); Harbour re-quotes at submit time and signs only items that match the
 // confirmed quote. Field names follow docs.relay.link (get-quote-v2); unverified live from this build environment.
+import { hasDangerousSelector } from './safety';
 import type { SwapRoute, SwapRouteRequest, SwapStep, SwapFee } from './types';
 import { domainById } from './domains';
 import { classifyAggregatorError, swapError } from './errors';
@@ -92,7 +93,7 @@ export interface RelayTx { kind: 'approve' | 'execute'; to: `0x${string}`; data:
  * spender; execute items send at most the sold amount (native sells) or nothing (token sells); the output may not
  * drift past the user's slippage.
  */
-export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress: string; chainId: number; slippagePct: number }): { txs: RelayTx[]; requestId?: string } {
+export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress: string; chainId: number; slippagePct: number; targets: Set<string> }): { txs: RelayTx[]; requestId?: string } {
   const bad = swapError('unsafe_transaction');
   const steps: any[] = fresh?.steps ?? [];
   if (!steps.length || steps.some((s) => s?.kind !== 'transaction')) throw swapError('unsupported_pair');
@@ -110,10 +111,12 @@ export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress:
       const dec = decodeApprove(d.data);
       if (native || !dec || d.to.toLowerCase() !== step.from.asset.address.toLowerCase() || value !== 0n) throw bad;
       if (!step.approval || dec.spender.toLowerCase() !== step.approval.spender.toLowerCase()) throw bad;
+      if (!ctx.targets.has(dec.spender.toLowerCase())) throw bad;   // spender must be a contract Relay itself lists for this chain
       txs.push({ kind: 'approve', to: d.to, data: d.data, value: 0n });
     } else {
       if (native ? value > sell : value !== 0n) throw bad;
-      if (String(d.data).toLowerCase().startsWith(APPROVE)) throw bad;
+      if (!ctx.targets.has(d.to.toLowerCase())) throw bad;          // execute target must be a contract Relay itself lists for this chain
+      if (String(d.data).toLowerCase().startsWith(APPROVE) || hasDangerousSelector(d.data)) throw bad;
       txs.push({ kind: 'execute', to: d.to, data: d.data, value });
       requestId = requestId ?? s.requestId ?? fresh?.requestId;
     }
@@ -126,6 +129,26 @@ export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress:
   if (minNow * 10_000n < outNow * (10_000n - bps) - outNow / 1000n) throw bad;
   if (outNow * 10_000n < quoted * (10_000n - bps)) throw swapError('price_moved');
   return { txs, requestId: requestId ?? fresh?.requestId };
+}
+
+/**
+ * Contracts Relay's own chain list names for a chain (protocol.v2.*). It is fetched DIRECTLY from api.relay.link, not through
+ * the gateway that served the quote, so a tampered quote cannot vouch for itself. Empty set = unknown = the caller refuses.
+ */
+const relayTargetCache = new Map<number, { at: number; set: Set<string> }>();
+export async function relayTargets(chainId: number, f: F = fetch): Promise<Set<string>> {
+  const hit = relayTargetCache.get(chainId); if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.set;
+  const set = new Set<string>();
+  try {
+    const res = await f('https://api.relay.link/chains', { headers: { accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(12000) });
+    if (res.ok) {
+      const c = ((await res.json())?.chains ?? []).find((x: any) => Number(x?.id) === chainId);
+      const walk = (v: any, depth = 0) => { if (depth > 4 || v == null) return; if (typeof v === 'string') { if (isAddr(v) && v !== EVM_NATIVE) set.add(v.toLowerCase()); } else if (typeof v === 'object') for (const x of Object.values(v)) walk(x, depth + 1); };
+      walk(c?.protocol?.v2);
+    }
+  } catch { /* unreachable: stays empty and the swap is refused */ }
+  if (set.size) relayTargetCache.set(chainId, { at: Date.now(), set });
+  return set;
 }
 
 export type RelayStatus = 'pending' | 'success' | 'failed' | 'refunded';

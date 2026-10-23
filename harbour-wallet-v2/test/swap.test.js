@@ -91,7 +91,12 @@ test('aggregator failures map onto user-facing swap errors', () => {
 
 // ---------------- fixtures ----------------
 const ME = '0x1111111111111111111111111111111111111111';
-const ROUTER = '0x2222222222222222222222222222222222222222';
+const ROUTER = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE';   // LI.FI Diamond (the only allowed target)
+const W = (h) => h.replace('0x', '').toLowerCase().padStart(64, '0');
+// swapTokensGeneric(bytes32, string, string, address receiver, uint256 minAmountOut, SwapData[])
+const swapData = (receiver = ME, min = '29400000000000000') => '0x4630a0d8' + W('0x7') + W('0xc0') + W('0xc0') + W(receiver) + W(BigInt(min).toString(16)) + W('0xc0') + W('0x0');
+// BridgeData-first facet call: tuple at 0x40, then a second dynamic arg
+const bridgeData = (receiver, o = {}) => '0xdeadbeef' + W('0x40') + W('0x200') + [W('0x7'), W('0x140'), W('0x160'), W('0x0'), W(o.asset ?? '0x0'), W(receiver), W((o.min ?? 100000000n).toString(16)), W((o.dest ?? 1n).toString(16)), W('0x0'), W(o.call ? '0x1' : '0x0')].join('') + W('0x0') + W('0x0') + W('0x0') + W('0x0');
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const NATIVE = M.EVM_NATIVE;
 const tok = (address, symbol, decimals, chainId = 1) => ({ address, symbol, decimals, chainId, name: symbol, priceUSD: '1' });
@@ -99,7 +104,7 @@ const lifiStep = (over = {}) => ({
   id: 'step-1', type: 'swap', tool: 'uniswap', toolDetails: { key: 'uniswap', name: 'Uniswap' },
   action: { fromToken: tok(USDC, 'USDC', 6), toToken: tok(NATIVE, 'ETH', 18), fromAmount: '100000000', fromAddress: ME, ...(over.action ?? {}) },
   estimate: { toAmount: '30000000000000000', toAmountMin: '29400000000000000', approvalAddress: ROUTER, executionDuration: 30, feeCosts: [], gasCosts: [{ token: tok(NATIVE, 'ETH', 18), amount: '2000000000000000', amountUSD: '6' }], ...(over.estimate ?? {}) },
-  transactionRequest: { from: ME, to: ROUTER, chainId: 1, data: '0xabcdef', value: '0x0', ...(over.transactionRequest ?? {}) },
+  transactionRequest: { from: ME, to: ROUTER, chainId: 1, data: swapData(), value: '0x0', ...(over.transactionRequest ?? {}) },
 });
 const stepOf = (raw) => M.mapLifiStep(raw, 2);
 
@@ -148,7 +153,7 @@ test('safety: provider cannot change the amount being sold', () => {
   assert.equal(check(lifiStep({ action: { fromAmount: '200000000' } }))?.code, 'unsafe_transaction');
 });
 test('safety: native sell must send exactly the sell amount (plus native fees only)', () => {
-  const raw = lifiStep({ action: { fromToken: tok(NATIVE, 'ETH', 18), toToken: tok(USDC, 'USDC', 6), fromAmount: '1000000000000000000' }, estimate: { toAmount: '3000000000', toAmountMin: '2940000000', approvalAddress: undefined }, transactionRequest: { value: '0xde0b6b3a7640000' } });
+  const raw = lifiStep({ action: { fromToken: tok(NATIVE, 'ETH', 18), toToken: tok(USDC, 'USDC', 6), fromAmount: '1000000000000000000' }, estimate: { toAmount: '3000000000', toAmountMin: '2940000000', approvalAddress: undefined }, transactionRequest: { value: '0xde0b6b3a7640000', data: swapData(ME, '2940000000') } });
   const step = stepOf(raw);
   assert.equal(M.validateLifiTransaction(raw, step, ctx), null);
   const over = { ...raw, transactionRequest: { ...raw.transactionRequest, value: '0x1bc16d674ec80000' } }; // 2 ETH
@@ -184,4 +189,23 @@ test('asset ids follow the TW convention and natives are per-domain', () => {
   assert.ok(M.popularAssets('base').every((a) => a.domainId === 'base'));
   assert.equal(M.SWAP_DOMAINS.some((d) => d.id === 'sepolia'), false); // bitcoin swaps go through THORChain
   assert.equal(M.nativeAsset('bitcoin').assetId, 'c0');
+});
+
+test('safety: router must be the LI.FI Diamond and calldata must pay us', () => {
+  const other = '0x3333333333333333333333333333333333333333';
+  assert.equal(check(lifiStep({ estimate: { approvalAddress: other }, transactionRequest: { to: other } }))?.code, 'unsafe_transaction');   // consistent but not LI.FI's contract
+  assert.equal(check(lifiStep({ transactionRequest: { data: swapData(other) } }))?.code, 'unsafe_transaction');                           // receiver is an attacker
+  assert.equal(check(lifiStep({ transactionRequest: { data: swapData(ME, '1000') } }))?.code, 'unsafe_transaction');                       // min-out weaker than the quoted minimum
+  assert.equal(check(lifiStep({ transactionRequest: { data: '0xabcdef' } }))?.code, 'unsafe_transaction');                                  // unrecognised shape: fail closed
+});
+test('safety: bridge calls (BridgeData) are decoded; receiver, destination call and sold asset are enforced', () => {
+  const I = M.decodeLifiCall(bridgeData(ME, { asset: USDC })); assert.equal(I.kind, 'bridge'); assert.equal(I.receiver.toLowerCase(), ME); assert.equal(I.minAmount, 100000000n);
+  const raw = (data) => lifiStep({ transactionRequest: { data } });
+  assert.equal(check(raw(bridgeData(ME, { asset: USDC }))), null);
+  assert.equal(check(raw(bridgeData('0x3333333333333333333333333333333333333333', { asset: USDC })))?.code, 'unsafe_transaction');
+  assert.equal(check(raw(bridgeData(ME, { asset: USDC, call: true })))?.code, 'unsafe_transaction');
+  assert.equal(check(raw(bridgeData(ME, { asset: '0x3333333333333333333333333333333333333333' })))?.code, 'unsafe_transaction');
+  assert.equal(check(raw(bridgeData(ME, { asset: USDC, min: 200000000n })))?.code, 'unsafe_transaction');
+  const toSol = M.validateLifiTransaction(raw(bridgeData(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' }); assert.equal(toSol, null);
+  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' })?.code, 'unsafe_transaction');
 });

@@ -133,7 +133,7 @@ export function normalizeMultiSign(method: string, params: unknown, ctx: { addre
         const raw = str(p.psbt, 'psbt', 400_000); const pub = ctx.publicKey ? Uint8Array.from(ctx.publicKey.match(/../g)!.map((h) => parseInt(h, 16))) : bad('No public key for this account.');
         const psbt = decodePsbt(raw); const only = Array.isArray(p.toSignInputs) ? (p.toSignInputs as unknown[]).filter((x) => Number.isInteger(x)) as number[] : undefined;
         const plan = planPsbtSigning(psbt, pub, only); const d = describePsbt(psbt, pub, plan.inputs.map((x) => x.index));
-        return { chain, op, method, summary: { kind: 'psbt', detail: { Signing: `${d.signing} of ${d.inputs} inputs`, 'Total in': d.inputSats ? `${d.inputSats} sats` : 'Unknown', Fee: d.feeSats ? `${d.feeSats} sats` : 'Unknown', ...Object.fromEntries(d.outputs.map((o, i) => [`To #${i + 1}`, `${o.address} — ${o.sats} sats${o.yours ? ' (your change/own address)' : ''}`])) } }, data: { psbt: raw, finalize: p.autoFinalized !== false, only: only ?? null } };
+        return { chain, op, method, summary: { kind: 'psbt', detail: { Signing: `${d.signing} of ${d.inputs} inputs`, 'Total in': d.inputSats ? `${d.inputSats} sats` : 'Unknown', Fee: d.feeSats ? `${d.feeSats} sats` : 'Unknown', ...(d.warnings.length ? { Warnings: d.warnings.join(' ') } : {}), ...Object.fromEntries(d.outputs.map((o, i) => [`To #${i + 1}`, `${o.address} — ${o.sats} sats${o.yours ? ' (your change/own address)' : ''}`])) } }, data: { psbt: raw, finalize: p.autoFinalized !== false, only: only ?? null } };
       }
       return need(false, 'Unsupported Bitcoin method.') as never;
     }

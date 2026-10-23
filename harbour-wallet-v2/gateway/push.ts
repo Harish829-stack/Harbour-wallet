@@ -63,7 +63,7 @@ export async function checkAddress(env: PushEnv, w: Watch, cursor: string | unde
     if (!cursor) return { notices: [], cursor: String(top || 0), calls: 2 };
     const me = w.address.toLowerCase();
     const notices = rows.filter((t: any) => String(t.to).toLowerCase() === me && t.isError !== '1' && BigInt(t.value ?? '0') > 0n).slice(0, 3).map((t: any) => {
-      const sym = t._native ? evm.sym : String(t.tokenSymbol ?? 'tokens').slice(0, 12); const dec = t._native ? 18 : Number(t.tokenDecimal ?? 18);
+      const sym = t._native ? evm.sym : `${String(t.tokenSymbol ?? 'token').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 12) || 'token'} (unverified token)`; const dec = t._native ? 18 : Number(t.tokenDecimal ?? 18);
       return { title: `Received ${fmt(String(t.value), dec)} ${sym}`, body: `On ${w.chainId} from ${String(t.from).slice(0, 8)}…${String(t.from).slice(-4)}`, url: evm.explorer + t.hash };
     });
     return { notices, cursor: String(top), calls: 2 };
@@ -133,6 +133,7 @@ export async function runWatcher(env: PushEnv, f: F = fetch, budget = PUSH_BUDGE
     const reg: Reg | null = JSON.parse((await env.CACHE.get(key)) ?? 'null'); calls++;
     if (!reg?.topics?.activity) continue;
     let changed = false; let gone = false;
+    try {
     for (const w of reg.addresses) {
       if (calls + 2 > budget) break;
       const k = `${w.chainId}:${w.address}`;
@@ -146,6 +147,7 @@ export async function runWatcher(env: PushEnv, f: F = fetch, budget = PUSH_BUDGE
       }
       if (gone) break;
     }
+    } catch { /* one malformed registration or upstream row must never stall the whole run (INF-05) */ }
     if (gone) await env.CACHE.delete(key);
     else if (changed) await env.CACHE.put(key, JSON.stringify(reg), { expirationTtl: TTL });
     offset = (offset + i + 1) % keys.length;

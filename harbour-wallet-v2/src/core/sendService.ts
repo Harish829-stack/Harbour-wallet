@@ -12,7 +12,7 @@ export interface SendEstimate {
 }
 const GAS_BUFFER_NUM = 12n, GAS_BUFFER_DEN = 10n; // 20% headroom so a "Max" send is not rejected by a rising base fee
 
-export const validRecipient = (to: string): boolean => /^0x[0-9a-fA-F]{40}$/.test(to ?? '') && isAddress(to, { strict: false });
+export const validRecipient = (to: string): boolean => /^0x[0-9a-fA-F]{40}$/.test(to ?? '') && isAddress(to, { strict: true });
 
 export async function estimateSend(client: PublicClient, input: SendInput): Promise<SendEstimate> {
   if (!validRecipient(input.to)) throw new Error('Invalid recipient address');
@@ -87,12 +87,24 @@ export function upsertSent(list: SentTx[], rec: SentTx, max = MAX_SENT_TXS): Sen
 export const readSent = (raw: unknown): SentTx[] => (Array.isArray(raw) ? raw.filter((x) => x && typeof x.id === 'string' && typeof x.hash === 'string' && typeof x.chainId === 'string') : []);
 
 /** Recipient facts the Confirm screen turns into TW's guard sheet (send.confirmation.*). */
-export interface RecipientRisk { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean; /** Scam list / GoPlus hit (EVM). */ flagged?: boolean; flags?: string[] }
+export interface RecipientRisk { newRecipient: boolean; inAddressBook: boolean; contactName?: string; selfSend: boolean; /** An address already in your history or contacts that looks the same at both ends but differs in the middle (address poisoning). */ lookalike?: string; /** Scam list / GoPlus hit (EVM). */ flagged?: boolean; flags?: string[] }
 export function assessRecipient(to: string, from: string, sent: SentTx[], chainId: string, book: Array<{ name: string; addresses: Record<string, string> }>, ct: string): RecipientRisk {
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const contact = book.find((e) => Object.values(e.addresses ?? {}).some((a) => typeof a === 'string' && same(a, to)) || (e.addresses?.[ct] && same(e.addresses[ct], to)));
   const before = sent.some((s) => s.chainId === chainId && same(s.to, to));
-  return { newRecipient: !contact && !before, inAddressBook: !!contact, contactName: contact?.name, selfSend: same(to, from) };
+  const known = [...sent.filter((x) => x.chainId === chainId).map((x) => x.to), ...book.flatMap((e) => Object.values(e.addresses ?? {})), from].filter((a): a is string => typeof a === 'string');
+  return { newRecipient: !contact && !before, inAddressBook: !!contact, contactName: contact?.name, selfSend: same(to, from), lookalike: lookalikeOf(to, known) };
+}
+/** Address poisoning: an attacker sends dust from an address that matches the start and end of one you use. Returns the real address it imitates, if any. */
+export function lookalikeOf(to: string, known: string[]): string | undefined {
+  const t = String(to).toLowerCase(); if (t.length < 20) return undefined;
+  const head = t.startsWith('0x') ? 6 : 5; const tail = 4;
+  return known.find((k) => { const x = String(k).toLowerCase(); return x.length === t.length && x !== t && x.slice(0, head) === t.slice(0, head) && x.slice(-tail) === t.slice(-tail); });
+}
+/** Fingerprint of what the user reviewed on the Confirm screen; the submit call must present the same plan. */
+export async function planHashOf(p: { chainId: string; from: string; to: string; assetKey: string; amount: string; memo?: string }): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify([p.chainId, p.from.toLowerCase(), p.to.toLowerCase(), p.assetKey.toLowerCase(), p.amount, p.memo ?? '']));
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ---- name resolution (TW: address-and-memo-input.address.label "Address or Domain Name") ----
@@ -177,4 +189,18 @@ export function receiveNote(chain: ChainInfo): string | null {
     case 'tezos': return 'A first incoming transfer to a new Tezos address burns 0.06425 XTZ for the account (paid by the sender).';
     default: return null;
   }
+}
+
+/** Outputs (value, script hex) of a serialized Bitcoin transaction, legacy or SegWit. Throws on anything malformed. */
+export function btcOutputsOf(rawHex: string): Array<{ value: bigint; script: string }> {
+  if (!/^([0-9a-fA-F]{2})+$/.test(rawHex)) throw new Error('bad tx');
+  const b = Uint8Array.from(rawHex.match(/../g)!.map((h) => parseInt(h, 16))); let p = 4;
+  const need = (n: number) => { if (p + n > b.length) throw new Error('bad tx'); };
+  const vi = (): number => { need(1); const f = b[p++]; if (f < 0xfd) return f; if (f === 0xfd) { need(2); const v = b[p] | (b[p + 1] << 8); p += 2; return v; } if (f === 0xfe) { need(4); const v = (b[p] | (b[p + 1] << 8) | (b[p + 2] << 16) | (b[p + 3] << 24)) >>> 0; p += 4; return v; } throw new Error('bad tx'); };
+  if (b[4] === 0x00 && b[5] === 0x01) p = 6;
+  const nin = vi(); if (nin < 1 || nin > 2000) throw new Error('bad tx');
+  for (let i = 0; i < nin; i++) { need(36); p += 36; const l = vi(); need(l + 4); p += l + 4; }
+  const nout = vi(); if (nout < 1 || nout > 2000) throw new Error('bad tx'); const outs: Array<{ value: bigint; script: string }> = [];
+  for (let i = 0; i < nout; i++) { need(8); let v = 0n; for (let k = 7; k >= 0; k--) v = (v << 8n) | BigInt(b[p + k]); p += 8; const l = vi(); need(l); outs.push({ value: v, script: [...b.slice(p, p + l)].map((x) => x.toString(16).padStart(2, '0')).join('') }); p += l; }
+  return outs;
 }

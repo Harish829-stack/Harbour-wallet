@@ -116,11 +116,37 @@ export function checkThorQuote(fresh: any, step: SwapStep, toAddress: string, sl
   if (!fresh?.inbound_address || typeof fresh.memo !== 'string' || fresh.memo.length > 80) throw swapError('unsafe_transaction');
   const parts = fresh.memo.split(':');
   if (!['=', 's', 'swap', 'SWAP'].includes(parts[0]) || parts[2]?.toLowerCase() !== toAddress.toLowerCase()) throw swapError('unsafe_transaction');
+  // full memo: =:ASSET:DEST:LIMIT[/INTERVAL/QUANTITY] and nothing else (no affiliate / fee fields); the asset may not be swapped for a different one
+  if (parts.length > 4 || (parts[3] != null && !/^\d*(\/\d+\/\d+)?$/.test(parts[3]))) throw swapError('unsafe_transaction');
+  const want = thorAsset(step.to.asset); const got = String(parts[1] ?? '');
+  if (want && got.includes('.') && got.toUpperCase().split('-')[0] !== want.toUpperCase().split('-')[0]) throw swapError('unsafe_transaction');
   const outNow = fromThorUnits(String(fresh.expected_amount_out ?? '0'), step.to.asset.decimals);
   const quoted = BigInt(step.to.amount);
   const bps = BigInt(Math.round(slippagePct * 100));
   if (outNow * 10_000n < quoted * (10_000n - bps)) throw swapError('price_moved');
   if (fresh.expiry && Number(fresh.expiry) * 1000 < Date.now()) throw swapError('price_moved');
+}
+
+/**
+ * Cross-check the vault (and router) against THORNode's /inbound_addresses on independent nodes. A quote served by one
+ * compromised endpoint cannot name an attacker vault: at least two different nodes must list the same address, and none may list another.
+ */
+export async function verifyThorInbound(fresh: any, step: SwapStep, f: F = fetch): Promise<void> {
+  const chain = THOR_CHAIN[step.from.asset.domainId]?.chain; if (!chain) throw swapError('unsafe_transaction');
+  const vault = String(fresh?.inbound_address ?? '').toLowerCase(); const router = fresh?.router ? String(fresh.router).toLowerCase() : '';
+  let agree = 0;
+  const sources = [...new Set(THORNODE_URLS)];
+  const answers = await Promise.all(sources.map(async (base) => {
+    try { const r = await f(`${base}/thorchain/inbound_addresses`, { headers: { accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(10000) }); return r.ok ? await r.json() : null; } catch { return null; }
+  }));
+  for (const list of answers) {
+    const e = Array.isArray(list) ? list.find((x: any) => x?.chain === chain) : null; if (!e) continue;
+    if (e.halted || e.global_trading_paused || e.chain_trading_paused) throw swapError('unsafe_transaction');
+    const sameVault = String(e.address ?? '').toLowerCase() === vault; const sameRouter = !router || String(e.router ?? '').toLowerCase() === router;
+    if (!sameVault || !sameRouter) throw swapError('unsafe_transaction');
+    agree++;
+  }
+  if (agree < 2) throw swapError('unsafe_transaction');
 }
 
 /** Router call for an EVM-source swap. `value` is the native amount for native sells, 0 for tokens. */

@@ -1,3 +1,4 @@
+import { isPrivateNetworkUrl } from '../../core/provider/origin';
 // The dApp provider's brain: request router (allowlist -> permission checks -> approval queue) and approval resolution.
 // Everything environment-specific (storage, signing, RPC, windows, ports) is injected so the whole flow is unit-testable with fakes.
 import { ERR, ProviderError, serializeError } from '../../core/provider/errors';
@@ -47,6 +48,8 @@ export interface ServiceDeps {
   wc?: WcHost;
   /** Sui / Aptos / TON SDK backend (optional: absent in unit tests that do not exercise it). */
   multi?: MultiBackend;
+  /** Developer setting "Allow eth_sign requests" (off unless the user turned it on). Absent = off. */
+  ethSignEnabled?: () => Promise<boolean>;
   now?: () => number; version?: string;
 }
 export interface TonMsg { address: string; friendly: string; amount: string; payload?: string; stateInit?: string; bounce: boolean }
@@ -131,7 +134,9 @@ export class ProviderService {
       const me = evmConn.evmAddress!;
       switch (spec.kind) {
         case 'sign': {
+          if (req.method === 'eth_sign' && !(await this.d.ethSignEnabled?.())) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'eth_sign is disabled in Harbour. It can sign anything, including transactions, so sites must use personal_sign or typed data.');
           const n = req.method === 'eth_sign' ? normalizeEthSign(req.params) : normalizePersonalSign(req.params, me);
+          if (req.method === 'eth_sign' && !n.rawHash) throw new ProviderError(ERR.INVALID_PARAMS, 'eth_sign only signs a 32-byte hash. Use personal_sign for text.');
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           return this.queue(s, req, 'sign', n, evmConn);
         }
@@ -140,13 +145,13 @@ export class ProviderService {
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           const dc = (n.typedData.domain as any)?.chainId;
           if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = Number(dc); }
-          return this.queue(s, req, 'typed', n, evmConn);
+          return this.queue(s, req, 'typed', n, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
         case 'tx': {
           const tx = normalizeSendTx(req.params, me);
           if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
-          return this.queue(s, req, 'tx', { tx, chainId }, evmConn);
+          return this.queue(s, req, 'tx', { tx, chainId }, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
@@ -167,6 +172,7 @@ export class ProviderService {
           const a = normalizeAddChain(req.params);
           const rpcUrl = a.rpcUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
           if (!rpcUrl || !rpcUrl.ok) throw new ProviderError(ERR.INVALID_PARAMS, 'rpcUrls must contain at least one https:// URL.');
+          if (isPrivateNetworkUrl(rpcUrl.url)) throw new ProviderError(ERR.INVALID_PARAMS, 'This RPC address points at a private network and cannot be added by a site.');
           const explorer = a.explorerUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
           const v = validateNetwork({ name: a.chainName, rpcUrl: rpcUrl.url, chainId: a.chainId, symbol: a.symbol, explorerUrl: explorer && explorer.ok ? explorer.url : '' }, customNetworks());
           if (!v.ok) throw new ProviderError(ERR.INVALID_PARAMS, v.error);

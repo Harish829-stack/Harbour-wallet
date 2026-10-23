@@ -12,7 +12,7 @@ import type { ChainInfo } from '../../core/chains/types';
 import { addressFor } from '../../core/chains/adapters';
 import { SEND_FAMILIES, sendSupport, familyOf, quoteToWire, signAndBroadcast, txStatus, parseUnits, validateMemo, memoKindOf, SendError, evmRpcs, quoteNftTransfer, buildNftTransfer, broadcastNftTransfer } from '../../core/chains/send';
 import type { SendAsset, SendParams, SendQuote, FeeTierId, SendEnv, NftTransferParams } from '../../core/chains/send';
-import { SENT_TX_KEY, assessRecipient, nameService, readSent, resolveEns, resolveSendChain, resolveSns, sanitizeTokenSpec, upsertSent, type SentTx } from '../../core/sendService';
+import { SENT_TX_KEY, assessRecipient, planHashOf, btcOutputsOf, nameService, readSent, resolveEns, resolveSendChain, resolveSns, sanitizeTokenSpec, upsertSent, type SentTx } from '../../core/sendService';
 import { jpost, firstOf, trimUrl } from '../../core/chains/send/util';
 import { addressRisk } from '../../core/provider/phishing';
 import { checkAddress } from '../../kit/clients/securityClient';
@@ -114,7 +114,8 @@ export const handlers: HandlerMap = {
         const [scam, gp] = await Promise.all([addressRisk(pr.to, local as any).catch(() => 'unknown' as const), pr.chain.evmChainId ? checkAddress(pr.chain.evmChainId, pr.to).catch(() => null) : Promise.resolve(null)]);
         risk.flagged = scam === 'scam' || !!gp?.risky; risk.flags = [...(scam === 'scam' ? ['scamsniffer'] : []), ...(gp?.flags ?? [])];
       }
-      return { ok: true, quote: quoteToWire(stripPlaceholder(quote, pr.placeholder)), tier, amountRaw: params.amount.toString(), from: pr.from, to: pr.placeholder ? '' : pr.to, memoKind: memoKindOf(pr.chain), symbol: pr.asset.symbol, decimals: pr.asset.decimals, assetKey: pr.assetKey, risk };
+      const planHash = pr.placeholder ? null : await planHashOf({ chainId: pr.chain.id, from: pr.from, to: pr.to, assetKey: pr.assetKey, amount: msg.isMax ? 'max' : params.amount.toString(), memo: msg.memo ? String(msg.memo).trim() : '' });
+      return { ok: true, planHash, quote: quoteToWire(stripPlaceholder(quote, pr.placeholder)), tier, amountRaw: params.amount.toString(), from: pr.from, to: pr.placeholder ? '' : pr.to, memoKind: memoKindOf(pr.chain), symbol: pr.asset.symbol, decimals: pr.asset.decimals, assetKey: pr.assetKey, risk };
     } catch (e: any) { return err(e); }
   },
   async sendSubmit(msg, ctx) {
@@ -122,6 +123,8 @@ export const handlers: HandlerMap = {
     try {
       const pr = await prepare(ctx, msg); if (pr.placeholder) throw new Error('Enter a recipient address');
       const { params, quote, tier } = await quoteFor(ctx, msg, pr);
+      const expected = await planHashOf({ chainId: pr.chain.id, from: pr.from, to: pr.to, assetKey: pr.assetKey, amount: msg.isMax ? 'max' : params.amount.toString(), memo: msg.memo ? String(msg.memo).trim() : '' });
+      if (msg.planHash !== expected) throw new Error('The transaction changed after you reviewed it. Go back and review it again.');
       const picked = quote.tiers.find((t) => t.id === tier)!;
       // Fee-jump guard: the fee shown on the Confirm screen may only have grown by a margin before the user must review again.
       if (msg.feeCap != null && /^\d+$/.test(String(msg.feeCap)) && picked.fee > BigInt(String(msg.feeCap))) throw new Error('The network fee changed. Go back and review the transaction again.');
@@ -179,11 +182,9 @@ export const handlers: HandlerMap = {
         hash = await familyOf(p.pr.chain).broadcast(env(ctx.core), p.pr.chain, { raw, hash: keccak256(raw as `0x${string}`) });
       } else if (p.btc) {
         raw = String(msg.signedTx ?? '').trim(); if (!/^[0-9a-fA-F]{100,}$/.test(raw)) throw new Error('Invalid transaction from the device');
-        // the signed transaction must pay exactly the prepared outputs
-        for (const o of p.btc.outputs) {
-          const v = BigInt(o.value).toString(16).padStart(16, '0'); const needle = be(v) + (o.script.length / 2).toString(16).padStart(2, '0') + o.script;
-          if (!raw.toLowerCase().includes(needle.toLowerCase())) throw new Error('The signed transaction does not match the prepared outputs');
-        }
+        // the signed transaction must pay exactly the prepared outputs: same count, order, amounts and scripts
+        const got = btcOutputsOf(raw);
+        if (got.length !== p.btc.outputs.length || p.btc.outputs.some((o: any, k: number) => got[k].value !== BigInt(o.value) || got[k].script.toLowerCase() !== String(o.script).toLowerCase())) throw new Error('The signed transaction does not match the prepared outputs');
         hash = await familyOf(p.pr.chain).broadcast(env(ctx.core), p.pr.chain, { raw });
       } else throw new Error('Unsupported');
       const rec = recordOf(p.pr, p.params, p.quote, p.tier, hash, {});

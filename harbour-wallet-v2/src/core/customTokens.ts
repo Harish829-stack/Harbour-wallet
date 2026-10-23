@@ -23,7 +23,7 @@ export function sanitizeToken(input: any, now = Date.now()): SanitizeResult {
   const chainId = Number(input?.chainId); const net = networkByChainId(chainId);
   if (!net) return { ok: false, error: 'Unsupported network' };
   const raw = String(input?.address ?? '').trim();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(raw) || !isAddress(raw, { strict: false })) return { ok: false, error: 'Invalid contract address' };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(raw) || !isAddress(raw, { strict: true })) return { ok: false, error: 'Invalid contract address' };
   const address = getAddress(raw.toLowerCase());
   const name = cleanText(input?.name, 64); const symbol = cleanText(input?.symbol, 32);
   if (!name) return { ok: false, error: 'Token name is required' };

@@ -27,6 +27,8 @@ export function parseConfig(text: string, currentVersion: number): RemoteConfig 
   try {
     const c = JSON.parse(text);
     if (typeof c?.version !== 'number' || c.version < currentVersion) return null;
+    // signed configs carry an expiry so a captured old config (e.g. with kill switches off) cannot be replayed forever
+    if (c.expiresAt !== undefined && (typeof c.expiresAt !== 'number' || c.expiresAt * 1000 < Date.now())) return null;
     const rec = (v: any) => (v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === 'boolean')) as Record<string, boolean> : {});
     return {
       version: c.version, flags: rec(c.flags), chains: rec(c.chains),

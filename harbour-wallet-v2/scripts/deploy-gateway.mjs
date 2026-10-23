@@ -14,7 +14,7 @@ const envFile = args.find((a) => !a.startsWith('--')) ?? path.join(root, '..', '
 const env = Object.fromEntries(readFileSync(envFile, 'utf8').split('\n').filter((l) => /^[A-Z_]+=/.test(l)).map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).trim()]; }));
 for (const k of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']) if (!env[k]) { console.error(`${k} is empty in ${envFile}`); process.exit(1); }
 
-const wrangler = (args, input) => spawnSync('npx', ['--yes', 'wrangler@4', ...args], { cwd: path.join(root, 'gateway'), input, encoding: 'utf8',
+const wrangler = (args, input) => spawnSync('npx', ['--yes', 'wrangler@4.151.2', ...args], { cwd: path.join(root, 'gateway'), input, encoding: 'utf8',
   env: { ...process.env, CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID } });
 
 // 1. Config signing key (created once, kept next to the env file; never committed).

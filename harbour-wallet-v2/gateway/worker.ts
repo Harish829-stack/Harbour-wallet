@@ -15,6 +15,20 @@ export function limited(device: string, now = Date.now()): boolean {
   return ++h.n > RATE_PER_MIN;
 }
 
+/** Rebuild a query string from a bounded, validated set of parameters so cache keys and upstream URLs cannot be inflated by junk. Returns null when invalid, '' or '?a=b&…' (sorted). */
+export function cleanSearch(search: string, o: { keys?: string[]; max?: number; valueRe?: RegExp } = {}): string | null {
+  const q = new URLSearchParams(search); const out: Array<[string, string]> = []; const vre = o.valueRe ?? /^[A-Za-z0-9_.,:=-]{0,128}$/;
+  let invalid = false;
+  q.forEach((v, k) => {
+    if (invalid) return;
+    if (o.keys ? !o.keys.includes(k) : !/^[A-Za-z][A-Za-z0-9_]{0,31}(\[\])?$/.test(k)) { invalid = true; return; }
+    if (!vre.test(v)) { invalid = true; return; }
+    out.push([k, v]); if (out.length > (o.max ?? 12)) invalid = true;
+  });
+  if (invalid) return null;
+  out.sort((a, b) => (a[0] + a[1]).localeCompare(b[0] + b[1]));
+  return out.length ? '?' + out.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+}
 async function cached(env: Env, key: string, ttl: number, produce: () => Promise<Response>): Promise<Response> {
   const hit = await env.CACHE?.get(key);
   if (hit) return new Response(hit, { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'x-hb-cache': 'hit' } });
@@ -67,11 +81,12 @@ async function keyed(p: string, url: URL, req: Request, env: Env): Promise<Respo
   if (m) {
     const host = ALCHEMY_HOSTS[m[1]];
     if (req.method !== 'GET' || !host || !env.ALCHEMY_API_KEY) return json({ error: 'unavailable' }, 404);
-    return relay(`https://${host}.g.alchemy.com/nft/v3/${env.ALCHEMY_API_KEY}/${m[2]}${url.search}`, { method: 'GET' });
+    const nq = cleanSearch(url.search, { max: 24, valueRe: /^[A-Za-z0-9_.,:=-]{0,200}$/ }); if (nq === null) return json({ error: 'bad_request' }, 400);
+    return relay(`https://${host}.g.alchemy.com/nft/v3/${env.ALCHEMY_API_KEY}/${m[2]}${nq}`, { method: 'GET' });
   }
   if (p === '/etherscan/v2') {
     const q = new URLSearchParams(url.search);
-    if (req.method !== 'GET' || !env.ETHERSCAN_API_KEY || !ETHERSCAN_ACTIONS.test(`${q.get('module')}:${q.get('action')}`) || !/^\d{1,9}$/.test(q.get('chainid') ?? '')) return json({ error: 'not_allowed' }, 403);
+    if (req.method !== 'GET' || !env.ETHERSCAN_API_KEY || q.getAll('module').length !== 1 || q.getAll('action').length !== 1 || q.getAll('chainid').length !== 1 || !ETHERSCAN_ACTIONS.test(`${q.get('module')}:${q.get('action')}`) || !/^\d{1,9}$/.test(q.get('chainid') ?? '')) return json({ error: 'not_allowed' }, 403);
     q.set('apikey', env.ETHERSCAN_API_KEY);
     return relay(`https://api.etherscan.io/v2/api?${q}`, { method: 'GET' });
   }
@@ -99,8 +114,8 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'x-hb-device-id,content-type', 'access-control-allow-methods': 'GET,POST' } });
   if (url.pathname === '/v1/health' || url.pathname === '/health') return json({ ok: true, service: 'harbour-gateway', kv: Boolean(env.CACHE), time: new Date().toISOString() }, 200, { 'cache-control': 'no-store' });
   // Rate-limit key: the device id when the client sends one (Kit calls), otherwise the caller IP (plain RPC transports cannot add headers).
-  const dev = req.headers.get('x-hb-device-id') ?? '';
-  const device = /^[0-9a-f-]{16,64}$/i.test(dev) ? dev : `ip:${req.headers.get('cf-connecting-ip') ?? 'unknown'}`;
+  // The key is the caller IP only: x-hb-device-id is client-chosen, so keying on it would let one caller mint a fresh bucket per request (INF-03).
+  const device = `ip:${req.headers.get('cf-connecting-ip') ?? 'unknown'}`;
   if (limited(device)) return json({ error: 'rate_limited' }, 429, { 'retry-after': '60' });
 
   const p = url.pathname;
@@ -149,8 +164,9 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   if (p.startsWith('/gt/')) { // GeckoTerminal (keyless, ~30 calls/min): cache to stay under the shared limit
     const rest = p.slice('/gt'.length);
     if (req.method !== 'GET' || !/^\/networks\/(trending_pools|[a-z0-9_-]{2,32}\/(tokens\/[A-Za-z0-9]{20,64}|pools\/[A-Za-z0-9]{20,90}\/ohlcv\/(minute|hour|day)))$/.test(rest)) return json({ error: 'not_found' }, 404);
-    return cached(env, `gt:${rest}${url.search}`, rest.includes('ohlcv') ? 120 : 60, async () => {
-      const r = await fetch(`https://api.geckoterminal.com/api/v2${rest}${url.search}`, { headers: { accept: 'application/json;version=20230302' } });
+    const gq = cleanSearch(url.search, { keys: ['page', 'include', 'aggregate', 'limit', 'before_timestamp', 'token', 'currency', 'include_volume_breakdown', 'duration'], max: 8, valueRe: /^[A-Za-z0-9_.,-]{0,64}$/ }); if (gq === null) return json({ error: 'bad_request' }, 400);
+    return cached(env, `gt:${rest}${gq}`, rest.includes('ohlcv') ? 120 : 60, async () => {
+      const r = await fetch(`https://api.geckoterminal.com/api/v2${rest}${gq}`, { headers: { accept: 'application/json;version=20230302' } });
       return r.ok ? new Response(await r.text(), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } }) : json({ error: 'upstream' }, 502);
     });
   }

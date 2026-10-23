@@ -2,11 +2,12 @@
 // (RPC reads, calldata decoding, simulation, fee estimates, risk checks). The UI only renders it; amounts are strings (JSON-safe).
 import { formatUnits } from 'viem';
 import type { PendingRequest, PermissionStore, KV } from '../../core/provider/store';
-import { decodeCalldata, decodeString, encodeBalanceCall, isUnlimited, SEL, type DecodedCall } from '../../core/provider/decode';
+import { decodeCalldata, flattenCalls, decodeString, encodeBalanceCall, isUnlimited, SEL, type DecodedCall } from '../../core/provider/decode';
 import { summarizeTypedData } from '../../core/provider/typed';
 import { parseSiwe, siweIssues } from '../../core/provider/siwe';
 import { parseSiws, siwsIssues } from '../../core/provider/siws';
-import { describeSolTx } from '../../core/provider/solanaTx';
+import { describeSolTx, parseSolTx, resolveLookupTables } from '../../core/provider/solanaTx';
+import { simulateSolTx, solAccountData } from '../../core/provider/solSim';
 import { MULTI_CHAINS } from '../../core/provider/multi';
 import { b64ToBytes } from '../../core/provider/base58';
 import { displayHost, hostnameOf, isInsecureOrigin, isPunycodeHost } from '../../core/provider/origin';
@@ -20,7 +21,7 @@ import type { EvmNetwork } from './networks';
 import type { RpcCall } from './rpc';
 import type { Signer } from './service';
 
-export interface ViewDeps { perms: PermissionStore; rpc: RpcCall; networks: { list(): EvmNetwork[]; get(id: number): EvmNetwork | undefined }; signer: Signer; kv: KV; fetch?: typeof fetch; tokenMeta(chainId: number, addr: string): Promise<{ symbol: string; name: string; decimals: number } | null>; probeChainId(url: string): Promise<number> }
+export interface ViewDeps { perms: PermissionStore; rpc: RpcCall; networks: { list(): EvmNetwork[]; get(id: number): EvmNetwork | undefined }; signer: Signer; kv: KV; fetch?: typeof fetch; tokenMeta(chainId: number, addr: string): Promise<{ symbol: string; name: string; decimals: number } | null>; probeChainId(url: string): Promise<number>; solRpc?: (method: string, params: unknown[]) => Promise<any> }
 const netView = (n: EvmNetwork) => ({ chainId: n.chainId, id: n.id, name: n.name, symbol: n.symbol, testnet: n.testnet, custom: n.custom, explorer: n.explorer ?? null });
 const callView = (c: DecodedCall): any => JSON.parse(JSON.stringify(c, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
 const MAX_UINT = (1n << 256n) - 1n;
@@ -63,8 +64,8 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
       const { chainId: id, network } = p.params;
       const existing = d.networks.get(id);
       if (existing) return { ...base, alreadyAdded: true, network: netView(existing) };
-      let check: { ok: boolean; error?: string } = { ok: false, error: 'not checked' };
-      try { const seen = await d.probeChainId(network.rpcUrl); check = seen === id ? { ok: true } : { ok: false, error: `This RPC belongs to chain ID ${seen}, not ${id}.` }; } catch { check = { ok: false, error: 'Could not reach this RPC URL.' }; }
+      // The site picked this RPC URL: do not contact it until the user approves (the check runs in the approve step).
+      const check = { ok: true, deferred: true };
       return { ...base, known: false, network: { chainId: id, ...network }, rpcCheck: check };
     }
     case 'watchAsset': {
@@ -80,7 +81,19 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
     }
     case 'solSignTx': case 'solSignAll': case 'solSignSend': {
       const me = conn?.solanaAddress ?? '';
-      const txs = (p.params.transactions as string[]).map((t) => { try { return { ok: true, ...describeSolTx(b64ToBytes(t), me) }; } catch { return { ok: false }; } });
+      const txs = await Promise.all((p.params.transactions as string[]).map(async (t) => {
+        try {
+          const bytes = b64ToBytes(t); let tx = parseSolTx(bytes); const rpc = d.solRpc;
+          if (rpc) tx = await resolveLookupTables(tx, (a) => solAccountData(rpc, a));
+          const v: any = { ok: true, ...describeSolTx(bytes, me, tx) };
+          if (rpc && me) {
+            const sim = await simulateSolTx(rpc, bytes, me);
+            v.simulation = { ok: sim.ok, error: sim.error ?? null, solDelta: sim.solDelta === undefined ? null : sim.solDelta.toString() };
+            if (!sim.ok && !v.warnings.includes('simulationFailed')) v.warnings = [...v.warnings, 'simulationFailed'];
+          }
+          return v;
+        } catch { return { ok: false }; }
+      }));
       return { ...base, solTransactions: txs, send: p.kind === 'solSignSend' };
     }
   }
@@ -111,6 +124,13 @@ async function txView(p: PendingRequest, d: ViewDeps) {
     if (decoded.kind === 'transfer' || decoded.kind === 'transferFrom') warnings.add('tokenTransfer');
     if (decoded.kind === 'transfer' && tx.to.toLowerCase() === decoded.to.toLowerCase()) warnings.add('toTokenContract');
   }
+  { const inner = flattenCalls(decoded);
+    if (decoded.kind === 'multicall') { if (decoded.truncated || inner.some((x) => x.kind === 'unknown')) warnings.add('unknownInner'); }
+    for (const x of inner) {
+      if (x.kind === 'permit2Approve') { warnings.add('permit2Approve'); if (isUnlimited(x.amount)) warnings.add('unlimitedAllowance'); }
+      if (decoded.kind === 'multicall' && (x.kind === 'approve' || x.kind === 'permit') && !(x as any).decrease) warnings.add('hiddenApproval');
+      if (decoded.kind === 'multicall' && x.kind === 'setApprovalForAll' && x.approved) warnings.add('hiddenApproval');
+    } }
   if (decoded.kind === 'setApprovalForAll') warnings.add(decoded.approved ? 'setApprovalForAll' : 'revokeApprovalForAll');
   if (decoded.kind === 'unknown' && isContract === false) warnings.add('dataToEoa');
   // balance, gas, fees

@@ -123,3 +123,17 @@ test('ton: connect returns raw address + stateInit (+ proof only when asked and 
   assert.equal(p.params.summary.kind, 'tonTx'); assert.match(p.params.summary.detail['To #1'], /UQx/);
   await c.svc.resolve(p.id, { approve: true }); assert.equal(c.log.delivered.at(-1).result.boc, 'BOC=='); assert.equal(sent.length, 1);
 });
+
+test('psbt: absurd fees are refused, mismatching non_witness_utxo is refused', () => {
+  const le = (n, b) => { const o = Buffer.alloc(b); o.writeBigUInt64LE(BigInt(n)); return o.toString('hex'); };
+  const script = Buffer.from(M.p2wpkhScript(PUB)).toString('hex');
+  const build = (inVal, outVal, extra = '') => {
+    const tx = '02000000' + '01' + '11'.repeat(32) + '00000000' + '00' + 'ffffffff' + '01' + le(outVal, 8) + '16' + script + '00000000';
+    return Buffer.concat([Buffer.from('70736274ff', 'hex'), kv('00', tx), Buffer.from([0]), Buffer.concat([kv('01', le(inVal, 8) + '16' + script), extra ? kv('00', extra) : Buffer.alloc(0), Buffer.from([0])]), Buffer.from([0])]).toString('hex');
+  };
+  assert.doesNotThrow(() => M.planPsbtSigning(M.decodePsbt(build(100_000, 99_000)), PUB));
+  assert.throws(() => M.planPsbtSigning(M.decodePsbt(build(100_000, 50_000)), PUB), /unusually large/);        // 50% of the input goes to fees
+  assert.throws(() => M.planPsbtSigning(M.decodePsbt(build(100_000, 200_000)), PUB), /unusually large|negative/);
+  const fake = '01000000' + '01' + '22'.repeat(32) + '00000000' + '00' + 'ffffffff' + '01' + le(100_000, 8) + '16' + script + '00000000';
+  assert.throws(() => M.planPsbtSigning(M.decodePsbt(build(100_000, 99_000, fake)), PUB), /previous transaction/);
+});

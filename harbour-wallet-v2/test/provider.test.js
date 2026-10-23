@@ -59,6 +59,7 @@ function setup(over = {}) {
     deliver: async (t, reqId, outcome) => { if (!state.port) return false; log.delivered.push({ t, reqId, outcome }); return true; },
     emit: (o, ns, n, d) => log.events.push([o, ns, n, d]),
     probeChainId: async () => 137, saveCustomNetwork: async (n) => { log.saved.push(n); }, addToken: async (t) => { log.tokens.push(t); return { ok: true }; },
+    ethSignEnabled: async () => true,
     ...over,
   };
   return { svc: new M.ProviderService(deps), perms, pending, log, clock, state };
@@ -682,4 +683,11 @@ test('WalletConnect session proposal: approval negotiates, sends the session, an
   const ctx3 = setup({ wc }); await ctx3.svc.queueWcSession(s, 9, { proposal });
   assert.equal((await ctx3.svc.resolve((await pendingOf(ctx3)).id, { approve: false })).ok, true);
   assert.equal(await ctx3.perms.get('https://app.uniswap.org'), undefined); assert.equal(ctx3.log.delivered.at(-1).outcome.error.code, 4001);
+});
+
+test('eth_sign is refused unless enabled, and then only for a 32-byte hash', async () => {
+  let ctx = setup({ ethSignEnabled: async () => false }); let s = sender(); await connect(ctx, s, 0);
+  assert.equal((await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x' + 'ee'.repeat(32)]))).outcome.error.code, 4200);
+  ctx = setup(); s = sender(); await connect(ctx, s, 0);
+  assert.equal((await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x68656c6c6f']))).outcome.error.code, -32602);
 });

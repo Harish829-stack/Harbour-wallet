@@ -1,5 +1,6 @@
 // Method allowlist + parameter normalisation for dApp requests. Everything here is pure and unit-tested.
 // Evidence: Trust Wallet inpage `request()` switch (evidences/re-evidence/12-dapp-provider) — see evidences/re-evidence/31-dapp-provider/STATUS.md for the mapping.
+import { looksLikeSolMessage } from './solanaTx';
 import { ERR, ProviderError } from './errors';
 import type { Namespace } from './protocol';
 
@@ -205,6 +206,9 @@ export function normalizeSolMessage(params: unknown): { messageB64: string; leng
   const o = params as any; if (!o || typeof o !== 'object' || typeof o.message !== 'string' || !B64_RE.test(o.message)) bad('Expected { message: base64 }.');
   const padding = o.message.endsWith('==') ? 2 : o.message.endsWith('=') ? 1 : 0;
   const len = Math.floor((o.message.length * 3) / 4) - padding; if (len === 0 || len > MAX_MESSAGE_BYTES) bad('Invalid message length.');
+  // An ed25519 signature over a serialized transaction message IS a valid transaction signature: refuse those bytes here (signAndSend/signTransaction show a proper review).
+  let raw: Uint8Array | null = null; try { raw = Uint8Array.from(atob(o.message), (c) => c.charCodeAt(0)); } catch { /* validated above */ }
+  if (raw && looksLikeSolMessage(raw)) bad('This message is a Solana transaction. Harbour does not sign transactions as messages.');
   return { messageB64: o.message, length: len };
 }
 export function normalizeSolTx(params: unknown): { transactions: string[]; options?: { skipPreflight?: boolean; maxRetries?: number } } {
