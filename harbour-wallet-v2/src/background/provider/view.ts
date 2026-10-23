@@ -110,11 +110,22 @@ async function txView(p: PendingRequest, d: ViewDeps) {
   // contract?
   let isContract: boolean | null = null; if (tx.to) { try { const code = await d.rpc(chainId, 'eth_getCode', [tx.to, 'latest']); isContract = typeof code === 'string' && code !== '0x'; } catch { isContract = null; } }
   out.toIsContract = isContract;
+  // lending pool calls (Aave-style): show the asset and amount, and warn when the position belongs to someone else
+  if (decoded.kind === 'lend') {
+    const meta = await d.tokenMeta(chainId, decoded.asset).catch(() => null);
+    out.token = meta ? { address: decoded.asset, ...meta } : { address: decoded.asset, symbol: '', name: '', decimals: 0, unknown: true };
+    out.tokenAmount = { raw: decoded.amount.toString(), formatted: meta ? formatUnits(decoded.amount, meta.decimals) : null, unlimited: decoded.amount >= (1n << 255n) };
+    if (decoded.beneficiary.toLowerCase() !== tx.from.toLowerCase()) warnings.add('lendOtherAccount');
+  }
   // token context for ERC-20 style calls
   if (tx.to && (decoded.kind === 'transfer' || decoded.kind === 'approve' || decoded.kind === 'transferFrom' || decoded.kind === 'permit')) {
     const meta = await d.tokenMeta(chainId, tx.to); out.token = meta ? { address: tx.to, ...meta } : { address: tx.to, symbol: '', name: '', decimals: 0, unknown: true };
     const amt = decoded.kind === 'transfer' ? decoded.amount : decoded.kind === 'approve' ? decoded.amount : decoded.kind === 'permit' ? decoded.value : decoded.amountOrId;
     out.tokenAmount = { raw: amt.toString(), formatted: meta ? formatUnits(amt, meta.decimals) : null, unlimited: isUnlimited(amt) };
+    if (decoded.kind === 'approve' && !decoded.decrease && !decoded.increase && meta) {
+      out.limitEditable = true;
+      try { out.tokenBalance = BigInt(await d.rpc(chainId, 'eth_call', [{ to: tx.to, data: encodeBalanceCall(tx.from) }, 'latest'])).toString(); } catch { /* balance unavailable */ }
+    }
     if (decoded.kind === 'approve' && !decoded.decrease) {
       if (isUnlimited(amt)) warnings.add('unlimitedApproval');
       else if (meta) { try { const bal = BigInt(await d.rpc(chainId, 'eth_call', [{ to: tx.to, data: encodeBalanceCall(tx.from) }, 'latest'])); if (amt > bal * 10n && amt > 0n) warnings.add('excessiveApproval'); } catch { /* balance unavailable */ } }
@@ -154,7 +165,7 @@ async function txView(p: PendingRequest, d: ViewDeps) {
       return { ...ch, symbol: meta?.symbol ?? (ch.kind === 'nft' ? 'NFT' : ''), decimals: meta?.decimals ?? 0, formatted: meta ? formatUnits(BigInt(ch.amount), meta.decimals) : ch.amount };
     }));
     if (!simV1.ok) warnings.add('simulationFailed');
-  }
+  } else if (tx.data && tx.data !== '0x') out.simulationUnavailable = true;
   if (toRisk?.risky || (tx.to && (await addressRisk(tx.to, d.kv, d.fetch ?? fetch)) === 'scam')) { warnings.add('maliciousAddress'); out.addressFlags = toRisk?.flags ?? ['scamsniffer']; }
   if (spenderRisk?.risky) { warnings.add('maliciousSpender'); out.spenderFlags = spenderRisk.flags; }
   let fees: FeePresets | null = null; try { fees = await feePresets(chainId, d.rpc); } catch { fees = null; }

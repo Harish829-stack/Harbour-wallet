@@ -2,7 +2,7 @@
 // point of view of one wallet address. This is the client-side equivalent of Trust Wallet's server-side event typing
 // (send / receive / approve / revoke / swap / contract), derived from standard ERC-20/721 events and calldata only.
 import { fmtUnits, type HistoryItem } from '../txHistory';
-import { type Receipt, type TxLite, TOPIC_TRANSFER, TOPIC_APPROVAL, SEL_APPROVE, SEL_TRANSFER, UNLIMITED_MIN, ZERO_ADDRESS, SELECTOR_LABEL, lc, hexToBig, hexToNum, addressOfTopic, wordAddress, wordBig } from './evm';
+import { type Receipt, type TxLite, TOPIC_TRANSFER, TOPIC_APPROVAL, SEL_APPROVE, SEL_TRANSFER, UNLIMITED_MIN, ZERO_ADDRESS, SELECTOR_LABEL, LEND_SELECTORS, lc, hexToBig, hexToNum, addressOfTopic, wordAddress, wordBig } from './evm';
 
 export interface TokenMeta { symbol: string; decimals: number }
 export interface ClassifyCtx { assetId: string; me: string; nativeSymbol: string; meta: (tokenAddress: string) => TokenMeta; url?: (hash: string) => string | undefined; source: 'local' | 'logs' }
@@ -61,6 +61,15 @@ export function classify(ctx: ClassifyCtx, inp: ClassifyInput): HistoryItem[] {
     : sender && sel === SEL_TRANSFER && to ? [{ token: to, from: me, to: wordAddress(input, 0), value: wordBig(input, 1), nft: false, logIndex: 0 }] : [];
   const outs = flows.filter((f) => f.from === me && f.to !== me && !f.nft); const ins = flows.filter((f) => f.to === me && f.from !== me && !f.nft);
   const label = SELECTOR_LABEL[sel];
+
+  // Lending pool call (deposit / withdraw / borrow / repay): one row for the underlying asset, never a "swap" for the aToken receipt.
+  if (sender && LEND_SELECTORS.includes(sel) && !failed && input.length >= 10 + 128) {
+    const asset = wordAddress(input, 0); const flow = flows.find((f) => f.token === asset && !f.nft); const raw = flow ? flow.value : wordBig(input, 1);
+    if (raw < (1n << 255n)) {
+      const { m, amount } = unit(asset, raw);
+      return [{ ...common, id: `${inp.hash}:l`, kind: 'contract', amount, symbol: m.symbol, counterparty: to || undefined, token: { symbol: m.symbol, address: asset, decimals: m.decimals }, method: label } as HistoryItem];
+    }
+  }
 
   // Swap: I started the transaction, value left me (token or native) and a different fungible token came back.
   if (sender && ins.length && (outs.length || value > 0n) && !failed) {

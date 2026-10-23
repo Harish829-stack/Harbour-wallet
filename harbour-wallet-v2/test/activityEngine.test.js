@@ -93,3 +93,12 @@ test('merge: typed local row hides explorer legs; duplicates collapse; pending s
   assert.equal(m.length, 2); const send = m.find((x) => x.kind === 'send');
   assert.deepEqual([send.status, send.timestamp], ['confirmed', 9]); assert.ok(m.some((x) => x.kind === 'swap'));
 });
+
+test('classify: Aave-style deposit is one "Deposit" row, not a swap for the aToken', () => {
+  const POOL = '0x4444444444444444444444444444444444444444', ATOKEN = '0x5555555555555555555555555555555555555555', Z = '0x0000000000000000000000000000000000000000';
+  const input = '0x617ba037' + pad(USDC).slice(2) + num(1_000_000_000).slice(2) + pad(ME).slice(2) + num(0).slice(2);
+  const receipt = { transactionHash: '0xaa', blockNumber: hx(5), from: ME, to: POOL, logs: [log(USDC, T, ME, ATOKEN, num(1_000_000_000), 5, '0xaa', 1), log(ATOKEN, T, Z, ME, num(999_999_999), 5, '0xaa', 2)] };
+  const ctx = { assetId: 'base-sepolia', me: ME, nativeSymbol: 'ETH', meta: (t) => ({ symbol: t === USDC ? 'USDC' : 'aBasSepUSDC', decimals: 6 }), source: 'logs' };
+  const items = A.classify(ctx, { hash: '0xaa', receipt, tx: { hash: '0xaa', from: ME, to: POOL, value: '0x0', input, nonce: '0x1' }, timestamp: 1, status: 'confirmed' });
+  assert.equal(items.length, 1); assert.equal(items[0].kind, 'contract'); assert.equal(items[0].method, 'Deposit'); assert.equal(items[0].symbol, 'USDC'); assert.equal(items[0].amount, '1000');
+});

@@ -83,7 +83,7 @@ export const HistoryRow: React.FC<{ x: HistoryItem; color?: string; network?: st
   const minted = x.kind === 'receive' && x.method === 'Mint';
   const title = x.kind === 'send' ? 'Sent' : x.kind === 'receive' ? (minted ? 'Minted' : 'Received') : x.kind === 'self' ? 'Sent to self' : x.kind === 'approve' ? 'Approved' : x.kind === 'revoke' ? 'Revoked' : x.kind === 'swap' ? 'Swapped'
     : (x.method && x.method !== 'Transaction' ? x.method.replace(/([a-z])([A-Z])/g, '$1 $2') : 'Contract interaction');
-  const sign = x.kind === 'send' ? '-' : x.kind === 'receive' || x.kind === 'swap' ? '+' : '';
+  const sign = x.kind === 'send' ? '-' : x.kind === 'receive' || x.kind === 'swap' ? '+' : x.kind === 'contract' && x.token ? (x.method === 'Deposit' || x.method === 'Repay' ? '-' : x.method === 'Withdraw' || x.method === 'Borrow' ? '+' : '') : '';
   const amt = x.kind === 'approve' && x.unlimited ? 'Unlimited' : trim(x.amount);
   const icon = x.kind === 'send' ? 'send' : x.kind === 'receive' ? 'receive' : x.kind === 'approve' ? 'check' : x.kind === 'revoke' ? 'close' : 'swap';
   const who = x.kind === 'swap' && x.swap ? `-${trim(x.swap.sent.amount)} ${x.swap.sent.symbol}`

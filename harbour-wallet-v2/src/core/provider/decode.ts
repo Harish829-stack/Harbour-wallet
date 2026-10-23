@@ -13,6 +13,7 @@ export type DecodedCall =
   | { kind: 'setApprovalForAll'; operator: string; approved: boolean }
   | { kind: 'nftTransfer'; standard: 'erc721' | 'erc1155'; from: string; to: string; id: bigint; amount?: bigint }
   | { kind: 'permit'; owner: string; spender: string; value: bigint; deadline: bigint }
+  | { kind: 'lend'; action: 'supply' | 'withdraw' | 'borrow' | 'repay'; asset: string; amount: bigint; beneficiary: string }
   | { kind: 'permit2Approve'; token: string; spender: string; amount: bigint; expiration: bigint }
   | { kind: 'multicall'; calls: DecodedCall[]; truncated: boolean }
   | { kind: 'wrap'; fn: 'deposit' | 'withdraw'; amount?: bigint }
@@ -43,6 +44,11 @@ export function decodeCalldata(data: string): DecodedCall {
       case 'f242432a': { const [from, to, id, amount] = dec(['address', 'address', 'uint256', 'uint256', 'bytes'], body); return { kind: 'nftTransfer', standard: 'erc1155', from: addr(from), to: addr(to), id, amount }; }
       case 'a22cb465': { const [operator, approved] = dec(['address', 'bool'], body); return { kind: 'setApprovalForAll', operator: addr(operator), approved: !!approved }; }
       case 'd505accf': { const [owner, spender, value, deadline] = dec(['address', 'address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'], body); return { kind: 'permit', owner: addr(owner), spender: addr(spender), value, deadline }; }
+      // Aave V3 / Spark-style pool calls (same selectors on every deployment)
+      case '617ba037': { const [asset, amount, onBehalfOf] = dec(['address', 'uint256', 'address', 'uint16'], body); return { kind: 'lend', action: 'supply', asset: addr(asset), amount, beneficiary: addr(onBehalfOf) }; }
+      case '69328dec': { const [asset, amount, to] = dec(['address', 'uint256', 'address'], body); return { kind: 'lend', action: 'withdraw', asset: addr(asset), amount, beneficiary: addr(to) }; }
+      case 'a415bcad': { const [asset, amount, , , onBehalfOf] = dec(['address', 'uint256', 'uint256', 'uint16', 'address'], body); return { kind: 'lend', action: 'borrow', asset: addr(asset), amount, beneficiary: addr(onBehalfOf) }; }
+      case '573ade81': { const [asset, amount, , onBehalfOf] = dec(['address', 'uint256', 'uint256', 'address'], body); return { kind: 'lend', action: 'repay', asset: addr(asset), amount, beneficiary: addr(onBehalfOf) }; }
       case '87517c45': { const [token, spender, amount, expiration] = dec(['address', 'address', 'uint160', 'uint48'], body); return { kind: 'permit2Approve', token: addr(token), spender: addr(spender), amount, expiration }; }
       case 'ac9650d8': return multi(dec(['bytes[]'], body)[0]);
       case '5ae401dc': return multi(dec(['uint256', 'bytes[]'], body)[1]);
@@ -62,6 +68,14 @@ export function decodeString(hex: string): string {
 export const encodeAllowanceCall = (owner: string, spender: string): string => SEL.allowance + owner.slice(2).toLowerCase().padStart(64, '0') + spender.slice(2).toLowerCase().padStart(64, '0');
 export const encodeBalanceCall = (owner: string): string => SEL.balanceOf + owner.slice(2).toLowerCase().padStart(64, '0');
 export const encodeApprove = (spender: string, amount: bigint): string => '0x095ea7b3' + spender.slice(2).toLowerCase().padStart(64, '0') + amount.toString(16).padStart(64, '0');
+
+/** Rewrite the amount of a plain ERC-20 approve(spender, amount) call. Only the plain selector is rewritable; the new amount can only be LOWER than the requested one. Returns null otherwise. */
+export function lowerApproveAmount(data: string, limit: bigint): string | null {
+  const c = decodeCalldata(data);
+  if (c.kind !== 'approve' || c.increase || c.decrease || !data.toLowerCase().startsWith('0x095ea7b3')) return null;
+  if (limit < 0n || limit > c.amount) return null;
+  return encodeApprove(c.spender, limit);
+}
 
 /** Flatten a decoded call (looking inside multicalls, one level of nesting max is enough in practice but recursion is bounded by MULTI_MAX per level and calldata size). */
 export function flattenCalls(c: DecodedCall, depth = 0): DecodedCall[] { return c.kind === 'multicall' && depth < 3 ? c.calls.flatMap((x) => flattenCalls(x, depth + 1)) : [c]; }

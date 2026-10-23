@@ -279,6 +279,39 @@ SIG-01/02/03/05 swap and bridge validation, SIG-09/11 WalletConnect, SIG-13 loca
 6. Bitcoin PSBT checks, Ledger on-device verify.
 7. Gateway: HMAC per-request scheme, nonce/date checks (INF-03/05).
 
+### 8. Approval screen (read from `chunks/App-D29UTaP5.js`, `approval-detail-*.js`)
+Static read of the popup code; REA's source recovery was unavailable (needs a Wakaru install) and its whole-app analysis timed out, so this is direct reading of the minified chunk.
+
+| Trust Wallet behaviour | Harbour today | Action |
+|---|---|---|
+| **Editable spending limit** (`SpendingLimitModal`, `initialSpendingLimit`): for an unlimited approve the box is pre-filled with your balance, not "Unlimited"; changing it opens a confirmation modal, with a stronger warning for the high default | Shows "Unlimited" and a warning only; no way to lower it | **COPY**: let the user replace the approve amount (rewrite calldata) and default to balance |
+| `sign-tx.simulation-failed` (likely to fail, fee still charged) and `simulation-unavailable` (cannot preview, trust only if you know the site) | Warns on failure; no message when simulation is merely unavailable | Add the unavailable banner |
+| `sign-tx.decode-failed` / `undecodable` banner | Shows "Unknown contract function" | Keep, add the banner wording |
+| `dapp.embedded-frame-warning` (request comes from an iframe inside another page) | Has `embedded` flag in the view | Confirm it is shown in the UI |
+| `dapp.chainid-mismatch` (request for another chain than the wallet) | Auto-switches for known chains, refuses unknown | Equal or stricter |
+| Risk gate: high-risk URL needs **two checkboxes** ("I can lose all my tokens", "cannot be recovered") + "Proceed anyway"; `risk.dapp-check-unavailable` when the check cannot run | One acknowledgement checkbox when dangerous; site-check-unavailable note exists | Optional: second checkbox for high-risk sites |
+| Solana: instruction list with role tags (signer/writable), lookup-table notes, authority/delegate/close banners, "N transactions will all be signed", "accounts closed" balance row | Done in step 3 (lookups resolved, warnings, simulation) | Add "N transactions" banner |
+| Bitcoin PSBT: sighash banners (`ANYONECANPAY`, `SINGLE`, partial), OP_RETURN data, "inputs you sign" | Harbour refuses non-ALL sighash, shows outputs, fee, warnings | Harbour stricter |
+| Typed data: token approval card, "Signature valid until", revoke label, unlimited warning | Done (`typed.ts`) | Equal |
+| Approvals tab detail page with risk tag (High/Medium) | Approvals list with GoPlus flags and revoke | Equal |
+
+### 5.8.1 How Trust Wallet applies an edited spending limit (Wakaru decompile of App-D29UTaP5.js)
+
+- The ERC-20 approve page keeps the user-edited limit in state; the effective allowance is the edited value, or the dApp-requested value when the field is empty or not a number.
+- When the dApp requests unlimited and the balance is known, the field is pre-filled with the balance (rounded down) instead of unlimited.
+- Editing the limit rewrites the `approve` calldata with a helper that swaps the amount (limit x 10^decimals) in the original data. The rewritten data replaces `data.params.data` in the staged request.
+- Any change to the staged request (data, gas, value) re-stages the transaction in the background, so the fee shown always matches the data that will be signed.
+- Confirm is blocked until the limit is valid (not negative, not empty). If the limit is unlimited or high relative to balance, a confirmation modal with a danger button appears before signing.
+- Harbour gap: no editable limit yet. Planned: pre-fill with balance, rewrite approve amount via the decoder, re-quote, confirmation modal.
+
+### 5.8.2 Implemented in Harbour (2026-10-23)
+
+- Editable spending limit on plain ERC-20 approve: pre-filled with the request, or the balance when the site asks for unlimited. The background rewrites the calldata and only accepts a limit lower than or equal to the request (`lowerApproveAmount`). Other calls cannot be rewritten.
+- "Balance changes could not be simulated" note when the RPC has no `eth_simulateV1`.
+- Solana banner when one approval signs several transactions.
+- Second risk checkbox ("I accept the risk of losing funds...") for high-risk requests (flagged site or address, unlimited or hidden approvals, failed or missing simulation, raw hash signing).
+- Lending history rows show `-` for deposit/repay and `+` for withdraw/borrow.
+
 ## 6. External review scope (to commission before public release)
 1. **Vault**: password KDF parameters, keystore handling, auto-lock, passkey and biometric unlock, and reveal-phrase gating (`core/vaultService.ts`, `core/passworder.ts`, `background/keys.ts`, `core/passkeyService.ts`).
 2. **Provider**: origin binding, the handshake, the pending queue and settle, the per-namespace signing paths (EVM, Solana, multi-chain) and the approval view (`background/provider/*`, `src/inpage`, `src/content`).

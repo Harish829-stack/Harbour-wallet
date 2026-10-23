@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export { decodeCalldata, flattenCalls } from './core/provider/decode'; export { looksLikeSolMessage } from './core/provider/solanaTx'; export { isPrivateNetworkUrl } from './core/provider/origin'; export { hasDangerousSelector } from './core/swap/safety'; export { validRecipient } from './core/sendService';`, resolveDir: root, sourcefile: 'entry.ts', loader: 'ts' }, bundle: true, write: false, format: 'esm', platform: 'node', external: ['webextension-polyfill'] });
+const out = await build({ stdin: { contents: `export { decodeCalldata, flattenCalls, lowerApproveAmount, encodeApprove } from './core/provider/decode'; export { looksLikeSolMessage } from './core/provider/solanaTx'; export { isPrivateNetworkUrl } from './core/provider/origin'; export { hasDangerousSelector } from './core/swap/safety'; export { validRecipient } from './core/sendService';`, resolveDir: root, sourcefile: 'entry.ts', loader: 'ts' }, bundle: true, write: false, format: 'esm', platform: 'node', external: ['webextension-polyfill'] });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
 const solMessage = () => { // legacy message: 1 signer, system transfer
@@ -123,4 +123,24 @@ test('gateway cleanSearch bounds query strings; remote config expires', async ()
   const now = Math.floor(Date.now() / 1000);
   assert.ok(C.parseConfig(JSON.stringify({ version: 2, expiresAt: now + 100 }), 1));
   assert.equal(C.parseConfig(JSON.stringify({ version: 2, expiresAt: now - 100 }), 1), null);
+});
+
+test('decoder: Aave-style pool calls (supply / withdraw / borrow / repay)', () => {
+  const w = (a) => a.replace('0x', '').padStart(64, '0'); const asset = '0x' + '22'.repeat(20), me = '0x' + '11'.repeat(20);
+  const d = M.decodeCalldata('0x617ba037' + w(asset) + w('0x3b9aca00') + w(me) + w('0x0'));
+  assert.deepEqual([d.kind, d.action, d.amount, d.beneficiary.toLowerCase()], ['lend', 'supply', 1000000000n, me]);
+  assert.equal(M.decodeCalldata('0x69328dec' + w(asset) + w('0x1') + w(me)).action, 'withdraw');
+  assert.equal(M.decodeCalldata('0xa415bcad' + w(asset) + w('0x1') + w('0x2') + w('0x0') + w(me)).action, 'borrow');
+  assert.equal(M.decodeCalldata('0x573ade81' + w(asset) + w('0x1') + w('0x2') + w(me)).action, 'repay');
+});
+
+test('spending limit rewrite: only plain approve, only lower', () => {
+  const sp = '0x' + '11'.repeat(20);
+  const data = M.encodeApprove(sp, 1000n);
+  const lowered = M.lowerApproveAmount(data, 400n);
+  assert.equal(M.decodeCalldata(lowered).amount, 400n);
+  assert.equal(M.decodeCalldata(lowered).spender.toLowerCase(), sp);
+  assert.equal(M.lowerApproveAmount(data, 1001n), null);
+  assert.equal(M.lowerApproveAmount('0xa9059cbb' + '00'.repeat(64), 1n), null);
+  assert.equal(M.lowerApproveAmount(data, -1n), null);
 });

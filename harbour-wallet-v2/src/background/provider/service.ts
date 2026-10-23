@@ -8,7 +8,7 @@ import { EVM_METHODS, UNSUPPORTED_EVM, isHexData, normalizeAddChain, normalizeEt
 import { MAX_PENDING_PER_ORIGIN, MAX_PENDING_TOTAL, type Connection, type Outcome, type PendingKind, type PendingRequest, type PendingStore, type PermissionStore } from '../../core/provider/store';
 import { RateLimiter } from '../../core/provider/ratelimit';
 import { b58encode, b64ToBytes, bytesToB64 } from '../../core/provider/base58';
-import { decodeCalldata, decodeString, isUnlimited, SEL } from '../../core/provider/decode';
+import { decodeCalldata, decodeString, isUnlimited, lowerApproveAmount, SEL } from '../../core/provider/decode';
 import { parseSolTx, signerSlot, withSignature } from '../../core/provider/solanaTx';
 import { evmRecover, sha3, type SignMode, type TypedDataLike } from '../../core/provider/evmSign';
 import { validateNetwork, normalizeUrl } from '../../core/networks';
@@ -69,7 +69,7 @@ export interface WcHost {
   reject(proposalId: number, code: number, message: string): Promise<void>;
 }
 export type HandleResult = { done: true; outcome: Outcome } | { done: false };
-export interface Decision { approve: boolean; accountIndex?: number; chainId?: number; gasLimit?: string; feeLevel?: 'safe' | 'average' | 'fast'; fee?: { maxFeePerGas?: string; maxPriorityFeePerGas?: string; gasPrice?: string } }
+export interface Decision { approve: boolean; accountIndex?: number; chainId?: number; gasLimit?: string; feeLevel?: 'safe' | 'average' | 'fast'; fee?: { maxFeePerGas?: string; maxPriorityFeePerGas?: string; gasPrice?: string }; allowanceLimit?: string }
 
 const hex = (n: number) => '0x' + n.toString(16);
 const ok = (result: unknown): HandleResult => ({ done: true, outcome: { result } });
@@ -427,7 +427,13 @@ export class ProviderService {
       case 'typed': { const conn = await this.needConn(p, 'evm'); return this.d.signer.signTypedData(conn, p.params.typedData); }
       case 'tx': {
         const conn = await this.needConn(p, 'evm');
-        const { tx, chainId } = p.params as { tx: TxRequest; chainId: number };
+        const { chainId } = p.params as { chainId: number }; let tx = (p.params as { tx: TxRequest }).tx;
+        // User-edited spending limit: only a plain approve(spender, amount) may be rewritten, and only to a LOWER amount.
+        if (dec.allowanceLimit !== undefined) {
+          const nd = /^\d{1,78}$/.test(dec.allowanceLimit) ? lowerApproveAmount(tx.data ?? '0x', BigInt(dec.allowanceLimit)) : null;
+          if (!nd) throw new ProviderError(ERR.INVALID_PARAMS, 'The spending limit cannot be applied to this request.');
+          tx = { ...tx, data: nd };
+        }
         if (conn.chainId !== chainId) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
         const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
         const fee: FeeValues = {}; if (dec.fee?.maxFeePerGas) fee.maxFeePerGas = BigInt(dec.fee.maxFeePerGas); if (dec.fee?.maxPriorityFeePerGas) fee.maxPriorityFeePerGas = BigInt(dec.fee.maxPriorityFeePerGas); if (dec.fee?.gasPrice) fee.gasPrice = BigInt(dec.fee.gasPrice);

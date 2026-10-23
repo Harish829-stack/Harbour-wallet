@@ -13,7 +13,10 @@ export const UNLIMITED_MIN = 1n << 255n;
 export const SELECTOR_LABEL: Record<string, string> = {
   '0xa0712d68': 'Mint', '0x40c10f19': 'Mint', '0x1249c58b': 'Mint', '0xd0e30db0': 'Deposit', '0x2e1a7d4d': 'Withdraw', '0xa22cb465': 'Set Approval For All',
   '0x095ea7b3': 'Approve', '0x23b872dd': 'Transfer From', '0x42842e0e': 'Transfer NFT', '0xb88d4fde': 'Transfer NFT', '0x4e71d92d': 'Claim', '0x379607f5': 'Claim', '0x3ccfd60b': 'Withdraw',
+  '0x617ba037': 'Deposit', '0x69328dec': 'Withdraw', '0xa415bcad': 'Borrow', '0x573ade81': 'Repay',
 };
+/** Lending pool calls (Aave V3 / Spark): the receipt token (aToken) coming back is a receipt, not a swap. Argument 0 is the underlying asset. */
+export const LEND_SELECTORS = ['0x617ba037', '0x69328dec', '0xa415bcad', '0x573ade81'];
 
 export interface RawLog { address: string; topics: string[]; data: string; blockNumber: string; transactionHash: string; logIndex: string; removed?: boolean }
 export interface Receipt { transactionHash: string; blockNumber: string; status?: string; from: string; to: string | null; gasUsed?: string; effectiveGasPrice?: string; logs: RawLog[] }
