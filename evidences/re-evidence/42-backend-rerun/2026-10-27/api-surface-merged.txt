@@ -1,0 +1,97 @@
+POST  https://api.avax-test.network/ext/bc/C/rpc n=5 caps=1 q=
+GET   https://api.bnbchain.org/bnb-staking/v1/validator/all n=6 caps=2 q=limit,offset
+POST  https://arb1.arbitrum.io/rpc n=2 caps=1 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/axelar/validators/list.json n=2 caps=1 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/ethereum/tokenlist.json n=1 caps=1 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/nativeinjective/validators/list.json n=2 caps=1 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/smartchain/tokenlist.json n=1 caps=1 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/smartchain/validators/list.json n=3 caps=2 q=
+GET   https://assets-cdn.trustwallet.com/blockchains/solana/validators/list.json n=2 caps=1 q=
+GET   https://bin.bnbstatic.com/api/i18n/-/web/cms/sp/86a37593e/en/translations n=2 caps=2 q=
+POST  https://ethereum-sepolia-rpc.publicnode.com/ n=7 caps=2 q=
+GET   https://gateway.trustwallet.com/v2/projects/{uuid}/nodes n=5 caps=4 q=account-abstraction,sponsored
+GET   https://gateway.us.trustwallet.com/amber-api/v1/domains n=1 caps=1 q=arc,ton
+POST  https://gateway.us.trustwallet.com/v1/approvals/scan n=3 caps=2 q=
+POST  https://gateway.us.trustwallet.com/v1/assets n=129 caps=7 q=
+GET   https://gateway.us.trustwallet.com/v1/assets n=3 caps=1 q=asset_ids
+GET   https://gateway.us.trustwallet.com/v1/assets/listings n=7 caps=3 q=category_id,currency,limit,networks,sort_direction,sort_field,version
+GET   https://gateway.us.trustwallet.com/v1/assets/tabs-config n=1 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v1/assets/trending-config n=1 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v1/assets/{id} n=25 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v1/balances/chains n=1 caps=1 q=
+POST  https://gateway.us.trustwallet.com/v1/balances/stream n=32 caps=7 q=
+GET   https://gateway.us.trustwallet.com/v1/buycrypto/widget/quote n=1 caps=1 q=address,asset_id,is_binance_app_installed,wallet_id
+POST  https://gateway.us.trustwallet.com/v1/centrifugo-hooks/token n=6 caps=5 q=
+GET   https://gateway.us.trustwallet.com/v1/cex-transfer/providers/binance-pay/assets n=57 caps=7 q=
+GET   https://gateway.us.trustwallet.com/v1/cex-transfer/providers/coinbase-pay n=1 caps=1 q=assetID,redirectUrl,sig,ts,walletAddress
+GET   https://gateway.us.trustwallet.com/v1/cex-transfer/providers/coinbase-pay/assets n=57 caps=7 q=
+GET   https://gateway.us.trustwallet.com/v1/cex-transfer/providers/coinbase-pay/transactions/{uuid} n=17 caps=2 q=
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c0 n=2 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c10000060 n=1 caps=1 q=include_security_info
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c20000714 n=2 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c50000118 n=1 caps=1 q=include_security_info
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c501 n=1 caps=1 q=include_security_info,include_solana_security_info
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c60 n=3 caps=2 q=include_security_info
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/c966 n=15 caps=2 q=
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/{id} n=45 caps=2 q=
+GET   https://gateway.us.trustwallet.com/v1/coinstatus/{uuid} n=4 caps=2 q=include_security_info
+GET   https://gateway.us.trustwallet.com/v1/discover/group/invest-staking n=3 caps=1 q=currency
+GET   https://gateway.us.trustwallet.com/v1/invests/stablecoin/config n=4 caps=4 q=
+GET   https://gateway.us.trustwallet.com/v1/invests/staking n=1 caps=1 q=currency
+GET   https://gateway.us.trustwallet.com/v1/search/assets n=6 caps=1 q=exactQuery,include_pricing_info,limit,networks,offset,sortBy,type,version
+POST  https://gateway.us.trustwallet.com/v1/txhub/bulk_history n=37 caps=3 q=
+GET   https://gateway.us.trustwallet.com/v1/txhub/txs n=8 caps=1 q=address,asset,chain,from,limit,to
+POST  https://gateway.us.trustwallet.com/v1/validate/address n=5 caps=2 q=
+POST  https://gateway.us.trustwallet.com/v1/validate/url n=12 caps=3 q=
+GET   https://gateway.us.trustwallet.com/v2/announcements n=63 caps=7 q=device_id,platform,strategy,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/c10000060 n=1 caps=1 q=include_security_info,include_solana_security_info,platform,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/c20000714 n=1 caps=1 q=include_security_info,include_solana_security_info,platform,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/c50000118 n=1 caps=1 q=include_security_info,include_solana_security_info,platform,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/c501 n=1 caps=1 q=include_security_info,include_solana_security_info,platform,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/c60 n=2 caps=1 q=include_security_info,include_solana_security_info,platform,version
+GET   https://gateway.us.trustwallet.com/v2/coinstatus/{uuid} n=2 caps=1 q=include_security_info,include_solana_security_info,platform,version
+POST  https://gateway.us.trustwallet.com/v2/devices/fingerprint n=7 caps=4 q=
+GET   https://gateway.us.trustwallet.com/v2/devices/{hex} n=20 caps=7 q=
+PUT   https://gateway.us.trustwallet.com/v2/devices/{hex}/push-topics n=1 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v2/market/charts/c60 n=1 caps=1 q=currency,period
+GET   https://gateway.us.trustwallet.com/v2/market/charts/{uuid} n=2 caps=1 q=currency,period
+GET   https://gateway.us.trustwallet.com/v2/market/info/c60 n=1 caps=1 q=currency
+GET   https://gateway.us.trustwallet.com/v2/market/info/{uuid} n=1 caps=1 q=currency
+GET   https://gateway.us.trustwallet.com/v2/market/rates n=9 caps=2 q=currency
+GET   https://gateway.us.trustwallet.com/v2/market/sentiment-assets n=3 caps=1 q=
+POST  https://gateway.us.trustwallet.com/v2/market/tickers n=52 caps=7 q=
+POST  https://gateway.us.trustwallet.com/v3/devices/{hex}/wallets/{id}/address_association n=1 caps=1 q=
+GET   https://gateway.us.trustwallet.com/v3/devices/{hex}/wallets/{id}/meta n=2 caps=1 q=
+POST  https://gateway.us.trustwallet.com/v3/devices/{hex}/wallets/{id}/register n=3 caps=1 q=
+POST  https://gateway.us.trustwallet.com/v3/nft/collections n=7 caps=2 q=exclude_spam,page,pageSize
+GET   https://gateway.us.trustwallet.com/v3/points/{id}/vip n=5 caps=1 q=
+POST  https://lb.routeme.sh/rpc/evm/{numeric} n=6 caps=2 q=
+POST  https://query.thegraph.kiln.fi/subgraphs/name/vsuite n=15 caps=3 q=
+POST  https://wallet-kit.trustwallet.com/v1/apr n=28 caps=1 q=
+GET   https://wallet-kit.trustwallet.com/v1/apr/proxy/stakewiz n=1 caps=1 q=
+GET   https://wallet-kit.trustwallet.com/v1/fee/priority/{numeric} n=1 caps=1 q=
+POST  https://xrpc.cl/sepolia n=78 caps=1 q=
+GET   wss://gateway.us.trustwallet.com/stream/ws n=3 caps=2 q=
+==== twnodes families
+other:/v2 58 1 ['aag']
+other:/v2/accounts/{id} 6 2 ['aeternity', 'algorand']
+cosmos-lcd 144 18 ['agoric-api', 'akash-api', 'axelar-api', 'cosmos', 'crypto-org-lcd', 'evmos-api', 'greenfield', 'injective-api', 'juno-api', 'kava', 'neutron-api', 'osmosis-lcd', 'sei-api', 'stargaze-api', 'stride-api', 'terra-classic-fcd', 'thorchain', 'zetachain-api']
+jsonrpc 266 61 ['aion', 'arc', 'aurora', 'avalanche', 'base', 'blast', 'boba', 'bouncebit', 'bsc', 'bsc-sponsored', 'callisto', 'cardano-graphql', 'celo', 'classic', 'conflux-evm', 'cronos', 'ethereum', 'evmos-jsonrpc', 'fantom', 'filecoin', 'gnosis', 'gochain', 'harmony', 'hyperevm', 'iotex-jsonrpc', 'kava-evm', 'kcc', 'klaytn', 'linea', 'manta', 'mantle', 'megaeth', 'merlin', 'metis', 'monad', 'moonbeam', 'moonriver', 'nano', 'near', 'neon', 'nimiq', 'ontology', 'opbnb', 'optimism', 'plasma', 'polygon', 'polygon-zkevm', 'ripple', 'robinhood', 'ronin', 'scroll', 'solana', 'sonic', 'sui', 'thundertoken', 'tomochain', 'wanchain', 'zetachain-evm', 'zilliqa-api', 'zklink-nova-evm']
+other:/v1/view 1 1 ['aptos']
+blockbook 93 14 ['bitcoincash-blockbook', 'btc-book', 'dash-blockbook', 'decred-blockbook', 'digibyte-blockbook', 'doge-blockbook', 'firo-blockbook', 'groestlcoin-blockbook', 'litecoin-blockbook', 'qtum-blockbook', 'ravencoin-blockbook', 'viacoin-blockbook', 'zcash-blockbook', 'zelcash-blockbook']
+other:/v1/chain/get_fio_balance 1 1 ['fio']
+other:/api/v3 1 1 ['icon']
+other:/account/balance 2 1 ['internetcomputer']
+other:/accounts/{id}/balance-info 8 2 ['kusama', 'polkadot']
+other:/accounts/{id}/delegation 1 1 ['multiversx-api']
+other:/address/{id} 1 1 ['multiversx-api']
+other:/v1/user/accountstate 7 1 ['nebulas']
+other:/accounts/{id} 3 2 ['stellar', 'vechain']
+other:/chains/main/blocks/head/context/contrac 1 1 ['tezos']
+other:/rpc 2 1 ['theta']
+other:/getAddressBalance 1 1 ['ton']
+other:/wallet/getReward 1 1 ['tron']
+other:/wallet/getaccount 1 1 ['tron']
+other:/wallet/getaccountresource 1 1 ['tron']
+other:/addresses/balance/{id}/{numeric} 1 1 ['waves']
+other:/assets/balance/{id} 1 1 ['waves']
