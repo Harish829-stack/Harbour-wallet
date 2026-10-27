@@ -57,8 +57,8 @@ export const Wallet: React.FC<{
   addrs: Record<string, string>; balances: Record<string, any>; totalUsd: number | null; loading: boolean;
   accounts?: Array<{ derivationIndex: number; name: string; addresses: Record<string, string> }>; activeAccount?: number;
   hiddenAssets?: string[]; networkFilter?: string | null;
-  backupRequired?: boolean; onRefresh: () => void; onBackup?: () => void; onLock: () => void;
-}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onBackup, onLock }) => {
+  backupRequired?: boolean; onRefresh: () => void; onLock: () => void;
+}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onLock }) => {
   injectStyles();
   const [tab, setTab] = useState<Tab>('home');
   const lastTab = useRef<Tab>('home');
@@ -98,7 +98,7 @@ export const Wallet: React.FC<{
     push: (name, params) => setStack((s) => [...s, { name, params }]),
     pop: () => setStack((s) => s.slice(0, -1)),
     home: () => { setStack([]); setTab('home'); },
-    lock: onLock, backup: () => { setStack([]); onBackup?.(); },
+    lock: onLock, backup: () => setStack([{ name: 'backup', params: {} }]),
   };
   const ctx = { addrs, balances, bg, nav, accounts, activeAccount, hiddenAssets, networkFilter, refresh: onRefresh } as any;
   const visibleAssets = allAssets().filter((a) => !(hiddenAssets ?? []).includes(a.id) && (!networkFilter || a.id === networkFilter)

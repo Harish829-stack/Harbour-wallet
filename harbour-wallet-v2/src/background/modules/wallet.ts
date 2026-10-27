@@ -2,22 +2,23 @@ import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
 import { armLockTimer, clearLockTimer } from '../settingsService';
 import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
+// Dumb-UI rule: no handler here returns a recovery phrase, private key or password (see handlers/secrets.ts, core/uiSafe.ts).
+// A biometrics-only wallet gets a random password generated here, never in the UI.
+const generatePassword = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
+import { readQrStage, clearQrStage } from '../qrStage';
 import { verifyPasskeySecret } from '../../core/passkeyService';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 import type { HandlerMap } from '../handlers/types';
 import { dispatchEvent } from '../kernel/events';
+import { dropVaultKeys } from '../handlers/onboardingExtra';
 
 let creatingWallet = false;
 export const handlers: HandlerMap = {
   status: async (msg, ctx) => {
     const { vault } = ctx as any;
       return { hasVault: await vault.exists(), unlocked: await vault.isUnlocked() };
-  },
-  generateMnemonic: async (msg, ctx) => {
-    const { wallet } = ctx as any;
-      return { mnemonic: await wallet.generateMnemonic() };
   },
   validateMnemonic: async (msg, ctx) => {
     const { wallet } = ctx as any;
@@ -27,7 +28,11 @@ export const handlers: HandlerMap = {
     const { vault, wallet } = ctx as any;
  {
       const newlyGenerated = msg.newlyGenerated === true;
-      if (typeof msg.password !== 'string' || !validatePassword(msg.password).valid ||
+      const generated = msg.generatedPassword === true; // biometrics-only: the worker picks the password, the passkey seals it
+      const passkey = msg.passkey && typeof msg.passkey === 'object' ? { secret: String(msg.passkey.secret ?? ''), credentialId: String(msg.passkey.credentialId ?? '') } : null;
+      const password: unknown = generated ? generatePassword() : msg.password;
+      if (generated && !passkey) return { ok: false, error: 'INVALID_WALLET_INPUT' }; // a password nobody knows needs biometrics to unlock
+      if (typeof password !== 'string' || !validatePassword(password).valid ||
           (!newlyGenerated && (typeof msg.mnemonic !== 'string' || !wallet.isValidMnemonic(msg.mnemonic)))) {
         return { ok: false, error: 'INVALID_WALLET_INPUT' };
       }
@@ -36,7 +41,11 @@ export const handlers: HandlerMap = {
       try {
         // Target order: SavePassword → GenerateHDWallet (create only) → import.
         await removePasskey(); // a brand-new vault must never inherit an old biometric seal
-        await vault.create(msg.password, { wallets: {}, createdAt: Date.now() });
+        await vault.create(password, { wallets: {}, createdAt: Date.now() });
+        if (passkey) {
+          try { await enrollPasskey(passkey.secret, passkey.credentialId, generated); }
+          catch (e) { await dropVaultKeys(); throw e; } // never leave a vault behind that nobody can unlock
+        }
         const mnemonic = newlyGenerated ? await wallet.generateMnemonic() : msg.mnemonic;
         const name = typeof msg.name === 'string' ? msg.name : 'Main wallet';
         const sk = await wallet.buildStoredKey(mnemonic, name, newlyGenerated);
@@ -184,9 +193,9 @@ export const handlers: HandlerMap = {
       // msg.dryRun only verifies the code. Only mnemonic wallets are imported; others are counted as skipped.
       try {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
-        const code = String(msg.code ?? ''); const keys = Array.isArray(msg.storedKeys) ? msg.storedKeys : [];
+        const code = String(msg.code ?? ''); const keys = (await readQrStage(msg.stageId)) ?? [];
         if (!ONE_TIME_CODE.test(code)) return { ok: false, error: 'INCORRECT_CODE' };
-        if (!keys.length || keys.length > 100) return { ok: false, error: 'Unexpected QR contents' };
+        if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
         const mnemonics: string[] = []; let skipped = 0; let wrong = 0;
         for (const k of keys) {
           if (!isWellFormedKey(k) || k.type !== 'mnemonic') { skipped++; continue; }
@@ -205,6 +214,7 @@ export const handlers: HandlerMap = {
           if (r?.ok) imported++; else if (r?.error === 'This wallet already exists') duplicates++; else lastErr = r?.error || 'Import failed';
         }
         if (!imported && !duplicates) return { ok: false, error: lastErr || 'Import failed' };
+        await clearQrStage();
         return { ok: true, imported, duplicates, skipped };
       } catch (e: any) { return { ok: false, error: e?.message || 'Import failed' }; }
     }
@@ -244,7 +254,8 @@ export const handlers: HandlerMap = {
         state.wallets[walletId] = { name: label, label, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated };
         state.activeWalletId = walletId;
         await vault.persist(state);
-        return { ok: true, walletId, label, addresses, newlyGenerated, mnemonic: newlyGenerated ? mnemonic : undefined };
+        if (newlyGenerated) await session.set(KEYS.REVEAL, Date.now() + 120_000); // the backup screen may show the new phrase once, without re-auth
+        return { ok: true, walletId, label, addresses, newlyGenerated, backupGranted: newlyGenerated };
       } catch (e: any) { return { ok: false, error: e?.message || 'Add wallet failed' }; }
       finally { creatingWallet = false; }
     }
@@ -292,27 +303,6 @@ export const handlers: HandlerMap = {
         await session.set(KEYS.REVEAL, Date.now() + 120_000);
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e?.message || 'Verification failed' }; }
-    }
-  },
-  revealMnemonic: async (msg, ctx) => {
-    const { core, vault } = ctx as any;
- {
-      // Return a wallet's secret phrase for the backup flow (requires an unlocked session).
-      try {
-        const passwordKey = await session.get<string>(KEYS.PASSWORD);
-        if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
-        const grant = await session.get<number>(KEYS.REVEAL);
-        await session.remove(KEYS.REVEAL); // one-shot
-        if (!grant || grant < Date.now()) return { ok: false, error: 'AUTH_REQUIRED' };
-        const st: any = await vault.getState();
-        const id = String(msg.walletId ?? activeEntry(st)?.[0] ?? '');
-        const ks = id ? await local.get<any>(id) : undefined;
-        if (!ks) return { ok: false, error: 'Wallet not found' };
-        if ((st.wallets?.[id]?.type ?? 'mnemonic') !== 'mnemonic') return { ok: false, error: 'This wallet has no secret phrase' };
-        const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));
-        try { const hd = sk.wallet(new TextEncoder().encode(passwordKey)); try { return { ok: true, mnemonic: hd.mnemonic() }; } finally { hd.delete(); } }
-        finally { sk.delete(); }
-      } catch (e: any) { return { ok: false, error: e?.message || 'Reveal failed' }; }
     }
   },
   renameWallet: async (msg, ctx) => {

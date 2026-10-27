@@ -65,10 +65,12 @@ export const ImportInstructions: React.FC<{ product: InstructionProduct }> = ({ 
 };
 
 export type SecretCheck = { state: 'idle' | 'checking' | 'valid' | 'invalid'; error?: string };
-/** Wallet name + secret (phrase or private key) + network picker, exactly the field set of TW's import page. */
+/** Wallet name + secret (phrase or private key) + network picker, exactly the field set of TW's import page.
+ *  The secret textarea is uncontrolled (popup/secureField.tsx): no `value` prop, so React never mirrors the phrase or key into
+ *  the DOM, and the text is read only when it is validated or submitted. */
 export const SecretForm: React.FC<{
   name: string; onName: (v: string) => void; nameError?: string; product: InstructionProduct;
-  secret: string; onSecret: (v: string) => void; kind: 'empty' | 'mnemonic' | 'privateKey'; check: SecretCheck;
+  secretRef: React.Ref<HTMLTextAreaElement>; onSecretInput: () => void; kind: 'empty' | 'mnemonic' | 'privateKey'; check: SecretCheck;
   network: PkNetworkOption | null; onNetwork: (o: PkNetworkOption) => void;
   error: string; busy: boolean; canSubmit: boolean; onSubmit: (e: React.FormEvent) => void;
 }> = (p) => {
@@ -82,7 +84,7 @@ export const SecretForm: React.FC<{
         <small className={p.nameError ? '' : 'ob-muted'}>{p.nameError ?? 'You can edit this later'}</small>
       </label>
       <label className={`ob-field ${p.check.state === 'invalid' && p.check.error ? 'has-error' : ''}`}><span>{INSTRUCTIONS[p.product].inputLabel}</span>
-        <textarea data-testid="secret-input" autoFocus value={p.secret} onChange={(e) => p.onSecret(e.target.value)} disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
+        <textarea data-testid="secret-input" autoFocus ref={p.secretRef} onInput={p.onSecretInput} disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
         {/* eslint-disable-next-line no-constant-condition -- secret toggle is always offered */}
         {p.kind !== 'mnemonic' || true ? <button type="button" className="ob-link ob-secret-toggle" onClick={() => setVisible(!visible)} aria-pressed={visible}>{visible ? <EyeOff size={14}/> : <Eye size={14}/>}{visible ? 'Hide' : 'Show'}</button> : null}
         {p.check.state === 'invalid' && p.check.error ? <small role="alert">{p.check.error}</small> : <small className="ob-muted" data-testid="secret-caption">{detected ?? hint.map((h, n) => <React.Fragment key={n}>{h}{n < hint.length - 1 && <br/>}</React.Fragment>)}</small>}

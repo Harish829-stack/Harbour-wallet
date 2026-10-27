@@ -10,6 +10,6 @@ export default defineManifest({
   background: { service_worker: 'src/background/index.ts', type: 'module' },
   side_panel: { default_path: 'src/popup/index.html' },
   content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; base-uri 'none'" },
-  permissions: ['alarms', 'storage', 'clipboardWrite', 'notifications', 'scripting', 'sidePanel', 'gcm', 'idle'],
+  permissions: ['alarms', 'storage', 'clipboardWrite', 'notifications', 'scripting', 'sidePanel', 'gcm', 'idle', 'offscreen'],
   host_permissions: ['https://*/*', 'http://localhost/*', 'http://127.0.0.1/*'],
 });

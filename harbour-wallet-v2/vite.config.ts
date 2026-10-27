@@ -9,7 +9,7 @@ export default defineConfig({
     // Extension bundles load from disk, so chunk size is not a network cost (the service worker bundles all chain SDKs, ~10 MB); modules imported both lazily and eagerly are intentional (lazy keeps them out of the content-script/inpage graphs).
     chunkSizeWarningLimit: 12000,
     rollupOptions: {
-      input: { popup: 'src/popup/index.html' },
+      input: { popup: 'src/popup/index.html', offscreen: 'src/offscreen/clipboard.html' },
       onwarn(warning, defaultHandler) { if (/dynamically imported by .* but also statically imported/s.test(warning.message)) return; defaultHandler(warning); },
     } },
   server: { port: 5173 },

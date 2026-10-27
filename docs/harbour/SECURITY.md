@@ -1,6 +1,6 @@
 # Harbour Wallet: security (single reference)
 
-Last updated 2026-10-23. This file replaces `SECURITY-COMPARISON-TW-26.41.0.md`, `SECURITY-FINDINGS-REGISTER.md` and `TRUST-WALLET-SECURITY-IMPLEMENTATIONS.md`.
+Last updated 2026-10-27 (UI secret boundary: see `UI-SECRET-BOUNDARY.md`). This file replaces `SECURITY-COMPARISON-TW-26.41.0.md`, `SECURITY-FINDINGS-REGISTER.md` and `TRUST-WALLET-SECURITY-IMPLEMENTATIONS.md`.
 
 ## Contents
 1. Security model and hardening (what the wallet does today)
@@ -16,6 +16,10 @@ Last updated 2026-10-23. This file replaces `SECURITY-COMPARISON-TW-26.41.0.md`,
 - **Keys** exist only in the background service worker. They are derived from the encrypted keystore with the session password, used for one operation and then wiped.
   - Keystore format: wallet-core `StoredKey`, AES-128-CTR.
   - The popup never imports vault, key or wallet-core code; `test/boundaries.test.js` enforces this.
+- **Dumb UI (2026-10-27, `UI-SECRET-BOUNDARY.md`)**: no extension page receives a recovery phrase, private key or password from the worker, and pages do not keep the ones the user types.
+  - The phrase and imported keys are painted into PNGs in the worker (`background/secretRender.ts`); backup verification uses opaque tile ids (`backupBegin/backupCheck/backupFinish`); key copy runs in a background-owned offscreen document and the clipboard is cleared after 60 s.
+  - Secret inputs are uncontrolled (`popup/secureField.tsx`), read once and cleared; the import password creates the vault immediately (`onboardingSecure`); biometrics-only passwords are generated in the worker.
+  - Every UI response passes `core/uiSafe.ts` (key-material field names are blocked); `test/ui-secrets.test.js` guards the sources; runtime evidence (heap, DOM, accessibility tree, storage) is in `evidences/audit/ui-secrets/`.
   - `chrome.storage.session` keeps its default trusted-contexts access level, so content scripts cannot read it.
 - **UI ↔ worker**: every runtime message goes through `isInternalWalletSender`, which accepts only this extension's own pages. There is no `externally_connectable` key and no `onMessageExternal` listener.
 - **dApps** reach the wallet only through the provider port (inpage → content script → background).
@@ -177,8 +181,8 @@ Evidence: Trust Wallet `26.41.0_0.zip` (extracted to `evidences/extension/refere
 | Unlock throttle | 5 free attempts, 5 s doubling to 5 min, **serialized** (`serialize`/`guard`), stored `trust:unlock-throttle` | same numbers; **was not serialized**, now is | Fixed (F3) |
 | Password check | `verifyPassword` re-derives and compares to session key with `!==` | decrypts the vault (AEAD) instead | Harbour fine |
 | Seed export | `getSeedPhrase(password, walletId)` requires password argument every time | `revealAuth` password/passkey -> one-shot 2-minute grant, consumed on read | Equal strength |
-| Seed on screen | DOM text | **canvas** (`SeedCanvas`), no copy | Harbour ahead |
-| Private key on screen | n/a to compare | DOM text, 60 s auto-hide, Copy button | See F5 |
+| Seed on screen | DOM text | **worker-painted image**; the popup never receives the words (verify step uses opaque tile ids), no copy | Harbour ahead |
+| Private key on screen | n/a to compare | worker-painted image, 60 s auto-hide; Copy runs in the worker (offscreen document), clipboard cleared after 60 s | Fixed (F5) |
 | Auto-lock | alarm, default 10 min | alarm, configurable | Equal |
 | Biometric | passkey-derived secret seals the password key | seals both keys under 32-byte secret | Equal; Harbour re-verifies unlock key against vault |
 | Internal API gate | internal/public namespaces + `stripExternalTrustFlags` | `isInternalWalletSender`: exact popup URL only | Harbour stricter |
@@ -194,7 +198,7 @@ Evidence: Trust Wallet `26.41.0_0.zip` (extracted to `evidences/extension/refere
 | F2 | Low (hardening, not a vulnerability) | Offline attack on a stolen profile takes the cheapest path: the keystore passphrase is only PBKDF2-SHA512 20k, then scrypt n=16384 p=4 (below the OWASP p=5 equivalent for n=2^14). The 210k unlock key protects the vault, which holds metadata, not the seed. | **Deferred**: chaining the 210k step in front of scrypt only raises per-guess cost roughly 1.5-2x (scrypt dominates), so the migration risk is not worth it alone. Better ROI: raise the minimum length for new passwords, and if a KDF change is wanted later, do it once with a memory-hard KDF. Original idea: derive the keystore passphrase from the 210k unlock key (HKDF) and re-wrap every keystore plus the agent-key blobs on next unlock. It touches 14 call sites and the passkey seal, and a bug could lock users out of funds, so I did not ship it blind. |
 | F3 | Medium | `unlock` and `checkPassword` read the throttle, verify, then arm. N parallel messages all read counter 0, so the lockout could be skipped. Trust Wallet serializes this. | **Fixed**: promise-chain mutex in `core/vaultService.ts`; test `test/vault-throttle.test.js` (12 parallel guesses -> 6 checked, 6 blocked) |
 | F4 | Info | Decrypted mnemonic and derived keys exist as JS strings; JS cannot zero them. wallet-core objects are `delete()`d after use (good). | Accepted, same as Trust Wallet |
-| F5 | Low | Private-key Copy leaves the key on the clipboard. | Open: needs an offscreen document to clear it after the popup closes; recommend hide Copy for keys or add the offscreen clear |
+| F5 | Low | Private-key Copy leaves the key on the clipboard. | **Fixed 2026-10-27**: copy happens in a background-owned offscreen document, which overwrites the clipboard after 60 s; the popup never receives the key |
 | F6 | **High (hygiene)** | The REA project folder holds `harbour-wallet-firebase-adminsdk-*.json` (Firebase admin service account), `harbour-release-key.json` (release signing key), `harbour-config-key.json`, `harbour-keys.env`. I did not open them. They are outside the extension and not in `dist/` or the shipped zip, but they sit beside evidence and zips that get shared. | Open: move out of the folder, rotate the Firebase key if the folder was ever synced or shared, keep the release key offline |
 
 ### 3. Not found as problems

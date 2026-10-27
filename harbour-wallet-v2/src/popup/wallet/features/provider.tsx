@@ -8,6 +8,7 @@ import { Btn, Empty, Ic, injectStyles, Row, Screen, Sheet, Spinner } from '../ui
 import { ErrorLine, Group, NavRow, Note, SectionLabel, SwitchRow } from '../settingsScreens';
 import { refreshSettings } from '../../settingsStore';
 import { Biometrics, isUserCancel } from '../../../core/passkey';
+import { useSecretField } from '../../secureField';
 
 const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, margin: '6px 0 12px' };
 const mono: React.CSSProperties = { fontFamily: 'monospace', fontSize: 12, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', margin: '6px 0' };
@@ -44,7 +45,7 @@ export function ProviderSurface() {
   injectStyles();
   const [items, setItems] = useState<any[] | null>(null); const [id, setId] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('id') ?? '');
   const [view, setView] = useState<any>(null); const [locked, setLocked] = useState(false); const [hasVault, setHasVault] = useState(true);
-  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [password, setPassword] = useState(''); const [gone, setGone] = useState(false);
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const pw = useSecretField(); const [pwFilled, setPwFilled] = useState(false); const [gone, setGone] = useState(false);
   useEffect(() => { void refreshSettings(bg); }, []);
   useEffect(() => {
     let dead = false;
@@ -76,7 +77,8 @@ export function ProviderSurface() {
   };
   const unlock = async () => {
     setBusy(true); setError('');
-    try { const r = await bg({ type: 'unlock', password }); if (r.ok) { setPassword(''); setLocked(false); } else setError(r.error || 'Could not unlock.'); }
+    const password = pw.take(); setPwFilled(false); // uncontrolled field: read once, cleared, never React state
+    try { const r = await bg({ type: 'unlock', password }); if (r.ok) setLocked(false); else setError(r.error || 'Could not unlock.'); }
     catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
   return <div className="hb-root" style={{ background: T.bg, color: T.text, fontFamily: 'Inter, system-ui, sans-serif', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -84,7 +86,7 @@ export function ProviderSurface() {
     <main style={{ padding: '12px 20px 24px', flex: 1 }}>
       {!hasVault ? <><Empty title="Set up your wallet" sub="Create or import a Harbour wallet before connecting a site." icon="wallet"/><Btn onClick={() => { window.location.hash = '/onboarding'; }}>Set up wallet</Btn></> : locked ? <>
         <h2>Unlock to continue</h2><Note>Review the site request after unlocking. Unlocking does not approve it.</Note>
-        <div><label htmlFor="provider-password">Wallet password</label><input id="provider-password" autoFocus type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} style={field}/><Btn disabled={!password || busy} onClick={() => { void unlock(); }}>{busy ? 'Unlocking…' : 'Unlock'}</Btn></div>
+        <div><label htmlFor="provider-password">Wallet password</label><input id="provider-password" autoFocus type="password" autoComplete="current-password" ref={pw.ref} onInput={(e) => setPwFilled(!!e.currentTarget.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pwFilled && !busy) void unlock(); }} spellCheck={false} style={field}/><Btn disabled={!pwFilled || busy} onClick={() => { void unlock(); }}>{busy ? 'Unlocking…' : 'Unlock'}</Btn></div>
         {id && <Btn variant="ghost" disabled={busy || items?.find((x) => x.id === id)?.stage === 'executing'} style={{ marginTop: 10 }} onClick={() => { void resolve({ approve: false }); }}>Reject request</Btn>}
       </> : items === null ? <Spinner/> : !id || (!items.some((x) => x.id === id) && !busy) || gone ? <>
         <Empty title={gone ? 'Request finished' : 'No pending requests'} sub="Requests expire when the site disconnects, you reject them, or their time limit passes." icon="check"/>

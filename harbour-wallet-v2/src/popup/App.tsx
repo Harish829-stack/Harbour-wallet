@@ -1,5 +1,4 @@
 import { NetworkBanner } from './NetworkBanner';
-import { SeedCanvas } from './wallet/SeedCanvas';
 import { SyncWithMobile } from './wallet/syncMobile';
 // Must stay before ./onboarding/*: wallet/screens and wallet/features import each other, and screens has to initialise first.
 import './wallet/screens';
@@ -15,10 +14,11 @@ import { injectStyles } from './wallet/ui';
 import './design/system.css';
 import { Brand } from './design/components';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
+import { useSecretField } from './secureField';
 injectStyles(); // shared motion/keyframe CSS for lock, unlock and setup screens too
 
 // Harbour Wallet — light UI, Trust Wallet-style layout (dummy branding). RE §3, §6.1.
-type Screen = 'loading' | 'welcome' | 'password' | 'backup' | 'unlock' | 'home';
+type Screen = 'loading' | 'onboarding' | 'unlock' | 'home';
 
 const primary = (disabled = false): React.CSSProperties => ({
   width: '100%', padding: '14px 16px', borderRadius: 999, border: 'none',
@@ -26,6 +26,8 @@ const primary = (disabled = false): React.CSSProperties => ({
   fontWeight: 700, fontSize: 15, cursor: disabled ? 'not-allowed' : 'pointer', marginTop: 12,
 });
 const ghost: React.CSSProperties = { width: '100%', padding: '14px 16px', borderRadius: 999, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 12 };
+// Wallet creation, import and the phrase backup live in onboarding/* and wallet/features/onboarding.tsx. This file only unlocks:
+// the password field is uncontrolled (popup/secureField.tsx) and its value is read once, sent to the worker and cleared.
 const input: React.CSSProperties = { width: '100%', padding: '14px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.surface, color: T.text, boxSizing: 'border-box', marginTop: 10, fontSize: 15 };
 
 const Logo = ({ size = 28 }: { size?: number }) => <div style={{fontSize:size}}><Brand/></div>;
@@ -51,9 +53,7 @@ export function App() {
 
 function WalletApp() {
   const [screen, setScreen] = useState<Screen>('loading');
-  const [terms, setTerms] = useState(false);
-  const [mnemonic, setMnemonic] = useState('');
-  const [pw, setPw] = useState(''); const [pw2, setPw2] = useState('');
+  const pw = useSecretField(); const [pwFilled, setPwFilled] = useState(false);
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const [addrs, setAddrs] = useState<Record<string, string>>({});
   const [balances, setBalances] = useState<Record<string, any>>({});
@@ -76,13 +76,13 @@ function WalletApp() {
 
   useEffect(() => { bg({ type: 'status' }).then((s) => {
     if (!s.hasVault) window.location.hash = '/onboarding';
-    setScreen(s.hasVault ? (s.unlocked ? 'home' : 'unlock') : 'welcome');
-  }).catch(() => setScreen('welcome')); }, []);
+    setScreen(s.hasVault ? (s.unlocked ? 'home' : 'unlock') : 'onboarding');
+  }).catch(() => { window.location.hash = '/onboarding'; setScreen('onboarding'); }); }, []);
 
   // Auto-lock fires from a background alarm; notice it while the popup is open and drop to the unlock screen.
   useEffect(() => {
     if (screen !== 'home') return;
-    const t = setInterval(() => { bg({ type: 'status' }).then((s) => { if (s && s.hasVault && !s.unlocked) { setPw(''); setScreen('unlock'); } }).catch(() => {}); }, 5000);
+    const t = setInterval(() => { bg({ type: 'status' }).then((s) => { if (s && s.hasVault && !s.unlocked) setScreen('unlock'); }).catch(() => {}); }, 5000);
     return () => clearInterval(t);
   }, [screen]);
 
@@ -115,63 +115,24 @@ function WalletApp() {
   useEffect(() => {
     if (screen === 'unlock' && passkey.enabled && params.get('biometrics') && !popup && !autoBio.current) { autoBio.current = true; void doBiometric(); }
   });  
-  if (window.location.hash.startsWith('#/onboarding')) return <Onboarding/>;
+  if (screen === 'onboarding' || window.location.hash.startsWith('#/onboarding')) return <Onboarding/>;
 
-  const startCreate = async () => { setBusy(true); try { const { mnemonic } = await bg({ type: 'generateMnemonic' }); setMnemonic(mnemonic); setScreen('password'); } finally { setBusy(false); } };
-  const submitPassword = async () => {
-    setErr(''); if (pw.length < 8) return setErr('Min 8 characters'); if (pw !== pw2) return setErr('Passwords do not match');
-    setBusy(true);
-    try { const res = await bg({ type: 'createWallet', password: pw, mnemonic }); if (res.ok) { setAddrs(res.addresses); setScreen('backup'); } else setErr(res.error || 'Failed'); }
-    finally { setBusy(false); }
+  const doUnlock = async () => {
+    if (busy || !pwFilled) return; setErr(''); setBusy(true);
+    const password = pw.take(); setPwFilled(false);
+    try { const res = await bg({ type: 'unlock', password }); if (res.ok) setScreen('home'); else setErr(res.error || 'Incorrect password'); } finally { setBusy(false); }
   };
-  const doUnlock = async () => { setErr(''); setBusy(true); try { const res = await bg({ type: 'unlock', password: pw }); if (res.ok) setScreen('home'); else setErr(res.error || 'Incorrect password'); } finally { setBusy(false); } };
 
   if (screen === 'loading') return <Shell k={screen} header={false}><div style={{ color: T.sub, textAlign: 'center', marginTop: 80 }}>Loading…</div></Shell>;
-
-  if (screen === 'welcome') return <Shell k={screen} header={false}>
-    <div style={{ textAlign: 'center', paddingTop: 48 }}>
-      <Logo size={72} />
-      <h1 style={{ fontSize: 26, margin: '28px 0 8px' }}>Welcome to Harbour</h1>
-      <p style={{ color: T.sub, margin: 0, lineHeight: 1.5 }}>The simple, self-custody wallet.<br />Your keys, your crypto.</p>
-    </div>
-    <div style={{ marginTop: 40 }}>
-      <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', color: T.sub, fontSize: 13, margin: '0 0 8px', lineHeight: 1.4 }}>
-        <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} style={{ marginTop: 2 }} />
-        <span>I have read and agree to the <a style={{ color: T.accent, textDecoration: 'none' }}>Terms of Use</a> and <a style={{ color: T.accent, textDecoration: 'none' }}>Privacy Policy</a></span>
-      </label>
-      <button style={primary(!terms || busy)} disabled={!terms || busy} onClick={startCreate}>Create a new wallet</button>
-      <button style={{ ...ghost, opacity: terms ? 1 : 0.5, pointerEvents: terms ? 'auto' : 'none' }} onClick={() => setScreen('password')}>I already have a wallet</button>
-    </div>
-  </Shell>;
-
-  if (screen === 'password') return <Shell k={screen}>
-    <h2 style={{ fontSize: 22, marginTop: 8 }}>Create password</h2>
-    <p style={{ color: T.sub, fontSize: 14, marginTop: 4 }}>This encrypts your wallet on this device.</p>
-    <input style={input} type="password" placeholder="New password (min 8 characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
-    <input style={input} type="password" placeholder="Confirm password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-    {err && <div style={{ color: T.error, fontSize: 13, marginTop: 10 }}>{err}</div>}
-    <button style={primary(!pw || !pw2 || busy)} disabled={!pw || !pw2 || busy} onClick={submitPassword}>{busy ? 'Creating…' : 'Continue'}</button>
-  </Shell>;
-
-  if (screen === 'backup') return <Shell k={screen}>
-    <h2 style={{ fontSize: 22, marginTop: 8 }}>Your secret phrase</h2>
-    <p style={{ color: T.sub, fontSize: 14, marginTop: 4 }}>Write these 12 words down in order and keep them safe. Anyone with them controls your wallet.</p>
-    <div style={{ marginTop: 12 }}><SeedCanvas words={mnemonic.split(' ').filter(Boolean)} revealed /></div>
-    <div style={{ marginTop: 16, background: T.accentSoft, borderRadius: 12, padding: 12 }}>
-      <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Accounts created</div>
-      {Object.entries(addrs).slice(0, 4).map(([k, v]) => <div key={k} style={{ fontSize: 12, fontFamily: 'monospace', marginTop: 2 }}>{k}: {v.slice(0, 8)}…{v.slice(-6)}</div>)}
-    </div>
-    <button style={primary()} onClick={() => setScreen('home')}>I've saved my phrase</button>
-  </Shell>;
 
   if (screen === 'unlock') {
     const bioPrimary = passkey.enabled && !usePassword;
     return <Shell k={screen} header={false}>
       <div style={{ textAlign: 'center', paddingTop: 64 }}><Logo size={56} /><h2 style={{ fontSize: 22, margin: '20px 0 0' }}>Welcome back</h2></div>
       <div style={{ marginTop: 28 }}>
-        {!bioPrimary && <input style={input} type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doUnlock()} autoFocus />}
+        {!bioPrimary && <input style={input} type="password" placeholder="Password" ref={pw.ref} onInput={(e) => setPwFilled(!!e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && doUnlock()} autoFocus spellCheck={false} autoComplete="current-password" />}
         {err && <div key={err} className="hb-shake" role="alert" style={{ color: T.error, fontSize: 13, marginTop: 10 }}>{err}</div>}
-        {!bioPrimary && <button style={primary(!pw || busy)} disabled={!pw || busy} onClick={doUnlock}>Unlock</button>}
+        {!bioPrimary && <button style={primary(!pwFilled || busy)} disabled={!pwFilled || busy} onClick={doUnlock}>Unlock</button>}
         {passkey.enabled && <>
           {bioPrimary
             ? <button data-testid="unlock-biometrics" style={primary(bioBusy)} disabled={bioBusy} onClick={doBiometric}>{bioBusy ? 'Waiting for ' + bio.name + '…' : 'Unlock with ' + bio.name}</button>
@@ -198,7 +159,6 @@ function WalletApp() {
     hiddenAssets={hiddenAssets} networkFilter={networkFilter}
     backupRequired={backupRequired}
     onRefresh={() => setRefreshTick((n) => n + 1)}
-    onBackup={() => setScreen('backup')}
-    onLock={() => bg({ type: 'lock' }).then(() => { setScreen('unlock'); setPw(''); })}
+    onLock={() => bg({ type: 'lock' }).then(() => setScreen('unlock'))}
   />;
 }

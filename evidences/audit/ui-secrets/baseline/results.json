@@ -1,0 +1,609 @@
+{
+  "label": "baseline",
+  "startedAt": "2026-10-27T07:55:02.170Z",
+  "fingerprints": {
+    "mnemonic": "9e012c69bde7",
+    "mnemonicFirst3Words": "799c329d7681",
+    "password": "d98f81d4e367",
+    "privateKey": "aff0b70faa33"
+  },
+  "steps": [
+    {
+      "name": "onboarding: open",
+      "ok": true,
+      "ms": 1018
+    },
+    {
+      "name": "onboarding: import path + password",
+      "ok": true,
+      "ms": 2874
+    },
+    {
+      "name": "onboarding: type secret phrase",
+      "ok": true,
+      "ms": 238
+    },
+    {
+      "name": "onboarding: submit phrase",
+      "ok": true,
+      "ms": 2863
+    },
+    {
+      "name": "backup: re-auth and reveal",
+      "ok": true,
+      "ms": 3105
+    },
+    {
+      "name": "backup: verify step",
+      "ok": true,
+      "ms": 890
+    },
+    {
+      "name": "add wallet: private key typed",
+      "ok": true,
+      "ms": 3315
+    },
+    {
+      "name": "add wallet: submit key",
+      "ok": true,
+      "ms": 833
+    },
+    {
+      "name": "popup: reveal private key",
+      "ok": true,
+      "ms": 5194
+    },
+    {
+      "name": "popup: lock + unlock",
+      "ok": true,
+      "ms": 1880
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpoint": "import-phrase-typed",
+      "at": "2026-10-27T07:55:06.497Z",
+      "heap": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": true,
+        "privateKey": false,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [
+        {
+          "secret": "mnemonic",
+          "where": "form>label>textarea text"
+        },
+        {
+          "secret": "mnemonicFirst3Words",
+          "where": "form>label>textarea text"
+        },
+        {
+          "secret": "mnemonic",
+          "where": "textarea>#document-fragment>div text"
+        },
+        {
+          "secret": "mnemonicFirst3Words",
+          "where": "textarea>#document-fragment>div text"
+        }
+      ],
+      "ax": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "import-phrase-done",
+      "at": "2026-10-27T07:55:10.096Z",
+      "heap": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": false,
+        "privateKey": false,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "seed-revealed",
+      "at": "2026-10-27T07:55:13.923Z",
+      "heap": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": true,
+        "privateKey": false,
+        "mnemonicWordsAsStrings": 12,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "seed-verify-step",
+      "at": "2026-10-27T07:55:15.681Z",
+      "heap": {
+        "mnemonic": true,
+        "mnemonicFirst3Words": true,
+        "password": true,
+        "privateKey": false,
+        "mnemonicWordsAsStrings": 12,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "import-key-typed",
+      "at": "2026-10-27T07:55:19.930Z",
+      "heap": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": true,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [
+        {
+          "secret": "privateKey",
+          "where": "form>label>textarea text"
+        },
+        {
+          "secret": "privateKey",
+          "where": "textarea>#document-fragment>div text"
+        }
+      ],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": true
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": true
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "import-key-done",
+      "at": "2026-10-27T07:55:21.615Z",
+      "heap": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": true,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "key-revealed",
+      "at": "2026-10-27T07:55:27.722Z",
+      "heap": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": true,
+        "privateKey": true,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [
+        {
+          "secret": "privateKey",
+          "where": "div>div>div text"
+        }
+      ],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": true
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    },
+    {
+      "checkpoint": "after-unlock",
+      "at": "2026-10-27T07:55:30.443Z",
+      "heap": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": true,
+        "privateKey": false,
+        "mnemonicWordsAsStrings": 3,
+        "controlWordsAsStrings": "7/24"
+      },
+      "dom": [],
+      "ax": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "field": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "url": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "web": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extLocal": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "extSession": {
+        "mnemonic": false,
+        "mnemonicFirst3Words": false,
+        "password": false,
+        "privateKey": false
+      },
+      "exposed": true
+    }
+  ],
+  "console": [],
+  "finishedAt": "2026-10-27T07:55:31.214Z",
+  "summary": [
+    {
+      "checkpoint": "import-phrase-typed",
+      "exposed": true,
+      "heap": [
+        "mnemonic",
+        "mnemonicFirst3Words",
+        "password"
+      ],
+      "dom": [
+        "mnemonic@form>label>textarea text",
+        "mnemonicFirst3Words@form>label>textarea text",
+        "mnemonic@textarea>#document-fragment>div text",
+        "mnemonicFirst3Words@textarea>#document-fragment>div text"
+      ],
+      "ax": [
+        "mnemonic",
+        "mnemonicFirst3Words"
+      ],
+      "field": [
+        "mnemonic",
+        "mnemonicFirst3Words"
+      ]
+    },
+    {
+      "checkpoint": "import-phrase-done",
+      "exposed": true,
+      "heap": [
+        "mnemonic",
+        "mnemonicFirst3Words"
+      ],
+      "dom": [],
+      "ax": [],
+      "field": []
+    },
+    {
+      "checkpoint": "seed-revealed",
+      "exposed": true,
+      "heap": [
+        "mnemonic",
+        "mnemonicFirst3Words",
+        "password"
+      ],
+      "dom": [],
+      "ax": [],
+      "field": []
+    },
+    {
+      "checkpoint": "seed-verify-step",
+      "exposed": true,
+      "heap": [
+        "mnemonic",
+        "mnemonicFirst3Words",
+        "password"
+      ],
+      "dom": [],
+      "ax": [],
+      "field": []
+    },
+    {
+      "checkpoint": "import-key-typed",
+      "exposed": true,
+      "heap": [
+        "privateKey"
+      ],
+      "dom": [
+        "privateKey@form>label>textarea text",
+        "privateKey@textarea>#document-fragment>div text"
+      ],
+      "ax": [
+        "privateKey"
+      ],
+      "field": [
+        "privateKey"
+      ]
+    },
+    {
+      "checkpoint": "import-key-done",
+      "exposed": true,
+      "heap": [
+        "privateKey"
+      ],
+      "dom": [],
+      "ax": [],
+      "field": []
+    },
+    {
+      "checkpoint": "key-revealed",
+      "exposed": true,
+      "heap": [
+        "password",
+        "privateKey"
+      ],
+      "dom": [
+        "privateKey@div>div>div text"
+      ],
+      "ax": [
+        "privateKey"
+      ],
+      "field": []
+    },
+    {
+      "checkpoint": "after-unlock",
+      "exposed": true,
+      "heap": [
+        "password"
+      ],
+      "dom": [],
+      "ax": [],
+      "field": []
+    }
+  ]
+}

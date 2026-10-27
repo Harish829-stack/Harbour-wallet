@@ -5,8 +5,6 @@ import { SWAP_SCREENS } from './swap/screens';
 import { FEATURE_SCREENS } from './features';
 import { SETTINGS_SCREENS } from './settingsScreens';
 import { NETWORK_SCREENS } from './networkScreens';
-import { RevealGate } from './revealGate';
-import { SeedCanvas } from './SeedCanvas';
 import { TOKEN_SCREENS, CustomTokenDetailScreen } from './tokenScreens';
 import { refreshTokens, useTokenItems } from './tokensStore';
 import { networkByChainId } from '../../core/customTokens';
@@ -290,9 +288,6 @@ const Radio: React.FC<{ on: boolean }> = ({ on }) => (
     {on && <span style={{ width: 10, height: 10, borderRadius: 999, background: T.accent }} />}
   </span>
 );
-const IconCircle: React.FC<{ icon: string }> = ({ icon }) => (
-  <div style={{ width: 40, height: 40, borderRadius: 12, background: T.bgAlt, color: T.sub, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic d={ICON[icon]} size={20} /></div>
-);
 
 // ---------- Wallet selector (TW parity: seed-phrase groups -> accounts, add account,
 // add new wallet, manage wallets) ----------
@@ -350,42 +345,7 @@ export const WalletSelectorScreen: React.FC<Ctx> = (c) => {
   );
 };
 
-// ---------- Add new wallet (create fresh seed, or import existing) ----------
-export const AddWalletScreen: React.FC<Ctx> = (c) => {
-  const [mode, setMode] = useState<'choose' | 'import'>('choose');
-  const [phrase, setPhrase] = useState(''); const [showPhrase, setShowPhrase] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
-  const createNew = async () => {
-    if (busy) return; setBusy(true); setErr('');
-    try {
-      const r = await c.bg({ type: 'addWallet' });
-      if (r?.ok) { c.refresh?.(); c.nav.pop(); if (r.mnemonic) c.nav.push('backup', { mnemonic: r.mnemonic, label: r.label }); }
-      else setErr(r?.error || 'Could not create wallet');
-    } finally { setBusy(false); }
-  };
-  const importExisting = async () => {
-    if (busy) return; setBusy(true); setErr('');
-    try { const r = await c.bg({ type: 'addWallet', mnemonic: phrase.trim() }); if (r?.ok) { c.refresh?.(); c.nav.pop(); } else setErr(r?.error || 'Could not import wallet'); }
-    finally { setBusy(false); }
-  };
-  if (mode === 'import') return (
-    <Screen title="Import wallet" onBack={() => setMode('choose')}>
-      <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 10px' }}>Enter your 12 or 24-word secret phrase, words separated by spaces.</div>
-      <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={4} placeholder="word1 word2 word3 …" spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" aria-label="Secret phrase" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 12, border: `1px solid ${T.border}`, padding: 12, fontSize: 14, resize: 'vertical', fontFamily: 'inherit', ...(showPhrase ? {} : { WebkitTextSecurity: 'disc' } as React.CSSProperties) }} />
-      <button type="button" onClick={() => setShowPhrase(!showPhrase)} aria-pressed={showPhrase} style={{ background: 'none', border: 0, color: T.sub, fontSize: 12, cursor: 'pointer', marginTop: 6, float: 'right' }}>{showPhrase ? 'Hide' : 'Show'}</button>
-      {err && <div style={{ color: T.error, fontSize: 13, marginTop: 8 }}>{err}</div>}
-      <Btn onClick={importExisting} disabled={busy || phrase.trim().split(/\s+/).filter(Boolean).length < 12} style={{ marginTop: 14 }}>{busy ? 'Importing…' : 'Import wallet'}</Btn>
-    </Screen>
-  );
-  return (
-    <Screen title="Add new wallet" onBack={c.nav.pop}>
-      <div style={{ marginTop: 6 }}>
-        <Row onClick={createNew} left={<IconCircle icon="plus" />} title={busy ? 'Creating…' : 'Create new wallet'} sub="Generate a brand-new secret phrase" right={<Ic d={ICON.chevron} size={18} />} />
-        <Row onClick={() => setMode('import')} left={<IconCircle icon="wallet" />} title="Add existing wallet" sub="Import with a secret phrase" right={<Ic d={ICON.chevron} size={18} />} />
-      </div>
-      {err && <div style={{ color: T.error, fontSize: 13, marginTop: 8 }}>{err}</div>}
-    </Screen>
-  );
-};
+// Add-wallet and back-up screens live in wallet/features/onboarding.tsx (the phrase is shown only as a worker-painted image).
 
 // ---------- Manage wallets (list seed phrases, each with a backup link) ----------
 export const ManageWalletsScreen: React.FC<Ctx> = (c) => {
@@ -407,50 +367,6 @@ export const ManageWalletsScreen: React.FC<Ctx> = (c) => {
         </div>
       ))}
       <Btn onClick={() => c.nav.push('addWallet')} style={{ marginTop: 6 }}>Add new wallet</Btn>
-    </Screen>
-  );
-};
-
-// ---------- Back up / reveal a wallet's secret phrase ----------
-export const BackupScreen: React.FC<Ctx> = (c) => {
-  const presetM: string | undefined = c.params?.mnemonic;
-  const [m, setM] = useState<string>(presetM ?? '');
-  const [granted, setGranted] = useState(!!presetM || c.params?.granted === true);
-  const [err, setErr] = useState(''); const [loading, setLoading] = useState(!presetM);
-  const [shown, setShown] = useState(false); const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (presetM || !granted) return;
-    setLoading(true);
-    c.bg({ type: 'revealMnemonic', walletId: c.params?.walletId })
-      .then((r) => { if (r?.ok) setM(r.mnemonic); else setErr(r?.error === 'AUTH_REQUIRED' ? 'Verification expired. Go back and try again.' : r?.error || 'Could not reveal phrase'); })
-      .finally(() => setLoading(false));
-  }, [granted]); // eslint-disable-line react-hooks/exhaustive-deps
-  const words = m.split(' ').filter(Boolean);
-  const proceed = async () => {
-    if (busy) return; setBusy(true);
-    try { await c.bg({ type: 'markBackedUp', walletId: c.params?.walletId }); c.refresh?.(); c.nav.pop(); }
-    finally { setBusy(false); }
-  };
-  return (
-    <Screen title="Back Up Your Secret Phrase" onBack={c.nav.pop}>
-      {!granted ? <RevealGate bg={c.bg} walletId={c.params?.walletId} autoBiometric={c.params?.autoBiometric} onGranted={() => setGranted(true)} onCancel={c.nav.pop} /> : <>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: T.accentSoft, borderRadius: 14, padding: 14, margin: '6px 0 14px' }}>
-        <span style={{ fontSize: 22 }}>🔑</span>
-        <div style={{ fontSize: 13, color: T.text }}>Back up safely these {words.length || 12} words in a piece of paper and never share it with anyone.</div>
-      </div>
-      {loading ? <div style={{ color: T.sub, textAlign: 'center', marginTop: 30 }}>Revealing…</div> :
-        err ? <div style={{ color: T.error, marginTop: 16 }}>{err}</div> : <>
-          <div style={{ position: 'relative' }}>
-            <SeedCanvas words={words} revealed={shown} />
-            {!shown && (
-              <div onClick={() => setShown(true)} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--hb-scrim)', color: 'var(--hb-on-brand)', borderRadius: 999, padding: '8px 16px', fontWeight: 700, fontSize: 13 }}><Ic d={ICON.eye} size={16} /> Tap to reveal</span>
-              </div>
-            )}
-          </div>
-          <Btn onClick={() => (shown ? proceed() : setShown(true))} disabled={busy} style={{ marginTop: 18 }}>{shown ? (busy ? 'Saving…' : 'Proceed') : 'Show'}</Btn>
-        </>}
-      </>}
     </Screen>
   );
 };
@@ -577,7 +493,7 @@ export const AccountDetailScreen: React.FC<Ctx> = (c) => {
 export const SCREENS: Record<string, React.FC<Ctx>> = {
   send: SendScreen, receive: ReceiveScreen, tokenDetail: TokenDetailScreen, activity: ActivityScreen,
   search: SearchScreen, networkSelector: NetworkSelectorScreen,
-  walletSelector: WalletSelectorScreen, addWallet: AddWalletScreen, manageWallets: ManageWalletsScreen, backup: BackupScreen,
+  walletSelector: WalletSelectorScreen, manageWallets: ManageWalletsScreen,
   editWallet: EditWalletScreen, accountDetail: AccountDetailScreen,
   ...SETTINGS_SCREENS,
   ...TOKEN_SCREENS,
