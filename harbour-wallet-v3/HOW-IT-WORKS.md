@@ -398,6 +398,33 @@ sequenceDiagram
 
 Balances follow the same road: the indexer's `balance.changed` goes through `realtime-bridge` to `balances:<chain>.<address>`, and incoming transfers (`activity.new`) become a push from `notifier`.
 
+## 10d. The extension and the backend (harbour-wallet-v3)
+
+The v3 extension (copied from v2, which stays untouched) offers only **Sepolia and Base Sepolia**, and gets everything for them from the Harbour API. The backend serves the same two (`ENABLED_CHAINS=sepolia,base-sepolia` in `backend/.env`).
+
+| In the extension | Comes from |
+| --- | --- |
+| Home balances and tokens | `GET /v1/me/portfolio` (tokens the indexer found appear automatically; spam is hidden) |
+| Activity | `GET /v1/me/history`, merged with your own just-sent transactions |
+| NFTs | `GET /v1/me/nfts`, images through Harbour's media proxy |
+| Any RPC call (gas, nonce, dApp reads) | `POST /v1/rpc/<chain>` (allow-listed, signed) |
+| Sending | signed in the extension, then `POST /v1/tx/<chain>/broadcast` |
+| Live updates while the popup is open | Centrifugo websocket, tokens from `POST /v1/realtime/token` |
+| Notifications when it's closed | Web Push (`PUT /v1/me/push`) from the notifier |
+
+On first start the service worker creates a device key (non-extractable WebCrypto Ed25519, kept in IndexedDB), solves the proof-of-work and registers. Every wallet address is tracked automatically after you create, import or unlock a wallet. Seeds and private keys never leave the extension.
+
+```mermaid
+flowchart LR
+    ui["Popup (dumb UI)"] -- "messages" --> sw["Service worker"]
+    sw -- "signed HTTPS" --> api["Harbour API :8080"]
+    sw -- "websocket" --> cent["Centrifugo :8000"]
+    push["Browser push service"] -- "Web Push" --> sw
+    sw -. "keys stay here" .- vault[("Encrypted vault")]
+```
+
+Run it: start the backend (`cd backend && ./run.sh`), then in `harbour-wallet-v3` run `npm install && npm run build` and load `dist/` in `chrome://extensions` (Developer mode → Load unpacked). Point a non-local build at another API with `VITE_HB_API_URL` in `.env.production`.
+
 ## 11. Development vs production
 
 ```mermaid

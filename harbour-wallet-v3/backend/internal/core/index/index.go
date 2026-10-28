@@ -5,6 +5,7 @@ package index
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -157,4 +158,14 @@ type Webhooks interface {
 	MaxAddressesPerWebhook() int
 	// WebhooksEnabled reports whether management credentials are configured.
 	WebhooksEnabled() bool
+}
+
+// NativeTransferLogAddress is the system address EIP-7708 chains use to emit an ERC-20-style Transfer log for every native
+// ETH transfer. Indexers that report logs as token transfers would show each ETH transfer twice (native + this "token"),
+// so sources drop these events: the native leg is already recorded, and balances are read from chain.
+const NativeTransferLogAddress = "0xfffffffffffffffffffffffffffffffffffffffe"
+
+// IsNativeTransferLog reports whether an EVM token event is really the EIP-7708 log of a native transfer.
+func IsNativeTransferLog(contract string) bool {
+	return strings.EqualFold(contract, NativeTransferLogAddress)
 }

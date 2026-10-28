@@ -176,8 +176,36 @@ func Load(dir string) (*Config, error) {
 			return nil, fmt.Errorf("config %s: %w", f, err)
 		}
 	}
+	if err := c.restrictChains(os.Getenv("ENABLED_CHAINS")); err != nil {
+		return nil, err
+	}
 	c.defaults()
 	return c, c.validate()
+}
+
+// restrictChains keeps only the listed chains (comma-separated chains.yaml names). Empty keeps all. Every service
+// (gateway pools, indexer, API) then behaves as if the others weren't configured.
+func (c *Config) restrictChains(list string) error {
+	if strings.TrimSpace(list) == "" {
+		return nil
+	}
+	keep := map[string]bool{}
+	for _, n := range strings.Split(list, ",") {
+		n = strings.TrimSpace(n)
+		if n == "" {
+			continue
+		}
+		if _, ok := c.Chains[n]; !ok {
+			return fmt.Errorf("config: ENABLED_CHAINS names unknown chain %q", n)
+		}
+		keep[n] = true
+	}
+	for n := range c.Chains {
+		if !keep[n] {
+			delete(c.Chains, n)
+		}
+	}
+	return nil
 }
 
 // ApplyDefaults fills unset values (Load calls it; tests building a Config by hand do too).

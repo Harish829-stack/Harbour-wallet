@@ -108,12 +108,12 @@ smoke() {
   fi
   say "Signed call: GET /v1/me"
   go run ./cmd/hbdevice me
-  say "Base: eth_blockNumber through the gateway"
-  go run ./cmd/hbdevice rpc base '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
+  say "Base Sepolia: eth_blockNumber through the gateway"
+  go run ./cmd/hbdevice rpc base-sepolia '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
   say "Portfolio from Postgres + Redis (no RPC)"
   go run ./cmd/hbdevice get /v1/me/portfolio
-  say "Ethereum: eth_getBalance through the gateway"
-  go run ./cmd/hbdevice rpc ethereum '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","latest"]}'
+  say "Sepolia: eth_getBalance through the gateway"
+  go run ./cmd/hbdevice rpc sepolia '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","latest"]}'
   ok "smoke test passed"
 }
 
@@ -135,10 +135,7 @@ verify() {
   if [ $# -ge 2 ]; then
     verify_one "$1" "$2"
   else
-    # Native balance after gas, plus many tokens:
-    verify_one ethereum 0xd8da6bf26964af9d7eed9e03e53415d37aa96045
-    # Rebasing token: the wstETH contract holds stETH, whose balance changes daily.
-    verify_one ethereum 0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0
+    die "usage: ./run.sh verify CHAIN ADDRESS   (e.g. ./run.sh verify base-sepolia 0x...)"
   fi
   ok "phase 3 verification passed"
 }

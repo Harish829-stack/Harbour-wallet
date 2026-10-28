@@ -43,3 +43,18 @@ func TestDotEnvInlineComments(t *testing.T) {
 		t.Error("commented line loaded")
 	}
 }
+
+func TestEnabledChains(t *testing.T) {
+	t.Setenv("ENABLED_CHAINS", "sepolia, base-sepolia")
+	c, err := Load("../../config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Chains) != 2 || c.Chains["sepolia"].EVMChainID != 11155111 || c.Chains["base-sepolia"].EVMChainID != 84532 {
+		t.Fatalf("chains %v", c.ChainNames())
+	}
+	t.Setenv("ENABLED_CHAINS", "sepolia,nope")
+	if _, err := Load("../../config"); err == nil {
+		t.Fatal("unknown chain accepted")
+	}
+}

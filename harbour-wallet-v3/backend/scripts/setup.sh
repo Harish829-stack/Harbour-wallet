@@ -36,6 +36,9 @@ if grep -qE '^VAPID_PRIVATE_KEY=[[:space:]]*(#.*)?$' .env; then
   fi
 fi
 
+# Networks served: testnets only for now (older .env files predate this setting).
+grep -q '^ENABLED_CHAINS=' .env || { printf '\n# Networks served (chains.yaml names). Empty = all.\nENABLED_CHAINS=sepolia,base-sepolia\n' >> .env; echo "added ENABLED_CHAINS=sepolia,base-sepolia"; }
+
 # Put the Postgres password into POSTGRES_URL for host-side tools.
 pw=$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2 | awk '{print $1}')
 PW="$pw" perl -pi -e 's|^POSTGRES_URL=postgres://harbour:\@|POSTGRES_URL=postgres://harbour:$ENV{PW}\@|' .env

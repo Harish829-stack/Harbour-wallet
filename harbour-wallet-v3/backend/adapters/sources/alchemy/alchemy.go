@@ -380,6 +380,9 @@ func (s *Source) convert(chain string, t transfer) ([]index.ActivityEvent, error
 			base.EventRef = internalRef(base.From, base.To, v) // same ref as webhooks derive
 		}
 	case "erc20":
+		if index.IsNativeTransferLog(contract) {
+			return nil, nil // EIP-7708 log of a native transfer: the "external" leg already covers it
+		}
 		base.Asset = contract
 		base.Kind = index.KindToken
 		v, ok := hexToDec(t.RawContract.Value)

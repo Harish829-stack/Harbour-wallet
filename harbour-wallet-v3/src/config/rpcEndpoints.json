@@ -1,0 +1,23 @@
+{
+  "_note": "Public RPC fallbacks, tried in order after the user override, VITE_RPC_<chainId> and the keyed gateway. Each chain lists at least three independent providers. Run `node scripts/check-rpc.mjs` to verify chain ids and liveness, and prune dead entries.",
+  "evm": {
+    "1": ["https://ethereum-rpc.publicnode.com", "https://rpc.ankr.com/eth", "https://eth.llamarpc.com", "https://eth.drpc.org", "https://1rpc.io/eth"],
+    "56": ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com", "https://rpc.ankr.com/bsc", "https://bsc.drpc.org", "https://1rpc.io/bnb"],
+    "137": ["https://polygon-rpc.com", "https://polygon-bor-rpc.publicnode.com", "https://rpc.ankr.com/polygon", "https://polygon.drpc.org", "https://1rpc.io/matic"],
+    "42161": ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com", "https://rpc.ankr.com/arbitrum", "https://arbitrum.drpc.org", "https://1rpc.io/arb"],
+    "8453": ["https://mainnet.base.org", "https://base-rpc.publicnode.com", "https://rpc.ankr.com/base", "https://base.drpc.org", "https://1rpc.io/base"],
+    "10": ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com", "https://rpc.ankr.com/optimism", "https://optimism.drpc.org", "https://1rpc.io/op"],
+    "43114": ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com", "https://rpc.ankr.com/avalanche", "https://avalanche.drpc.org", "https://1rpc.io/avax/c"],
+    "100": ["https://rpc.gnosischain.com", "https://gnosis-rpc.publicnode.com", "https://rpc.ankr.com/gnosis", "https://gnosis.drpc.org", "https://1rpc.io/gnosis"],
+    "250": ["https://fantom-rpc.publicnode.com", "https://rpc.ankr.com/fantom", "https://fantom.drpc.org", "https://1rpc.io/ftm"],
+    "59144": ["https://rpc.linea.build", "https://linea-rpc.publicnode.com", "https://rpc.ankr.com/linea", "https://linea.drpc.org", "https://1rpc.io/linea"],
+    "534352": ["https://rpc.scroll.io", "https://scroll-rpc.publicnode.com", "https://rpc.ankr.com/scroll", "https://scroll.drpc.org", "https://1rpc.io/scroll"],
+    "324": ["https://mainnet.era.zksync.io", "https://rpc.ankr.com/zksync_era", "https://zksync.drpc.org", "https://1rpc.io/zksync2-era"],
+    "42220": ["https://forno.celo.org", "https://rpc.ankr.com/celo", "https://celo.drpc.org", "https://1rpc.io/celo"],
+    "5000": ["https://rpc.mantle.xyz", "https://mantle-rpc.publicnode.com", "https://rpc.ankr.com/mantle", "https://mantle.drpc.org", "https://1rpc.io/mantle"],
+    "81457": ["https://rpc.blast.io", "https://blast-rpc.publicnode.com", "https://rpc.ankr.com/blast", "https://blast.drpc.org"],
+    "11155111": ["https://ethereum-sepolia-rpc.publicnode.com", "https://rpc.ankr.com/eth_sepolia", "https://sepolia.drpc.org", "https://1rpc.io/sepolia", "https://rpc.sepolia.org"]
+  },
+  "solana": ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com", "https://rpc.ankr.com/solana", "https://solana.drpc.org"],
+  "protected": { "1": "https://rpc.flashbots.net/fast", "56": "https://rpc-bsc.48.club" }
+}

@@ -35,6 +35,9 @@ const delivery = `{
                "blockHash": "0xA99EC54413BD3DB3F9BDB0C1AD3AB1400EE0ECEFB47803E17F9D33BC4D0A1E91", "logIndex": "0x6e", "removed": false}},
       {"blockNum": "0xdf34a3", "hash": "0xaaa", "fromAddress": "0x1111111111111111111111111111111111111111", "toAddress": "0x2222222222222222222222222222222222222222",
        "value": 0.5, "asset": "ETH", "category": "external", "rawContract": {"rawValue": "0x6f05b59d3b20000", "address": null, "decimals": 18}},
+      {"blockNum": "0xdf34a3", "hash": "0xaaa", "fromAddress": "0x1111111111111111111111111111111111111111", "toAddress": "0x2222222222222222222222222222222222222222",
+       "value": 0.5, "asset": null, "category": "token", "rawContract": {"rawValue": "0x6f05b59d3b20000", "address": "0xfffffffffffffffffffffffffffffffffffffffe"},
+       "log": {"address": "0xfffffffffffffffffffffffffffffffffffffffe", "blockNumber": "0xdf34a3", "blockHash": "0xb1", "logIndex": "0x14", "removed": false}},
       {"blockNum": "0xdf34a4", "hash": "0xbbb", "fromAddress": "0x2222222222222222222222222222222222222222", "toAddress": "0x1111111111111111111111111111111111111111",
        "value": 1, "asset": "ETH", "category": "internal", "typeTraceAddress": "CALL_0_1", "rawContract": {"rawValue": "0xde0b6b3a7640000", "address": null, "decimals": 18}},
       {"blockNum": "0xdf34a4", "hash": "0xccc", "fromAddress": "0x2222222222222222222222222222222222222222", "toAddress": "0x1111111111111111111111111111111111111111",
@@ -103,6 +106,7 @@ func TestParseWebhook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 6 events: the EIP-7708 log (0xff..fe) of the 0.5 ETH transfer is dropped, the native leg stays.
 	if d.Chain != "base" || d.ID != "whevt_ogrc5v64myey69ux" || len(d.Events) != 6 {
 		t.Fatalf("delivery %+v", d)
 	}

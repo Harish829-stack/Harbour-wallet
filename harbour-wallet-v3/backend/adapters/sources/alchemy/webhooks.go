@@ -210,6 +210,8 @@ func (s *Source) ParseWebhook(body []byte) (index.Delivery, error) {
 			if tid, ok := hexToDec(a.ERC721TokenID); ok {
 				details[index.DetailTokenID] = tid
 			}
+		case (a.Category == "token" || a.Category == "erc20") && index.IsNativeTransferLog(contract):
+			continue // EIP-7708 log of a native transfer: the "external" leg already covers it
 		case a.Category == "token" || a.Category == "erc20":
 			ev.Asset, ev.Kind, ev.AmountRaw = contract, index.KindToken, amount
 			if a.Asset != "" {
