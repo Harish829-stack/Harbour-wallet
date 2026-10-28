@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -544,22 +546,35 @@ func (s *Store) TrackedID(ctx context.Context, chain, address string) (int64, er
 
 // NFTRow is one holding to store.
 type NFTRow struct {
-	AssetID int64
-	TokenID string
-	Amount  string
+	AssetID  int64
+	TokenID  string
+	Amount   string
+	Name     string
+	ImageSrc string // source URL; the media proxy is the only thing that fetches it
+}
+
+// MediaKey is the stable, unguessable key the media proxy serves an image under.
+func MediaKey(src string) string {
+	if src == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(src))
+	return hex.EncodeToString(h[:16])
 }
 
 // ReplaceNFTs sets a tracked address's NFT holdings to exactly rows.
 func (s *Store) ReplaceNFTs(ctx context.Context, trackedID int64, asOfBlock uint64, rows []NFTRow) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE nft_new (asset_id BIGINT, token_id NUMERIC(78,0), amount NUMERIC(78,0)) ON COMMIT DROP`); err != nil {
+		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE nft_new (asset_id BIGINT, token_id NUMERIC(78,0), amount NUMERIC(78,0),
+			name TEXT, image_src TEXT, media_key TEXT) ON COMMIT DROP`); err != nil {
 			return err
 		}
 		for _, r := range rows {
 			if !validAmount(r.TokenID) || !validAmount(r.Amount) {
 				continue
 			}
-			if _, err := tx.Exec(ctx, `INSERT INTO nft_new VALUES ($1, $2::numeric, $3::numeric)`, r.AssetID, r.TokenID, r.Amount); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO nft_new VALUES ($1, $2::numeric, $3::numeric, $4, $5, $6)`,
+				r.AssetID, r.TokenID, r.Amount, nullStr(r.Name), nullStr(r.ImageSrc), nullStr(MediaKey(r.ImageSrc))); err != nil {
 				return err
 			}
 		}
@@ -567,9 +582,11 @@ func (s *Store) ReplaceNFTs(ctx context.Context, trackedID int64, asOfBlock uint
 			AND NOT EXISTS (SELECT 1 FROM nft_new n WHERE n.asset_id = h.asset_id AND n.token_id = h.token_id)`, trackedID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO nft_holdings (tracked_address_id, asset_id, token_id, amount, as_of_block)
-			SELECT $1, asset_id, token_id, max(amount), $2 FROM nft_new GROUP BY asset_id, token_id
-			ON CONFLICT (tracked_address_id, asset_id, token_id) DO UPDATE SET amount = EXCLUDED.amount, as_of_block = EXCLUDED.as_of_block`,
+		_, err := tx.Exec(ctx, `INSERT INTO nft_holdings (tracked_address_id, asset_id, token_id, amount, as_of_block, name, image_src, media_key)
+			SELECT $1, asset_id, token_id, max(amount), $2, max(name), max(image_src), max(media_key) FROM nft_new GROUP BY asset_id, token_id
+			ON CONFLICT (tracked_address_id, asset_id, token_id) DO UPDATE SET amount = EXCLUDED.amount, as_of_block = EXCLUDED.as_of_block,
+				name = COALESCE(EXCLUDED.name, nft_holdings.name), image_src = COALESCE(EXCLUDED.image_src, nft_holdings.image_src),
+				media_key = COALESCE(EXCLUDED.media_key, nft_holdings.media_key)`,
 			trackedID, int64(asOfBlock))
 		return err
 	})

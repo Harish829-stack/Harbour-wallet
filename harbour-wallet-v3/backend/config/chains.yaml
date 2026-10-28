@@ -1,6 +1,7 @@
 # Chains Harbour serves. Adding an EVM chain is one entry here; a new family
 # also needs adapters under adapters/chains/<family> and adapters/sources/<name>.
 # Upstreams are in priority order; weight defaults to priority if omitted.
+# Testnets have no "prices:" block: their tokens show "no price".
 chains:
   ethereum:
     family: evm
@@ -9,7 +10,7 @@ chains:
     logs_max_range: 2000
     finality:
       policy: finalized-tag
-    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum}}
+    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
     upstreams:
       - {provider: alchemy,    key: alchemy-a,  network: eth-mainnet, weight: 4}
       - {provider: infura,     key: infura-a,   network: mainnet,     weight: 3}
@@ -19,6 +20,9 @@ chains:
       - {provider: chainstack, key: chainstack,                       weight: 1}
     sources:
       alchemy: {network: eth-mainnet, webhook_network: ETH_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: ethereum, onchain_network: eth}
+      alchemy: {network: eth-mainnet}
   base:
     family: evm
     evm_chain_id: 8453
@@ -26,7 +30,7 @@ chains:
     logs_max_range: 2000
     finality:
       policy: finalized-tag   # L1 batch finality; can take 10+ minutes
-    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum}}
+    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
     upstreams:
       - {provider: alchemy,    key: alchemy-a,  network: base-mainnet, weight: 4}
       - {provider: infura,     key: infura-a,   network: base-mainnet, weight: 3}
@@ -36,6 +40,9 @@ chains:
       - {provider: chainstack, key: chainstack,                        weight: 1}
     sources:
       alchemy: {network: base-mainnet, webhook_network: BASE_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: base, onchain_network: base}
+      alchemy: {network: base-mainnet}
   sepolia:
     family: evm
     evm_chain_id: 11155111

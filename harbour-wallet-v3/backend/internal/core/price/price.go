@@ -10,7 +10,7 @@ import (
 type AssetKey struct {
 	Chain    string
 	AssetRef string
-	// ExternalID is the source's own id when known (e.g. a coin id).
+	// ExternalID is the source's own id for native coins (chains.yaml native.price_ids).
 	ExternalID string
 }
 
@@ -18,7 +18,7 @@ type AssetKey struct {
 type Quote struct {
 	Asset        AssetKey
 	PriceUSD     float64
-	LiquidityUSD float64 // 0 if unknown
+	LiquidityUSD float64 // 0 if unknown; 24h volume or pool reserves, per source
 	At           time.Time
 }
 
@@ -28,5 +28,14 @@ type Source interface {
 	Quotes(ctx context.Context, assets []AssetKey) ([]Quote, error)
 }
 
+// SourceConfig is passed to a SourceFactory.
+type SourceConfig struct {
+	Name    string
+	Options map[string]string
+	// Chains holds per-chain options from chains.yaml "prices:" (platform ids ...).
+	Chains map[string]map[string]string
+	Getenv func(string) string
+}
+
 // SourceFactory constructs a Source.
-type SourceFactory func(options map[string]string) (Source, error)
+type SourceFactory func(cfg SourceConfig) (Source, error)

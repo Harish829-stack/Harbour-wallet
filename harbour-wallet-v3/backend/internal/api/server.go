@@ -40,17 +40,19 @@ func (p LogPublisher) Publish(_ context.Context, subject string, data []byte) er
 
 // Options configure a Server.
 type Options struct {
-	Config        *config.Config
-	Store         *store.Store
-	Redis         *redis.Client
-	LinkCrypto    *store.LinkCrypto
-	Log           *slog.Logger
-	Events        Publisher
-	GatewayURL    string // e.g. http://rpc-gateway:8081
-	GatewayToken  string
-	TrustProxy    bool // honour X-Forwarded-For (only behind your own load balancer)
-	PowDifficulty int  // overrides config when > 0
-	Now           func() time.Time
+	Config       *config.Config
+	Store        *store.Store
+	Redis        *redis.Client
+	LinkCrypto   *store.LinkCrypto
+	Log          *slog.Logger
+	Events       Publisher
+	GatewayURL   string // e.g. http://rpc-gateway:8081
+	GatewayToken string
+	TrustProxy   bool // honour X-Forwarded-For (only behind your own load balancer)
+	// AllowPrivateMedia lets the media proxy fetch from private addresses (tests only).
+	AllowPrivateMedia bool
+	PowDifficulty     int // overrides config when > 0
+	Now               func() time.Time
 }
 
 // Server holds dependencies.
@@ -61,6 +63,7 @@ type Server struct {
 	deny     map[string]bool
 	devCache sync.Map // device id -> cachedDevice
 	http     *http.Client
+	media    *http.Client
 }
 
 type cachedDevice struct {
@@ -79,7 +82,7 @@ func New(opt Options) *Server {
 		opt.Events = LogPublisher{Log: opt.Log}
 	}
 	s := &Server{opt: opt, cfg: opt.Config, rpcAllow: map[string]bool{}, deny: map[string]bool{},
-		http: &http.Client{Timeout: 30 * time.Second}}
+		http: &http.Client{Timeout: 30 * time.Second}, media: newMediaClient(opt.AllowPrivateMedia)}
 	for _, m := range opt.Config.API.RPCAllowedMethods {
 		s.rpcAllow[m] = true
 	}
@@ -119,12 +122,20 @@ func (s *Server) Handler() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/devices/challenge", s.handleChallenge)
 		r.Post("/devices", s.handleRegister)
+		r.Get("/media/{key}", s.handleMedia) // loaded by <img>: unsigned, keys are unguessable
 		r.Group(func(r chi.Router) {
 			r.Use(s.deviceAuth, s.rateLimit)
 			r.Get("/me", s.handleMe)
 			r.Get("/me/addresses", s.handleListAddresses)
 			r.With(s.idempotency).Put("/me/addresses", s.handlePutAddresses)
 			r.Post("/rpc/{chain}", s.handleRPC)
+			r.Get("/me/portfolio", s.handlePortfolio)
+			r.Get("/me/portfolio/chart", s.handleChart)
+			r.Get("/me/history", s.handleHistory)
+			r.Get("/me/nfts", s.handleNFTs)
+			r.Get("/assets/{chain}/{asset}", s.handleAsset)
+			r.Get("/assets/{chain}/{asset}/prices", s.handleAssetPrices)
+			r.Get("/tx/{chain}/{hash}", s.handleTx)
 		})
 	})
 	return r

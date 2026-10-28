@@ -77,6 +77,7 @@ Two directions of traffic matter:
 | **api** | The only service the extension talks to. | Registers devices, checks every request's Ed25519 signature, enforces quotas, records which addresses a device tracks, proxies a few safe RPC reads. |
 | **rpc-gateway** | The only thing that talks JSON-RPC to Alchemy/Infura. | Spreads load over several keys, fails over when one provider is down, caches finalized results, never lets a provider return 429. |
 | **indexer** | The worker. | Backfills history when an address is added, reads balances from chain, syncs NFTs, manages Alchemy webhooks, processes deliveries, gap-fills, repairs reorgs. |
+| **price-poller** | A scheduled worker. | Fetches USD prices for tokens someone holds (CoinGecko, then Alchemy), every minute for popular tokens; caches them in Redis; records price history and daily balance snapshots for the chart. The extension never triggers a price call. |
 | **webhook-ingest** | A tiny receiver on port 8082. | Accepts Alchemy's webhook POSTs, verifies the signature, saves the raw body, puts it on NATS, answers 200 immediately. |
 | **Centrifugo** | Websocket server. | Started now, used in phase 6 to push live balance updates to the popup. |
 | **cloudflared** | Runs on your Mac, outside Docker. | Gives port 8082 a public HTTPS address so Alchemy can reach webhook-ingest. Development only. |
@@ -314,6 +315,33 @@ stateDiagram-v2
 The repair job is cheap: it compares one block hash per distinct recent block and only fetches a transaction receipt when something doesn't match (or when a backfilled row has no hash yet).
 
 ---
+
+## 10b. Flow: the extension opens the home screen (phase 5)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant E as Extension
+    participant API as api
+    participant R as Redis
+    participant PG as Postgres
+    participant PP as price-poller
+    participant CG as CoinGecko / Alchemy
+
+    loop every 60 s (popular) / 5 min (rest)
+        PP->>PG: which tokens does anyone hold?
+        PP->>CG: prices for those only
+        PP->>R: hb:price:<asset> {usd, liquidity, flag}
+        PP->>PG: price_ticks (5-min history)
+    end
+    E->>API: GET /v1/me/portfolio (signed)
+    API->>R: cached response? (10 s)
+    API->>PG: balances + assets (one query)
+    API->>R: prices for those assets (one MGET)
+    API-->>E: amounts, prices, USD values, as_of_block, synced
+    E->>API: GET /v1/me/nfts, then each image via /v1/media/<key>
+    Note over E,API: No call reaches a blockchain node or a price provider.
+```
 
 ## 11. Development vs production
 

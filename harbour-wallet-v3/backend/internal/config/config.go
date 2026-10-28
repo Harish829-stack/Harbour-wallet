@@ -27,6 +27,7 @@ type Chain struct {
 	Native       Native                       `yaml:"native"`
 	Upstreams    []UpstreamRef                `yaml:"upstreams"`
 	Sources      map[string]map[string]string `yaml:"sources"` // source name -> per-chain options
+	Prices       map[string]map[string]string `yaml:"prices"`  // price source name -> per-chain options
 	Extra        map[string]any               `yaml:"extra"`
 }
 
@@ -72,6 +73,22 @@ type Key struct {
 type SourceDef struct {
 	Adapter string            `yaml:"adapter"`
 	Options map[string]string `yaml:"options"`
+}
+
+// PriceSourceDef is one price source in providers.yaml "price_sources:" (priority order).
+type PriceSourceDef struct {
+	Name    string            `yaml:"name"`
+	Adapter string            `yaml:"adapter"`
+	Options map[string]string `yaml:"options"`
+}
+
+// Prices tuning (providers.yaml "prices:").
+type Prices struct {
+	TopEvery        time.Duration `yaml:"top_every"`
+	TopN            int           `yaml:"top_n"`
+	TailEvery       time.Duration `yaml:"tail_every"`
+	MinLiquidityUSD float64       `yaml:"min_liquidity_usd"`
+	CacheTTL        time.Duration `yaml:"cache_ttl"`
 }
 
 // Indexer tuning (providers.yaml "indexer:").
@@ -127,12 +144,14 @@ type API struct {
 
 // Config is all static configuration.
 type Config struct {
-	Chains    map[string]Chain     `yaml:"chains"`
-	Providers map[string]Provider  `yaml:"providers"`
-	Gateway   Gateway              `yaml:"gateway"`
-	Sources   map[string]SourceDef `yaml:"sources"`
-	Indexer   Indexer              `yaml:"indexer"`
-	API       API                  `yaml:"api"`
+	Chains       map[string]Chain     `yaml:"chains"`
+	Providers    map[string]Provider  `yaml:"providers"`
+	Gateway      Gateway              `yaml:"gateway"`
+	Sources      map[string]SourceDef `yaml:"sources"`
+	Indexer      Indexer              `yaml:"indexer"`
+	PriceSources []PriceSourceDef     `yaml:"price_sources"`
+	Prices       Prices               `yaml:"prices"`
+	API          API                  `yaml:"api"`
 }
 
 // Load reads chains.yaml, providers.yaml and api.yaml from dir.
@@ -183,6 +202,14 @@ func (c *Config) defaults() {
 	def(&g.MaxBatch, 100)
 	def(&g.BroadcastFanout, 2)
 	defD(&g.HeadPollMin, 4*time.Second)
+	pr := &c.Prices
+	defD(&pr.TopEvery, time.Minute)
+	def(&pr.TopN, 2000)
+	defD(&pr.TailEvery, 5*time.Minute)
+	if pr.MinLiquidityUSD == 0 {
+		pr.MinLiquidityUSD = 10_000
+	}
+	defD(&pr.CacheTTL, 15*time.Minute)
 	ix := &c.Indexer
 	defD(&ix.BackfillMaxAge, 90*24*time.Hour)
 	def(&ix.BackfillMaxTransfers, 5000)
@@ -227,6 +254,15 @@ func (c *Config) validate() error {
 	for name, ch := range c.Chains {
 		if ch.Family == "" {
 			return fmt.Errorf("config: chain %s has no family", name)
+		}
+		for src := range ch.Prices {
+			found := false
+			for _, ps := range c.PriceSources {
+				found = found || ps.Name == src
+			}
+			if !found {
+				return fmt.Errorf("config: chain %s uses unknown price source %q", name, src)
+			}
 		}
 		for src := range ch.Sources {
 			if _, ok := c.Sources[src]; !ok {

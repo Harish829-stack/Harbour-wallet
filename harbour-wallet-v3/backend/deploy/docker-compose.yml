@@ -109,6 +109,19 @@ services:
       migrate: {condition: service_completed_successfully}
       nats: {condition: service_started}
 
+  price-poller:
+    build: {context: .., dockerfile: Dockerfile}
+    command: ["/app/bin/price-poller", "-config", "/app/config"]
+    env_file: [../.env]
+    environment:
+      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      NATS_URL: nats://nats:4222
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      nats: {condition: service_started}
+
 volumes:
   pgdata: {}
   redisdata: {}

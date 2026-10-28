@@ -5,6 +5,7 @@
 //	hbdevice me
 //	hbdevice addresses '{"add":[{"chain":"base","address":"0x..."}]}'
 //	hbdevice rpc base '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
+//	hbdevice get /v1/me/portfolio'
 package main
 
 import (
@@ -32,7 +33,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: hbdevice [-api URL] register | me | addresses JSON | list | rpc CHAIN JSON")
+		fmt.Fprintln(os.Stderr, "usage: hbdevice [-api URL] register | me | addresses JSON | list | get PATH | rpc CHAIN JSON")
 		os.Exit(2)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -66,6 +67,9 @@ func main() {
 	case "addresses":
 		need(args, 2)
 		_, err = c.Do(ctx, "PUT", "/v1/me/addresses", []byte(args[1]), &out, nil)
+	case "get":
+		need(args, 2)
+		_, err = c.Do(ctx, "GET", args[1], nil, &out, nil)
 	case "rpc":
 		need(args, 3)
 		_, err = c.Do(ctx, "POST", "/v1/rpc/"+args[1], []byte(args[2]), &out, nil)

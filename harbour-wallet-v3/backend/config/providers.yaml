@@ -39,6 +39,28 @@ sources:
       signing_keys_env: ALCHEMY_WEBHOOK_SIGNING_KEYS   # only for webhooks made by hand: "id:key,id:key"
       rps: "10"                    # this source's own budget, separate from the gateway's
 
+# Price sources in priority order: a token missing from the first is asked
+# of the next. Prices are polled for held tokens only, never per request.
+price_sources:
+  - name: coingecko
+    adapter: coingecko
+    options:
+      key_env: COINGECKO_API_KEY
+      plan_env: COINGECKO_PLAN      # demo | pro (pro uses the paid host)
+      rps: "0.4"                    # demo allows 30 calls/min
+  - name: alchemy
+    adapter: alchemy-prices
+    options:
+      key_env: ALCHEMY_API_KEY
+      rps: "5"
+
+prices:
+  top_every: 60s            # tokens held by the most addresses
+  top_n: 2000
+  tail_every: 5m            # everything else held
+  min_liquidity_usd: 10000  # below this (24h volume or pool reserves) the UI shows "no price"
+  cache_ttl: 15m            # Redis entry lifetime; stale prices disappear rather than linger
+
 # Indexer limits (phase 3).
 indexer:
   backfill_max_age: 2160h          # 90 days

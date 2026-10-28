@@ -7,7 +7,7 @@
 #                       compare every stored balance with the chain at the same block
 #   ./run.sh inspect CHAIN ADDRESS   tracking state, webhook, latest transfers and balances
 #   ./run.sh status     container state, health and per-upstream gateway status
-#   ./run.sh logs       follow api, rpc-gateway, indexer and webhook-ingest logs
+#   ./run.sh logs       follow api, rpc-gateway, indexer, webhook-ingest and price-poller logs
 #   ./run.sh test       unit tests, then the integration tests against the running stack
 #   ./run.sh restart    rebuild, migrate and restart the Go services (after code or config changes)
 #   ./run.sh down       stop everything (data kept)
@@ -95,13 +95,21 @@ smoke() {
   need_go smoke
   ensure_deps
   curl -fs -o /dev/null "$API/healthz" || die "API is not running. Start it with ./run.sh"
-  say "Registering a test device (proof-of-work + Ed25519 key)"
-  go run ./cmd/hbdevice -api "$API" register >/dev/null
-  ok "device registered (key in .hbdevice.json)"
+  # Reuse the saved test device so addresses it tracks stay visible;
+  # register a new one only if there is none or the server no longer knows it.
+  if [ -f .hbdevice.json ] && go run ./cmd/hbdevice me >/dev/null 2>&1; then
+    ok "using the saved test device (.hbdevice.json)"
+  else
+    say "Registering a test device (proof-of-work + Ed25519 key)"
+    go run ./cmd/hbdevice -api "$API" register >/dev/null
+    ok "device registered (key in .hbdevice.json)"
+  fi
   say "Signed call: GET /v1/me"
   go run ./cmd/hbdevice me
   say "Base: eth_blockNumber through the gateway"
   go run ./cmd/hbdevice rpc base '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
+  say "Portfolio from Postgres + Redis (no RPC)"
+  go run ./cmd/hbdevice get /v1/me/portfolio
   say "Ethereum: eth_getBalance through the gateway"
   go run ./cmd/hbdevice rpc ethereum '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","latest"]}'
   ok "smoke test passed"
@@ -200,9 +208,9 @@ case "${1:-up}" in
   status)    status ;;
   verify)    shift; verify "$@" ;;
   inspect)   shift; inspect "$@" ;;
-  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer webhook-ingest ;;
+  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer webhook-ingest price-poller ;;
   test)      run_tests ;;
-  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer webhook-ingest
+  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer webhook-ingest price-poller
              wait_for "rpc-gateway" "$GW/healthz" 90; wait_for "api" "$API/healthz" 90; wait_for "indexer" "$IX/healthz" 90
              wait_for "webhook-ingest" "$WH/healthz" 90 ;;
   down|stop) check_tools; "${COMPOSE[@]}" down; ok "stopped (data kept)" ;;

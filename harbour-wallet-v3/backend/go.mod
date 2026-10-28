@@ -2,7 +2,6 @@ module harbour/backend
 
 go 1.23.0
 
-
 require (
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/goccy/go-yaml v1.19.2
@@ -11,6 +10,7 @@ require (
 	github.com/nats-io/nats.go v1.37.0
 	github.com/redis/go-redis/v9 v9.7.0
 	golang.org/x/crypto v0.36.0
+	golang.org/x/image v0.21.0
 )
 
 require (

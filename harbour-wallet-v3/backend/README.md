@@ -1,7 +1,7 @@
 # Harbour backend
 
 Go services for Harbour Wallet, built to `../Harbour Backend Go Services, Indexer and RPC Plan.md`.
-This tree holds **phases 1–4**: foundations, `rpc-gateway`, the indexer (backfill, balances from chain, NFTs) and the live path (webhooks, gap-fill, reorg repair). The read API, prices and realtime (phases 5–6) plug into the interfaces that already exist here.
+This tree holds **phases 1–5**: foundations, `rpc-gateway`, the indexer (backfill, balances from chain, NFTs), the live path (webhooks, gap-fill, reorg repair) and the read API with prices. Sends and realtime (phase 6) plug into the interfaces that already exist here.
 
 ## Quick start
 
@@ -27,6 +27,7 @@ make lint      # golangci-lint v2 with depguard, plus the provider-name check
 | `rpc-gateway` | 8081 (private) | The only process that talks to providers. Pools, scoring, failover, budgets, cache, hedging, metrics |
 | `indexer` | 8083 (health) | Backfills tracked addresses, reads balances from chain via Multicall3, syncs NFTs, publishes `balance.changed.<chain>` |
 | `webhook-ingest` | 8082 | Verifies provider webhooks (HMAC), stores the raw payload 7 days, publishes `chain.<chain>.activity.raw`, returns 200 |
+| `price-poller` | – | Prices held tokens every 60 s (top 2,000) / 5 min (tail), caches them in Redis, writes `price_ticks`, takes hourly balance snapshots |
 | `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions (run daily) |
 | `hbdevice` | – | Acts like the extension from a terminal (dev only) |
 | `hbverify` | – | Phase 3 exit check: stored balances vs an independent chain read at the same block |
@@ -83,6 +84,20 @@ The plan suggests eRPC; its module graph can't be vendored here, so the gateway 
 
 Keep `cloudflared tunnel --url http://localhost:8082` running in development; `./run.sh status` shows whether the public URL reaches webhook-ingest.
 
+## Read API and prices (phase 5)
+
+| Endpoint (device-signed) | Served from |
+| --- | --- |
+| `GET /v1/me/portfolio?addresses=chain:0x..` | `balances` + prices in Redis; cached 10 s. Per asset: exact `amount`, `price {usd, flag}`, `value_usd`; spam sorted last and never valued |
+| `GET /v1/me/history?addresses=&cursor=&limit=` | `address_activity`, keyset-paginated; past a capped backfill it returns `loading_older: true` and asks the indexer for older pages |
+| `GET /v1/me/nfts` | `nft_holdings`; `image_url` is always Harbour's `/v1/media/{key}` |
+| `GET /v1/me/portfolio/chart?range=7d\|30d\|90d\|1y` | `balance_snapshots` x last price of each day (starts the day tracking started) |
+| `GET /v1/assets/{chain}/{asset}` and `/prices?range=` | `assets`, Redis, `price_ticks` |
+| `GET /v1/tx/{chain}/{hash}` | `transactions` → `pending_transactions` → the chain (only for hashes Harbour never saw) |
+| `GET /v1/media/{key}` (unsigned, for `<img>`) | Fetches the stored NFT image server-side, refuses private addresses, decodes PNG/JPEG/GIF/WebP only (no SVG), downsizes to 512 px, re-encodes PNG, caches 24 h |
+
+**Prices:** `price_sources` in `providers.yaml` are tried in order (CoinGecko, then Alchemy). Native coins use `native.price_ids`; tokens use the chain's `prices:` options. Liquidity comes from 24 h volume or DEX pool reserves; below `min_liquidity_usd` the price is flagged `thin` and the UI shows "no price". Spam-scored tokens are never priced. Testnets have no prices.
+
 ## Adding things
 
 | To add | Do |
@@ -100,4 +115,4 @@ Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK
 
 ## Not in this phase
 
-The read API and history endpoint (phase 5), Centrifugo tokens and push (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).
+Send path, Centrifugo tokens and push (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).

@@ -517,7 +517,7 @@ func (ix *Indexer) SyncNFTs(ctx context.Context, c *Chain, trackedID int64, addr
 			if _, ok := new(big.Int).SetString(n.TokenID, 10); !ok {
 				continue
 			}
-			rows = append(rows, store.NFTRow{AssetID: id, TokenID: n.TokenID, Amount: n.Amount})
+			rows = append(rows, store.NFTRow{AssetID: id, TokenID: n.TokenID, Amount: n.Amount, Name: n.Name, ImageSrc: n.ImageURL})
 		}
 		if p.Cursor == "" {
 			break
