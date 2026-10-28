@@ -35,12 +35,14 @@ const pageMax = 1000 // Transfers API maxCount ceiling
 
 // Source implements index.Source and index.Holdings.
 type Source struct {
-	key     string
-	baseURL string // template with {network}; default https://{network}.g.alchemy.com
-	chains  map[string]chainOpts
-	lim     *ratelimit.Limiter
-	http    *http.Client
-	now     func() time.Time
+	key         string
+	notifyToken string
+	notifyBase  string
+	baseURL     string // template with {network}; default https://{network}.g.alchemy.com
+	chains      map[string]chainOpts
+	lim         *ratelimit.Limiter
+	http        *http.Client
+	now         func() time.Time
 
 	mu         sync.Mutex
 	noInternal map[string]bool   // chains where the API rejected "internal"
@@ -48,8 +50,9 @@ type Source struct {
 }
 
 type chainOpts struct {
-	network    string
-	categories []string
+	network        string
+	categories     []string
+	webhookNetwork string // Notify network enum, e.g. ETH_MAINNET
 }
 
 // New builds the source from providers.yaml options and chains.yaml per-chain options.
@@ -73,6 +76,15 @@ func New(cfg index.SourceConfig) (index.Source, error) {
 	}
 	s := &Source{key: key, baseURL: base, chains: map[string]chainOpts{}, lim: ratelimit.New(rps),
 		http: &http.Client{Timeout: 30 * time.Second}, now: time.Now, noInternal: map[string]bool{}, blockTimes: map[string]string{}}
+	notifyEnv := cfg.Options["notify_token_env"]
+	if notifyEnv == "" {
+		notifyEnv = "ALCHEMY_NOTIFY_TOKEN"
+	}
+	s.notifyToken = strings.TrimSpace(getenv(notifyEnv))
+	s.notifyBase = cfg.Options["notify_base_url"]
+	if s.notifyBase == "" {
+		s.notifyBase = "https://dashboard.alchemy.com/api"
+	}
 	for chain, o := range cfg.Chains {
 		if o["network"] == "" {
 			return nil, fmt.Errorf("alchemy: chain %s has no network option", chain)
@@ -84,7 +96,7 @@ func New(cfg index.SourceConfig) (index.Source, error) {
 		for i := range cats {
 			cats[i] = strings.TrimSpace(cats[i])
 		}
-		s.chains[chain] = chainOpts{network: o["network"], categories: cats}
+		s.chains[chain] = chainOpts{network: o["network"], categories: cats, webhookNetwork: o["webhook_network"]}
 	}
 	return s, nil
 }
@@ -364,6 +376,9 @@ func (s *Source) convert(chain string, t transfer) ([]index.ActivityEvent, error
 			return nil, fmt.Errorf("alchemy: bad value %q", t.RawContract.Value)
 		}
 		base.AmountRaw = v
+		if t.Category == "internal" {
+			base.EventRef = internalRef(base.From, base.To, v) // same ref as webhooks derive
+		}
 	case "erc20":
 		base.Asset = contract
 		base.Kind = index.KindToken

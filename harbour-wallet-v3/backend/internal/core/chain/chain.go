@@ -73,6 +73,19 @@ type Client interface {
 	TokenInfo(ctx context.Context, assetRefs []string) ([]TokenInfo, error)
 	// LatestBlock returns the current head.
 	LatestBlock(ctx context.Context) (uint64, error)
+	// Inclusion reports where a transaction is mined now (found=false when
+	// the chain has no receipt: dropped, reorged out or not yet mined).
+	Inclusion(ctx context.Context, txHash string) (Inclusion, error)
+	// BlockHash returns the canonical hash at a height ("" if unknown).
+	BlockHash(ctx context.Context, number uint64) (string, error)
+}
+
+// Inclusion is a transaction's current position.
+type Inclusion struct {
+	Found       bool
+	BlockNumber uint64
+	BlockHash   string
+	Success     bool
 }
 
 // FinalityPolicy maps a block to a finality state for one chain.

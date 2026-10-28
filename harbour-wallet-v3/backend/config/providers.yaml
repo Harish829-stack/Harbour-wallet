@@ -35,6 +35,8 @@ sources:
     adapter: alchemy
     options:
       key_env: ALCHEMY_API_KEY     # Transfers, token-balance discovery and NFT APIs
+      notify_token_env: ALCHEMY_NOTIFY_TOKEN           # webhooks API (create, add/remove addresses)
+      signing_keys_env: ALCHEMY_WEBHOOK_SIGNING_KEYS   # only for webhooks made by hand: "id:key,id:key"
       rps: "10"                    # this source's own budget, separate from the gateway's
 
 # Indexer limits (phase 3).

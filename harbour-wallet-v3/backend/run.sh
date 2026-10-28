@@ -5,8 +5,9 @@
 #   ./run.sh smoke      register a test device and read Base + Ethereum through the gateway
 #   ./run.sh verify [chain address]  phase 3 check: track an address, wait for its backfill,
 #                       compare every stored balance with the chain at the same block
+#   ./run.sh inspect CHAIN ADDRESS   tracking state, webhook, latest transfers and balances
 #   ./run.sh status     container state, health and per-upstream gateway status
-#   ./run.sh logs       follow api, rpc-gateway and indexer logs
+#   ./run.sh logs       follow api, rpc-gateway, indexer and webhook-ingest logs
 #   ./run.sh test       unit tests, then the integration tests against the running stack
 #   ./run.sh restart    rebuild, migrate and restart the Go services (after code or config changes)
 #   ./run.sh down       stop everything (data kept)
@@ -17,6 +18,7 @@ cd "$(dirname "$0")"
 API=http://localhost:8080
 GW=http://localhost:8081
 IX=http://localhost:8083
+WH=http://localhost:8082
 COMPOSE=(docker compose --env-file .env -f deploy/docker-compose.yml)
 
 say()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
@@ -76,11 +78,13 @@ up() {
   wait_for "rpc-gateway" "$GW/healthz" 90
   wait_for "api" "$API/healthz" 90
   wait_for "indexer" "$IX/healthz" 90
+  wait_for "webhook-ingest" "$WH/healthz" 90
   printf '\n'
   ok "Harbour backend is running"
   echo "    API          $API        (extension-facing)"
   echo "    rpc-gateway  $GW        (private; /status and /metrics need the GATEWAY_INTERNAL_TOKEN from .env)"
   echo "    indexer      $IX/healthz"
+  echo "    webhooks     $WH/webhooks/alchemy  (public: $(envval WEBHOOK_PUBLIC_URL)/webhooks/alchemy)"
   echo "    Centrifugo   http://localhost:8000"
   echo "    Postgres     localhost:5432   Redis localhost:6379   NATS localhost:4222"
   echo
@@ -129,6 +133,27 @@ verify() {
   ok "phase 3 verification passed"
 }
 
+inspect() {
+  check_tools
+  [ $# -ge 2 ] || die "usage: ./run.sh inspect CHAIN ADDRESS"
+  local chain=$1 addr
+  addr=$(printf '%s' "$2" | tr 'A-F' 'a-f')
+  local q="\\pset footer off
+SELECT id, backfill_state, device_count, webhook_id, synced_to_block, last_seen_block, last_activity_at
+  FROM tracked_addresses WHERE chain_id='$chain' AND address='$addr';
+SELECT t.block_number, left(t.tx_hash, 14) AS tx, t.event_ref, t.kind, COALESCE(a.symbol, a.asset_ref) AS asset,
+       t.amount_raw, t.finality, CASE WHEN t.block_hash = '' THEN '-' ELSE left(t.block_hash, 10) END AS block_hash
+  FROM transfers t JOIN assets a ON a.id = t.asset_id
+ WHERE t.chain_id='$chain' AND ('$addr' IN (t.\"from\", t.\"to\")) ORDER BY t.block_number DESC LIMIT 10;
+SELECT COALESCE(a.symbol, a.asset_ref) AS asset, b.amount_raw, a.decimals, b.as_of_block, b.updated_at
+  FROM balances b JOIN assets a ON a.id = b.asset_id JOIN tracked_addresses ta ON ta.id = b.tracked_address_id
+ WHERE ta.chain_id='$chain' AND ta.address='$addr' AND (b.amount_raw > 0 OR a.kind = 'native');
+SELECT id AS webhook, chain_id, address_count, url FROM webhooks WHERE chain_id='$chain';
+SELECT count(*) AS deliveries_last_hour, max(received_at) AS last_delivery
+  FROM webhook_deliveries WHERE chain_id='$chain' AND received_at > now() - interval '1 hour';"
+  printf '%s\n' "$q" | "${COMPOSE[@]}" exec -T postgres psql -q -U harbour -d harbour
+}
+
 status() {
   check_tools
   "${COMPOSE[@]}" ps
@@ -136,6 +161,12 @@ status() {
   printf 'api          '; curl -fs "$API/healthz" || echo "down"; echo
   printf 'rpc-gateway  '; curl -s "$GW/healthz" || echo "down"; echo
   printf 'indexer      '; curl -fs "$IX/healthz" || echo "down"; echo
+  printf 'webhooks     '; curl -fs "$WH/healthz" || echo "down"; echo
+  local pub; pub=$(envval WEBHOOK_PUBLIC_URL)
+  if [ -n "$pub" ]; then
+    printf 'public URL   %s -> ' "$pub"
+    if curl -fs -o /dev/null -m 5 "$pub/healthz"; then echo "reachable"; else echo "NOT reachable (is cloudflared running? URL changed?)"; fi
+  fi
   local tok; tok=$(envval GATEWAY_INTERNAL_TOKEN)
   if curl -fs -o /dev/null "$GW/healthz"; then
     echo
@@ -168,16 +199,18 @@ case "${1:-up}" in
   smoke)     smoke ;;
   status)    status ;;
   verify)    shift; verify "$@" ;;
-  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer ;;
+  inspect)   shift; inspect "$@" ;;
+  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer webhook-ingest ;;
   test)      run_tests ;;
-  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer
-             wait_for "rpc-gateway" "$GW/healthz" 90; wait_for "api" "$API/healthz" 90; wait_for "indexer" "$IX/healthz" 90 ;;
+  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer webhook-ingest
+             wait_for "rpc-gateway" "$GW/healthz" 90; wait_for "api" "$API/healthz" 90; wait_for "indexer" "$IX/healthz" 90
+             wait_for "webhook-ingest" "$WH/healthz" 90 ;;
   down|stop) check_tools; "${COMPOSE[@]}" down; ok "stopped (data kept)" ;;
   reset)     check_tools
              printf 'This deletes the local database, Redis and NATS data. Type "reset" to continue: '
              read -r answer
              [ "$answer" = "reset" ] || die "cancelled"
              "${COMPOSE[@]}" down -v; ok "stopped and local data deleted" ;;
-  -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+  -h|--help|help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) die "unknown command '$1' (try ./run.sh help)" ;;
 esac

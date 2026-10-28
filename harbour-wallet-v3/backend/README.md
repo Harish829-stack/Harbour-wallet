@@ -1,7 +1,7 @@
 # Harbour backend
 
 Go services for Harbour Wallet, built to `../Harbour Backend Go Services, Indexer and RPC Plan.md`.
-This tree holds **phases 1–3**: foundations, `rpc-gateway`, and the indexer (backfill, balances from chain, NFTs). Live webhooks, the read API, prices and realtime (phases 4–6) plug into the interfaces that already exist here.
+This tree holds **phases 1–4**: foundations, `rpc-gateway`, the indexer (backfill, balances from chain, NFTs) and the live path (webhooks, gap-fill, reorg repair). The read API, prices and realtime (phases 5–6) plug into the interfaces that already exist here.
 
 ## Quick start
 
@@ -26,6 +26,7 @@ make lint      # golangci-lint v2 with depguard, plus the provider-name check
 | `api` | 8080 | Extension-facing API. Device registration (Ed25519 + proof-of-work), signed requests, quotas, address tracking, `/v1/rpc/{chain}` allow-listed reads |
 | `rpc-gateway` | 8081 (private) | The only process that talks to providers. Pools, scoring, failover, budgets, cache, hedging, metrics |
 | `indexer` | 8083 (health) | Backfills tracked addresses, reads balances from chain via Multicall3, syncs NFTs, publishes `balance.changed.<chain>` |
+| `webhook-ingest` | 8082 | Verifies provider webhooks (HMAC), stores the raw payload 7 days, publishes `chain.<chain>.activity.raw`, returns 200 |
 | `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions (run daily) |
 | `hbdevice` | – | Acts like the extension from a terminal (dev only) |
 | `hbverify` | – | Phase 3 exit check: stored balances vs an independent chain read at the same block |
@@ -72,6 +73,16 @@ The plan suggests eRPC; its module graph can't be vendored here, so the gateway 
 
 `./run.sh verify` tracks vitalik.eth (native after gas, many tokens) and the wstETH contract (holds rebasing stETH), waits for both backfills, then checks every stored balance against a single `eth_getBalance` / `balanceOf` at the same block. `./run.sh verify base 0x…` checks any address.
 
+## Live path (phase 4)
+
+- **Webhooks:** the indexer creates one Address Activity webhook per chain pointing at `WEBHOOK_PUBLIC_URL/webhooks/alchemy`, adds every device-tracked address in batches of 500, removes addresses no device tracks, and opens another webhook past 100,000 addresses. Signing keys are stored encrypted. If `WEBHOOK_PUBLIC_URL` changes (a new dev tunnel), the old webhook is deleted and addresses move to a new one. Needs `ALCHEMY_NOTIFY_TOKEN`; a Postgres advisory lock keeps it to one replica at a time.
+- **Deliveries:** `webhook-ingest` checks `X-Alchemy-Signature`, stores the body, publishes it and answers 200. The indexer turns it into `ActivityEvent`s, writes them through `event_keys` (so replays and retries change nothing), refreshes balances 2 s after the last event for an address, and resyncs NFTs when one moved. `removed: true` deletes the event and refreshes.
+- **Gap-fill:** every 3 minutes, addresses active in the last 7 days (or not on a webhook yet) are re-read from `last_seen_block` with the Transfers API; `last_seen_block` then moves to the head minus about 2 minutes, the window the source may not have indexed. With no `WEBHOOK_PUBLIC_URL`, gap-fill covers every address and is the live path.
+- **After downtime:** `webhook-ingest` beats every 15 s; on start, a gap of more than a minute publishes `chain.gapfill` and the indexer gap-fills every tracked address.
+- **Reorgs and finality:** every minute, rows at or below the chain's `finalized` block become `finalized`. For newer rows, the canonical hash of each block is compared with the stored one; on a mismatch (or a backfilled row with no hash yet) the receipt decides: still mined somewhere → position updated; gone for 3 blocks (12 without a stored hash) → events removed and balances refreshed.
+
+Keep `cloudflared tunnel --url http://localhost:8082` running in development; `./run.sh status` shows whether the public URL reaches webhook-ingest.
+
 ## Adding things
 
 | To add | Do |
@@ -89,4 +100,4 @@ Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK
 
 ## Not in this phase
 
-Webhooks, gap-fill and reorg repair (phase 4; backfilled rows newer than the finalized block are stored with an empty `block_hash` until then), Centrifugo tokens (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).
+The read API and history endpoint (phase 5), Centrifugo tokens and push (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).

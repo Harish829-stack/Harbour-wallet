@@ -124,3 +124,37 @@ const (
 
 // SourceFactory constructs a Source.
 type SourceFactory func(cfg SourceConfig) (Source, error)
+
+// WebhookInfo describes one provider webhook.
+type WebhookInfo struct {
+	ID         string
+	Chain      string
+	URL        string
+	SigningKey string
+}
+
+// Delivery is one parsed webhook delivery.
+type Delivery struct {
+	ID        string // provider delivery id, unique per delivery (retries reuse it)
+	WebhookID string
+	Chain     string
+	Events    []ActivityEvent // Removed=true for reorged-out events
+}
+
+// Webhooks is implemented by sources that push activity (live path). The
+// receiving service, the indexer and the store never see provider payloads.
+type Webhooks interface {
+	// WebhookID extracts the webhook id so the receiver can pick its key.
+	WebhookID(body []byte) (string, error)
+	// VerifyWebhook authenticates a raw delivery (header looks up a header).
+	VerifyWebhook(header func(string) string, body []byte, signingKey string) error
+	ParseWebhook(body []byte) (Delivery, error)
+
+	CreateWebhook(ctx context.Context, chain, url string, addresses []string) (WebhookInfo, error)
+	UpdateWebhookAddresses(ctx context.Context, webhookID string, add, remove []string) error
+	DeleteWebhook(ctx context.Context, webhookID string) error
+	// MaxAddressesPerWebhook is the provider's cap (shard beyond it).
+	MaxAddressesPerWebhook() int
+	// WebhooksEnabled reports whether management credentials are configured.
+	WebhooksEnabled() bool
+}

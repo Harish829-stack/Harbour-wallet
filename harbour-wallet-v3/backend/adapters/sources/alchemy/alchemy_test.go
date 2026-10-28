@@ -211,7 +211,7 @@ func TestBackfillShapes(t *testing.T) {
 	if e.Asset != "native" || e.AmountRaw != "1000000000000000000" || e.From != me {
 		t.Fatalf("external %+v", e)
 	}
-	if byRef[fmt.Sprintf("0x%064x", 8888)+"|trace:0"].Kind != index.KindInternal {
+	if byRef[fmt.Sprintf("0x%064x", 8888)+"|"+internalRef(other, me, "1000000000000000000")].Kind != index.KindInternal {
 		t.Fatal("internal transfer missing")
 	}
 	b1, b2 := byRef[fmt.Sprintf("0x%064x", 7777)+"|log:3.0"], byRef[fmt.Sprintf("0x%064x", 7777)+"|log:3.1"]

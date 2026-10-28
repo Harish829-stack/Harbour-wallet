@@ -25,7 +25,7 @@ func TestRepoConfigWiring(t *testing.T) {
 	}
 	for _, name := range []string{"ethereum", "base", "sepolia", "base-sepolia"} {
 		c := chains[name]
-		if c == nil || c.Client == nil || c.Finality == nil || c.Source == nil || c.Holdings == nil || c.Native.Decimals != 18 {
+		if c == nil || c.Client == nil || c.Finality == nil || c.Source == nil || c.Holdings == nil || c.Webhooks == nil || c.Native.Decimals != 18 {
 			t.Fatalf("%s wired wrong: %+v", name, c)
 		}
 	}

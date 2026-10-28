@@ -111,9 +111,22 @@ func (f *fakeSource) NFTs(context.Context, string, string, string) (index.NFTPag
 
 // fakeChain is "the chain": these are the true balances at block 100.
 type fakeChain struct {
-	mu    sync.Mutex
-	block uint64
-	bal   map[string]string
+	mu        sync.Mutex
+	block     uint64
+	bal       map[string]string
+	hashes    map[uint64]string          // canonical block hashes ("" = unknown)
+	inclusion map[string]chain.Inclusion // tx -> where it is now (missing = not found)
+}
+
+func (c *fakeChain) Inclusion(_ context.Context, tx string) (chain.Inclusion, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.inclusion[tx], nil
+}
+func (c *fakeChain) BlockHash(_ context.Context, n uint64) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.hashes[n], nil
 }
 
 func (c *fakeChain) Family() chain.Family { return chain.FamilyEVM }

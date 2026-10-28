@@ -24,13 +24,16 @@ import (
 
 // Chain is everything the indexer needs for one chain.
 type Chain struct {
-	Name     string
-	Family   string
-	Native   config.Native
-	Client   chain.Client
-	Finality chain.FinalityPolicy
-	Source   index.Source
-	Holdings index.Holdings // optional
+	Name       string
+	Family     string
+	Native     config.Native
+	Client     chain.Client
+	Finality   chain.FinalityPolicy
+	Source     index.Source
+	SourceName string
+	Holdings   index.Holdings // optional
+	Webhooks   index.Webhooks // optional: live path
+	BlockTime  time.Duration
 
 	mu      sync.Mutex
 	heads   [2]uint64 // latest, finalized
@@ -39,8 +42,17 @@ type Chain struct {
 
 // Heads returns latest and finalized, cached for a few seconds.
 func (c *Chain) Heads(ctx context.Context) (latest, finalized uint64, err error) {
+	return c.readHeads(ctx, 5*time.Second)
+}
+
+// FreshHeads reads the heads now (gap-fill and repair must not act on a stale head).
+func (c *Chain) FreshHeads(ctx context.Context) (latest, finalized uint64, err error) {
+	return c.readHeads(ctx, 0)
+}
+
+func (c *Chain) readHeads(ctx context.Context, maxAge time.Duration) (latest, finalized uint64, err error) {
 	c.mu.Lock()
-	if time.Since(c.headsAt) < 5*time.Second {
+	if maxAge > 0 && time.Since(c.headsAt) < maxAge {
 		l, f := c.heads[0], c.heads[1]
 		c.mu.Unlock()
 		return l, f, nil
@@ -68,12 +80,15 @@ type Indexer struct {
 	assets *store.AssetCache
 	wake   chan struct{}
 	deb    *debouncer
+
+	live       *LiveOptions
+	manageWake chan struct{}
 }
 
 // New builds an indexer over the given chains.
 func New(st *store.Store, cfg config.Indexer, bus events.Bus, chains map[string]*Chain, log *slog.Logger) *Indexer {
 	ix := &Indexer{st: st, cfg: cfg, bus: bus, log: log, chains: chains, assets: store.NewAssetCache(),
-		wake: make(chan struct{}, 1)}
+		wake: make(chan struct{}, 1), manageWake: make(chan struct{}, 1)}
 	ix.deb = newDebouncer(cfg.RefreshDebounce, func(ctx context.Context, id int64, refs []string) {
 		if err := ix.RefreshBalances(ctx, id, refs); err != nil {
 			ix.log.Warn("balance refresh failed", "tracked_address_id", id, "err", err)
@@ -91,10 +106,15 @@ func (ix *Indexer) chainNames() []string {
 	return out
 }
 
-// Wake asks a worker to look for pending backfills now.
+// Wake asks a worker to look for pending backfills (and webhook
+// subscriptions) now.
 func (ix *Indexer) Wake() {
 	select {
 	case ix.wake <- struct{}{}:
+	default:
+	}
+	select {
+	case ix.manageWake <- struct{}{}:
 	default:
 	}
 }
@@ -129,6 +149,7 @@ func (ix *Indexer) Run(ctx context.Context) {
 		}
 	}()
 	go func() { defer wg.Done(); ix.sweepLoop(ctx) }()
+	ix.runLive(ctx, &wg)
 	for i := 0; i < ix.cfg.Workers; i++ {
 		go func() { defer wg.Done(); ix.workerLoop(ctx) }()
 	}
@@ -221,7 +242,7 @@ func (ix *Indexer) RunOneBackfill(ctx context.Context) (bool, error) {
 		if len(msg) > 300 {
 			msg = msg[:300]
 		}
-		_ = ix.st.FinishBackfill(context.WithoutCancel(ctx), job.ID, "failed", 0, 0, false, msg)
+		_ = ix.st.FinishBackfill(context.WithoutCancel(ctx), job.ID, "failed", 0, 0, 0, false, msg)
 		log.Warn("backfill failed", "err", err)
 		return true, nil
 	}
@@ -312,7 +333,11 @@ func (ix *Indexer) backfill(ctx context.Context, job store.BackfillJob) (string,
 			ix.log.Warn("nft sync failed", "tracked_address_id", job.ID, "err", err)
 		}
 	}
-	return state, newEvents, ix.st.FinishBackfill(ctx, job.ID, state, latest, oldest, complete, "")
+	lastSeen := uint64(0)
+	if latest > safetyMargin(c) {
+		lastSeen = latest - safetyMargin(c) // gap-fill re-checks the last blocks the source may not have indexed yet
+	}
+	return state, newEvents, ix.st.FinishBackfill(ctx, job.ID, state, latest, lastSeen, oldest, complete, "")
 }
 
 // LoadOlder fetches one page of history older than what is stored (the API

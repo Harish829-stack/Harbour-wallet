@@ -74,6 +74,10 @@ func (Client) Fees(context.Context) (chain.Fees, error) {
 	return chain.Fees{MaxFee: big.NewInt(2e9), MaxPriorityFee: big.NewInt(1e8)}, nil
 }
 func (Client) LatestBlock(context.Context) (uint64, error) { return 600, nil }
+func (Client) Inclusion(context.Context, string) (chain.Inclusion, error) {
+	return chain.Inclusion{Found: true, BlockNumber: 590, BlockHash: "0xh", Success: true}, nil
+}
+func (Client) BlockHash(context.Context, uint64) (string, error) { return "0xh", nil }
 func (Client) TokenInfo(_ context.Context, refs []string) ([]chain.TokenInfo, error) {
 	out := []chain.TokenInfo{}
 	for _, r := range refs {

@@ -67,9 +67,13 @@ func BuildChains(cfg *config.Config, rpcURL, rpcToken string, getenv func(string
 				return nil, fmt.Errorf("chain %s finality: %w", name, err)
 			}
 		}
-		c := &Chain{Name: name, Family: ch.Family, Native: ch.Native, Client: client, Finality: fin, Source: src}
+		c := &Chain{Name: name, Family: ch.Family, Native: ch.Native, Client: client, Finality: fin, Source: src,
+			SourceName: srcNames[0], BlockTime: ch.BlockTime}
 		if h, ok := src.(index.Holdings); ok {
 			c.Holdings = h
+		}
+		if w, ok := src.(index.Webhooks); ok {
+			c.Webhooks = w
 		}
 		out[name] = c
 	}

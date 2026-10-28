@@ -181,6 +181,9 @@ func (s *Store) AddDeviceAddresses(ctx context.Context, lc *LinkCrypto, deviceID
 				return err
 			}
 			if tag.RowsAffected() == 1 {
+				if _, err := tx.Exec(ctx, `UPDATE tracked_addresses SET device_count = device_count + 1 WHERE id = $1`, t.ID); err != nil {
+					return err
+				}
 				count++
 				if count > maxAddresses {
 					return ErrQuota
@@ -212,11 +215,20 @@ func (s *Store) RemoveDeviceAddresses(ctx context.Context, lc *LinkCrypto, devic
 		if err != nil {
 			return removed, err
 		}
-		tag, err := s.Pool.Exec(ctx, `DELETE FROM device_addresses WHERE link_hash=$1`, lc.linkHash(deviceID, id))
+		err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+			tag, err := tx.Exec(ctx, `DELETE FROM device_addresses WHERE link_hash=$1`, lc.linkHash(deviceID, id))
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 1 {
+				removed++
+				_, err = tx.Exec(ctx, `UPDATE tracked_addresses SET device_count = GREATEST(device_count - 1, 0) WHERE id = $1`, id)
+			}
+			return err
+		})
 		if err != nil {
 			return removed, err
 		}
-		removed += int(tag.RowsAffected())
 	}
 	return removed, nil
 }
@@ -303,4 +315,44 @@ func (s *Store) CountUntracked(ctx context.Context, refs []AddressRef, deny map[
 		}
 	}
 	return n, nil
+}
+
+// SecretBox encrypts small secrets at rest (e.g. webhook signing keys).
+type SecretBox struct{ aead cipher.AEAD }
+
+// NewSecretBox derives a key for label from the server secret.
+func NewSecretBox(secret []byte, label string) (*SecretBox, error) {
+	if len(secret) < 32 {
+		return nil, fmt.Errorf("secret must be at least 32 bytes")
+	}
+	m := hmac.New(sha256.New, secret)
+	m.Write([]byte("harbour/" + label))
+	block, err := aes.NewCipher(m.Sum(nil))
+	if err != nil {
+		return nil, err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return &SecretBox{aead: aead}, nil
+}
+
+// Seal encrypts plaintext (nonce || ciphertext).
+func (b *SecretBox) Seal(plain string) ([]byte, error) {
+	nonce := make([]byte, b.aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return b.aead.Seal(nonce, nonce, []byte(plain), nil), nil
+}
+
+// Open decrypts a Seal output.
+func (b *SecretBox) Open(blob []byte) (string, error) {
+	ns := b.aead.NonceSize()
+	if len(blob) < ns {
+		return "", errors.New("short ciphertext")
+	}
+	pt, err := b.aead.Open(nil, blob[:ns], blob[ns:], nil)
+	return string(pt), err
 }

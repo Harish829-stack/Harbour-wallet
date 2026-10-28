@@ -95,6 +95,20 @@ services:
       rpc-gateway: {condition: service_started}
       nats: {condition: service_started}
 
+  webhook-ingest:
+    build: {context: .., dockerfile: Dockerfile}
+    command: ["/app/bin/webhook-ingest", "-config", "/app/config"]
+    env_file: [../.env]
+    environment:
+      WEBHOOK_ADDR: ":8082"
+      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      NATS_URL: nats://nats:4222
+    # cloudflared (or ngrok) on your Mac forwards the public URL to this port.
+    ports: ["127.0.0.1:8082:8082"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      nats: {condition: service_started}
+
 volumes:
   pgdata: {}
   redisdata: {}

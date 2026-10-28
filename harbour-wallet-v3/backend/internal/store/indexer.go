@@ -62,7 +62,7 @@ func (s *Store) SaveBackfillCursor(ctx context.Context, id int64, cursor string)
 }
 
 // FinishBackfill marks a backfill done ("done", "capped", "skipped" or "failed").
-func (s *Store) FinishBackfill(ctx context.Context, id int64, state string, syncedTo uint64, historyFrom uint64, complete bool, errMsg string) error {
+func (s *Store) FinishBackfill(ctx context.Context, id int64, state string, syncedTo, lastSeen, historyFrom uint64, complete bool, errMsg string) error {
 	var hf any
 	if historyFrom > 0 {
 		hf = int64(historyFrom)
@@ -73,10 +73,10 @@ func (s *Store) FinishBackfill(ctx context.Context, id int64, state string, sync
 	}
 	_, err := s.Pool.Exec(ctx, `UPDATE tracked_addresses SET backfill_state = $2,
 		synced_to_block = CASE WHEN $3::bigint > 0 THEN GREATEST(COALESCE(synced_to_block, 0), $3::bigint) ELSE synced_to_block END,
-		last_seen_block = CASE WHEN $3::bigint > 0 THEN GREATEST(COALESCE(last_seen_block, 0), $3::bigint) ELSE last_seen_block END,
+		last_seen_block = CASE WHEN $7::bigint > 0 THEN GREATEST(COALESCE(last_seen_block, 0), $7::bigint) ELSE last_seen_block END,
 		history_from_block = COALESCE(LEAST(history_from_block, $4::bigint), $4::bigint, history_from_block),
 		history_complete = history_complete OR $5, backfill_cursor = NULL, backfill_error = $6
-		WHERE id = $1`, id, state, int64(syncedTo), hf, complete, em)
+		WHERE id = $1`, id, state, int64(syncedTo), hf, complete, em, int64(lastSeen))
 	return err
 }
 
@@ -230,6 +230,10 @@ type IngestResult struct {
 	Duplicates int
 	// Touched maps tracked address id -> fungible asset refs it moved.
 	Touched map[int64]map[string]bool
+	// Parties are tracked addresses on either side of any new event.
+	Parties map[int64]bool
+	// NFTParties moved an NFT (their NFT list needs a resync).
+	NFTParties map[int64]bool
 }
 
 var ensuredMonths sync.Map // "parent|YYYYMM" -> true
@@ -270,7 +274,7 @@ type summaryItem struct {
 // goes into event_keys first, in the same transaction as the fact row; a
 // conflict means the event was already stored and nothing else is written.
 func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.ActivityEvent) (IngestResult, error) {
-	res := IngestResult{Touched: map[int64]map[string]bool{}}
+	res := IngestResult{Touched: map[int64]map[string]bool{}, Parties: map[int64]bool{}, NFTParties: map[int64]bool{}}
 	if len(evs) == 0 {
 		return res, nil
 	}
@@ -404,6 +408,10 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 						          COALESCE(address_activity.summary->'transfers', '[]'::jsonb) || (EXCLUDED.summary->'transfers'))`,
 					id, ev.BlockTime, ev.TxHash, o.Chain, dir, string(item)); err != nil {
 					return err
+				}
+				res.Parties[id] = true
+				if ev.Kind == index.KindNFT || ev.Kind == index.KindMulti {
+					res.NFTParties[id] = true
 				}
 				if ev.Kind == index.KindToken || ev.Kind == index.KindNative || ev.Kind == index.KindInternal {
 					if res.Touched[id] == nil {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -60,6 +61,19 @@ func main() {
 	}
 	log.Info("indexing", "chains", names)
 	ix := indexer.New(st, cfg.Indexer, bus, chains, log)
+	secret, err := config.DecodeKey("ADDRESS_LINK_ENCRYPTION_KEY", os.Getenv("ADDRESS_LINK_ENCRYPTION_KEY"), 32)
+	if err != nil {
+		fail("secrets", err)
+	}
+	box, err := store.NewSecretBox(secret, "webhook-signing-keys")
+	if err != nil {
+		fail("secrets", err)
+	}
+	pub := strings.TrimSpace(os.Getenv("WEBHOOK_PUBLIC_URL"))
+	if pub == "" {
+		log.Warn("WEBHOOK_PUBLIC_URL not set: no webhooks; gap-fill alone keeps data current (minutes behind)")
+	}
+	ix.EnableLive(indexer.LiveOptions{PublicURL: pub, Box: box})
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {

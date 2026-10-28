@@ -320,6 +320,48 @@ func (c *Client) Simulate(ctx context.Context, tx map[string]any) (chain.Simulat
 	return chain.SimulationResult{Success: true, GasUsed: gas}, nil
 }
 
+// Inclusion reads the receipt.
+func (c *Client) Inclusion(ctx context.Context, txHash string) (chain.Inclusion, error) {
+	r, err := c.Call(ctx, "eth_getTransactionReceipt", txHash)
+	if err != nil {
+		return chain.Inclusion{}, err
+	}
+	if len(r) == 0 || string(r) == "null" {
+		return chain.Inclusion{}, nil
+	}
+	var rc struct {
+		BlockNumber string `json:"blockNumber"`
+		BlockHash   string `json:"blockHash"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal(r, &rc); err != nil {
+		return chain.Inclusion{}, err
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(rc.BlockNumber, "0x"), 16, 64)
+	if err != nil {
+		return chain.Inclusion{}, fmt.Errorf("receipt block: %w", err)
+	}
+	return chain.Inclusion{Found: true, BlockNumber: n, BlockHash: strings.ToLower(rc.BlockHash), Success: rc.Status != "0x0"}, nil
+}
+
+// BlockHash returns the hash of the canonical block at number.
+func (c *Client) BlockHash(ctx context.Context, number uint64) (string, error) {
+	r, err := c.Call(ctx, "eth_getBlockByNumber", hexQty(number), false)
+	if err != nil {
+		return "", err
+	}
+	if len(r) == 0 || string(r) == "null" {
+		return "", nil
+	}
+	var blk struct {
+		Hash string `json:"hash"`
+	}
+	if err := json.Unmarshal(r, &blk); err != nil {
+		return "", err
+	}
+	return strings.ToLower(blk.Hash), nil
+}
+
 // ---------- finality ----------
 
 // FinalizedTag reads the chain's "finalized" block. On OP-stack L2s this is
