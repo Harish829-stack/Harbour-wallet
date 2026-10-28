@@ -16,6 +16,7 @@ import (
 
 	"harbour/backend/internal/api"
 	"harbour/backend/internal/config"
+	"harbour/backend/internal/events"
 	"harbour/backend/internal/logx"
 	"harbour/backend/internal/store"
 )
@@ -75,9 +76,20 @@ func main() {
 	if err != nil {
 		fail("secrets", err)
 	}
+	var pub api.Publisher
+	if u := os.Getenv("NATS_URL"); u != "" {
+		bus, err := events.Connect(ctx, u, "api", log)
+		if err != nil {
+			fail("nats", err)
+		}
+		defer bus.Close()
+		pub = bus
+	} else {
+		log.Warn("NATS_URL not set: address.added is only logged; the indexer still picks pending addresses up within 30s")
+	}
 	pow, _ := strconv.Atoi(os.Getenv("POW_DIFFICULTY"))
 	srv := api.New(api.Options{
-		Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: log,
+		Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: log, Events: pub,
 		GatewayURL:    config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
 		GatewayToken:  os.Getenv("GATEWAY_INTERNAL_TOKEN"),
 		TrustProxy:    os.Getenv("TRUST_PROXY_HEADERS") == "1",

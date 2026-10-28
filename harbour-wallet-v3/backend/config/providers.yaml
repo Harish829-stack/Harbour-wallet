@@ -29,6 +29,24 @@ providers:
         rps: 15
         url_env: {ethereum: CHAINSTACK_ETH_URL, base: CHAINSTACK_BASE_URL}
 
+# Indexer sources (index.Source adapters). Per-chain options live in chains.yaml.
+sources:
+  alchemy:
+    adapter: alchemy
+    options:
+      key_env: ALCHEMY_API_KEY     # Transfers, token-balance discovery and NFT APIs
+      rps: "10"                    # this source's own budget, separate from the gateway's
+
+# Indexer limits (phase 3).
+indexer:
+  backfill_max_age: 2160h          # 90 days
+  backfill_max_transfers: 5000     # per address and chain, whichever comes first
+  older_page_transfers: 1000       # per on-demand page past the cap
+  refresh_debounce: 2s             # balance refresh per address
+  idle_sweep_after: 24h            # daily balance sweep for idle addresses
+  nft_max_pages: 10                # 100 NFTs per page
+  workers: 4                       # concurrent backfills
+
 # rpc-gateway tuning; all optional (defaults in internal/config).
 gateway:
   cache_max_entries: 100000

@@ -17,7 +17,8 @@ chains:
       - {provider: infura,     key: infura-b,   network: mainnet,     weight: 2}
       - {provider: quicknode,  key: quicknode,                        weight: 2}
       - {provider: chainstack, key: chainstack,                       weight: 1}
-    sources: [alchemy]
+    sources:
+      alchemy: {network: eth-mainnet, categories: "external,internal,erc20,erc721,erc1155"}
   base:
     family: evm
     evm_chain_id: 8453
@@ -33,7 +34,8 @@ chains:
       - {provider: infura,     key: infura-b,   network: base-mainnet, weight: 2}
       - {provider: quicknode,  key: quicknode,                         weight: 2}
       - {provider: chainstack, key: chainstack,                        weight: 1}
-    sources: [alchemy]
+    sources:
+      alchemy: {network: base-mainnet, categories: "external,internal,erc20,erc721,erc1155"}
   sepolia:
     family: evm
     evm_chain_id: 11155111
@@ -44,7 +46,8 @@ chains:
     upstreams:
       - {provider: alchemy, key: alchemy-a, network: eth-sepolia}
       - {provider: infura,  key: infura-a,  network: sepolia}
-    sources: [alchemy]
+    sources:
+      alchemy: {network: eth-sepolia, categories: "external,erc20,erc721,erc1155"}
   base-sepolia:
     family: evm
     evm_chain_id: 84532
@@ -55,4 +58,5 @@ chains:
     upstreams:
       - {provider: alchemy, key: alchemy-a, network: base-sepolia}
       - {provider: infura,  key: infura-a,  network: base-sepolia}
-    sources: [alchemy]
+    sources:
+      alchemy: {network: base-sepolia, categories: "external,erc20,erc721,erc1155"}

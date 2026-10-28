@@ -18,16 +18,16 @@ import (
 
 // Chain is one entry of chains.yaml.
 type Chain struct {
-	Family       string         `yaml:"family"`
-	EVMChainID   uint64         `yaml:"evm_chain_id"`
-	Testnet      bool           `yaml:"testnet"`
-	BlockTime    time.Duration  `yaml:"block_time"`
-	LogsMaxRange uint64         `yaml:"logs_max_range"`
-	Finality     Finality       `yaml:"finality"`
-	Native       Native         `yaml:"native"`
-	Upstreams    []UpstreamRef  `yaml:"upstreams"`
-	Sources      []string       `yaml:"sources"`
-	Extra        map[string]any `yaml:"extra"`
+	Family       string                       `yaml:"family"`
+	EVMChainID   uint64                       `yaml:"evm_chain_id"`
+	Testnet      bool                         `yaml:"testnet"`
+	BlockTime    time.Duration                `yaml:"block_time"`
+	LogsMaxRange uint64                       `yaml:"logs_max_range"`
+	Finality     Finality                     `yaml:"finality"`
+	Native       Native                       `yaml:"native"`
+	Upstreams    []UpstreamRef                `yaml:"upstreams"`
+	Sources      map[string]map[string]string `yaml:"sources"` // source name -> per-chain options
+	Extra        map[string]any               `yaml:"extra"`
 }
 
 // Finality config for one chain.
@@ -66,6 +66,23 @@ type Key struct {
 	SecretEnv string            `yaml:"secret_env"`
 	URLEnv    map[string]string `yaml:"url_env"` // chain -> env var holding a full URL
 	RPS       float64           `yaml:"rps"`
+}
+
+// SourceDef is one indexer source in providers.yaml "sources:".
+type SourceDef struct {
+	Adapter string            `yaml:"adapter"`
+	Options map[string]string `yaml:"options"`
+}
+
+// Indexer tuning (providers.yaml "indexer:").
+type Indexer struct {
+	BackfillMaxAge       time.Duration `yaml:"backfill_max_age"`
+	BackfillMaxTransfers int           `yaml:"backfill_max_transfers"`
+	OlderPageTransfers   int           `yaml:"older_page_transfers"`
+	RefreshDebounce      time.Duration `yaml:"refresh_debounce"`
+	IdleSweepAfter       time.Duration `yaml:"idle_sweep_after"`
+	NFTMaxPages          int           `yaml:"nft_max_pages"`
+	Workers              int           `yaml:"workers"`
 }
 
 // Gateway tuning (providers.yaml "gateway:").
@@ -110,10 +127,12 @@ type API struct {
 
 // Config is all static configuration.
 type Config struct {
-	Chains    map[string]Chain    `yaml:"chains"`
-	Providers map[string]Provider `yaml:"providers"`
-	Gateway   Gateway             `yaml:"gateway"`
-	API       API                 `yaml:"api"`
+	Chains    map[string]Chain     `yaml:"chains"`
+	Providers map[string]Provider  `yaml:"providers"`
+	Gateway   Gateway              `yaml:"gateway"`
+	Sources   map[string]SourceDef `yaml:"sources"`
+	Indexer   Indexer              `yaml:"indexer"`
+	API       API                  `yaml:"api"`
 }
 
 // Load reads chains.yaml, providers.yaml and api.yaml from dir.
@@ -164,6 +183,14 @@ func (c *Config) defaults() {
 	def(&g.MaxBatch, 100)
 	def(&g.BroadcastFanout, 2)
 	defD(&g.HeadPollMin, 4*time.Second)
+	ix := &c.Indexer
+	defD(&ix.BackfillMaxAge, 90*24*time.Hour)
+	def(&ix.BackfillMaxTransfers, 5000)
+	def(&ix.OlderPageTransfers, 1000)
+	defD(&ix.RefreshDebounce, 2*time.Second)
+	defD(&ix.IdleSweepAfter, 24*time.Hour)
+	def(&ix.NFTMaxPages, 10)
+	def(&ix.Workers, 4)
 	a := &c.API
 	def(&a.PowDifficulty, 20)
 	defD(&a.PowTTL, 5*time.Minute)
@@ -200,6 +227,11 @@ func (c *Config) validate() error {
 	for name, ch := range c.Chains {
 		if ch.Family == "" {
 			return fmt.Errorf("config: chain %s has no family", name)
+		}
+		for src := range ch.Sources {
+			if _, ok := c.Sources[src]; !ok {
+				return fmt.Errorf("config: chain %s uses unknown source %q", name, src)
+			}
 		}
 		for _, u := range ch.Upstreams {
 			p, ok := c.Providers[u.Provider]

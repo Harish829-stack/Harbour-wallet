@@ -31,5 +31,7 @@ linters:
               desc: "provider SDKs live under adapters/ only"
   exclusions:
     rules:
+      - path: _test\.go
+        linters: [errcheck]
       - linters: [errcheck]
         text: "Error return value of .*(Fprintf|Copy|Close|Write|Encode|Exec|Set|Del|Expire|WriteString|Sscan|Unsetenv|Setenv|WriteFile|Read|Shutdown|TouchDevice).* is not checked"

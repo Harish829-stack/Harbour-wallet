@@ -107,6 +107,23 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 	}
 	var rows, created []store.TrackedAddress
 	if len(add) > 0 {
+		// Backfills cost provider budget: cap new ones per device per day.
+		n, err := s.opt.Store.CountUntracked(ctx, add, s.deny)
+		if err != nil {
+			s.internalErr(w, r, err)
+			return
+		}
+		if n > 0 {
+			ok, err := s.dailyCounter(ctx, "hb:bf:"+d.ID, int64(n), s.tier(d.Tier).BackfillsPerDay)
+			if err != nil {
+				s.internalErr(w, r, err)
+				return
+			}
+			if !ok {
+				writeErr(w, http.StatusTooManyRequests, "backfill_quota", "You've added many new addresses today. Please try again tomorrow.", true)
+				return
+			}
+		}
 		rows, created, err = s.opt.Store.AddDeviceAddresses(ctx, s.opt.LinkCrypto, d.ID, add, s.deny, s.tier(d.Tier).MaxAddresses)
 		if errors.Is(err, store.ErrQuota) {
 			writeErr(w, http.StatusForbidden, "quota_exceeded", "You've reached the maximum number of tracked addresses.", false)

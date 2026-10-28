@@ -26,7 +26,19 @@ const (
 // Balance is one asset balance read from chain at a block.
 type Balance struct {
 	AssetRef  string   // contract address, mint, or "native"
-	AmountRaw *big.Int // raw integer units
+	AmountRaw *big.Int // raw integer units; nil when Failed
+	// Failed means the read reverted (not a token, self-destructed ...);
+	// callers keep the previous value rather than writing zero.
+	Failed bool
+}
+
+// TokenInfo is on-chain token metadata.
+type TokenInfo struct {
+	AssetRef string
+	Symbol   string
+	Name     string
+	Decimals int // -1 when the contract has no decimals()
+	Failed   bool
 }
 
 // Fees is a fee suggestion; EVM fields are in Details for other families.
@@ -57,6 +69,10 @@ type Client interface {
 	Nonce(ctx context.Context, address string) (uint64, error)
 	Broadcast(ctx context.Context, signedTx []byte) (txHash string, err error)
 	Simulate(ctx context.Context, tx map[string]any) (SimulationResult, error)
+	// TokenInfo reads symbol, name and decimals from chain.
+	TokenInfo(ctx context.Context, assetRefs []string) ([]TokenInfo, error)
+	// LatestBlock returns the current head.
+	LatestBlock(ctx context.Context) (uint64, error)
 }
 
 // FinalityPolicy maps a block to a finality state for one chain.
@@ -74,10 +90,14 @@ type ClientConfig struct {
 	EVMChainID uint64
 	// RPC is how the client reaches the chain (normally the rpc-gateway).
 	RPCURL string
+	// RPCToken is sent as a bearer token (GATEWAY_INTERNAL_TOKEN).
+	RPCToken string
+	Options  map[string]any
 }
 
 // ClientFactory constructs a Client.
 type ClientFactory func(cfg ClientConfig) (Client, error)
 
-// FinalityFactory constructs a FinalityPolicy from per-chain options.
-type FinalityFactory func(chain string, opts map[string]any) (FinalityPolicy, error)
+// FinalityFactory constructs a FinalityPolicy for a chain; it reads heads
+// through the chain's Client.
+type FinalityFactory func(c Client, opts map[string]any) (FinalityPolicy, error)

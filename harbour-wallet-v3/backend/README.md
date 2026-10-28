@@ -1,7 +1,7 @@
 # Harbour backend
 
 Go services for Harbour Wallet, built to `../Harbour Backend Go Services, Indexer and RPC Plan.md`.
-This tree holds **phases 1–2**: foundations and `rpc-gateway`. The indexer, read API, prices and realtime (phases 3–6) plug into the interfaces that already exist here.
+This tree holds **phases 1–3**: foundations, `rpc-gateway`, and the indexer (backfill, balances from chain, NFTs). Live webhooks, the read API, prices and realtime (phases 4–6) plug into the interfaces that already exist here.
 
 ## Quick start
 
@@ -25,8 +25,10 @@ make lint      # golangci-lint v2 with depguard, plus the provider-name check
 | --- | --- | --- |
 | `api` | 8080 | Extension-facing API. Device registration (Ed25519 + proof-of-work), signed requests, quotas, address tracking, `/v1/rpc/{chain}` allow-listed reads |
 | `rpc-gateway` | 8081 (private) | The only process that talks to providers. Pools, scoring, failover, budgets, cache, hedging, metrics |
+| `indexer` | 8083 (health) | Backfills tracked addresses, reads balances from chain via Multicall3, syncs NFTs, publishes `balance.changed.<chain>` |
 | `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions (run daily) |
 | `hbdevice` | – | Acts like the extension from a terminal (dev only) |
+| `hbverify` | – | Phase 3 exit check: stored balances vs an independent chain read at the same block |
 
 ## API (phase 1)
 
@@ -59,6 +61,17 @@ The extension side is `clients/ts/hbclient.ts` (WebCrypto Ed25519, sync SHA-256 
 
 The plan suggests eRPC; its module graph can't be vendored here, so the gateway implements the same design in-process (`internal/gateway`). Swapping in eRPC later only changes `cmd/rpc-gateway`.
 
+## Indexer (phase 3)
+
+- **Trigger:** `PUT /v1/me/addresses` creates a `pending` tracked address and publishes `address.added` on NATS; the indexer wakes on the event and also polls every 30 s, so a lost event only delays a backfill.
+- **Backfill:** the `index.Source` (Alchemy Transfers API first) returns history newest first, incoming and outgoing interleaved so neither starves the other, capped at 90 days or 5,000 transfers (`providers.yaml` `indexer:`). Deny-listed addresses skip it. Older pages load on demand from `address.history.more` (the phase 5 history endpoint sends it).
+- **Writes:** `event_keys` first in the same transaction as each fact row; a conflict means duplicate and nothing else is written. Month partitions are created on demand, so old history never lands in the default partition.
+- **Balances:** never summed from transfers. Native plus every known token (seen in transfers or reported held) is read from chain with Multicall3 at one block, and written only over an older `as_of_block`. A reverting `balanceOf` keeps the previous value. Other tracked wallets touched by the same transfers are refreshed too (debounced 2 s); idle addresses are swept daily.
+- **Metadata and spam:** symbol, name and decimals come from chain; tokens get a 0–100 spam score (URL or "claim" bait, look-alike letters, missing decimals); NFT contracts flagged by the source score 100. Nothing is deleted; the UI hides scores ≥ 50.
+- **NFTs:** holdings are replaced from the source's NFT list (up to 1,000 per address).
+
+`./run.sh verify` tracks vitalik.eth (native after gas, many tokens) and the wstETH contract (holds rebasing stETH), waits for both backfills, then checks every stored balance against a single `eth_getBalance` / `balanceOf` at the same block. `./run.sh verify base 0x…` checks any address.
+
 ## Adding things
 
 | To add | Do |
@@ -76,4 +89,4 @@ Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK
 
 ## Not in this phase
 
-NATS publishing (`address.added` is logged until phase 3), Centrifugo tokens (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).
+Webhooks, gap-fill and reorg repair (phase 4; backfilled rows newer than the finalized block are stored with an empty `block_hash` until then), Centrifugo tokens (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).

@@ -286,3 +286,21 @@ func (s *Store) DeviceOwns(ctx context.Context, lc *LinkCrypto, deviceID string,
 	}
 	return true, nil
 }
+
+// CountUntracked returns how many refs nobody tracks yet (each would start a backfill).
+func (s *Store) CountUntracked(ctx context.Context, refs []AddressRef, deny map[string]bool) (int, error) {
+	n := 0
+	for _, r := range refs {
+		if deny[r.Address] {
+			continue
+		}
+		var exists bool
+		if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tracked_addresses WHERE chain_id=$1 AND address=$2)`, r.Chain, r.Address).Scan(&exists); err != nil {
+			return 0, err
+		}
+		if !exists {
+			n++
+		}
+	}
+	return n, nil
+}

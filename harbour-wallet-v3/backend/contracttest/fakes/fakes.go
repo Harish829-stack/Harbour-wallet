@@ -73,6 +73,14 @@ func (Client) Balances(_ context.Context, _ string, refs []string, block uint64)
 func (Client) Fees(context.Context) (chain.Fees, error) {
 	return chain.Fees{MaxFee: big.NewInt(2e9), MaxPriorityFee: big.NewInt(1e8)}, nil
 }
+func (Client) LatestBlock(context.Context) (uint64, error) { return 600, nil }
+func (Client) TokenInfo(_ context.Context, refs []string) ([]chain.TokenInfo, error) {
+	out := []chain.TokenInfo{}
+	for _, r := range refs {
+		out = append(out, chain.TokenInfo{AssetRef: r, Symbol: "TKN", Name: "Token", Decimals: 18})
+	}
+	return out, nil
+}
 func (Client) Nonce(context.Context, string) (uint64, error)     { return 3, nil }
 func (Client) Broadcast(context.Context, []byte) (string, error) { return "0x1", nil }
 func (Client) Simulate(context.Context, map[string]any) (chain.SimulationResult, error) {

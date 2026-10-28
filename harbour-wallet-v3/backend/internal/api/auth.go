@@ -256,6 +256,22 @@ func (s *Server) counter(ctx context.Context, key string, add int64, limit int) 
 	return incr.Val() <= int64(limit), nil
 }
 
+// dailyCounter adds n to today's counter and reports whether it stays within limit.
+// Over-limit attempts are rolled back so they don't consume tomorrow's room.
+func (s *Server) dailyCounter(ctx context.Context, key string, n int64, limit int) (bool, error) {
+	k := fmt.Sprintf("%s:%s", key, s.opt.Now().UTC().Format("20060102"))
+	v, err := s.opt.Redis.IncrBy(ctx, k, n).Result()
+	if err != nil {
+		return false, err
+	}
+	s.opt.Redis.Expire(ctx, k, 48*time.Hour)
+	if v > int64(limit) {
+		s.opt.Redis.DecrBy(ctx, k, n)
+		return false, nil
+	}
+	return true, nil
+}
+
 func (s *Server) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		d := deviceFrom(r.Context())

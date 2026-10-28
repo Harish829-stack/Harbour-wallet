@@ -18,6 +18,7 @@ import (
 	"harbour/backend/internal/config"
 	"harbour/backend/internal/hbclient"
 	"harbour/backend/internal/store"
+	"harbour/backend/internal/testdb"
 )
 
 // Phase 1 exit test: a device registers with proof-of-work and makes signed
@@ -28,12 +29,11 @@ func TestDeviceFlow(t *testing.T) {
 	if pgURL == "" || rURL == "" {
 		t.Skip("HB_TEST_POSTGRES_URL / HB_TEST_REDIS_URL not set")
 	}
+	pgURL = testdb.URL(t, "api_flow")
 	ctx := context.Background()
 	st, err := store.Open(ctx, pgURL)
 	must(t, err)
 	defer st.Close()
-	_, err = st.Pool.Exec(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`)
-	must(t, err)
 	_, err = st.Migrate(ctx)
 	must(t, err)
 	// Migrations are idempotent across restarts.
@@ -190,6 +190,7 @@ func TestReplayRejected(t *testing.T) {
 	if pgURL == "" || rURL == "" {
 		t.Skip("integration env not set")
 	}
+	pgURL = testdb.URL(t, "api_replay")
 	ctx := context.Background()
 	st, err := store.Open(ctx, pgURL)
 	must(t, err)

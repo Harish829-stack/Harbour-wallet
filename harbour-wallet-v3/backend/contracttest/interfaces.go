@@ -39,7 +39,9 @@ func RunSource(t *testing.T, s index.Source, fx SourceFixture) {
 		if ev.Chain != fx.Chain || ev.Family != fx.Family {
 			t.Fatalf("chain/family %q/%q", ev.Chain, ev.Family)
 		}
-		if ev.TxHash == "" || ev.BlockHash == "" || ev.BlockNumber == 0 || ev.BlockTime.IsZero() {
+		// BlockHash may be empty for history: the indexer only needs hashes
+		// for blocks newer than the finalized block (reorg repair).
+		if ev.TxHash == "" || ev.BlockNumber == 0 || ev.BlockTime.IsZero() {
 			t.Fatalf("missing position fields: %+v", ev)
 		}
 		if !eventRef.MatchString(ev.EventRef) {
@@ -114,6 +116,9 @@ func RunChainClient(t *testing.T, c chain.Client, fx ClientFixture) {
 		t.Fatalf("want native first plus %d assets, got %+v", len(fx.AssetRefs), bals)
 	}
 	for _, b := range bals {
+		if b.Failed {
+			continue
+		}
 		if b.AmountRaw == nil || b.AmountRaw.Sign() < 0 {
 			t.Fatalf("bad amount %+v", b)
 		}
@@ -122,6 +127,20 @@ func RunChainClient(t *testing.T, c chain.Client, fx ClientFixture) {
 	_, b2, err := c.Balances(ctx, fx.Address, fx.AssetRefs, block)
 	if err != nil || b2 != block {
 		t.Fatalf("pinned read at %d returned %d (%v)", block, b2, err)
+	}
+	if head, err := c.LatestBlock(ctx); err != nil || head < block {
+		t.Fatalf("LatestBlock %d < balance block %d (%v)", head, block, err)
+	}
+	if len(fx.AssetRefs) > 0 {
+		ti, err := c.TokenInfo(ctx, fx.AssetRefs)
+		if err != nil || len(ti) != len(fx.AssetRefs) {
+			t.Fatalf("TokenInfo: %+v %v", ti, err)
+		}
+		for _, x := range ti {
+			if !x.Failed && (x.Decimals < -1 || x.Decimals > 77) {
+				t.Fatalf("bad decimals %+v", x)
+			}
+		}
 	}
 	if _, err := c.Nonce(ctx, fx.Address); err != nil {
 		t.Fatal(err)

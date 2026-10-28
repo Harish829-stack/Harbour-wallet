@@ -48,12 +48,20 @@ type Page struct {
 	// LastBlock is the highest block covered, persisted because provider
 	// cursors expire.
 	LastBlock uint64
+	// OldestBlock is the lowest block covered so far (for on-demand older pages).
+	OldestBlock uint64
+	// Capped is true when the backfill stopped at BackfillLimits rather than
+	// at the start of the address's history.
+	Capped bool
 }
 
-// BackfillLimits caps a first-time backfill.
+// BackfillLimits caps a backfill.
 type BackfillLimits struct {
-	MaxAge       time.Duration
-	MaxTransfers int
+	MaxAge       time.Duration // 0 = no age limit
+	MaxTransfers int           // 0 = no count limit
+	// BeforeBlock > 0 fetches only history strictly older than this block
+	// (on-demand older pages past the cap).
+	BeforeBlock uint64
 }
 
 // Source is an indexer source (a provider stream, an own node ...).
@@ -71,9 +79,48 @@ type Source interface {
 
 // SourceConfig is passed to a SourceFactory.
 type SourceConfig struct {
-	Name    string
+	Name string
+	// Options are source-wide (key env vars, budgets).
 	Options map[string]string
+	// Chains holds per-chain options from chains.yaml (e.g. network name).
+	Chains map[string]map[string]string
+	// Getenv resolves secrets named in Options.
+	Getenv func(string) string
 }
+
+// NFT is one NFT holding.
+type NFT struct {
+	Contract string
+	TokenID  string // decimal
+	Amount   string // decimal; 1 for ERC-721
+	Standard string // erc721 | erc1155
+	Name     string
+	Symbol   string
+	ImageURL string // source URL; the media proxy fetches it, never the extension
+	Spam     bool
+}
+
+// NFTPage is one page of holdings.
+type NFTPage struct {
+	Items     []NFT
+	Cursor    string
+	AsOfBlock uint64
+}
+
+// Holdings is implemented by sources that can list what an address holds
+// now. Token contracts are for discovery only: balances are always read from
+// chain, never taken from this list.
+type Holdings interface {
+	TokenContracts(ctx context.Context, chain, address string) ([]string, error)
+	NFTs(ctx context.Context, chain, address, cursor string) (NFTPage, error)
+}
+
+// Details keys sources may set on ActivityEvent.Details.
+const (
+	DetailSymbol   = "symbol"
+	DetailDecimals = "decimals"
+	DetailTokenID  = "token_id"
+)
 
 // SourceFactory constructs a Source.
 type SourceFactory func(cfg SourceConfig) (Source, error)

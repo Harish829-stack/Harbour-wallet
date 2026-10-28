@@ -20,8 +20,8 @@ build:
 test:             ## unit + gateway + contract tests (no services needed)
 	go test -race ./...
 
-test-integration: ## phase 1 exit test against the Compose Postgres and Redis
-	@HB_TEST_POSTGRES_URL='$(PG_TEST)' HB_TEST_REDIS_URL='$(REDIS_TEST)' go test -count=1 -v ./internal/api/
+test-integration: ## phase 1 and 3 exit tests against the Compose Postgres and Redis
+	@HB_TEST_POSTGRES_URL='$(PG_TEST)' HB_TEST_REDIS_URL='$(REDIS_TEST)' go test -count=1 -v ./internal/api/ ./internal/indexer/
 
 lint:             ## golangci-lint (depguard) + provider-name check
 	golangci-lint run ./...
@@ -34,7 +34,7 @@ down:
 	$(COMPOSE) down
 
 logs:
-	$(COMPOSE) logs -f api rpc-gateway
+	$(COMPOSE) logs -f api rpc-gateway indexer
 
 migrate:
 	go run ./cmd/migrate -maintain
