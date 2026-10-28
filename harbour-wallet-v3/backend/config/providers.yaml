@@ -61,6 +61,13 @@ prices:
   min_liquidity_usd: 10000  # below this (24h volume or pool reserves) the UI shows "no price"
   cache_ttl: 15m            # Redis entry lifetime; stale prices disappear rather than linger
 
+# Transaction simulation before signing (risk.Simulator). Chains without a
+# "risk:" block fall back to eth_call + eth_estimateGas through rpc-gateway.
+risk:
+  adapter: alchemy-simulate
+  options:
+    key_env: ALCHEMY_API_KEY
+
 # Indexer limits (phase 3).
 indexer:
   backfill_max_age: 2160h          # 90 days
@@ -88,3 +95,10 @@ gateway:
   max_batch: 100
   broadcast_fanout: 2       # eth_sendRawTransaction goes to this many upstreams
   head_poll_min: 4s         # head polls every max(block_time, this); finalized every 30s
+
+# Push delivery channels, keyed by the channel name stored with each device's
+# subscription. Web Push keys come from scripts/setup.sh (cmd/hbkeys vapid).
+notify_channels:
+  webpush:
+    adapter: webpush
+    options: {private_key_env: VAPID_PRIVATE_KEY, subject_env: VAPID_SUBJECT}

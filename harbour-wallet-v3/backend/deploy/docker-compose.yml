@@ -73,6 +73,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       RPC_GATEWAY_URL: http://rpc-gateway:8081
       NATS_URL: nats://nats:4222
+      REALTIME_PUBLIC_URL: ws://localhost:8000/connection/websocket
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -112,6 +113,43 @@ services:
   price-poller:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/price-poller", "-config", "/app/config"]
+    env_file: [../.env]
+    environment:
+      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      NATS_URL: nats://nats:4222
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      nats: {condition: service_started}
+
+  tx-tracker:
+    build: {context: .., dockerfile: Dockerfile}
+    command: ["/app/bin/tx-tracker", "-config", "/app/config"]
+    env_file: [../.env]
+    environment:
+      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      RPC_GATEWAY_URL: http://rpc-gateway:8081
+      NATS_URL: nats://nats:4222
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      rpc-gateway: {condition: service_started}
+      nats: {condition: service_started}
+
+  realtime-bridge:
+    build: {context: .., dockerfile: Dockerfile}
+    command: ["/app/bin/realtime-bridge"]
+    env_file: [../.env]
+    environment:
+      NATS_URL: nats://nats:4222
+      CENTRIFUGO_API_URL: http://centrifugo:8000/api
+    depends_on:
+      centrifugo: {condition: service_started}
+      nats: {condition: service_started}
+
+  notifier:
+    build: {context: .., dockerfile: Dockerfile}
+    command: ["/app/bin/notifier", "-config", "/app/config"]
     env_file: [../.env]
     environment:
       POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable

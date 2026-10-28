@@ -14,10 +14,13 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	_ "harbour/backend/adapters/risk/all"
 	"harbour/backend/internal/api"
 	"harbour/backend/internal/config"
+	"harbour/backend/internal/core/risk"
 	"harbour/backend/internal/events"
 	"harbour/backend/internal/logx"
+	"harbour/backend/internal/registry"
 	"harbour/backend/internal/store"
 )
 
@@ -88,12 +91,33 @@ func main() {
 		log.Warn("NATS_URL not set: address.added is only logged; the indexer still picks pending addresses up within 30s")
 	}
 	pow, _ := strconv.Atoi(os.Getenv("POW_DIFFICULTY"))
+	var sim risk.Simulator
+	if cfg.Risk.Adapter != "" {
+		chains := map[string]map[string]string{}
+		for name, ch := range cfg.Chains {
+			if o, ok := ch.Risk[cfg.Risk.Adapter]; ok {
+				chains[name] = o
+			}
+		}
+		f, err := registry.RiskSimulator.Get(cfg.Risk.Adapter)
+		if err == nil {
+			sim, err = f(risk.SimulatorConfig{Options: cfg.Risk.Options, Chains: chains, Getenv: os.Getenv})
+		}
+		if err != nil {
+			log.Warn("transaction simulator disabled; using basic checks", "err", err)
+			sim = nil
+		}
+	}
 	srv := api.New(api.Options{
 		Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: log, Events: pub,
-		GatewayURL:    config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
-		GatewayToken:  os.Getenv("GATEWAY_INTERNAL_TOKEN"),
-		TrustProxy:    os.Getenv("TRUST_PROXY_HEADERS") == "1",
-		PowDifficulty: pow,
+		GatewayURL:     config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
+		GatewayToken:   os.Getenv("GATEWAY_INTERNAL_TOKEN"),
+		TrustProxy:     os.Getenv("TRUST_PROXY_HEADERS") == "1",
+		PowDifficulty:  pow,
+		Simulator:      sim,
+		RealtimeSecret: []byte(os.Getenv("CENTRIFUGO_TOKEN_HMAC_SECRET")),
+		RealtimeURL:    config.Env("REALTIME_PUBLIC_URL", "ws://localhost:8000/connection/websocket"),
+		VAPIDPublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
 	})
 	hs := &http.Server{Addr: *addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second}

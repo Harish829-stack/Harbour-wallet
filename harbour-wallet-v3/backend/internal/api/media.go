@@ -105,12 +105,25 @@ func (s *Server) handleTx(w http.ResponseWriter, r *http.Request) {
 		"block_number": receipt.BlockNumber, "from": receipt.From, "to": receipt.To})
 }
 
+// rpcError is a JSON-RPC error returned by the chain (as opposed to a transport failure).
+type rpcError struct{ Message string }
+
+func (e *rpcError) Error() string { return e.Message }
+
 // gatewayCall makes one JSON-RPC call through rpc-gateway; found=false for a null result.
 func (s *Server) gatewayCall(ctx context.Context, chain, method string, params []any, out any) (bool, error) {
+	return s.gatewayCallSession(ctx, chain, "", method, params, out)
+}
+
+// gatewayCallSession pins the call to the upstream used by earlier calls with the same session.
+func (s *Server) gatewayCallSession(ctx context.Context, chain, session, method string, params []any, out any) (bool, error) {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(s.opt.GatewayURL, "/")+"/rpc/"+chain, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-HB-Priority", "user")
+	if session != "" {
+		req.Header.Set("X-HB-Session", session)
+	}
 	if s.opt.GatewayToken != "" {
 		req.Header.Set("Authorization", "Bearer "+s.opt.GatewayToken)
 	}
@@ -129,7 +142,7 @@ func (s *Server) gatewayCall(ctx context.Context, chain, method string, params [
 		return false, err
 	}
 	if r.Error != nil {
-		return false, errors.New(r.Error.Message)
+		return false, &rpcError{Message: r.Error.Message}
 	}
 	if len(r.Result) == 0 || string(r.Result) == "null" {
 		return false, nil

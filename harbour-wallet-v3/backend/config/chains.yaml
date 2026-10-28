@@ -23,6 +23,8 @@ chains:
     prices:
       coingecko: {platform: ethereum, onchain_network: eth}
       alchemy: {network: eth-mainnet}
+    risk:
+      alchemy-simulate: {network: eth-mainnet}
   base:
     family: evm
     evm_chain_id: 8453
@@ -43,6 +45,8 @@ chains:
     prices:
       coingecko: {platform: base, onchain_network: base}
       alchemy: {network: base-mainnet}
+    risk:
+      alchemy-simulate: {network: base-mainnet}
   sepolia:
     family: evm
     evm_chain_id: 11155111

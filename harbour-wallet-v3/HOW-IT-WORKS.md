@@ -25,7 +25,10 @@ flowchart LR
             pg[("Postgres<br/>facts + balances")]
             rd[("Redis<br/>nonces, quotas")]
             nats{{"NATS JetStream<br/>event bus"}}
-            cent["Centrifugo :8000<br/>(phase 6)"]
+            cent["Centrifugo :8000<br/>websocket"]
+            tt["tx-tracker"]
+            rb["realtime-bridge"]
+            nt["notifier"]
             mig["migrate<br/>(runs once)"]
         end
     end
@@ -54,7 +57,14 @@ flowchart LR
     ix -- "history, holdings" --> alch
     ix -- "balances via Multicall3" --> gw
     ix --> pg
-    ix -- "balance.changed" --> nats
+    ix -- "balance.changed, activity.new" --> nats
+    tt -- "tx.status" --> nats
+    tt -- "receipts" --> gw
+    nats --> rb
+    rb --> cent
+    cent -- "live updates" --> ext
+    nats --> nt
+    nt -- "Web Push" --> ext
     mig --> pg
 ```
 
@@ -69,7 +79,7 @@ Two directions of traffic matter:
 
 | Piece | What it is | Why Harbour needs it |
 | --- | --- | --- |
-| **Docker / Docker Compose** | Runs each program in its own isolated container from a recipe (`Dockerfile`), and `deploy/docker-compose.yml` lists all of them, their ports and start order. | One command starts 9 things in the right order on any machine, identical to production. Nothing is installed globally on your Mac. |
+| **Docker / Docker Compose** | Runs each program in its own isolated container from a recipe (`Dockerfile`), and `deploy/docker-compose.yml` lists all of them, their ports and start order. | One command starts all of them in the right order on any machine, identical to production. Nothing is installed globally on your Mac. |
 | **Postgres** | The database. | The source of truth: tracked addresses, every transfer (facts), current balances and NFTs (projections). The extension's screens read from here, not from the chain. |
 | **Redis** | Fast in-memory store. | Per-device rate limits and quotas, request nonces (so a signed request can't be replayed), idempotency keys, registration challenges. |
 | **NATS JetStream** | A message queue that keeps messages on disk until processed. | Services hand work to each other without waiting: "this address was added", "this webhook arrived", "this balance changed". If the indexer is restarting, messages wait. |
@@ -79,7 +89,10 @@ Two directions of traffic matter:
 | **indexer** | The worker. | Backfills history when an address is added, reads balances from chain, syncs NFTs, manages Alchemy webhooks, processes deliveries, gap-fills, repairs reorgs. |
 | **price-poller** | A scheduled worker. | Fetches USD prices for tokens someone holds (CoinGecko, then Alchemy), every minute for popular tokens; caches them in Redis; records price history and daily balance snapshots for the chart. The extension never triggers a price call. |
 | **webhook-ingest** | A tiny receiver on port 8082. | Accepts Alchemy's webhook POSTs, verifies the signature, saves the raw body, puts it on NATS, answers 200 immediately. |
-| **Centrifugo** | Websocket server. | Started now, used in phase 6 to push live balance updates to the popup. |
+| **Centrifugo** | Websocket server. | Pushes live balance and transaction updates to the open popup. Clients can only join channels the api signed a token for. |
+| **tx-tracker** | A worker. | Watches every transaction sent through Harbour until it is confirmed, failed or dropped, and announces each change. |
+| **realtime-bridge** | A relay. | Copies `balance.changed` and `tx.status` events from NATS into Centrifugo channels. The only thing that pushes to clients. |
+| **notifier** | A worker. | Sends Web Push notifications ("Received 0.5 ETH", "Transaction confirmed") even when the popup is closed. Payloads are end-to-end encrypted to the browser. |
 | **cloudflared** | Runs on your Mac, outside Docker. | Gives port 8082 a public HTTPS address so Alchemy can reach webhook-ingest. Development only. |
 | **Alchemy** | Hosted blockchain data provider. | RPC (through the gateway), transfer history (Transfers API), NFT lists, and webhooks that push new activity. |
 | **Infura** | Second RPC provider. | Failover: if Alchemy has a bad day, reads keep working. |
@@ -343,6 +356,48 @@ sequenceDiagram
     Note over E,API: No call reaches a blockchain node or a price provider.
 ```
 
+## 10c. Flow: sending a transaction (phase 6)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant E as Extension
+    participant API as api
+    participant GW as rpc-gateway
+    participant TT as tx-tracker
+    participant N as NATS
+    participant RB as realtime-bridge
+    participant C as Centrifugo
+    participant NT as notifier
+
+    E->>API: POST /v1/tx/base/estimate (X-HB-Session)
+    API->>GW: nonce, estimateGas, fees (same upstream)
+    API-->>E: nonce, gas_limit, slow / normal / fast fees
+    E->>API: POST /v1/tx/base/simulate
+    API-->>E: predicted asset changes + warnings
+    Note over E: The user confirms, then the extension signs locally
+    E->>API: POST /v1/tx/base/broadcast {raw} (Idempotency-Key)
+    API->>API: chain id ok? sender tracked by this device?
+    API->>GW: eth_sendRawTransaction
+    API->>N: tx.status pending
+    API-->>E: tx_hash + tx channel token
+    E->>C: subscribe tx:base.0xhash
+    N->>RB: pending
+    RB->>C: publish
+    C-->>E: status pending
+    loop every block time, slowing down
+        TT->>GW: receipt?
+    end
+    TT->>N: tx.status confirmed
+    N->>RB: confirmed
+    RB->>C: publish
+    C-->>E: status confirmed
+    N->>NT: confirmed
+    NT-->>E: Web Push "Transaction confirmed"
+```
+
+Balances follow the same road: the indexer's `balance.changed` goes through `realtime-bridge` to `balances:<chain>.<address>`, and incoming transfers (`activity.new`) become a push from `notifier`.
+
 ## 11. Development vs production
 
 ```mermaid
@@ -373,6 +428,8 @@ The code doesn't change between the two: only `.env` values (URLs, secrets) and 
 | `logs` shows `rejected delivery ... bad signature` | Delivery from a webhook Harbour doesn't know (e.g. one you created by hand) | Let the indexer manage webhooks, or add `id:key` to `ALCHEMY_WEBHOOK_SIGNING_KEYS`. |
 | New transfer shows up only after a few minutes | Webhook path down; gap-fill caught it | Check `status` (tunnel) and `logs` (webhook-ingest). Data is still correct. |
 | `verify` says MISMATCH | A balance differs from chain | Rerun once (the chain may have moved between reads); if it persists, send the output. |
+| `watch` prints nothing after a send | realtime-bridge or Centrifugo down | `./run.sh status`, then `./run.sh logs` (realtime-bridge errors name the cause). The tx still settles: `GET /v1/tx/<chain>/<hash>`. |
+| `send` says `not_tracked` | Sender isn't tracked by this test device | `./run.sh send` tracks it first; with `hbdevice send` add it via `hbdevice addresses`. |
 | Containers fail with "permission denied" on config | Host file permissions | Already handled in the Dockerfile; `./run.sh restart`. |
 
 ---
@@ -387,7 +444,8 @@ harbour-wallet-v3/
     .env                   <- your secrets (git-ignored)
     config/                <- chains.yaml, providers.yaml, api.yaml (no secrets)
     deploy/docker-compose.yml
-    cmd/                   <- one folder per program: api, rpc-gateway, indexer, webhook-ingest, migrate, hbdevice, hbverify
+    cmd/                   <- one folder per program: api, rpc-gateway, indexer, webhook-ingest, price-poller,
+                              tx-tracker, realtime-bridge, notifier, migrate, hbdevice, hbverify, hbkeys
     internal/              <- service code (never imports a provider SDK)
     adapters/              <- the only place that knows Alchemy/Infura exist
     migrations/            <- SQL applied by migrate

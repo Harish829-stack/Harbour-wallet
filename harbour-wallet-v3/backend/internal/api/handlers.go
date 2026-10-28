@@ -139,6 +139,7 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 			s.opt.Log.Warn("publish address.added failed", "err", err)
 		}
 	}
+	s.syncPushRoutes(ctx, d.ID)
 	out := make([]addressView, 0, len(rows))
 	for _, t := range rows {
 		out = append(out, view(t))

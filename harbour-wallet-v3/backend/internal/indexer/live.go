@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"harbour/backend/internal/core/index"
+	"harbour/backend/internal/events"
 	"harbour/backend/internal/store"
 )
 
@@ -323,6 +324,7 @@ func (ix *Indexer) afterIngest(ctx context.Context, c *Chain, res store.IngestRe
 		ix.deb.Trigger(ctx, id, refs...)
 	}
 	_ = ix.st.TouchActivity(ctx, ids)
+	ix.publishIncoming(ctx, c, res.Incoming)
 	if c.Holdings == nil {
 		return
 	}
@@ -333,6 +335,36 @@ func (ix *Indexer) afterIngest(ctx context.Context, c *Chain, res store.IngestRe
 		}
 		if err := ix.SyncNFTs(ctx, c, id, j.Address); err != nil {
 			ix.log.Warn("nft resync failed", "tracked_address_id", id, "err", err)
+		}
+	}
+}
+
+// ActivityNew is published on activity.new.<chain> for fresh incoming
+// transfers; the notifier turns it into push notifications.
+type ActivityNew struct {
+	TrackedAddressID int64     `json:"tracked_address_id"`
+	Chain            string    `json:"chain"`
+	TxHash           string    `json:"tx_hash"`
+	Asset            string    `json:"asset"`
+	Kind             string    `json:"kind"`
+	AmountRaw        string    `json:"amount_raw"`
+	Symbol           string    `json:"symbol,omitempty"`
+	Decimals         *int      `json:"decimals,omitempty"`
+	TokenID          string    `json:"token_id,omitempty"`
+	SpamScore        int       `json:"spam_score"`
+	BlockTime        time.Time `json:"block_time"`
+}
+
+// publishIncoming announces recent incoming transfers (not old ones found by gap-fill).
+func (ix *Indexer) publishIncoming(ctx context.Context, c *Chain, in []store.Incoming) {
+	for _, x := range in {
+		if time.Since(x.BlockTime) > time.Hour || x.SpamScore >= 50 {
+			continue
+		}
+		b, _ := json.Marshal(ActivityNew{TrackedAddressID: x.TrackedID, Chain: c.Name, TxHash: x.TxHash, Asset: x.Asset, Kind: x.Kind,
+			AmountRaw: x.AmountRaw, Symbol: x.Symbol, Decimals: x.Decimals, TokenID: x.TokenID, SpamScore: x.SpamScore, BlockTime: x.BlockTime})
+		if err := ix.bus.Publish(ctx, events.SubjectActivityNew+"."+c.Name, b); err != nil {
+			ix.log.Warn("publish activity.new failed", "err", err)
 		}
 	}
 }

@@ -289,6 +289,15 @@ func (c *Client) Nonce(ctx context.Context, address string) (uint64, error) {
 	return parseQty(r)
 }
 
+// ConfirmedNonce counts only mined transactions.
+func (c *Client) ConfirmedNonce(ctx context.Context, address string) (uint64, error) {
+	r, err := c.Call(ctx, "eth_getTransactionCount", address, "latest")
+	if err != nil {
+		return 0, err
+	}
+	return parseQty(r)
+}
+
 // Broadcast sends a signed transaction.
 func (c *Client) Broadcast(ctx context.Context, signedTx []byte) (string, error) {
 	r, err := c.Call(ctx, "eth_sendRawTransaction", "0x"+hex.EncodeToString(signedTx))

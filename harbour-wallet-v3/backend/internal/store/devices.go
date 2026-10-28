@@ -69,8 +69,19 @@ func (s *Store) TouchDevice(ctx context.Context, id string) error {
 
 // LinkCrypto encrypts device -> tracked address links.
 type LinkCrypto struct {
-	aead    cipher.AEAD
-	hmacKey []byte
+	aead     cipher.AEAD
+	hmacKey  []byte
+	routeKey []byte
+}
+
+// RouteTag is the push-route index for a tracked address (keyed, so the
+// push_routes table alone can't be joined to addresses).
+func (c *LinkCrypto) RouteTag(trackedID int64) []byte {
+	m := hmac.New(sha256.New, c.routeKey)
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], uint64(trackedID))
+	m.Write(b[:])
+	return m.Sum(nil)
 }
 
 // NewLinkCrypto derives an AES-256-GCM key and an HMAC key from one secret.
@@ -91,7 +102,7 @@ func NewLinkCrypto(secret []byte) (*LinkCrypto, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LinkCrypto{aead: aead, hmacKey: derive("harbour/device_addresses/idx")}, nil
+	return &LinkCrypto{aead: aead, hmacKey: derive("harbour/device_addresses/idx"), routeKey: derive("harbour/push_routes/idx")}, nil
 }
 
 func (c *LinkCrypto) linkHash(deviceID string, trackedID int64) []byte {

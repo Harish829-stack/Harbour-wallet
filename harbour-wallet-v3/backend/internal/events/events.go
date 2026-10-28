@@ -18,6 +18,8 @@ const (
 	SubjectAddressAdded = "address.added"
 	SubjectHistoryMore  = "address.history.more"
 	SubjectBalance      = "balance.changed" // + "." + chain
+	SubjectActivityNew  = "activity.new"    // + "." + chain: incoming transfers (push)
+	SubjectTxStatus     = "tx.status"       // + "." + chain
 	StreamName          = "HARBOUR"
 )
 
@@ -50,7 +52,7 @@ func Connect(ctx context.Context, url, name string, log *slog.Logger) (*NATS, er
 	}
 	_, err = js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:     StreamName,
-		Subjects: []string{"address.>", "balance.>", "chain.>", "tx.>", "price.>"},
+		Subjects: []string{"address.>", "balance.>", "chain.>", "tx.>", "price.>", "activity.>"},
 		Storage:  jetstream.FileStorage,
 		MaxAge:   7 * 24 * time.Hour,
 	})

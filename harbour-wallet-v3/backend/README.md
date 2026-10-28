@@ -1,7 +1,7 @@
 # Harbour backend
 
 Go services for Harbour Wallet, built to `../Harbour Backend Go Services, Indexer and RPC Plan.md`.
-This tree holds **phases 1–5**: foundations, `rpc-gateway`, the indexer (backfill, balances from chain, NFTs), the live path (webhooks, gap-fill, reorg repair) and the read API with prices. Sends and realtime (phase 6) plug into the interfaces that already exist here.
+This tree holds **phases 1–6**: foundations, `rpc-gateway`, the indexer (backfill, balances from chain, NFTs), the live path (webhooks, gap-fill, reorg repair), the read API with prices, and the send path with realtime updates and push notifications.
 
 ## Quick start
 
@@ -29,7 +29,11 @@ make lint      # golangci-lint v2 with depguard, plus the provider-name check
 | `webhook-ingest` | 8082 | Verifies provider webhooks (HMAC), stores the raw payload 7 days, publishes `chain.<chain>.activity.raw`, returns 200 |
 | `price-poller` | – | Prices held tokens every 60 s (top 2,000) / 5 min (tail), caches them in Redis, writes `price_ticks`, takes hourly balance snapshots |
 | `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions (run daily) |
-| `hbdevice` | – | Acts like the extension from a terminal (dev only) |
+| `tx-tracker` | – | Follows broadcast transactions to confirmed / failed / dropped (receipt polling with backoff; a used nonce without a receipt means dropped), publishes `tx.status.<chain>` |
+| `realtime-bridge` | – | Relays `balance.changed.*` and `tx.status.*` to Centrifugo channels `balances:<chain>.<address>` and `tx:<chain>.<hash>` |
+| `notifier` | – | Web Push for incoming transfers (`activity.new.*`, spam and old events skipped) and settled sends; deduped per device and transaction in Redis |
+| `hbdevice` | – | Acts like the extension from a terminal (dev only); `send` signs testnet transactions locally, `watch` prints realtime updates |
+| `hbkeys` | – | `hbkeys vapid` prints a Web Push key pair (setup.sh generates one with openssl) |
 | `hbverify` | – | Phase 3 exit check: stored balances vs an independent chain read at the same block |
 
 ## API (phase 1)
@@ -98,6 +102,21 @@ Keep `cloudflared tunnel --url http://localhost:8082` running in development; `.
 
 **Prices:** `price_sources` in `providers.yaml` are tried in order (CoinGecko, then Alchemy). Native coins use `native.price_ids`; tokens use the chain's `prices:` options. Liquidity comes from 24 h volume or DEX pool reserves; below `min_liquidity_usd` the price is flagged `thin` and the UI shows "no price". Spam-scored tokens are never priced. Testnets have no prices.
 
+## Send path, realtime and push (phase 6)
+
+The extension builds and signs every transaction itself; Harbour never receives a key or seed.
+
+| Endpoint (device-signed) | What it does |
+| --- | --- |
+| `POST /v1/tx/{chain}/estimate` `{from,to,value,data}` | Pending nonce, gas (+20 %, exactly 21000 for plain transfers) and slow/normal/fast EIP-1559 fees. Send `X-HB-Session` so estimate, nonce and broadcast hit the same upstream |
+| `POST /v1/tx/{chain}/simulate` | `mode: full` with predicted asset changes and warnings (`unlimited_approval`, `approval`) from the `risk:` simulator on mainnets; `mode: basic` (eth_call + estimate) elsewhere or if the simulator fails |
+| `POST /v1/tx/{chain}/broadcast` `{raw}` | Decodes the signed tx, checks its chain id, recovers the sender and requires it to be tracked by this device, relays it (`Idempotency-Key` supported), stores it pending and returns a `tx:` channel token. Node errors become friendly codes: `insufficient_funds`, `nonce_used`, `fee_too_low`, `gas_too_low`, `would_fail`, `wrong_network`, `rejected` |
+| `POST /v1/realtime/token` | Centrifugo connection token plus one subscription token per tracked address and pending tx. Clients can't subscribe to anything else |
+| `GET /v1/push/vapid` (unsigned) | Web Push application server key |
+| `PUT /v1/me/push` / `DELETE /v1/me/push` | Store or remove the browser's push subscription (https endpoint only; the notifier refuses private destinations) |
+
+Push routing doesn't link addresses to devices in the clear: `push_routes` is keyed by an HMAC of the tracked-address id, kept in sync whenever the device's address list changes.
+
 ## Adding things
 
 | To add | Do |
@@ -115,4 +134,4 @@ Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK
 
 ## Not in this phase
 
-Send path, Centrifugo tokens and push (phase 6), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).
+FCM / native push channels (add an adapter under `adapters/notify`), non-EVM send paths, AWS deployment (phase 7), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).

@@ -5,7 +5,9 @@
 //	hbdevice me
 //	hbdevice addresses '{"add":[{"chain":"base","address":"0x..."}]}'
 //	hbdevice rpc base '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
-//	hbdevice get /v1/me/portfolio'
+//	hbdevice get /v1/me/portfolio
+//	HB_DEV_PRIVATE_KEY=0x... hbdevice send base-sepolia 0xTO 1000000000000   (testnets only)
+//	hbdevice watch 120                                                        (live updates for 120s)
 package main
 
 import (
@@ -15,6 +17,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"harbour/backend/internal/devicesig"
@@ -33,10 +36,23 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: hbdevice [-api URL] register | me | addresses JSON | list | get PATH | rpc CHAIN JSON")
+		fmt.Fprintln(os.Stderr, "usage: hbdevice [-api URL] register | me | addresses JSON | list | get PATH | rpc CHAIN JSON | addr | send CHAIN TO WEI | watch [SECONDS]")
 		os.Exit(2)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	if args[0] == "addr" {
+		check(printAddr())
+		return
+	}
+	timeout := 2 * time.Minute
+	if args[0] == "watch" {
+		timeout = 30 * time.Second
+		if len(args) > 1 {
+			if n, err := strconv.Atoi(args[1]); err == nil && n > 0 {
+				timeout = time.Duration(n) * time.Second
+			}
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	c := hbclient.New(*api)
 	if args[0] != "register" {
@@ -73,6 +89,12 @@ func main() {
 	case "rpc":
 		need(args, 3)
 		_, err = c.Do(ctx, "POST", "/v1/rpc/"+args[1], []byte(args[2]), &out, nil)
+	case "send":
+		need(args, 4)
+		out, err = send(ctx, c, args[1], args[2], args[3])
+	case "watch":
+		check(watch(ctx, c))
+		return
 	default:
 		err = fmt.Errorf("unknown command %q", args[0])
 	}

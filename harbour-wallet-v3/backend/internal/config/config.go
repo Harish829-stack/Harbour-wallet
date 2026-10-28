@@ -28,6 +28,7 @@ type Chain struct {
 	Upstreams    []UpstreamRef                `yaml:"upstreams"`
 	Sources      map[string]map[string]string `yaml:"sources"` // source name -> per-chain options
 	Prices       map[string]map[string]string `yaml:"prices"`  // price source name -> per-chain options
+	Risk         map[string]map[string]string `yaml:"risk"`    // simulator name -> per-chain options
 	Extra        map[string]any               `yaml:"extra"`
 }
 
@@ -91,6 +92,12 @@ type Prices struct {
 	CacheTTL        time.Duration `yaml:"cache_ttl"`
 }
 
+// RiskDef is the transaction simulator (providers.yaml "risk:").
+type RiskDef struct {
+	Adapter string            `yaml:"adapter"`
+	Options map[string]string `yaml:"options"`
+}
+
 // Indexer tuning (providers.yaml "indexer:").
 type Indexer struct {
 	BackfillMaxAge       time.Duration `yaml:"backfill_max_age"`
@@ -150,8 +157,11 @@ type Config struct {
 	Sources      map[string]SourceDef `yaml:"sources"`
 	Indexer      Indexer              `yaml:"indexer"`
 	PriceSources []PriceSourceDef     `yaml:"price_sources"`
-	Prices       Prices               `yaml:"prices"`
-	API          API                  `yaml:"api"`
+	Risk         RiskDef              `yaml:"risk"`
+	// NotifyChannels are push delivery channels by name (push_subscriptions.channel).
+	NotifyChannels map[string]SourceDef `yaml:"notify_channels"`
+	Prices         Prices               `yaml:"prices"`
+	API            API                  `yaml:"api"`
 }
 
 // Load reads chains.yaml, providers.yaml and api.yaml from dir.

@@ -236,6 +236,22 @@ type IngestResult struct {
 	Parties map[int64]bool
 	// NFTParties moved an NFT (their NFT list needs a resync).
 	NFTParties map[int64]bool
+	// Incoming lists new transfers received by a tracked address (for push).
+	Incoming []Incoming
+}
+
+// Incoming is one newly indexed transfer into a tracked address.
+type Incoming struct {
+	TrackedID int64
+	TxHash    string
+	Asset     string
+	Kind      string
+	AmountRaw string
+	Symbol    string
+	Decimals  *int
+	TokenID   string
+	SpamScore int
+	BlockTime time.Time
 }
 
 var ensuredMonths sync.Map // "parent|YYYYMM" -> true
@@ -412,6 +428,10 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 					return err
 				}
 				res.Parties[id] = true
+				if dir == "in" {
+					res.Incoming = append(res.Incoming, Incoming{TrackedID: id, TxHash: ev.TxHash, Asset: ev.Asset, Kind: string(ev.Kind),
+						AmountRaw: ev.AmountRaw, Symbol: a.Symbol, Decimals: a.Decimals, TokenID: tokenID, SpamScore: a.SpamScore, BlockTime: ev.BlockTime})
+				}
 				if ev.Kind == index.KindNFT || ev.Kind == index.KindMulti {
 					res.NFTParties[id] = true
 				}

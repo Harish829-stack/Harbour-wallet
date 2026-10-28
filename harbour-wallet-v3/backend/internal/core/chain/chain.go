@@ -80,6 +80,13 @@ type Client interface {
 	BlockHash(ctx context.Context, number uint64) (string, error)
 }
 
+// ConfirmedNoncer is optionally implemented by account-based families: the
+// next nonce counting only mined transactions (used to detect dropped or
+// replaced transactions).
+type ConfirmedNoncer interface {
+	ConfirmedNonce(ctx context.Context, address string) (uint64, error)
+}
+
 // Inclusion is a transaction's current position.
 type Inclusion struct {
 	Found       bool

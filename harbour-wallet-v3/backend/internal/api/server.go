@@ -21,6 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"harbour/backend/internal/config"
+	"harbour/backend/internal/core/risk"
 	"harbour/backend/internal/store"
 )
 
@@ -52,7 +53,15 @@ type Options struct {
 	// AllowPrivateMedia lets the media proxy fetch from private addresses (tests only).
 	AllowPrivateMedia bool
 	PowDifficulty     int // overrides config when > 0
-	Now               func() time.Time
+	// Simulator predicts asset changes before signing (nil: eth_call + estimate only).
+	Simulator risk.Simulator
+	// Realtime (Centrifugo): the HMAC secret for client tokens and the
+	// websocket URL handed to the extension.
+	RealtimeSecret []byte
+	RealtimeURL    string
+	// VAPIDPublicKey is the Web Push application server key (base64url).
+	VAPIDPublicKey string
+	Now            func() time.Time
 }
 
 // Server holds dependencies.
@@ -123,6 +132,7 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/devices/challenge", s.handleChallenge)
 		r.Post("/devices", s.handleRegister)
 		r.Get("/media/{key}", s.handleMedia) // loaded by <img>: unsigned, keys are unguessable
+		r.Get("/push/vapid", s.handleVAPID)
 		r.Group(func(r chi.Router) {
 			r.Use(s.deviceAuth, s.rateLimit)
 			r.Get("/me", s.handleMe)
@@ -136,6 +146,12 @@ func (s *Server) Handler() http.Handler {
 			r.Get("/assets/{chain}/{asset}", s.handleAsset)
 			r.Get("/assets/{chain}/{asset}/prices", s.handleAssetPrices)
 			r.Get("/tx/{chain}/{hash}", s.handleTx)
+			r.Post("/tx/{chain}/estimate", s.handleEstimate)
+			r.Post("/tx/{chain}/simulate", s.handleSimulate)
+			r.With(s.idempotency).Post("/tx/{chain}/broadcast", s.handleBroadcast)
+			r.Post("/realtime/token", s.handleRealtimeToken)
+			r.Put("/me/push", s.handlePutPush)
+			r.Delete("/me/push", s.handleDeletePush)
 		})
 	})
 	return r

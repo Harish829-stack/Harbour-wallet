@@ -7,7 +7,9 @@
 #                       compare every stored balance with the chain at the same block
 #   ./run.sh inspect CHAIN ADDRESS   tracking state, webhook, latest transfers and balances
 #   ./run.sh status     container state, health and per-upstream gateway status
-#   ./run.sh logs       follow api, rpc-gateway, indexer, webhook-ingest and price-poller logs
+#   ./run.sh logs       follow the Go services' logs
+#   ./run.sh send CHAIN TO WEI   phase 6: send testnet ETH from HB_DEV_PRIVATE_KEY through Harbour
+#   ./run.sh watch [SECONDS]     phase 6: print live balance and transaction updates (Centrifugo)
 #   ./run.sh test       unit tests, then the integration tests against the running stack
 #   ./run.sh restart    rebuild, migrate and restart the Go services (after code or config changes)
 #   ./run.sh down       stop everything (data kept)
@@ -189,6 +191,21 @@ for chain, ups in sorted(json.load(sys.stdin).items()):
   fi
 }
 
+send_tx() {
+  need_go send
+  ensure_deps
+  [ $# -ge 3 ] || die "usage: HB_DEV_PRIVATE_KEY=0x... ./run.sh send base-sepolia 0xTO AMOUNT_WEI"
+  [ -n "${HB_DEV_PRIVATE_KEY:-}" ] || die "Set HB_DEV_PRIVATE_KEY to a funded TESTNET key for this shell (never a real wallet key)."
+  [ -f .hbdevice.json ] || die "No test device yet: run ./run.sh smoke first."
+  local from
+  from=$(go run ./cmd/hbdevice addr 2>/dev/null) || die "HB_DEV_PRIVATE_KEY is not a valid key"
+  say "Tracking the sender $from on $1 (sending is allowed only from tracked accounts)"
+  go run ./cmd/hbdevice addresses "{\"add\":[{\"chain\":\"$1\",\"address\":\"$from\"}]}" >/dev/null
+  say "Estimate -> sign locally -> broadcast through Harbour"
+  go run ./cmd/hbdevice send "$1" "$2" "$3"
+  ok "sent; run ./run.sh watch to see it confirm (or GET /v1/tx/$1/<hash>)"
+}
+
 run_tests() {
   need_go test
   ensure_deps
@@ -208,9 +225,11 @@ case "${1:-up}" in
   status)    status ;;
   verify)    shift; verify "$@" ;;
   inspect)   shift; inspect "$@" ;;
-  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer webhook-ingest price-poller ;;
+  logs)      check_tools; "${COMPOSE[@]}" logs -f api rpc-gateway indexer webhook-ingest price-poller tx-tracker realtime-bridge notifier ;;
   test)      run_tests ;;
-  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer webhook-ingest price-poller
+  send)      shift; send_tx "$@" ;;
+  watch)     shift; need_go watch; go run ./cmd/hbdevice watch "${1:-120}" ;;
+  restart)   check_tools; "${COMPOSE[@]}" up -d --build migrate api rpc-gateway indexer webhook-ingest price-poller tx-tracker realtime-bridge notifier
              wait_for "rpc-gateway" "$GW/healthz" 90; wait_for "api" "$API/healthz" 90; wait_for "indexer" "$IX/healthz" 90
              wait_for "webhook-ingest" "$WH/healthz" 90 ;;
   down|stop) check_tools; "${COMPOSE[@]}" down; ok "stopped (data kept)" ;;
@@ -219,6 +238,6 @@ case "${1:-up}" in
              read -r answer
              [ "$answer" = "reset" ] || die "cancelled"
              "${COMPOSE[@]}" down -v; ok "stopped and local data deleted" ;;
-  -h|--help|help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
+  -h|--help|help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) die "unknown command '$1' (try ./run.sh help)" ;;
 esac
