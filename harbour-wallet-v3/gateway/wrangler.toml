@@ -1,0 +1,8 @@
+name = "harbour-gateway"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+kv_namespaces = [{ binding = "CACHE", id = "dfadca7919214682b18b909bf6e83619" }]
+# Secrets: set by scripts/deploy-gateway.mjs (provider keys, CONFIG_JSON/CONFIG_SIG, FCM_SERVICE_ACCOUNT)
+# Push watcher (gateway/push.ts): every 5 minutes; needs the CACHE KV namespace above.
+[triggers]
+crons = ["*/5 * * * *"]

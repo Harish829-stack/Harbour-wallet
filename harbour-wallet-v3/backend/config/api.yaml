@@ -1,0 +1,37 @@
+# Public API policy: device registration, quotas and the /v1/rpc allow-list.
+api:
+  pow_difficulty: 20                 # leading zero bits; POW_DIFFICULTY env overrides
+  pow_ttl: 5m
+  challenges_per_ip_per_hour: 30
+  clock_skew: 5m                     # allowed X-HB-Date drift
+  idempotency_ttl: 24h
+  default_tier: default
+  tiers:
+    default:  {max_addresses: 50,  backfills_per_day: 20,  requests_per_minute: 120, rpc_per_minute: 120}
+    trusted:  {max_addresses: 200, backfills_per_day: 100, requests_per_minute: 600, rpc_per_minute: 600}
+  # Read-only methods the extension may call through POST /v1/rpc/{chain}.
+  rpc_allowed_methods:
+    - eth_chainId
+    - net_version
+    - eth_blockNumber
+    - eth_getBalance
+    - eth_getCode
+    - eth_getStorageAt
+    - eth_call
+    - eth_estimateGas
+    - eth_gasPrice
+    - eth_maxPriorityFeePerGas
+    - eth_feeHistory
+    - eth_getTransactionCount
+    - eth_getTransactionByHash
+    - eth_getTransactionReceipt
+    - eth_getBlockByNumber
+    - eth_getBlockByHash
+    - eth_getLogs
+  # Tracked live but never backfilled (exchange hot wallets, popular contracts).
+  backfill_deny_list:
+    - "0x28c6c06298d514db089934071355e5743bf21d60"   # Binance 14
+    - "0x21a31ee1afc51d94c2efccaa2092ad1028285549"   # Binance 15
+    - "0xdfd5293d8e347dfe59e90efd55b2956a1343963d"   # Binance 16
+    - "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"   # USDC contract
+    - "0xdac17f958d2ee523a2206206994597c13d831ec7"   # USDT contract

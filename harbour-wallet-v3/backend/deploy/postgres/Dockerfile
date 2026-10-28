@@ -1,0 +1,5 @@
+# Postgres 16 with pg_partman (same extension RDS offers).
+FROM postgres:16-bookworm
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-16-partman \
+ && rm -rf /var/lib/apt/lists/*

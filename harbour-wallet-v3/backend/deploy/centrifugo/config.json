@@ -1,0 +1,14 @@
+{
+  "client": {
+    "allowed_origins": ["chrome-extension://*"],
+    "token": { "hmac_secret_key": "${CENTRIFUGO_TOKEN_HMAC_SECRET}" }
+  },
+  "http_api": { "key": "${CENTRIFUGO_API_KEY}" },
+  "engine": { "type": "redis", "redis": { "address": "redis://:${REDIS_PASSWORD}@redis:6379/2" } },
+  "channel": {
+    "namespaces": [
+      { "name": "balances", "allow_subscribe_for_client": false },
+      { "name": "tx", "allow_subscribe_for_client": false }
+    ]
+  }
+}

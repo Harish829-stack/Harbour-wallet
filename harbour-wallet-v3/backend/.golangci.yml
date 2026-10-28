@@ -1,0 +1,35 @@
+# golangci-lint v2. depguard enforces the plan's rule: nothing outside an
+# adapter package may import a provider SDK or an adapter package.
+version: "2"
+linters:
+  default: standard
+  enable: [depguard]
+  settings:
+    staticcheck:
+      checks: ["all", "-QF*", "-ST*"]
+    depguard:
+      rules:
+        services:
+          files:
+            - "$all"
+            - "!**/adapters/**"
+            - "!**/cmd/**"
+            - "!**/contracttest/**"
+            - "!$test"
+          deny:
+            - pkg: "harbour/backend/adapters"
+              desc: "services see interfaces only; link adapters from cmd/ via adapters/<kind>/all"
+            - pkg: "github.com/alchemyplatform"
+              desc: "provider SDKs live under adapters/ only"
+            - pkg: "github.com/INFURA"
+              desc: "provider SDKs live under adapters/ only"
+            - pkg: "github.com/quiknode-labs"
+              desc: "provider SDKs live under adapters/ only"
+            - pkg: "github.com/chainstack"
+              desc: "provider SDKs live under adapters/ only"
+            - pkg: "github.com/goldsky-io"
+              desc: "provider SDKs live under adapters/ only"
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        text: "Error return value of .*(Fprintf|Copy|Close|Write|Encode|Exec|Set|Del|Expire|WriteString|Sscan|Unsetenv|Setenv|WriteFile|Read|Shutdown|TouchDevice).* is not checked"

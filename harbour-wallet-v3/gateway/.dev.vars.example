@@ -1,0 +1,16 @@
+# Copy to .dev.vars for `wrangler dev`, or set each value as a Worker secret (scripts/deploy-gateway.mjs does this from ../../harbour-keys.env).
+# Never commit real values. Provider keys stay here, on the server; none is ever built into the extension.
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_API_TOKEN=
+LIFI_API_KEY=
+JUP_API_KEY=
+RELAY_API_KEY=
+COINGECKO_KEY=
+HELIUS_API_KEY=
+ALCHEMY_API_KEY=
+ETHERSCAN_API_KEY=
+TRONGRID_API_KEY=
+TONCENTER_API_KEY=
+PIMLICO_API_KEY=
+# Comma-separated origins allowed to call the gateway, e.g. chrome-extension://<your-extension-id>. Empty = any extension origin.
+ALLOWED_ORIGINS=

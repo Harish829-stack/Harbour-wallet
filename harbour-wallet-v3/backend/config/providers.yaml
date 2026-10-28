@@ -1,0 +1,48 @@
+# RPC providers. Keys are referenced by env var name only; values come from
+# backend/.env locally or the secret store in production. A key whose env var
+# is empty is skipped at startup (logged), so optional providers cost nothing.
+providers:
+  alchemy:
+    adapter: alchemy
+    url_template: "https://{network}.g.alchemy.com/v2/{key}"
+    timeout: 10s
+    keys:
+      - {id: alchemy-a, key_env: ALCHEMY_API_KEY,   rps: 25}
+      - {id: alchemy-b, key_env: ALCHEMY_API_KEY_2, rps: 25}
+  infura:
+    adapter: infura
+    url_template: "https://{network}.infura.io/v3/{key}"
+    timeout: 10s
+    keys:
+      - {id: infura-a, key_env: INFURA_API_KEY,   secret_env: INFURA_API_SECRET, rps: 10}
+      - {id: infura-b, key_env: INFURA_API_KEY_2, rps: 10}
+  quicknode:
+    adapter: url
+    keys:
+      - id: quicknode
+        rps: 15
+        url_env: {ethereum: QUICKNODE_ETH_URL, base: QUICKNODE_BASE_URL}
+  chainstack:
+    adapter: url
+    keys:
+      - id: chainstack
+        rps: 15
+        url_env: {ethereum: CHAINSTACK_ETH_URL, base: CHAINSTACK_BASE_URL}
+
+# rpc-gateway tuning; all optional (defaults in internal/config).
+gateway:
+  cache_max_entries: 100000
+  window_size: 200          # samples kept per upstream for scoring
+  window_age: 60s
+  breaker_error_rate: 0.5
+  breaker_min_samples: 10
+  breaker_cooldown: 30s
+  breaker_probes: 3
+  hedge_min: 50ms           # hedge delay = upstream p90, clamped to [min, max]
+  hedge_max: 2s
+  max_attempts: 4           # upstreams tried per request before giving up
+  budget_wait: 250ms        # wait for a token when every upstream is at budget
+  sticky_ttl: 60s           # X-HB-Session pins a call sequence to one upstream
+  max_batch: 100
+  broadcast_fanout: 2       # eth_sendRawTransaction goes to this many upstreams
+  head_poll_min: 4s         # head polls every max(block_time, this); finalized every 30s

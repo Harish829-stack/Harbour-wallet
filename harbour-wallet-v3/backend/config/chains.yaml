@@ -1,0 +1,58 @@
+# Chains Harbour serves. Adding an EVM chain is one entry here; a new family
+# also needs adapters under adapters/chains/<family> and adapters/sources/<name>.
+# Upstreams are in priority order; weight defaults to priority if omitted.
+chains:
+  ethereum:
+    family: evm
+    evm_chain_id: 1
+    block_time: 12s
+    logs_max_range: 2000
+    finality:
+      policy: finalized-tag
+    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: alchemy,    key: alchemy-a,  network: eth-mainnet, weight: 4}
+      - {provider: infura,     key: infura-a,   network: mainnet,     weight: 3}
+      - {provider: alchemy,    key: alchemy-b,  network: eth-mainnet, weight: 2}
+      - {provider: infura,     key: infura-b,   network: mainnet,     weight: 2}
+      - {provider: quicknode,  key: quicknode,                        weight: 2}
+      - {provider: chainstack, key: chainstack,                       weight: 1}
+    sources: [alchemy]
+  base:
+    family: evm
+    evm_chain_id: 8453
+    block_time: 2s
+    logs_max_range: 2000
+    finality:
+      policy: finalized-tag   # L1 batch finality; can take 10+ minutes
+    native: {symbol: ETH, decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: alchemy,    key: alchemy-a,  network: base-mainnet, weight: 4}
+      - {provider: infura,     key: infura-a,   network: base-mainnet, weight: 3}
+      - {provider: alchemy,    key: alchemy-b,  network: base-mainnet, weight: 2}
+      - {provider: infura,     key: infura-b,   network: base-mainnet, weight: 2}
+      - {provider: quicknode,  key: quicknode,                         weight: 2}
+      - {provider: chainstack, key: chainstack,                        weight: 1}
+    sources: [alchemy]
+  sepolia:
+    family: evm
+    evm_chain_id: 11155111
+    testnet: true
+    block_time: 12s
+    finality: {policy: finalized-tag}
+    native: {symbol: ETH, decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: eth-sepolia}
+      - {provider: infura,  key: infura-a,  network: sepolia}
+    sources: [alchemy]
+  base-sepolia:
+    family: evm
+    evm_chain_id: 84532
+    testnet: true
+    block_time: 2s
+    finality: {policy: finalized-tag}
+    native: {symbol: ETH, decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: base-sepolia}
+      - {provider: infura,  key: infura-a,  network: base-sepolia}
+    sources: [alchemy]

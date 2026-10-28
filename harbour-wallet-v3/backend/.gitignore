@@ -1,0 +1,4 @@
+bin/
+.env
+.hbdevice.json
+dump.rdb
