@@ -1,7 +1,7 @@
 # Builds every binary; pick one with the container command, e.g.
 #   docker build -t harbour-backend .
 #   docker run harbour-backend /app/bin/api -config /app/config
-FROM golang:1.24-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 COPY go.mod go.sum ./
