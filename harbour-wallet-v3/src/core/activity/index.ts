@@ -10,6 +10,7 @@ import { makeRpc } from './evm';
 import { mergeSources, hashOf } from './merge';
 import { isIndexedChain, isIndexedEvm } from '../harbour/config';
 import { fetchHarbourHistory } from '../harbour/data';
+import { filterByAddedAssets, emptyAllow, type AssetAllow } from './filter';
 
 const CUSTOM = /^custom-(\d+)$/;
 /** The EVM chain behind a network id (registry chain or user-added custom network), or null for non-EVM networks. */
@@ -43,7 +44,7 @@ export function startActivityEngine(store: Store, onPending?: (has: boolean) => 
 export const currentActivityEngine = (): ActivityEngine | null => engine;
 
 type F = typeof fetch;
-export async function fetchActivity(chainOrId: ChainInfo | string, address: string, opts?: { solanaRpc?: string } | null, f: F = fetch, eng: ActivityEngine | null = engine): Promise<{ ok: true; items: HistoryItem[] } | { ok: false; error: string; unsupported?: boolean }> {
+async function fetchActivityRaw(chainOrId: ChainInfo | string, address: string, opts?: { solanaRpc?: string } | null, f: F = fetch, eng: ActivityEngine | null = engine): Promise<{ ok: true; items: HistoryItem[] } | { ok: false; error: string; unsupported?: boolean }> {
   const id = typeof chainOrId === 'string' ? chainOrId : chainOrId.id;
   if (!address) return { ok: false, error: 'No address for this network.' };
   if (!evmOf(id)) return fetchHistory(chainOrId, address, opts, f);   // non-EVM: explorer adapter exactly as before
@@ -56,6 +57,17 @@ export async function fetchActivity(chainOrId: ChainInfo | string, address: stri
   // Fail only when nothing at all could be produced: no explorer rows, no stored/scanned rows, and no source reported success.
   if (!explorerOk && !have && (!mine || mine.error)) return { ok: false, error: 'Could not load history right now.' };
   const items = mergeSources(mine?.local ?? [], mine?.logs ?? [], explorerRows).sort((a, b) => (b.status === 'pending' && !b.timestamp ? Number.MAX_SAFE_INTEGER : b.timestamp) - (a.status === 'pending' && !a.timestamp ? Number.MAX_SAFE_INTEGER : a.timestamp));
+  return { ok: true, items: items.slice(0, 300) };
+}
+
+let allowProvider: (() => Promise<AssetAllow>) | null = null;
+/** Registers where the added-token / added-NFT allow-lists come from (the service worker). Unset (tests, tools): nothing is filtered. */
+export const setAssetAllowProvider = (fn: (() => Promise<AssetAllow>) | null): void => { allowProvider = fn; };
+/** Activity feed: native coin, own swaps and contract calls, and movements of tokens / NFTs the user added. Fails closed (native only) when the wallet is locked. */
+export async function fetchActivity(...a: Parameters<typeof fetchActivityRaw>): ReturnType<typeof fetchActivityRaw> {
+  const r = await fetchActivityRaw(...a);
+  if (!r.ok) return r;
+  const items = allowProvider ? filterByAddedAssets(r.items, await allowProvider().catch(() => emptyAllow())) : r.items;
   return { ok: true, items: items.slice(0, 100) };
 }
 
@@ -69,5 +81,5 @@ async function harbourActivity(id: string, address: string, eng: ActivityEngine 
   const local = (own.status === 'fulfilled' && own.value ? own.value.local : []).filter((x) => !indexedHashes.has(hashOf(x)));
   if (!indexed && !local.length) return { ok: false, error: 'Could not load history right now.' };
   const items = mergeSources(local, [], indexed ?? []).sort((a, b) => (b.status === 'pending' && !b.timestamp ? Number.MAX_SAFE_INTEGER : b.timestamp) - (a.status === 'pending' && !a.timestamp ? Number.MAX_SAFE_INTEGER : a.timestamp));
-  return { ok: true, items: items.slice(0, 100) };
+  return { ok: true, items: items.slice(0, 300) };
 }

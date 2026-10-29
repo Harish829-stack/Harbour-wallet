@@ -7,7 +7,7 @@ import { T } from '../../theme';
 import { bg } from '../../api';
 import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, IconBtn } from '../ui';
 import type { Ctx } from '../screens';
-import { chainById } from '../../../core/chains/index';
+import { chainById, ENABLED_CHAINS } from '../../../core/chains/index';
 import { fmtRaw, Notice } from './earnParts';
 
 interface CollectionView { id: string; chainId: string; contract: string; name: string; symbol: string; image: string; owned: number; standard: string; suspicious: boolean; floorPrice?: number; preview: string[]; reason?: 'reported' | 'suspected' }
@@ -48,7 +48,7 @@ const NftsScreen: React.FC<Ctx> = (c) => {
     bg({ type: 'nftList', refresh, chainIds: filter }).then((r) => { setLoading(false); if (r?.ok) setData(r); else setErr(r?.error ?? 'Request failed'); }).catch((e) => { setLoading(false); setErr(String(e?.message ?? e)); });
   }, [c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(false); }, [load]); useChanged(useCallback(() => load(false), [load]));
-  const right = <div style={{ display: 'flex', gap: 6 }}><IconBtn icon="refresh" size={32} title="Refresh" onClick={() => load(true)} /><IconBtn icon="eyeoff" size={32} title="Hidden collections" onClick={() => c.nav.push('nftHidden')} /></div>;
+  const right = <div style={{ display: 'flex', gap: 6 }}><IconBtn icon="refresh" size={32} title="Refresh" onClick={() => load(true)} /><IconBtn icon="plus" size={32} title="Import NFT" onClick={() => c.nav.push('nftImport')} /><IconBtn icon="eyeoff" size={32} title="Hidden collections" onClick={() => c.nav.push('nftHidden')} /></div>;
   return (
     <Screen title="Collectibles" onBack={c.nav.pop} right={right}>
       {!data && !err && <div role="status" aria-label="Loading collectibles" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{[0, 1, 2, 3].map((i) => <div key={i}><Skeleton w="100%" h={150} r={14} /><div style={{ height: 6 }} /><Skeleton w={90} h={12} /></div>)}</div>}
@@ -59,10 +59,10 @@ const NftsScreen: React.FC<Ctx> = (c) => {
           {data.errors.length > 0 && data.active.length + data.hidden.length > 0 && <Notice action={{ label: 'Retry', onClick: () => load(true) }}>Couldn’t load collectibles from {data.errors.map((e) => netName(e.chainId)).join(', ')}.</Notice>}
           {data.active.length === 0 ? (
             data.errors.length > 0 && data.hidden.length === 0 ? <Retry text="We couldn’t load your collectibles." detail={data.errors[0].error} onRetry={() => load(true)} />
-              : <div><Empty title="No collectibles yet" sub={data.hidden.length ? `${data.hidden.length} collection${data.hidden.length > 1 ? 's are' : ' is'} hidden.` : 'NFTs you receive on supported networks will appear here.'} icon="nft" /><div style={{ maxWidth: 220, margin: '0 auto' }}><Btn onClick={() => c.nav.push('receive')}>Receive</Btn></div></div>
+              : <div><Empty title="No collectibles yet" sub={data.hidden.length ? `${data.hidden.length} collection${data.hidden.length > 1 ? 's are' : ' is'} hidden.` : 'NFTs you import will appear here. Add one with its network, contract address and token ID.'} icon="nft" /><div style={{ maxWidth: 220, margin: '0 auto' }}><Btn onClick={() => c.nav.push('nftImport')}>Import NFT</Btn></div></div>
           ) : <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 6 }}>{data.active.map((col) => <Tile key={col.id} c={col} onClick={() => c.nav.push('nftCollection', { id: col.id })} />)}</div>}
           {loading && <div style={{ ...subtle, textAlign: 'center', marginTop: 10 }}>Refreshing…</div>}
-          <div style={{ ...subtle, marginTop: 16 }}>Collectibles are read from public indexers and may be incomplete or delayed.</div>
+          <div style={{ ...subtle, marginTop: 16 }}>Only NFTs you import are shown. Details come from public indexers and the chain, and may be delayed.</div>
         </>
       )}
     </Screen>
@@ -228,4 +228,31 @@ const NftSendScreen: React.FC<Ctx> = (c) => {
   );
 };
 
-export const SCREENS_nfts: Record<string, React.FC<Ctx>> = { nfts: NftsScreen, nftCollection: NftCollectionScreen, nftItem: NftItemScreen, nftHidden: NftHiddenScreen, nftSend: NftSendScreen };
+// ---------------------------------------------------------------- import
+const nftField: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6 };
+const NftImportScreen: React.FC<Ctx> = (c) => {
+  const nets = ENABLED_CHAINS.filter((n) => n.kind === 'evm');
+  const [chainId, setChainId] = useState<string>(c.networkFilter && nets.some((n) => n.id === c.networkFilter) ? c.networkFilter : (nets.find((n) => n.id === 'ethereum') ?? nets[0])?.id ?? '');
+  const [contract, setContract] = useState(''); const [tokenId, setTokenId] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const ok = /^0x[0-9a-fA-F]{40}$/.test(contract) && /^\d{1,78}$/.test(tokenId) && !!chainId;
+  const add = async () => {
+    setBusy(true); setErr('');
+    const r = await bg({ type: 'nftAdd', chainId, contract, tokenId }).catch(() => null); setBusy(false);
+    if (r?.ok) { notify(); c.nav.pop(); } else setErr(r?.error ? userText(r.error) : 'Could not import this NFT. Try again.');
+  };
+  return (
+    <Screen title="Import NFT" onBack={c.nav.pop}>
+      <label htmlFor="nft-net" style={{ fontSize: 12, color: T.sub }}>Network</label>
+      <select id="nft-net" data-testid="nft-import-network" value={chainId} onChange={(e) => setChainId(e.target.value)} style={nftField}>{nets.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}</select>
+      <label htmlFor="nft-contract" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Contract address</label>
+      <input id="nft-contract" data-testid="nft-import-contract" value={contract} onChange={(e) => setContract(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoComplete="off" style={{ ...nftField, fontFamily: 'monospace' }} />
+      <label htmlFor="nft-token" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Token ID</label>
+      <input id="nft-token" data-testid="nft-import-token-id" value={tokenId} inputMode="numeric" onChange={(e) => setTokenId(e.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g. 1234" autoComplete="off" style={nftField} />
+      <div style={{ ...subtle, marginTop: 10 }}>You can find the contract address and token ID under “Blockchain details” on a marketplace. The NFT must be in your wallet’s address on the chosen network.</div>
+      {err && <div role="alert" data-testid="nft-import-error" style={{ color: T.error, fontSize: 13, marginTop: 12 }}>{err}</div>}
+      <div style={{ marginTop: 18 }}><Btn disabled={!ok || busy} onClick={add}>{busy ? 'Importing…' : 'Import NFT'}</Btn></div>
+    </Screen>
+  );
+};
+
+export const SCREENS_nfts: Record<string, React.FC<Ctx>> = { nftImport: NftImportScreen, nfts: NftsScreen, nftCollection: NftCollectionScreen, nftItem: NftItemScreen, nftHidden: NftHiddenScreen, nftSend: NftSendScreen };

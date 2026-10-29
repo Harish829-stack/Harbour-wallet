@@ -129,7 +129,7 @@ export function historyItems(rows: HistoryRow[], explorerTx: (registryId: string
   }
   return out;
 }
-export async function fetchHarbourHistory(registryId: string, evmAddress: string, explorerTx: (registryId: string, hash: string) => string | undefined, limit = 100): Promise<HistoryItem[]> {
+export async function fetchHarbourHistory(registryId: string, evmAddress: string, explorerTx: (registryId: string, hash: string) => string | undefined, limit = 200): Promise<HistoryItem[]> {
   const chain = backendChainOf(registryId); if (!chain) return [];
   const refs = [{ chain, address: lc(evmAddress) }];
   const h = await withTracking(refs, async () => { await ensureTracked(refs); return getHistory(refs, undefined, limit); });

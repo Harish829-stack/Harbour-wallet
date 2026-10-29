@@ -14,11 +14,13 @@ import { ethCall, type CallPlan } from '../../core/staking/evm';
 import { solRpc, sendSolana, solanaBlockhash } from '../../core/staking/solana';
 import type { NftCollection, NftItem, NftReportState } from '../../core/nfts/types';
 import { emptyReportState } from '../../core/nfts/types';
-import { loadCollectionItems, loadCollections, NFT_CHAINS, sanitizeReportState, setReported, splitCollections, type CollectionsResult, type NftEnv } from '../../core/nfts/service';
+import { loadCollectionItems, loadCollections, sanitizeReportState, setReported, splitCollections, type CollectionsResult, type NftEnv } from '../../core/nfts/service';
 import { blockscoutInstanceUrl } from '../../core/nfts/blockscout';
 import { evmNftTransfer, signSolanaNft } from '../../core/nfts/transfer';
+import { addedKeys, checkOwnership, keepAdded, keyOf, nftKey, readAdded, sanitizeAdded, stubCollections, MAX_ADDED_NFTS, type AddedNft } from '../../core/nfts/added';
+import { fillMissingMetadata } from '../../core/nfts/onchain';
 
-const REPORTS_KEY = 'nfts:reports:v1'; const TTL = 5 * 60_000;
+const ADDED_KEY = 'nfts:added:v1'; const REPORTS_KEY = 'nfts:reports:v1'; const TTL = 5 * 60_000;
 const env = (): NftEnv => ({ f: fetch.bind(globalThis) as typeof fetch, solUrls: () => [solanaRpcUrl(), ...(chainById('solana')?.endpoints ?? [])].filter((u, i, a) => a.indexOf(u) === i), rpcUrls: (id) => { const c = chainById(id); return c && c.kind === 'evm' ? getRpcUrls(c) : []; } });
 const fail = (error: string, code = 'error') => ({ ok: false as const, error, code });
 const errOf = (e: any) => fail(String(e?.shortMessage ?? e?.message ?? 'Request failed').slice(0, 300), e?.code ?? 'error');
@@ -34,13 +36,32 @@ async function loadReports(walletId: string): Promise<NftReportState> {
 async function saveReports(walletId: string, s: NftReportState) {
   const all = (await local.get<Record<string, unknown>>(REPORTS_KEY)) ?? {}; all[walletId] = s; await local.set(REPORTS_KEY, all);
 }
+// Imported NFTs ("Import NFT"): the wallet lists and tracks only these, never everything the address happens to hold.
+async function loadAdded(walletId: string): Promise<AddedNft[]> { const all = (await local.get<Record<string, unknown>>(ADDED_KEY)) ?? {}; return readAdded(all[walletId]); }
+async function saveAdded(walletId: string, list: AddedNft[]) { const all = (await local.get<Record<string, unknown>>(ADDED_KEY)) ?? {}; all[walletId] = list; await local.set(ADDED_KEY, all); }
+const ownerFor = (info: any) => (id: string) => { const c = chainById(id); return c ? addressFor(c, info.addresses) : ''; };
+async function loadImported(info: any, chains: string[]): Promise<CollectionsResult> {
+  const added = (await loadAdded(info.walletId)).filter((a) => chains.includes(a.chainId));
+  const res: CollectionsResult = { collections: [], errors: [], sources: {} };
+  if (!added.length) return res; // nothing imported on these networks: no indexer call at all
+  const wanted = [...new Set(added.map((a) => a.chainId))]; const e = env(); const ownerOf = ownerFor(info);
+  const raw = await loadCollections(e, ownerOf, wanted);
+  const kept = keepAdded(raw.collections, addedKeys(added));
+  const have = new Set(kept.flatMap((c) => c.items.map((i) => nftKey(i.chainId, i.contract, i.id))));
+  // Imported but not (yet) in the indexer: read it from the chain, which also proves the address still owns it.
+  const stubs = await stubCollections(e.f, (id) => e.rpcUrls?.(id) ?? [], ownerOf, added.filter((a) => !have.has(keyOf(a))));
+  for (const chainId of wanted) await fillMissingMetadata(stubs.filter((c) => c.chainId === chainId), e.rpcUrls?.(chainId) ?? [], e.f).catch(() => undefined);
+  const byId = new Map(kept.map((c) => [c.id, c]));
+  for (const c of stubs) { const k = byId.get(c.id); if (k) { k.items.push(...c.items); k.owned = k.items.length; } else { kept.push(c); byId.set(c.id, c); } }
+  return { collections: kept, errors: kept.length ? [] : raw.errors, sources: raw.sources };
+}
 const summary = (c: NftCollection) => ({ id: c.id, chainId: c.chainId, contract: c.contract, name: c.name, symbol: c.symbol, image: c.image, owned: c.owned, standard: c.standard, suspicious: c.suspicious, floorPrice: c.floorPrice, preview: c.items.slice(0, 3).map((i) => i.image).filter(Boolean) });
 
 async function collections(ctx: HandlerCtx, refresh: boolean, chainIds?: string[]) {
   const info = await activeInfo(ctx); if (!info) throw bad('No wallet found', 'no_wallet');
-  const scope = `${info.walletId}:${info.derivationIndex}`; const chains = (chainIds?.length ? chainIds : NFT_CHAINS).join(',');
+  const scope = `${info.walletId}:${info.derivationIndex}`; const importedChains = [...new Set((await loadAdded(info.walletId)).map((a) => a.chainId))]; const chainList = chainIds?.length ? chainIds : importedChains; const chains = chainList.join(',');
   if (!refresh && mem && mem.scope === scope && mem.chains === chains && Date.now() - mem.at < TTL) return { info, res: mem.res, at: mem.at, cached: true };
-  const res = await loadCollections(env(), (id) => { const c = chainById(id); return c ? addressFor(c, info.addresses) : ''; }, chainIds?.length ? chainIds : NFT_CHAINS);
+  const res = await loadImported(info, chainList);
   const all = res.errors.length > 0 && res.collections.length === 0 && mem && mem.scope === scope && mem.chains === chains;
   if (all) return { info, res: mem!.res, at: mem!.at, cached: true, stale: true, error: res.errors[0].error };
   mem = { scope, chains, at: Date.now(), res }; itemCache.clear();
@@ -64,7 +85,7 @@ async function findCollection(ctx: HandlerCtx, id: string) {
   if (cached) return { info, c: cached };
   const chainId = id.slice(0, id.indexOf(':')); const chain = chainById(chainId);
   if (!chain) throw bad('Collection not found (refresh the list)', 'not_found');
-  const res = await loadCollections(env(), (cid) => { const c = chainById(cid); return c ? addressFor(c, info.addresses) : ''; }, [chainId]);
+  const res = await loadImported(info, [chainId]);
   const c = res.collections.find((x) => x.id === id);
   if (!c) throw bad(res.errors[0]?.error ? `Couldn't reach the NFT indexer: ${res.errors[0].error}` : 'Collection not found (refresh the list)', 'not_found');
   if (mem && mem.scope === scope) mem.res.collections.push(c); // keep it for the item / send screens
@@ -72,7 +93,9 @@ async function findCollection(ctx: HandlerCtx, id: string) {
 }
 async function itemsOf(ctx: HandlerCtx, c: NftCollection, owner: string): Promise<NftItem[]> {
   const hit = itemCache.get(c.id); if (hit && Date.now() - hit.at < TTL) return hit.items;
-  const items = await loadCollectionItems(env(), c, owner); itemCache.set(c.id, { at: Date.now(), items }); return items;
+  const info = await activeInfo(ctx); const keys = addedKeys(info ? await loadAdded(info.walletId) : []);
+  const items = (await loadCollectionItems(env(), c, owner)).filter((i) => keys.has(nftKey(i.chainId, i.contract, i.id))); // an imported NFT's collection lists only the imported ones
+  itemCache.set(c.id, { at: Date.now(), items }); return items;
 }
 const nftCollection: Handler = async (msg, ctx) => {
   try {
@@ -104,6 +127,28 @@ const nftReport: Handler = async (msg, ctx) => {
     const id = String(msg.id ?? ''); if (!id || id.length > 200) return fail('Invalid collection', 'bad_request');
     const next = setReported(await loadReports(info.walletId), id, msg.reported === true); await saveReports(info.walletId, next);
     return { ok: true, hidden: next.hidden.length };
+  } catch (e: any) { return errOf(e); }
+};
+
+const nftAdd: Handler = async (msg, ctx) => {
+  try {
+    const info = await activeInfo(ctx); if (!info) return fail('No wallet found', 'no_wallet');
+    const s = sanitizeAdded(msg); if (!s.ok) return fail(s.error, 'bad_request');
+    const chain = chainById(s.nft.chainId); if (!chain || chain.kind !== 'evm') return fail('Importing an NFT is available on EVM networks.', 'unsupported');
+    const owner = addressFor(chain, info.addresses); const e = env();
+    const own = await checkOwnership(e.f, e.rpcUrls?.(chain.id) ?? [], s.nft, owner);
+    if (!own.owned) return fail(own.readable ? `This NFT is not owned by your address on ${chain.name}.` : `We couldn't read this NFT. Check the network, contract address and token ID.`, 'not_owned');
+    const list = await loadAdded(info.walletId);
+    if (!list.some((n) => keyOf(n) === keyOf(s.nft))) { if (list.length >= MAX_ADDED_NFTS) return fail(`You can import up to ${MAX_ADDED_NFTS} NFTs.`, 'limit'); await saveAdded(info.walletId, [...list, s.nft]); }
+    mem = null; itemCache.clear(); return { ok: true };
+  } catch (e: any) { return errOf(e); }
+};
+const nftRemove: Handler = async (msg, ctx) => {
+  try {
+    const info = await activeInfo(ctx); if (!info) return fail('No wallet found', 'no_wallet');
+    const s = sanitizeAdded(msg); if (!s.ok) return fail(s.error, 'bad_request');
+    await saveAdded(info.walletId, (await loadAdded(info.walletId)).filter((n) => keyOf(n) !== keyOf(s.nft)));
+    mem = null; itemCache.clear(); return { ok: true };
   } catch (e: any) { return errOf(e); }
 };
 
@@ -178,4 +223,4 @@ const nftTransferSubmit: Handler = async (msg, ctx) => {
   } catch (e: any) { return errOf(e); } finally { busy = false; }
 };
 
-export const handlers: HandlerMap = { nftList, nftCollection, nftItem, nftReport, nftTransferPrepare, nftTransferSubmit };
+export const handlers: HandlerMap = { nftAdd, nftRemove, nftList, nftCollection, nftItem, nftReport, nftTransferPrepare, nftTransferSubmit };
