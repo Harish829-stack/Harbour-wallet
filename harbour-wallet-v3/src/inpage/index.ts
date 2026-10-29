@@ -31,7 +31,15 @@ function uuid(): string { try { if (crypto.randomUUID) return crypto.randomUUID(
   const existing = (window as any).ethereum;
   if (!existing) define('ethereum', eth);
   else (window as any).original = existing;
-  bridge.onInit((s) => { if ((window as any).ethereum && (window as any).ethereum !== eth && s.prefs.defaultWallet) { (window as any).original = (window as any).ethereum; define('ethereum', eth); } });
+  // Default wallet: own window.ethereum with an accessor, not a plain value. MetaMask (and other wallets) assign window.ethereum when their own
+  // script runs, which may be after ours; a data property would be overwritten and dApps like chainlist would open MetaMask. Their assignment is
+  // kept as window.original (and in the EIP-6963 list) instead of replacing Harbour.
+  const takeOver = () => {
+    const cur = (window as any).ethereum; if (cur && cur !== eth) (window as any).original = cur;
+    try { Object.defineProperty(window, 'ethereum', { configurable: true, enumerable: true, get: () => eth, set: (v: unknown) => { if (v && v !== eth) (window as any).original = v; } }); }
+    catch { define('ethereum', eth); }
+  };
+  bridge.onInit((s) => { if (s.prefs.defaultWallet && (window as any).ethereum !== eth) takeOver(); });
   if (sol && !(window as any).solana) define('solana', sol);
   if (MULTI) {
     define('harbourTon', ton);
