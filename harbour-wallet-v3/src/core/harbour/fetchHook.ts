@@ -4,6 +4,7 @@
 // viem clients, the activity engine, gas quotes and dApp calls therefore all use the backend without changes.
 import { HB_API_URL, evmIdOfBackend } from './config';
 import { signedRequest, broadcastTx, setRawFetch, HarbourApiError } from './client';
+import { keccak256 } from 'viem';
 
 const PREFIX = `${HB_API_URL}/v1/rpc/`;
 let onBroadcast: ((chain: string, hash: string) => void) | null = null;
@@ -19,6 +20,9 @@ export async function harbourRpc(chain: string, body: string, signal?: AbortSign
   if (parsed && !Array.isArray(parsed) && parsed.method === 'eth_sendRawTransaction' && typeof parsed.params?.[0] === 'string') {
     try {
       const r = await broadcastTx(chain, parsed.params[0], sessionFor(chain));
+      // The hash of a signed transaction is keccak256 of its bytes: never accept a different one from the server.
+      const own = keccak256(parsed.params[0] as `0x${string}`);
+      if (String(r.tx_hash).toLowerCase() !== own.toLowerCase()) throw new HarbourApiError(0, 'bad_hash', 'Harbour could not confirm this transaction. Check your activity before trying again.', false);
       try { onBroadcast?.(chain, r.tx_hash); } catch { /* listeners never affect the send */ }
       return rpcReply(parsed.id, { result: r.tx_hash });
     } catch (e) {

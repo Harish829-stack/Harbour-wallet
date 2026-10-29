@@ -128,7 +128,7 @@ export function NetworksPage({ cta }: { cta: ReactNode }) {
     <section className="lp-section">
       <div className="lp-head" data-reveal><h2>How it works.</h2><p>No accounts and no sign-ups. Your phrase does the work, and public network endpoints do the rest.</p></div>
       <div className="lp-sec">
-        {([[KeyRound, 'One phrase, every address', 'Each network gets its own address, derived on this device from your single secret phrase using open-source wallet-core.'], [Server, 'Public endpoints', 'Balances, history and fees are read from public network endpoints, so there is no Harbour account behind them.'], [Layers, 'Start light, add more', `Harbour opens with ${DEFAULT_HOME_CHAINS.length} popular networks. Turn on any of the others from Manage crypto whenever you need them.`]] as const).map(([I, t, d], i) =>
+        {([[KeyRound, 'One phrase, every address', 'Each network gets its own address, derived on this device from your single secret phrase using open-source wallet-core.'], [Server, 'Harbour servers', 'Balances, history and fees come from Harbour\u2019s servers, which see your public addresses (never your keys or phrase). Your addresses are linked to this browser by an anonymous device key, not an account.'], [Layers, 'Start light, add more', `Harbour opens with ${DEFAULT_HOME_CHAINS.length} popular networks. Turn on any of the others from Manage crypto whenever you need them.`]] as const).map(([I, t, d], i) =>
           <article key={t} className="lp-sec-card" data-reveal style={{ ['--d' as any]: `${i * 90}ms` }}><span className="lp-sec-ic"><I size={22}/></span><h3>{t}</h3><p>{d}</p></article>)}
       </div>
     </section>

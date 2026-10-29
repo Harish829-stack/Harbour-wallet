@@ -108,11 +108,17 @@ func main() {
 			sim = nil
 		}
 	}
+	proxies, err := api.ParseCIDRs(os.Getenv("TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		log.Error("TRUSTED_PROXY_CIDRS", "err", err)
+		os.Exit(1)
+	}
 	srv := api.New(api.Options{
 		Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: log, Events: pub,
 		GatewayURL:     config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
 		GatewayToken:   os.Getenv("GATEWAY_INTERNAL_TOKEN"),
 		TrustProxy:     os.Getenv("TRUST_PROXY_HEADERS") == "1",
+		TrustedProxies: proxies,
 		PowDifficulty:  pow,
 		Simulator:      sim,
 		RealtimeSecret: []byte(os.Getenv("CENTRIFUGO_TOKEN_HMAC_SECRET")),

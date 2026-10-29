@@ -32,6 +32,13 @@ func main() {
 		die(log, "migrate", err)
 	}
 	log.Info("migrations", "applied", applied)
+	// The services connect as this user (a member of harbour_app), never as the owner that runs migrations.
+	if u, p := os.Getenv("POSTGRES_APP_USER"), os.Getenv("POSTGRES_APP_PASSWORD"); u != "" || p != "" {
+		if err := st.EnsureAppLogin(ctx, u, p); err != nil {
+			die(log, "app user", err)
+		}
+		log.Info("app database user ready", "user", u)
+	}
 	if *maintain {
 		if err := st.MaintainPartitions(ctx); err != nil {
 			die(log, "maintain", err)

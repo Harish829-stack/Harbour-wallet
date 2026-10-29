@@ -115,7 +115,10 @@ export function wireNotifications(getState: () => Promise<any>): void {
   const gcm = (globalThis as any).chrome?.gcm;
   gcm?.onMessage?.addListener((m: any) => {
     const d = m?.data ?? {};
-    void showNotification(String(d.title ?? 'Harbour'), String(d.body ?? ''), typeof d.url === 'string' ? d.url : undefined);
+    // Never open a link the push payload chose: build the explorer link locally from a known chain and a well-formed hash.
+    const hash = typeof d.hash === 'string' ? d.hash.toLowerCase() : ''; const chain = typeof d.chain === 'string' ? chainById(d.chain) : undefined;
+    const url = chain && /^0x[0-9a-f]{64}$/.test(hash) ? explorerTxUrl(chain, hash) : undefined;
+    void showNotification(String(d.title ?? 'Harbour'), String(d.body ?? ''), url || undefined);
   });
   void applyNotifySchedule().then(() => syncRemotePush(getState)).catch(() => {});
 }

@@ -1,7 +1,7 @@
 // Signed calls to the Harbour API. Every /v1/me, /v1/rpc and /v1/tx request carries the device signature
 // (canonical string identical to backend/internal/devicesig). Errors are the API's user-presentable messages.
 import { sha256 } from '@noble/hashes/sha256';
-import { HB_API_URL } from './config';
+import { HB_API_URL, HB_API_SECURE } from './config';
 import { deviceIdentity, resetDevice, b64url, parseResponse, HarbourApiError, type Identity } from './device';
 export { HarbourApiError };
 
@@ -24,6 +24,7 @@ async function signedHeaders(id: Identity, method: string, pathAndQuery: string,
 /** Raw signed request (returns the Response). Re-registers once if the server no longer knows this device. */
 export async function signedRequest(method: string, pathAndQuery: string, body?: unknown, headers: Record<string, string> = {}, signal?: AbortSignal): Promise<Response> {
   const raw = body === undefined ? new Uint8Array() : enc.encode(typeof body === 'string' ? body : JSON.stringify(body));
+  if (!HB_API_SECURE) throw new HarbourApiError(0, 'insecure_api', 'Harbour cannot reach its servers securely. Please update the extension.', false);
   for (let attempt = 0; ; attempt++) {
     const id = await deviceIdentity(HB_API_URL, rawFetch);
     const res = await rawFetch(HB_API_URL + pathAndQuery, {
@@ -33,7 +34,9 @@ export async function signedRequest(method: string, pathAndQuery: string, body?:
     });
     if (res.status === 401 && attempt === 0) {
       const code = (await res.clone().json().catch(() => ({})))?.error?.code;
-      if (code === 'unauthorized') { await resetDevice(); continue; } // device deleted or revoked server-side: start over
+      // Only a device the server has never heard of (database reset) registers again. A revoked device, a bad signature or a
+      // replayed nonce must not rotate the key: that would undo a server-side ban and let a network attacker force resets.
+      if (code === 'device_unknown') { await resetDevice(); continue; }
     }
     return res;
   }
@@ -64,7 +67,7 @@ export const broadcastTx = (chain: string, raw: string, session?: string) =>
   api<{ tx_hash: string; status: string; channel?: string; channel_token?: string }>('POST', `/v1/tx/${chain}/broadcast`, { raw },
     { 'Idempotency-Key': `bc-${raw.slice(-24)}`, ...(session ? { 'X-HB-Session': session } : {}) });
 export const realtimeToken = () => api<{ url: string; token: string; expires_at: number; subscriptions: Array<{ channel: string; token: string }> }>('POST', '/v1/realtime/token', {});
-export const vapidKey = async (): Promise<string> => (await parseResponse(await rawFetch(`${HB_API_URL}/v1/push/vapid`, { credentials: 'omit' }))).public_key;
+export const vapidKey = async (): Promise<string> => { if (!HB_API_SECURE) throw new HarbourApiError(0, 'insecure_api', 'Harbour cannot reach its servers securely.', false); return (await parseResponse(await rawFetch(`${HB_API_URL}/v1/push/vapid`, { credentials: 'omit' }))).public_key; };
 export const putPush = (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) => api('PUT', '/v1/me/push', sub);
 export const deletePush = () => api('DELETE', '/v1/me/push');
 

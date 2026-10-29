@@ -51,6 +51,7 @@ type Pool struct {
 	gcfg    config.Gateway
 	members []*member
 	sticky  sync.Map // session -> stickyEntry
+	pins    atomic.Uint64
 	log     *slog.Logger
 	rnd     func() float64
 }
@@ -203,7 +204,11 @@ func (p *Pool) pinned(session string, exclude map[*member]bool, minBlock uint64)
 	}
 	e := v.(stickyEntry)
 	now := time.Now()
-	if now.After(e.until) || exclude[e.m] || (minBlock > 0 && e.m.latest.Load() < minBlock) {
+	if now.After(e.until) {
+		p.sticky.Delete(session)
+		return nil
+	}
+	if exclude[e.m] || (minBlock > 0 && e.m.latest.Load() < minBlock) {
 		return nil
 	}
 	if !e.m.bkt.take(now) {
@@ -216,8 +221,19 @@ func (p *Pool) pinned(session string, exclude map[*member]bool, minBlock uint64)
 }
 
 func (p *Pool) pin(session string, m *member) {
-	if session != "" {
-		p.sticky.Store(session, stickyEntry{m: m, until: time.Now().Add(p.gcfg.StickyTTL)})
+	if session == "" {
+		return
+	}
+	now := time.Now()
+	p.sticky.Store(session, stickyEntry{m: m, until: now.Add(p.gcfg.StickyTTL)})
+	// Sessions are client-chosen: sweep expired pins regularly so the map cannot grow without bound.
+	if p.pins.Add(1)%1024 == 0 {
+		p.sticky.Range(func(k, v any) bool {
+			if now.After(v.(stickyEntry).until) {
+				p.sticky.Delete(k)
+			}
+			return true
+		})
 	}
 }
 

@@ -160,7 +160,7 @@ func TestSendRealtimePush(t *testing.T) {
 	defer pushSrv.Close()
 
 	vapidPriv, vapidPub, _ := webpush.GenerateKeys()
-	srv := api.New(api.Options{Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Events: bus, Log: log, GatewayURL: gw.URL,
+	srv := api.New(api.Options{Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Events: bus, Log: log, GatewayURL: gw.URL, AnyPushHost: true,
 		PowDifficulty: 4, RealtimeSecret: []byte("rtsecret"), RealtimeURL: "ws://test/connection/websocket", VAPIDPublicKey: vapidPub})
 	hs := httptest.NewServer(srv.Handler())
 	defer hs.Close()

@@ -182,6 +182,11 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 				"Method not available", false, nil))
 			return
 		}
+		if q.Method == "eth_getLogs" && !filteredLogs(q.Params) {
+			writeJSON(w, http.StatusOK, rpc.NewGatewayError(q.ID, rpc.CodeBadRequest, "bad_request",
+				"eth_getLogs needs an address or topic filter", false, nil))
+			return
+		}
 	}
 	ok, err := s.counter(ctx, "hb:rlrpc:"+d.ID, int64(len(reqs)), s.tier(d.Tier).RPCPerMinute)
 	if err != nil {
@@ -212,7 +217,71 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	// Cap what one call can pull through the API, and drop gateway internals (which upstream keys were tried).
+	out, err := io.ReadAll(io.LimitReader(resp.Body, maxRPCResponse+1))
+	if err != nil || len(out) > maxRPCResponse {
+		writeJSON(w, http.StatusOK, rpc.NewGatewayError(reqs[0].ID, rpc.CodeBadRequest, "response_too_large",
+			"This request returns too much data. Ask for a smaller range.", false, nil))
+		return
+	}
+	out = stripGatewayInternals(out)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	w.Write(out)
+}
+
+// filteredLogs reports whether an eth_getLogs call names an address or at least one non-null topic. Unfiltered log
+// queries return every event of every contract in the range (megabytes per block on busy chains). The block range itself
+// is capped by rpc-gateway, which never splits user-facing requests.
+func filteredLogs(params json.RawMessage) bool {
+	var p []struct {
+		Address json.RawMessage   `json:"address"`
+		Topics  []json.RawMessage `json:"topics"`
+	}
+	if json.Unmarshal(params, &p) != nil || len(p) != 1 {
+		return false
+	}
+	if a := bytes.TrimSpace(p[0].Address); len(a) > 0 && string(a) != "null" && string(a) != "[]" && string(a) != `""` {
+		return true
+	}
+	for _, t := range p[0].Topics {
+		if t := bytes.TrimSpace(t); len(t) > 0 && string(t) != "null" && string(t) != "[]" {
+			return true
+		}
+	}
+	return false
+}
+
+// maxRPCResponse bounds one /v1/rpc response (a single eth_getLogs chunk or a batch of reads).
+const maxRPCResponse = 8 << 20
+
+// stripGatewayInternals removes error.data.upstreamsTried (provider topology) from a single or batch JSON-RPC reply.
+func stripGatewayInternals(b []byte) []byte {
+	if !bytes.Contains(b, []byte(`"upstreamsTried"`)) {
+		return b
+	}
+	var v any
+	if json.Unmarshal(b, &v) != nil {
+		return b
+	}
+	clean := func(m any) {
+		if obj, ok := m.(map[string]any); ok {
+			if e, ok := obj["error"].(map[string]any); ok {
+				if d, ok := e["data"].(map[string]any); ok {
+					delete(d, "upstreamsTried")
+				}
+			}
+		}
+	}
+	if arr, ok := v.([]any); ok {
+		for _, m := range arr {
+			clean(m)
+		}
+	} else {
+		clean(v)
+	}
+	if nb, err := json.Marshal(v); err == nil {
+		return nb
+	}
+	return b
 }

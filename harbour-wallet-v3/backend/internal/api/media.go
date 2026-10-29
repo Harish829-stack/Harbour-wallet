@@ -61,10 +61,14 @@ func (s *Server) handleTx(w http.ResponseWriter, r *http.Request) {
 		s.internalErr(w, r, err)
 		return
 	}
+	// A transaction broadcast through Harbour is described from our records only to the device that sent it; anyone
+	// else gets the public chain view (otherwise this endpoint tells whether a hash came from a Harbour user).
 	if p, err := s.opt.Store.Pending(ctx, chain, hash); err == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"source": "pending", "chain": chain, "tx_hash": hash, "status": p.State,
-			"from": p.From, "submitted_at": p.SubmittedAt})
-		return
+		if dev, derr := s.opt.Store.PendingDevice(ctx, chain, hash); derr == nil && dev == deviceFrom(ctx).ID {
+			writeJSON(w, http.StatusOK, map[string]any{"source": "pending", "chain": chain, "tx_hash": hash, "status": p.State,
+				"from": p.From, "submitted_at": p.SubmittedAt})
+			return
+		}
 	} else if !errors.Is(err, store.ErrNotFound) {
 		s.internalErr(w, r, err)
 		return
@@ -159,20 +163,42 @@ func (s *Server) gatewayCallSession(ctx context.Context, chain, session, method 
 
 const (
 	mediaMaxBytes  = 10 << 20
-	mediaMaxPixels = 40_000_000
+	mediaMaxPixels = 16_000_000 // decoded RGBA is 4 bytes per pixel
 	mediaMaxSide   = 512
 	mediaCacheTTL  = 24 * time.Hour
 )
 
 var mediaKeyRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
+// mediaSem bounds concurrent fetch+decode work across all callers (each decode can take ~64 MB).
+var mediaSem = make(chan struct{}, 4)
+
+// errMediaPermanent marks failures worth remembering (the image is bad), as opposed to timeouts and outages.
+var errMediaPermanent = errors.New("media: permanent")
+
 // errBlockedAddress is returned when a media URL resolves to a private address.
 var errBlockedAddress = errors.New("media: address not allowed")
 
+var blockedNets = func() []*net.IPNet {
+	var out []*net.IPNet
+	for _, c := range []string{"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "198.18.0.0/15", "240.0.0.0/4", "64:ff9b::/96", "64:ff9b:1::/48", "2002::/16"} {
+		_, n, _ := net.ParseCIDR(c)
+		out = append(out, n)
+	}
+	return out
+}()
+
 func blocked(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsUnspecified() || ip.IsMulticast() || ip.Equal(net.IPv4bcast) || ip.IsInterfaceLocalMulticast() ||
-		(ip.To4() != nil && ip.To4()[0] == 100 && ip.To4()[1]&0xc0 == 64) // 100.64.0.0/10 (CGNAT)
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsUnspecified() || ip.IsMulticast() || ip.Equal(net.IPv4bcast) || ip.IsInterfaceLocalMulticast() {
+		return true
+	}
+	for _, n := range blockedNets { // CGNAT, benchmarking, reserved, NAT64 and 6to4 (which can embed private IPv4)
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // newMediaClient builds an HTTP client that refuses private destinations,
@@ -233,6 +259,9 @@ func fetchImage(ctx context.Context, c *http.Client, src string) ([]byte, error)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return nil, fmt.Errorf("%w: http %d", errMediaPermanent, resp.StatusCode)
+		}
 		return nil, fmt.Errorf("media: http %d", resp.StatusCode)
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, mediaMaxBytes+1))
@@ -240,18 +269,18 @@ func fetchImage(ctx context.Context, c *http.Client, src string) ([]byte, error)
 		return nil, err
 	}
 	if len(raw) > mediaMaxBytes {
-		return nil, errors.New("media: too large")
+		return nil, fmt.Errorf("%w: too large", errMediaPermanent)
 	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw)) // SVG and anything else fails here
 	if err != nil {
-		return nil, fmt.Errorf("media: unsupported format: %w", err)
+		return nil, fmt.Errorf("%w: unsupported format: %v", errMediaPermanent, err)
 	}
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > mediaMaxPixels {
-		return nil, errors.New("media: image dimensions refused")
+		return nil, fmt.Errorf("%w: image dimensions refused", errMediaPermanent)
 	}
 	img, _, err := image.Decode(bytes.NewReader(raw))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errMediaPermanent, err)
 	}
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
@@ -308,10 +337,27 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 		s.internalErr(w, r, err)
 		return
 	}
-	img, err := fetchImage(ctx, s.media, src)
+	select {
+	case mediaSem <- struct{}{}:
+	case <-ctx.Done():
+		return
+	case <-time.After(5 * time.Second):
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+		return
+	}
+	// The fetch runs on its own deadline: a client that disconnects must not turn into a cached "no image" for everyone.
+	fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+	img, err := fetchImage(fctx, s.media, src)
+	cancel()
+	<-mediaSem
 	if err != nil {
 		s.opt.Log.Debug("media fetch failed", "key", key, "err", err)
-		s.opt.Redis.Set(context.WithoutCancel(ctx), ck, []byte{}, time.Hour)
+		neg := time.Minute // timeouts, outages: try again soon
+		if errors.Is(err, errMediaPermanent) || errors.Is(err, errBlockedAddress) {
+			neg = time.Hour
+		}
+		s.opt.Redis.Set(context.WithoutCancel(ctx), ck, []byte{}, neg)
 		http.NotFound(w, r)
 		return
 	}

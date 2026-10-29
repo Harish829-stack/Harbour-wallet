@@ -112,6 +112,9 @@ type Indexer struct {
 // Gateway tuning (providers.yaml "gateway:").
 type Gateway struct {
 	CacheMaxEntries   int           `yaml:"cache_max_entries"`
+	CacheMaxBytes     int64         `yaml:"cache_max_bytes"`       // total size of cached results
+	CacheMaxEntrySize int           `yaml:"cache_max_entry_bytes"` // larger results are never cached
+	CacheFinalTTL     time.Duration `yaml:"cache_final_ttl"`       // lifetime of finalized results
 	WindowSize        int           `yaml:"window_size"`
 	WindowAge         time.Duration `yaml:"window_age"`
 	BreakerErrorRate  float64       `yaml:"breaker_error_rate"`
@@ -138,15 +141,17 @@ type Tier struct {
 
 // API is api.yaml.
 type API struct {
-	PowDifficulty     int             `yaml:"pow_difficulty"`
-	PowTTL            time.Duration   `yaml:"pow_ttl"`
-	ChallengesPerHour int             `yaml:"challenges_per_ip_per_hour"`
-	ClockSkew         time.Duration   `yaml:"clock_skew"`
-	DefaultTier       string          `yaml:"default_tier"`
-	Tiers             map[string]Tier `yaml:"tiers"`
-	RPCAllowedMethods []string        `yaml:"rpc_allowed_methods"`
-	BackfillDenyList  []string        `yaml:"backfill_deny_list"`
-	IdempotencyTTL    time.Duration   `yaml:"idempotency_ttl"`
+	PowDifficulty     int           `yaml:"pow_difficulty"`
+	PowTTL            time.Duration `yaml:"pow_ttl"`
+	ChallengesPerHour int           `yaml:"challenges_per_ip_per_hour"`
+	// RegistrationsPerHour caps new devices across all callers (per-device quotas mean little if devices are free).
+	RegistrationsPerHour int             `yaml:"registrations_per_hour"`
+	ClockSkew            time.Duration   `yaml:"clock_skew"`
+	DefaultTier          string          `yaml:"default_tier"`
+	Tiers                map[string]Tier `yaml:"tiers"`
+	RPCAllowedMethods    []string        `yaml:"rpc_allowed_methods"`
+	BackfillDenyList     []string        `yaml:"backfill_deny_list"`
+	IdempotencyTTL       time.Duration   `yaml:"idempotency_ttl"`
 }
 
 // Config is all static configuration.
@@ -224,6 +229,11 @@ func (c *Config) defaults() {
 		}
 	}
 	def(&g.CacheMaxEntries, 100_000)
+	if g.CacheMaxBytes == 0 {
+		g.CacheMaxBytes = 256 << 20
+	}
+	def(&g.CacheMaxEntrySize, 256<<10)
+	defD(&g.CacheFinalTTL, 24*time.Hour)
 	def(&g.WindowSize, 200)
 	defD(&g.WindowAge, time.Minute)
 	if g.BreakerErrorRate == 0 {
@@ -258,6 +268,7 @@ func (c *Config) defaults() {
 	def(&ix.Workers, 4)
 	a := &c.API
 	def(&a.PowDifficulty, 20)
+	def(&a.RegistrationsPerHour, 2000)
 	defD(&a.PowTTL, 5*time.Minute)
 	def(&a.ChallengesPerHour, 30)
 	defD(&a.ClockSkew, 5*time.Minute)

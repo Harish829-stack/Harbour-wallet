@@ -1,5 +1,7 @@
 import { logError } from '../core/logger';
 import { sanitizeResult } from '../core/errors';
+import { uiSafe, findSecretField } from '../core/uiSafe';
+import { featureEnabled } from '../core/harbour/policy';
 import { installFailoverFetch } from '../kit/failoverFetch';
 import { installHarbourFetch } from '../core/harbour/fetchHook';
 installHarbourFetch(); // Harbour networks: sign requests to the API's RPC proxy, route broadcasts to /v1/tx (must be the innermost wrapper)
@@ -23,7 +25,6 @@ import { handlers as walletEvents } from './modules/wallet';
 import { handlers as marketEvents } from './modules/market';
 import { handlers as swapEvents } from './modules/swap';
 import { handlers as tokenEvents } from './modules/tokens';
-import { handlers as sendEvents } from './modules/send';
 import { handlers as settingsCoreEvents } from './modules/settingsCore';
 import { allExtraHandlers } from './handlers';
 import { ACTIVITY_ALARM, pollActivity, syncRemotePush, wireNotifications } from './notify';
@@ -72,7 +73,7 @@ setBroadcastListener(() => { void reconnectRealtime(); });
 // Every handler becomes a named INTERNAL_ event with the shared wallet context. Order of precedence: first registration wins (duplicates throw).
 const withCtx = (map: Record<string, (m: any, c: any) => any>) =>
   Object.fromEntries(Object.entries(map).map(([name, h]) => [name, async (m: any, c: any) => h(m, await buildCtx(c.sender))]));
-for (const m of [walletEvents, marketEvents, swapEvents, tokenEvents, sendEvents, settingsCoreEvents, allExtraHandlers()]) registerEvents('INTERNAL', withCtx(m as any));
+for (const m of [walletEvents, marketEvents, ...(featureEnabled('swap') ? [swapEvents] : []), tokenEvents, settingsCoreEvents, allExtraHandlers()]) registerEvents('INTERNAL', withCtx(m as any));
 
 // Boot: pre-migrations, wasm core, post-migrations, queue replay. Messages wait on this.
 const ready = bootWith([
@@ -96,10 +97,12 @@ async function handleRequest(raw: unknown, sender: any): Promise<any> {
   const result = hit !== undefined ? hit : { error: 'unknown_message' };
   syncStore(msg, result);
   if (WALLET_CHANGES.has(msg.type) && (result as any)?.ok !== false) scheduleAddressSync(vaultState); // keep the backend's tracked set in step
-  return sanitizeResult(result); // raw failures (HTTP codes, fetch errors) become plain sentences; codes like LOCKED pass through
+  const field = findSecretField(result);
+  if (field) logError(`blocked secret field "${field}" in the response to ${msg.type}`, null); // dumb-UI rule: key material never reaches an extension page
+  return uiSafe(sanitizeResult(result)); // raw failures (HTTP codes, fetch errors) become plain sentences; codes like LOCKED pass through
 }
 browser.runtime.onMessage.addListener((raw: unknown, sender: any) => handleRequest(raw, sender));
 servePort(handleRequest);
 initProviderBackground();
-initWalletConnectBackground();
+if (featureEnabled('walletconnect')) initWalletConnectBackground(); // relay connection only when WalletConnect is enabled (core/harbour/policy.ts)
 self.addEventListener('unhandledrejection', (e) => { logError('unhandled rejection', (e as PromiseRejectionEvent).reason); });

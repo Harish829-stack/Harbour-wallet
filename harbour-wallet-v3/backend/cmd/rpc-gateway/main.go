@@ -30,6 +30,12 @@ func main() {
 		log.Error("config", "err", err)
 		os.Exit(1)
 	}
+	// The gateway can broadcast and spend provider budget: never run it open. GATEWAY_ALLOW_NO_TOKEN=1 is for tests only.
+	token := os.Getenv("GATEWAY_INTERNAL_TOKEN")
+	if token == "" && os.Getenv("GATEWAY_ALLOW_NO_TOKEN") != "1" {
+		log.Error("GATEWAY_INTERNAL_TOKEN is not set (scripts/setup.sh generates it)")
+		os.Exit(1)
+	}
 	g, err := gateway.New(cfg, os.Getenv, log)
 	if err != nil {
 		log.Error("gateway", "err", err)
@@ -38,7 +44,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go g.Run(ctx)
-	hs := &http.Server{Addr: *addr, Handler: g.Handler(os.Getenv("GATEWAY_INTERNAL_TOKEN")),
+	hs := &http.Server{Addr: *addr, Handler: g.Handler(token),
 		ReadHeaderTimeout: 10 * time.Second, WriteTimeout: 60 * time.Second}
 	go func() {
 		<-ctx.Done()

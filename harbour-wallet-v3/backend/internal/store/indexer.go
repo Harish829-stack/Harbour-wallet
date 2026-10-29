@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -573,10 +574,26 @@ type NFTRow struct {
 	ImageSrc string // source URL; the media proxy is the only thing that fetches it
 }
 
+// mediaKeySecret keys MediaKey (set by the indexer from ADDRESS_LINK_ENCRYPTION_KEY). With a plain hash anyone could
+// compute the key of a public image URL and ask /v1/media whether some Harbour user holds that NFT.
+var mediaKeySecret []byte
+
+// SetMediaKeySecret sets the key MediaKey uses (derived with its own label).
+func SetMediaKeySecret(secret []byte) {
+	m := hmac.New(sha256.New, secret)
+	m.Write([]byte("harbour/media-key"))
+	mediaKeySecret = m.Sum(nil)
+}
+
 // MediaKey is the stable, unguessable key the media proxy serves an image under.
 func MediaKey(src string) string {
 	if src == "" {
 		return ""
+	}
+	if len(mediaKeySecret) > 0 {
+		m := hmac.New(sha256.New, mediaKeySecret)
+		m.Write([]byte(src))
+		return hex.EncodeToString(m.Sum(nil)[:16])
 	}
 	h := sha256.Sum256([]byte(src))
 	return hex.EncodeToString(h[:16])

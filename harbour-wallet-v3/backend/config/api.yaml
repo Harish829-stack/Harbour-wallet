@@ -2,7 +2,8 @@
 api:
   pow_difficulty: 20                 # leading zero bits; POW_DIFFICULTY env overrides
   pow_ttl: 5m
-  challenges_per_ip_per_hour: 30
+  challenges_per_ip_per_hour: 30     # per IPv4 address or IPv6 /64
+  registrations_per_hour: 2000       # new devices across all callers
   clock_skew: 5m                     # allowed X-HB-Date drift
   idempotency_ttl: 24h
   default_tier: default

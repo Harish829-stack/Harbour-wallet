@@ -127,6 +127,11 @@ func decodeAggregate3(b []byte) ([]result3, error) {
 		return nil, err
 	}
 	base := arrOff + 32
+	// n comes from the RPC response: each entry needs at least one 32-byte offset word, so a count larger than the
+	// payload can hold is malformed (and must not drive the allocation).
+	if n > uint64(len(b))/32 {
+		return nil, errors.New("abi: aggregate3 result count exceeds payload")
+	}
 	out := make([]result3, n)
 	for i := uint64(0); i < n; i++ {
 		tOff, err := readUint(b, base+32*i)
@@ -185,14 +190,21 @@ func decodeString(b []byte) (string, bool) {
 }
 
 func cleanText(s string) string {
+	s = strings.ToValidUTF8(s, "")
 	s = strings.Map(func(r rune) rune {
-		if r < 0x20 || r == 0x7f {
+		// Control characters and bidi/format overrides (used to spoof token names) are dropped.
+		if r < 0x20 || r == 0x7f || (r >= 0x80 && r < 0xa0) || (r >= 0x200b && r <= 0x200f) || (r >= 0x202a && r <= 0x202e) ||
+			(r >= 0x2066 && r <= 0x2069) || r == 0xfeff {
 			return -1
 		}
 		return r
 	}, s)
 	if len(s) > 128 {
-		s = s[:128]
+		cut := 128
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut-- // never split a multi-byte character (Postgres rejects invalid UTF-8)
+		}
+		s = s[:cut]
 	}
 	return strings.TrimSpace(s)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"context"
@@ -97,7 +98,7 @@ func (s *Server) handlePutPush(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := url.Parse(req.Endpoint)
 	if err != nil || u.Scheme != "https" || u.Host == "" || len(req.Endpoint) > 1024 ||
-		b64len(req.Keys.P256dh) != 65 || b64len(req.Keys.Auth) != 16 {
+		b64len(req.Keys.P256dh) != 65 || b64len(req.Keys.Auth) != 16 || !(s.opt.AnyPushHost || knownPushHost(u.Hostname())) {
 		writeErr(w, http.StatusBadRequest, "bad_subscription", "This notification subscription isn't valid.", false)
 		return
 	}
@@ -147,4 +148,18 @@ func (s *Server) syncPushRoutes(ctx context.Context, deviceID string) {
 	if err != nil {
 		s.opt.Log.Warn("push route sync failed", "err", err)
 	}
+}
+
+// knownPushHost reports whether a Web Push endpoint belongs to a browser push service (Chrome/FCM, Firefox, Edge,
+// Safari). Anything else would turn the notifier into a request reflector and could stall deliveries for everyone.
+func knownPushHost(h string) bool {
+	h = strings.ToLower(strings.TrimSuffix(h, "."))
+	switch {
+	case h == "fcm.googleapis.com", h == "android.googleapis.com", h == "web.push.apple.com":
+		return true
+	case strings.HasSuffix(h, ".push.services.mozilla.com"), strings.HasSuffix(h, ".notify.windows.com"),
+		strings.HasSuffix(h, ".push.apple.com"):
+		return true
+	}
+	return false
 }

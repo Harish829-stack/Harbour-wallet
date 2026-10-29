@@ -5,7 +5,7 @@ import globals from 'globals';
 import unusedImports from 'eslint-plugin-unused-imports';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'public-production/**', 'releases/**', 'config/**', 'demo/**', '.wrangler/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'public-production/**', 'releases/**', 'config/**', 'demo/**', '.wrangler/**', 'backend/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

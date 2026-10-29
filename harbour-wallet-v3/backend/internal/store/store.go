@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -123,3 +124,37 @@ func (s *Store) UpsertChains(ctx context.Context, chains map[string]string) erro
 
 // ErrNotFound is returned when a row does not exist.
 var ErrNotFound = errors.New("store: not found")
+
+var roleName = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+
+// EnsureAppLogin creates (or updates the password of) the LOGIN user the services connect as, a member of the
+// harbour_app role from migration 0008. Run by cmd/migrate as the owner; the services never get owner rights.
+func (s *Store) EnsureAppLogin(ctx context.Context, user, password string) error {
+	if !roleName.MatchString(user) || len(password) < 16 {
+		return errors.New("POSTGRES_APP_USER must be a plain lowercase name and POSTGRES_APP_PASSWORD at least 16 characters")
+	}
+	var current string
+	if err := s.Pool.QueryRow(ctx, `SELECT current_user`).Scan(&current); err != nil {
+		return err
+	}
+	if user == current {
+		return errors.New("POSTGRES_APP_USER must differ from the migration (owner) user")
+	}
+	var qUser, qPass string
+	if err := s.Pool.QueryRow(ctx, `SELECT quote_ident($1), quote_literal($2)`, user, password).Scan(&qUser, &qPass); err != nil {
+		return err
+	}
+	var exists bool
+	if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=$1)`, user).Scan(&exists); err != nil {
+		return err
+	}
+	verb := "CREATE"
+	if exists {
+		verb = "ALTER"
+	}
+	if _, err := s.Pool.Exec(ctx, fmt.Sprintf(`%s ROLE %s WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %s`, verb, qUser, qPass)); err != nil {
+		return err
+	}
+	_, err := s.Pool.Exec(ctx, fmt.Sprintf(`GRANT harbour_app TO %s`, qUser))
+	return err
+}

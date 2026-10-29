@@ -16,6 +16,13 @@ if (!process.argv.includes('--no-build')) execSync('npm run build', { cwd: root,
 const dist = path.join(root, 'dist');
 const manifest = JSON.parse(readFileSync(path.join(dist, 'manifest.json'), 'utf8'));
 const version = manifest.version;
+// Only a bundle that talks to an https backend can be released (local builds use http://localhost; see scripts/api-url.mjs).
+const infoFile = path.join(dist, 'build-info.json');
+const info = existsSync(infoFile) ? JSON.parse(readFileSync(infoFile, 'utf8')) : null;
+if (!info || info.local || !String(info.api).startsWith('https://') || (manifest.host_permissions ?? []).some((h) => h.startsWith('http://'))) {
+  console.error(`release refused: dist/ was built for ${info?.api ?? 'an unknown API'}. Set VITE_HB_API_URL=https://... in .env.production and rebuild.`);
+  process.exit(1);
+}
 let key;
 if (existsSync(keyFile)) key = JSON.parse(readFileSync(keyFile, 'utf8'));
 else {
@@ -23,6 +30,10 @@ else {
   key = { pub: publicKey.export({ type: 'spki', format: 'der' }).subarray(12).toString('base64'), priv: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
   writeFileSync(keyFile, JSON.stringify(key, null, 2), { mode: 0o600 }); console.log(`created release signing key ${keyFile} (back it up; never commit it)`);
 }
+// Pin the release signer in the repo on first use (verify-release.mjs trusts only this file, never release.json).
+const pinFile = path.join(root, 'release-signer.pub');
+if (!existsSync(pinFile)) { writeFileSync(pinFile, key.pub + '\n'); console.log(`pinned release signer in release-signer.pub (${key.pub}); commit this file`); }
+else if (readFileSync(pinFile, 'utf8').trim() !== key.pub) { console.error('release refused: the signing key does not match release-signer.pub'); process.exit(1); }
 const { zip, files } = zipDir(dist);
 const digest = sha(zip);
 const signature = sign(null, zip, createPrivateKey(key.priv)).toString('base64');

@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 [[ -f .env ]] || { cp .env.example .env; chmod 600 .env; echo "created .env from .env.example"; }
 
 gen() { openssl rand -hex "$1"; }
+ensure() { grep -qE "^$1=" .env || { printf '%s=\n' "$1" >> .env; }; } # older .env files lack newer keys
 fill() { # fill VAR with value if VAR= is empty
   local var=$1 val=$2
   if grep -qE "^${var}=[[:space:]]*(#.*)?$" .env; then
@@ -14,6 +15,8 @@ fill() { # fill VAR with value if VAR= is empty
   fi
 }
 fill POSTGRES_PASSWORD "$(gen 16)"
+ensure POSTGRES_APP_PASSWORD; fill POSTGRES_APP_PASSWORD "$(gen 16)"
+ensure NATS_PASSWORD; fill NATS_PASSWORD "$(gen 16)"
 fill REDIS_PASSWORD "$(gen 16)"
 fill CENTRIFUGO_API_KEY "$(gen 24)"
 fill CENTRIFUGO_TOKEN_HMAC_SECRET "$(gen 32)"
@@ -42,4 +45,7 @@ grep -q '^ENABLED_CHAINS=' .env || { printf '\n# Networks served (chains.yaml na
 # Put the Postgres password into POSTGRES_URL for host-side tools.
 pw=$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2 | awk '{print $1}')
 PW="$pw" perl -pi -e 's|^POSTGRES_URL=postgres://harbour:\@|POSTGRES_URL=postgres://harbour:$ENV{PW}\@|' .env
+# Put the NATS password into NATS_URL for host-side tools.
+np=$(grep -E '^NATS_PASSWORD=' .env | cut -d= -f2 | awk '{print $1}')
+NP="$np" perl -pi -e 's|^NATS_URL=nats://(harbour:)?\@?localhost:4222|NATS_URL=nats://harbour:$ENV{NP}\@localhost:4222|' .env
 echo "done; provider keys still to fill by hand if empty: ALCHEMY_API_KEY, INFURA_API_KEY"

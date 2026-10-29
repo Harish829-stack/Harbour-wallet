@@ -1,6 +1,7 @@
 // Builds the JSON "view" of a pending request for the approval window: everything the user needs to decide, computed in the background
 // (RPC reads, calldata decoding, simulation, fee estimates, risk checks). The UI only renders it; amounts are strings (JSON-safe).
 import { formatUnits } from 'viem';
+import { DEFAULT_EVM_CHAIN } from '../../core/harbour/policy';
 import type { PendingRequest, PermissionStore, KV } from '../../core/provider/store';
 import { decodeCalldata, flattenCalls, decodeString, encodeBalanceCall, isUnlimited, SEL, type DecodedCall } from '../../core/provider/decode';
 import { summarizeTypedData } from '../../core/provider/typed';
@@ -34,7 +35,7 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
     id: p.id, kind: p.kind, ns: p.ns, method: p.method, origin: p.origin, host, title: p.title || host, icon: p.icon ?? null, topOrigin: p.topOrigin, embedded: !p.isTopFrame, createdAt: p.createdAt,
     site: { risk: risk.level, insecure: isInsecureOrigin(p.origin), lookalike: isPunycodeHost(hostnameOf(p.origin)) },
   };
-  const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? 1; const net = d.networks.get(chainId);
+  const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? DEFAULT_EVM_CHAIN; const net = d.networks.get(chainId);
   base.chain = net ? netView(net) : { chainId, name: `Chain ${chainId}`, symbol: '', testnet: false, custom: false, explorer: null };
   base.account = conn ? { name: conn.accountName, evm: conn.evmAddress ?? null, solana: conn.solanaAddress ?? null, multi: Object.fromEntries(Object.entries(conn.others ?? {}).map(([k, v]) => [k, v.address])), walletName: conn.walletName } : null;
   if (p.ns === 'multi') { const cid = p.params?.chain as string; base.chain = { id: cid, chainId: cid, name: MULTI_CHAINS[cid]?.name ?? cid, symbol: '', testnet: false, custom: false, explorer: null }; }

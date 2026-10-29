@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -50,8 +51,42 @@ type cachedKey struct {
 
 // Ingest is the receiver.
 type Ingest struct {
-	o    Options
-	keys sync.Map // webhookID -> key
+	o       Options
+	keys    sync.Map // webhookID -> key ("" = known unknown)
+	unknown atomic.Int64
+	lookups *bucket
+}
+
+const (
+	replayWindow     = time.Hour // deliveries older than this are left to gap-fill
+	maxUnknownCached = 10_000    // negative-cache entries (bounded: ids are attacker-chosen)
+)
+
+var errLookupBusy = errors.New("ingest: too many signing-key lookups")
+
+// bucket is a small token bucket (lookups per second with a burst).
+type bucket struct {
+	mu     sync.Mutex
+	tokens float64
+	max    float64
+	rate   float64
+	last   time.Time
+}
+
+func (b *bucket) Allow() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	now := time.Now()
+	b.tokens += now.Sub(b.last).Seconds() * b.rate
+	if b.tokens > b.max {
+		b.tokens = b.max
+	}
+	b.last = now
+	if b.tokens < 1 {
+		return false
+	}
+	b.tokens--
+	return true
 }
 
 // New builds a receiver.
@@ -65,7 +100,7 @@ func New(o Options) *Ingest {
 	if o.KeyCacheTTL == 0 {
 		o.KeyCacheTTL = time.Minute
 	}
-	return &Ingest{o: o}
+	return &Ingest{o: o, lookups: &bucket{tokens: 50, max: 50, rate: 20, last: time.Now()}}
 }
 
 // Handler serves POST /webhooks/{source} and GET /healthz.
@@ -89,9 +124,22 @@ func (in *Ingest) signingKey(ctx context.Context, webhookID string) (string, err
 		return k, nil
 	}
 	if v, ok := in.keys.Load(webhookID); ok && in.o.Now().Before(v.(cachedKey).until) {
+		if v.(cachedKey).key == "" {
+			return "", store.ErrNotFound // remembered unknown id: no database lookup for repeats
+		}
 		return v.(cachedKey).key, nil
 	}
+	// Unauthenticated callers choose webhook ids: bound how many database lookups they can cause.
+	if !in.lookups.Allow() {
+		return "", errLookupBusy
+	}
 	enc, err := in.o.Store.WebhookKey(ctx, webhookID)
+	if errors.Is(err, store.ErrNotFound) {
+		if in.unknown.Add(1) <= maxUnknownCached {
+			in.keys.Store(webhookID, cachedKey{until: in.o.Now().Add(30 * time.Second)})
+		}
+		return "", err
+	}
 	if err != nil {
 		return "", err
 	}
@@ -122,8 +170,11 @@ func (in *Ingest) receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key, err := in.signingKey(ctx, wid)
+	if errors.Is(err, errLookupBusy) {
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+		return
+	}
 	if errors.Is(err, store.ErrNotFound) {
-		in.keys.Delete(wid)
 		in.o.Log.Warn("delivery for unknown webhook", "source", name, "webhook", wid)
 		http.Error(w, "unknown webhook", http.StatusUnauthorized)
 		return
@@ -143,6 +194,13 @@ func (in *Ingest) receive(w http.ResponseWriter, r *http.Request) {
 		// provider retry forever.
 		in.o.Log.Warn("unparseable delivery stored", "source", name, "err", err)
 		_, _ = in.o.Store.InsertDelivery(ctx, name, wid+":"+in.o.Now().Format(time.RFC3339Nano), wid, "", body)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	// Replay window: an authentic delivery captured earlier must not be re-injected later (it could re-add events that
+	// reorg repair removed). Old activity is recovered by gap-fill instead.
+	if len(d.Events) > 0 && in.o.Now().Sub(d.Events[0].BlockTime) > replayWindow {
+		in.o.Log.Warn("stale delivery ignored", "source", name, "webhook", wid, "age", in.o.Now().Sub(d.Events[0].BlockTime).Round(time.Second).String())
 		w.WriteHeader(http.StatusOK)
 		return
 	}

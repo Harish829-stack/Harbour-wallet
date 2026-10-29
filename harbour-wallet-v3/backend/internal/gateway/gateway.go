@@ -45,7 +45,7 @@ type CallOptions struct {
 // New builds a gateway from config, constructing upstreams via the registry.
 // Chains with no usable upstream are skipped with a warning.
 func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gateway, error) {
-	g := &Gateway{cfg: cfg, pools: map[string]*Pool{}, cache: newCache(cfg.Gateway.CacheMaxEntries), log: log}
+	g := &Gateway{cfg: cfg, pools: map[string]*Pool{}, cache: newCacheFor(cfg.Gateway), log: log}
 	for _, name := range cfg.ChainNames() {
 		res, skipped := cfg.Upstreams(name, getenv)
 		if len(skipped) > 0 {
@@ -80,7 +80,7 @@ func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gat
 
 // NewWithPools is for tests: supply pools directly.
 func NewWithPools(cfg *config.Config, pools map[string]*Pool, log *slog.Logger) *Gateway {
-	return &Gateway{cfg: cfg, pools: pools, cache: newCache(cfg.Gateway.CacheMaxEntries), log: log}
+	return &Gateway{cfg: cfg, pools: pools, cache: newCacheFor(cfg.Gateway), log: log}
 }
 
 // Pool returns a chain's pool.
@@ -419,6 +419,12 @@ func (g *Gateway) splitLogs(ctx context.Context, p *Pool, req *rpc.Request, para
 	maxRange := p.cfg.LogsMaxRange
 	if !ok1 || !ok2 || to < from || to-from+1 <= maxRange {
 		return nil, false
+	}
+	// Splitting multiplies one request into up to 100 upstream calls: only internal callers get it. User-facing
+	// requests (the public API's /v1/rpc) must stay within one chunk.
+	if opt.UserFacing {
+		return &rpc.Response{Error: &rpc.Error{Code: -32602,
+			Message: fmt.Sprintf("block range too large: max %d blocks per request", maxRange)}}, true
 	}
 	n := (to - from + maxRange) / maxRange
 	if n > 100 {

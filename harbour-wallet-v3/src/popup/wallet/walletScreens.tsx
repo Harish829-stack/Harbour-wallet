@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, Ic, ICON, Row, Skeleton, Empty } from './ui';
 import { RevealGate } from './revealGate';
+import { SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
 import { Group, NavRow, SectionLabel, ErrorLine, Note, SelectionRow } from './settingsScreens';
 import { validateWalletName } from '../../core/importKey';
 import { chainById } from '../../core/chains/index';
@@ -95,9 +96,13 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
   const { wallets, error, load } = useWallets(c);
   const w = wallets?.find((x) => x.id === walletId);
   const [draft, setDraft] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
-  const [confirmRemove, setConfirmRemove] = useState(false); const [gate, setGate] = useState(false); const [key, setKey] = useState<{ key: string; network: string } | null>(null); const [copied, setCopied] = useState(false);
-  useEffect(() => () => setKey(null), []);
-  useEffect(() => { if (!key) return; const t = setTimeout(() => setKey(null), 60_000); return () => clearTimeout(t); }, [key]);
+  const [confirmRemove, setConfirmRemove] = useState(false); const [gate, setGate] = useState(false); const [copied, setCopied] = useState('');
+  // The worker paints the key into an image (`revealPrivateKey`); this screen never receives the key as text. Copy also runs
+  // in the worker (offscreen clipboard, cleared after 60 s). The view and the copy permission end after 60 s or on Hide.
+  const [key, setKey] = useState<(SecretPicture & { network: string }) | null>(null);
+  const hideKey = () => { setKey(null); setCopied(''); void c.bg({ type: 'secretViewClosed' }).catch(() => {}); };
+  useEffect(() => () => { void c.bg({ type: 'secretViewClosed' }).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!key) return; const t = setTimeout(hideKey, 60_000); return () => clearTimeout(t); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   if (wallets === null) return <Screen title="Wallet" onBack={c.nav.pop}><ListSkeleton/></Screen>;
   if (!w) return <Screen title="Wallet" onBack={c.nav.pop}><Empty title="Wallet not found" sub={error || 'It may have been removed.'} icon="wallet"/></Screen>;
   const nameError = draft != null ? validateWalletName(draft, wallets.filter((x) => x.id !== w.id).map((x) => x.label)).error : undefined;
@@ -113,8 +118,14 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
   };
   const reveal = async () => {
     setGate(false); setBusy(true); setErr('');
-    try { const r = await c.bg({ type: 'revealPrivateKey', walletId: w.id }); if (!r?.ok) throw new Error(r?.error === 'AUTH_REQUIRED' ? 'Verification expired. Try again.' : r?.error || 'Could not show the key'); setKey({ key: r.key, network: r.network }); }
+    try { const r = await c.bg({ type: 'revealPrivateKey', walletId: w.id, theme: readSecretTheme() }); if (!r?.ok) throw new Error(r?.error === 'AUTH_REQUIRED' ? 'Verification expired. Try again.' : r?.error || 'Could not show the key'); setKey({ image: r.image, width: r.width, height: r.height, network: r.network }); }
     catch (e: any) { setErr(e?.message || 'Could not show the key'); } finally { setBusy(false); }
+  };
+  const copyKey = async () => {
+    setErr('');
+    const r = await c.bg({ type: 'copyPrivateKey', walletId: w.id }).catch(() => null);
+    if (r?.ok) { setCopied('Copied. The clipboard is cleared in 60 seconds.'); setTimeout(() => setCopied(''), 4000); }
+    else setErr(r?.error === 'AUTH_REQUIRED' ? 'Show the key again to copy it.' : r?.error || 'Could not copy the key');
   };
   const kind = walletKind(w);
   return (
@@ -138,10 +149,11 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
       {kind === 'privateKey' && <Note>This wallet was imported with a private key. It has one account and no secret phrase.</Note>}
       {key && <div data-testid="private-key-panel" style={{ background: T.bgAlt, borderRadius: 14, padding: 14, marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Private key ({key.network}). Never share it. Hidden again in 60 seconds.</div>
-        <div style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{key.key}</div>
+        <SecretImage pic={key} label={`Private key for ${key.network}, shown as an image`} testid="private-key-image"/>
+        {copied && <div role="status" style={{ fontSize: 12, color: T.sub, marginTop: 8 }}>{copied}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <Btn variant="ghost" onClick={() => { void navigator.clipboard?.writeText(key.key).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }} style={{ flex: 1 }}>{copied ? 'Copied' : 'Copy'}</Btn>
-          <Btn variant="ghost" onClick={() => setKey(null)} style={{ flex: 1 }}>Hide</Btn>
+          <Btn variant="ghost" onClick={copyKey} style={{ flex: 1 }}>Copy</Btn>
+          <Btn variant="ghost" onClick={hideKey} style={{ flex: 1 }}>Hide</Btn>
         </div>
       </div>}
       <ErrorLine msg={err || error}/>

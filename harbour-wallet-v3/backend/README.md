@@ -130,8 +130,24 @@ Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK
 
 ## Database
 
-`migrations/0001_init.sql`: chain-agnostic schema from the plan. `event_keys` (unpartitioned dedupe), `transactions`/`transfers` range-partitioned by month (pg_partman when installed, otherwise `harbour_ensure_monthly_partitions`), `address_activity` hash-partitioned ×32, `NUMERIC(78,0)` amounts, and least-privilege roles `harbour_api` (can't write facts) and `harbour_indexer`. `device_addresses` stores an AES-256-GCM-encrypted link plus an HMAC blind index; no wallet grouping and no addresses in logs.
+`migrations/0001_init.sql`: chain-agnostic schema from the plan. `event_keys` (unpartitioned dedupe), `transactions`/`transfers` range-partitioned by month (pg_partman when installed, otherwise `harbour_ensure_monthly_partitions`), `address_activity` hash-partitioned ×32, `NUMERIC(78,0)` amounts, and a runtime role `harbour_app` (migration 0008): services log in as `harbour_svc` (data access only, no DDL or superuser); only `migrate` uses the owner. The older `harbour_api`/`harbour_indexer` roles are not used yet (per-service users are planned for AWS). `device_addresses` stores an AES-256-GCM-encrypted link plus an HMAC blind index; no wallet grouping and no addresses in logs.
 
 ## Not in this phase
 
 FCM / native push channels (add an adapter under `adapters/notify`), non-EVM send paths, AWS deployment (phase 7), sqlc generation (queries are hand-written pgx in `internal/store`; switch when the indexer adds bulk queries).
+
+## Security hardening (audit 2026-10-28, `../SECURITY-AUDIT-V3.md`)
+
+- **Database:** services connect as `harbour_svc` (member of `harbour_app`, migration 0008), created by `migrate` from `POSTGRES_APP_PASSWORD`. `device_addresses.added_at` keeps the day only; settled sends lose their device link after 1 h and are deleted after 30 days.
+- **NATS** requires a password (`NATS_PASSWORD`); the monitor port is no longer published.
+- **Secrets per service:** compose passes each service only the variables it reads (no shared `env_file`).
+- **rpc-gateway** refuses to start without `GATEWAY_INTERNAL_TOKEN`; the cache is bounded by bytes (`cache_max_bytes`, `cache_max_entry_bytes`, finalized results live `cache_final_ttl`); sticky sessions are swept; user-facing `eth_getLogs` is never split.
+- **/v1/rpc:** `eth_getLogs` needs an address or topic filter, responses are capped at 8 MB, provider labels are stripped from errors.
+- **Registration:** per-IP limits group IPv6 by /64; `registrations_per_hour` caps new devices globally. `X-Forwarded-For` is read only from `TRUSTED_PROXY_CIDRS` (default private ranges), right to left.
+- **Auth codes:** `device_unknown` (client re-registers) vs `device_revoked` vs `unauthorized`.
+- **Push:** endpoints must belong to a browser push service; deliveries run concurrently and one failing endpoint never fails the event; token amounts appear in titles only for verified tokens or the native coin.
+- **Media proxy:** 16 MP decode cap, 4 concurrent decodes, own fetch deadline, negative cache only for real image errors, HMAC media keys, wider private-range block list.
+- **Webhooks:** unknown webhook ids are negative-cached and lookups rate-limited; deliveries older than 1 h are ignored (gap-fill covers them).
+- **Indexer:** rows are finalized only up to the last block verified canonical; RPC multicall counts are bounded; token text is cleaned rune-safely.
+
+After pulling: `scripts/setup.sh` (adds `POSTGRES_APP_PASSWORD`, `NATS_PASSWORD`, updates `NATS_URL`), then `./run.sh restart` and `./run.sh test`.

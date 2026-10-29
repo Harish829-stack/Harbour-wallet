@@ -90,7 +90,7 @@ function setup() {
     multiKey: async (c, chain) => ({ address: TRON, publicKey: pk }),
     multiSign: async (c, chain, scheme, data) => { log.signed.push([chain, scheme, hex(data)]); return signSecp(data); },
   };
-  const svc = new M.ProviderService({ perms, pending, signer, rpc: async () => null, solRpc: async () => null, networks: { list: () => [], get: () => undefined }, vaultStatus: async () => ({ hasVault: true, unlocked: true }),
+  const svc = new M.ProviderService({ policy: { families: { evm: true, solana: true, multi: true }, isSigningEvmChain: () => true, siteAddChain: true, defaultChain: 1 },  perms, pending, signer, rpc: async () => null, solRpc: async () => null, networks: { list: () => [], get: () => undefined }, vaultStatus: async () => ({ hasVault: true, unlocked: true }),
     openApproval: async () => {}, closeApprovalIfIdle: async () => {}, deliver: async (t, reqId, outcome) => { log.delivered.push({ reqId, outcome }); return true; }, emit: (...a) => log.events.push(a),
     probeChainId: async () => 1, saveCustomNetwork: async () => {}, addToken: async () => ({ ok: true }) });
   return { svc, perms, pending, log, req: (method, params) => ({ id: `r${++n}`, ns: 'multi', method, params }) };

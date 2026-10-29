@@ -73,20 +73,22 @@ export function Confetti() {
   return <div className="fx-confetti" aria-hidden="true">{bits.map((b, i) => <i key={i} className={`c${b.c}`} style={{ ['--x' as any]: `${b.x}vw`, ['--r' as any]: `${b.r}deg`, ['--d' as any]: `${b.d}ms`, width: b.s, height: b.s * 1.6 }}/>)}</div>;
 }
 
-/** Password strength (guidance only; validation stays in core/passwordPolicy). */
-export function PasswordMeter({ value }: { value: string }) {
-  const checks = [
-    { ok: value.length >= 8, label: '8+ characters' },
-    { ok: /[a-z]/.test(value) && /[A-Z]/.test(value), label: 'Upper & lower case' },
-    { ok: /\d/.test(value), label: 'A number' },
-    { ok: /[^A-Za-z0-9]/.test(value), label: 'A symbol' },
-  ];
-  const score = value ? checks.filter((c) => c.ok).length + (value.length >= 14 ? 1 : 0) : 0;
+/** Password strength (guidance only; validation stays in core/passwordPolicy). Computed from the input event; only the
+ *  resulting flags are kept in state, never the password. */
+export interface PasswordStrength { filled: boolean; checks: boolean[]; score: number }
+export const EMPTY_STRENGTH: PasswordStrength = { filled: false, checks: [false, false, false, false], score: 0 };
+const STRENGTH_LABELS = ['8+ characters', 'Upper & lower case', 'A number', 'A symbol'];
+export function passwordStrength(value: string): PasswordStrength {
+  const checks = [value.length >= 8, /[a-z]/.test(value) && /[A-Z]/.test(value), /\d/.test(value), /[^A-Za-z0-9]/.test(value)];
+  return { filled: value.length > 0, checks, score: value ? checks.filter(Boolean).length + (value.length >= 14 ? 1 : 0) : 0 };
+}
+export function PasswordMeter({ strength }: { strength: PasswordStrength }) {
+  const { filled, checks, score } = strength;
   const level = score <= 1 ? 'weak' : score <= 3 ? 'fair' : 'strong';
-  return <div className={`fx-meter ${value ? level : ''}`} aria-live="polite">
+  return <div className={`fx-meter ${filled ? level : ''}`} aria-live="polite">
     <div className="fx-bars">{[0, 1, 2, 3].map((i) => <span key={i} className={i < Math.min(4, Math.ceil(score * 0.8)) ? 'on' : ''}/>)}</div>
-    <div className="fx-meter-row"><span className="fx-level">{value ? { weak: 'Weak', fair: 'Fair', strong: 'Strong' }[level] : 'Password strength'}</span>
-      <ul>{checks.map((c) => <li key={c.label} className={c.ok ? 'ok' : ''}><Check size={12} strokeWidth={3}/>{c.label}</li>)}</ul></div>
+    <div className="fx-meter-row"><span className="fx-level">{filled ? { weak: 'Weak', fair: 'Fair', strong: 'Strong' }[level] : 'Password strength'}</span>
+      <ul>{STRENGTH_LABELS.map((label, i) => <li key={label} className={checks[i] ? 'ok' : ''}><Check size={12} strokeWidth={3}/>{label}</li>)}</ul></div>
   </div>;
 }
 

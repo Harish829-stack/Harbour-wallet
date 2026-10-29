@@ -6,6 +6,7 @@ import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTwe
 import { SCREENS, type Nav } from './screens';
 import { SwapTab } from './swap/SwapTab';
 import { EarnTab } from './features/earn';
+import { featureEnabled } from '../../core/harbour/policy';
 import { ASSETS, allAssets, usd } from './data';
 import { syncNetworks } from './networkStore';
 import { useTokenItems, refreshTokens, tokenColor } from './tokensStore';
@@ -57,8 +58,8 @@ export const Wallet: React.FC<{
   addrs: Record<string, string>; balances: Record<string, any>; totalUsd: number | null; loading: boolean;
   accounts?: Array<{ derivationIndex: number; name: string; addresses: Record<string, string> }>; activeAccount?: number;
   hiddenAssets?: string[]; networkFilter?: string | null;
-  backupRequired?: boolean; onRefresh: () => void; onBackup?: () => void; onLock: () => void;
-}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onBackup, onLock }) => {
+  backupRequired?: boolean; onRefresh: () => void; onLock: () => void;
+}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onLock }) => {
   injectStyles();
   const [tab, setTab] = useState<Tab>('home');
   const lastTab = useRef<Tab>('home');
@@ -76,8 +77,8 @@ export const Wallet: React.FC<{
   useEffect(() => { const change = () => setStack(fromHash()); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, []);
   const [sub, setSub] = useState<'crypto' | 'approvals'>('crypto');
   // TW hides the earn branch for hardware accounts: ask the background whether Earn is available for the active wallet.
-  const [earnOk, setEarnOk] = useState(true);
-  useEffect(() => { bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount]);
+  const [earnOk, setEarnOk] = useState(featureEnabled('earn'));
+  useEffect(() => { if (!featureEnabled('earn')) return; bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount]);
   // Active wallet's real name (Settings > Wallets can rename it); never a hard-coded label.
   const [walletName, setWalletName] = useState<string | null>(null);
   const [, setNetworkVersion] = useState(0);
@@ -98,7 +99,7 @@ export const Wallet: React.FC<{
     push: (name, params) => setStack((s) => [...s, { name, params }]),
     pop: () => setStack((s) => s.slice(0, -1)),
     home: () => { setStack([]); setTab('home'); },
-    lock: onLock, backup: () => { setStack([]); onBackup?.(); },
+    lock: onLock, backup: () => setStack([{ name: 'backup', params: {} }]),
   };
   const ctx = { addrs, balances, bg, nav, accounts, activeAccount, hiddenAssets, networkFilter, refresh: onRefresh } as any;
   // Native coins only: tokens are registered in the asset catalog too (for Send / detail lookups) but render below from tokenItems.
@@ -147,7 +148,7 @@ export const Wallet: React.FC<{
             <IconBtn icon={hide ? 'eyeoff' : 'eye'} size={30} bg="transparent" title="Hide" onClick={() => setHide(!hide)} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, margin: '16px 0 18px' }}>
-            {([['Send', 'send', false, 'send'], ['Receive', 'receive', false, 'receive'], ['Swap', 'swap', false, 'swap'], ['Fund', 'fund', true, 'fund']] as const).map(([label, ic, filled, to]) => (
+            {([['Send', 'send', false, 'send'], ['Receive', 'receive', false, 'receive'], ['Swap', 'swap', false, 'swap'], ['Fund', 'fund', true, 'fund']] as const).filter(([, , , to]) => (to !== 'swap' || featureEnabled('swap')) && (to !== 'fund' || featureEnabled('ramps'))).map(([label, ic, filled, to]) => (
               <div key={label} style={{ textAlign: 'center', flex: 1 }}>
                 <button className="hb-action" title={label} aria-label={label} onClick={() => { if (to === 'swap') setTab('swap'); else nav.push(to); }} style={{ ...sq(filled ? T.accent : T.accentSoft, filled ? 'var(--hb-on-brand)' : T.accent), margin: '0 auto' }}><Ic d={ICON[ic]} size={22} /></button>
                 <div style={{ fontSize: 12, marginTop: 6, color: T.sub }}>{label}</div>
@@ -174,7 +175,7 @@ export const Wallet: React.FC<{
 
         {tab === 'trending' && <TrendingTab nav={nav} />}
 
-        {tab === 'swap' && <SwapTab nav={nav} />}
+        {tab === 'swap' && featureEnabled('swap') && <SwapTab nav={nav} />}
 
         {tab === 'earn' && earnOk && <EarnTab nav={nav} />}
       </div>
@@ -182,7 +183,7 @@ export const Wallet: React.FC<{
       {/* BOTTOM NAV */}
       <div className="hb-navbar" style={{ display: 'flex', flexShrink: 0, borderTop: `1px solid ${T.border}`, padding: '6px 0 10px', background: T.surface }}>
         <span aria-hidden className="hb-nav-pill" style={{ width: `${100 / navTabs.length}%`, transform: `translateX(${Math.max(0, navTabs.indexOf(tab)) * 100}%)` }}><span /></span>
-        {([['home', 'Home', ICON.home], ['trending', 'Trending', ICON.trend], ['swap', 'Swap', ICON.swap], ['earn', 'Earn', ICON.leaf]] as const).filter(([id]) => id !== 'earn' || earnOk).map(([id, label, d]) => (
+        {([['home', 'Home', ICON.home], ['trending', 'Trending', ICON.trend], ['swap', 'Swap', ICON.swap], ['earn', 'Earn', ICON.leaf]] as const).filter(([id]) => (id !== 'earn' || earnOk) && (id !== 'swap' || featureEnabled('swap'))).map(([id, label, d]) => (
           <button key={id} className={tab === id ? 'hb-nav-btn on' : 'hb-nav-btn'} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? T.accent : T.sub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <span className="hb-nav-ic" key={tab === id ? 'on' : 'off'}><Ic d={d} size={22} fill={tab === id && id === 'home'} /></span><span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
           </button>
@@ -253,7 +254,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
   }, [net, mode]);
   // Perps / predictions entry points follow the signed remote-config flags
   const [flags, setFlags] = useState<Record<string, boolean>>({});
-  useEffect(() => { bg({ type: 'getRemoteConfig' }).then((r) => { if (r?.ok) setFlags(r.flags ?? {}); }).catch(() => {}); }, []);
+  useEffect(() => { bg({ type: 'getRemoteConfig' }).then((r) => { if (r?.ok) setFlags({ ...(r.flags ?? {}), perps: !!r.flags?.perps && featureEnabled('perps'), predictions: !!r.flags?.predictions && featureEnabled('predictions') }); }).catch(() => {}); }, []);
   // Networks ordered by DeFi TVL (DefiLlama) when available, so the busiest networks come first in the filter
   const [tvl, setTvl] = useState<Record<string, number>>({});
   useEffect(() => { bg({ type: 'getTrendingNetworks' }).then((r) => { if (r?.ok) setTvl(Object.fromEntries((r.list ?? []).map((n: any) => [n.chainId, n.tvl]))); }).catch(() => {}); }, []);

@@ -5,6 +5,17 @@ const env = ((import.meta as any).env ?? {}) as Record<string, string | undefine
 /** Extension-facing API, e.g. http://localhost:8080 in development. */
 export const HB_API_URL: string = (env.VITE_HB_API_URL ?? 'http://localhost:8080').replace(/\/+$/, '');
 
+/** Loopback hosts (a backend on this computer): the only place plaintext http/ws is acceptable. */
+export const isLoopbackUrl = (u: string): boolean => {
+  try { const h = new URL(u).hostname.replace(/^\[|\]$/g, ''); return h === 'localhost' || h === '127.0.0.1' || h === '::1'; } catch { return false; }
+};
+/** https/wss everywhere except a backend on this computer (local development). vite.config.ts refuses to build otherwise,
+ *  and the client refuses to talk to an insecure non-local API in case a build slipped through. */
+export const isSecureEndpoint = (u: string, scheme: 'http' | 'ws' = 'http'): boolean => {
+  try { const p = new URL(u).protocol; return p === `${scheme}s:` || (p === `${scheme}:` && isLoopbackUrl(u)); } catch { return false; }
+};
+export const HB_API_SECURE: boolean = isSecureEndpoint(HB_API_URL);
+
 /** Networks served by the backend: registry id -> backend chain name (backend/config/chains.yaml) and EVM chain id. */
 export const HARBOUR_CHAINS: ReadonlyArray<{ id: string; backend: string; evmChainId: number }> = [
   { id: 'sepolia', backend: 'sepolia', evmChainId: 11155111 },

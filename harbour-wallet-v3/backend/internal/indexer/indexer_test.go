@@ -315,7 +315,7 @@ func TestNewWalletMatchesChain(t *testing.T) {
 		t.Fatalf("block 11 <= finalized 13 but finality=%s", fin)
 	}
 	var part bool
-	must(t, st.Pool.QueryRow(ctx, `SELECT to_regclass('transfers_p202501') IS NOT NULL`).Scan(&part))
+	must(t, st.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_inherits i JOIN pg_class c ON c.oid=i.inhrelid WHERE i.inhparent='public.transfers'::regclass AND pg_get_expr(c.relpartbound,c.oid) LIKE 'FOR VALUES FROM (''2025-01-%')`).Scan(&part))
 	var inDefault int
 	must(t, st.Pool.QueryRow(ctx, `SELECT count(*) FROM transfers_default`).Scan(&inDefault))
 	if !part || inDefault != 0 {

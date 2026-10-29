@@ -506,20 +506,28 @@ func (ix *Indexer) Repair(ctx context.Context, c *Chain) error {
 	if err != nil {
 		return err
 	}
-	if finalized > 0 {
-		if _, err := ix.st.MarkFinalized(ctx, c.Name, finalized); err != nil {
-			return err
-		}
-	}
-	txs, err := ix.st.UnfinalTxs(ctx, c.Name, 300)
+	const batch = 300
+	txs, err := ix.st.UnfinalTxs(ctx, c.Name, batch)
 	if err != nil {
 		return err
+	}
+	// Rows are promoted to finalized only up to the last block this pass actually verified as canonical: never past a
+	// row that was not checked (queue longer than one batch) or could not be resolved yet.
+	limit := finalized
+	hold := func(block int64) {
+		if block > 0 && uint64(block) <= limit {
+			limit = uint64(block) - 1
+		}
+	}
+	if len(txs) == batch {
+		hold(txs[len(txs)-1].Block)
 	}
 	canonical := map[int64]string{}
 	refresh := map[int64]map[string]bool{}
 	removed := 0
 	for _, tx := range txs {
 		if uint64(tx.Block) > latest {
+			hold(tx.Block)
 			continue // our view of the head is behind this row; check later
 		}
 		if tx.BlockHash != "" {
@@ -530,8 +538,12 @@ func (ix *Indexer) Repair(ctx context.Context, c *Chain) error {
 				}
 				canonical[tx.Block] = h
 			}
-			if h == "" || h == tx.BlockHash {
-				continue // still canonical (or block not visible yet)
+			if h == tx.BlockHash {
+				continue // still canonical
+			}
+			if h == "" {
+				hold(tx.Block)
+				continue // block not visible yet
 			}
 		}
 		inc, err := c.Client.Inclusion(ctx, tx.TxHash)
@@ -563,6 +575,13 @@ func (ix *Indexer) Repair(ctx context.Context, c *Chain) error {
 					refresh[id][a] = true
 				}
 			}
+		default:
+			hold(tx.Block) // not found yet, not old enough to call it gone
+		}
+	}
+	if limit > 0 {
+		if _, err := ix.st.MarkFinalized(ctx, c.Name, limit); err != nil {
+			return err
 		}
 	}
 	if removed > 0 {

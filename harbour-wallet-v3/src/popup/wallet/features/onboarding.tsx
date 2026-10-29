@@ -23,7 +23,8 @@ export const AddWalletOnboardingScreen: React.FC<Ctx> = (c) => {
     if (busy || !allowed) return; setBusy(true); setErr('');
     try {
       const r = await c.bg({ type: 'addWallet' });
-      if (r?.ok) { c.refresh?.(); c.nav.pop(); if (r.mnemonic) c.nav.push('backup', { mnemonic: r.mnemonic, label: r.label, walletId: r.walletId }); }
+      // The worker never returns the new phrase; it grants one reveal so the backup screen can paint it without re-auth.
+      if (r?.ok) { c.refresh?.(); c.nav.pop(); if (r.backupGranted) c.nav.push('backup', { label: r.label, walletId: r.walletId, granted: true }); }
       else setErr(r?.error === 'MAX_WALLETS' ? `You can have up to ${MAX_WALLETS} wallets.` : r?.error || 'Could not create wallet');
     } finally { setBusy(false); }
   };
@@ -45,7 +46,7 @@ export const AddWalletOnboardingScreen: React.FC<Ctx> = (c) => {
 export const BackupVerifyScreen: React.FC<Ctx> = (c) => (
   <Screen title="Back up your secret phrase" onBack={c.nav.pop}>
     <div className="hb-design" style={{ paddingTop: 8 }}>
-      <BackupFlow bg={c.bg} walletId={c.params?.walletId} presetMnemonic={c.params?.mnemonic} granted={c.params?.granted === true}
+      <BackupFlow bg={c.bg} walletId={c.params?.walletId} granted={c.params?.granted === true}
         onDone={() => { c.refresh?.(); c.nav.pop(); }} onCancel={c.nav.pop}/>
     </div>
   </Screen>

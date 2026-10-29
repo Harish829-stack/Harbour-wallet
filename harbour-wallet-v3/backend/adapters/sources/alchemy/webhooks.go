@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"harbour/backend/internal/core/index"
 )
@@ -214,8 +215,8 @@ func (s *Source) ParseWebhook(body []byte) (index.Delivery, error) {
 			continue // EIP-7708 log of a native transfer: the "external" leg already covers it
 		case a.Category == "token" || a.Category == "erc20":
 			ev.Asset, ev.Kind, ev.AmountRaw = contract, index.KindToken, amount
-			if a.Asset != "" {
-				details[index.DetailSymbol] = a.Asset
+			if sym := plainSymbol(a.Asset); sym != "" {
+				details[index.DetailSymbol] = sym // sender-controlled: kept short and plain
 			}
 			if n, ok := decimalsOf(a.RawContract.Decimals, a.RawContract.Decimal); ok {
 				details[index.DetailDecimals] = n
@@ -302,4 +303,21 @@ func (s *Source) UpdateWebhookAddresses(ctx context.Context, webhookID string, a
 // DeleteWebhook deletes a webhook.
 func (s *Source) DeleteWebhook(ctx context.Context, webhookID string) error {
 	return s.notify(ctx, http.MethodDelete, "/delete-webhook?webhook_id="+url.QueryEscape(webhookID), nil, nil)
+}
+
+// plainSymbol keeps up to 16 printable, non-format characters of a token symbol taken from a delivery.
+func plainSymbol(s string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range strings.ToValidUTF8(s, "") {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			continue
+		}
+		if n == 16 {
+			break
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return strings.TrimSpace(b.String())
 }

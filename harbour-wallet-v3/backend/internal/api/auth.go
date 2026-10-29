@@ -61,6 +61,21 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many attempts. Please try again later.", true)
 		return
 	}
+	// Global ceiling: per-IP limits alone are cheap to spread over many addresses.
+	gk := fmt.Sprintf("hb:chal:all:%d", now.Unix()/3600)
+	g, err := s.opt.Redis.Incr(ctx, gk).Result()
+	if err != nil {
+		s.internalErr(w, r, err)
+		return
+	}
+	if g == 1 {
+		s.opt.Redis.Expire(ctx, gk, 2*time.Hour)
+	}
+	if int(g) > s.cfg.API.RegistrationsPerHour {
+		w.Header().Set("Retry-After", "600")
+		writeErr(w, http.StatusTooManyRequests, "busy", "Harbour is busy setting up new devices. Please try again in a few minutes.", true)
+		return
+	}
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		s.internalErr(w, r, err)
@@ -214,14 +229,16 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		r.Body = io.NopCloser(bytes.NewReader(body))
 		cd, err := s.lookupDevice(ctx, dev)
 		if errors.Is(err, store.ErrNotFound) {
-			unauth()
+			// The only case where the client registers a new key (e.g. the database was reset).
+			writeErr(w, http.StatusUnauthorized, "device_unknown", "This device needs to sign in again.", false)
 			return
 		} else if err != nil {
 			s.internalErr(w, r, err)
 			return
 		}
 		if cd.revoked {
-			unauth()
+			// Distinct from device_unknown so clients do not silently re-register around a revocation.
+			writeErr(w, http.StatusUnauthorized, "device_revoked", "This device can no longer use Harbour's servers.", false)
 			return
 		}
 		canon := devicesig.Canonical(r.Method, r.URL.RequestURI(), date, nonce, dev, body)
@@ -312,8 +329,21 @@ func (c *captureWriter) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
-// idempotency replays the stored response for a repeated Idempotency-Key.
-func (s *Server) idempotency(next http.Handler) http.Handler {
+// idempotency replays the stored response for a repeated Idempotency-Key. keepBody=false stores only the status (the
+// replay body is {"replayed":true}): used where the body would sit in Redis linking this device to its addresses.
+func (s *Server) idempotency(next http.Handler) http.Handler { return s.idempotencyWith(true)(next) }
+
+func (s *Server) idempotencyNoBody(next http.Handler) http.Handler {
+	return s.idempotencyWith(false)(next)
+}
+
+func (s *Server) idempotencyWith(keepBody bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return s.idempotencyHandler(next, keepBody)
+	}
+}
+
+func (s *Server) idempotencyHandler(next http.Handler, keepBody bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("Idempotency-Key")
 		if key == "" {
@@ -354,12 +384,24 @@ func (s *Server) idempotency(next http.Handler) http.Handler {
 			return
 		}
 		cw := &captureWriter{ResponseWriter: w}
+		done := false
+		defer func() {
+			// A panic (recovered further out) or a transient answer must not pin the key for the whole TTL.
+			if !done {
+				s.opt.Redis.Del(context.WithoutCancel(ctx), rk)
+			}
+		}()
 		next.ServeHTTP(cw, r)
-		if cw.status >= 500 {
+		done = true
+		if cw.status >= 500 || cw.status == http.StatusTooManyRequests || cw.status == http.StatusConflict {
 			s.opt.Redis.Del(context.WithoutCancel(ctx), rk) // allow retry
 			return
 		}
-		b, _ := json.Marshal(idemRecord{Status: cw.status, Body: cw.buf.Bytes(), ReqHash: reqHash})
+		respBody := cw.buf.Bytes()
+		if !keepBody {
+			respBody = []byte(`{"replayed":true}`)
+		}
+		b, _ := json.Marshal(idemRecord{Status: cw.status, Body: respBody, ReqHash: reqHash})
 		s.opt.Redis.Set(context.WithoutCancel(ctx), rk, b, ttl)
 	})
 }

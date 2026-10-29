@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -146,9 +147,12 @@ func (c *Channel) Send(ctx context.Context, t notify.Target, m notify.Message) e
 	if err != nil || u.Scheme != "https" && !(c.private && u.Scheme == "http") {
 		return notify.ErrGone{Reason: "bad endpoint"}
 	}
-	payload, _ := json.Marshal(map[string]any{"title": m.Title, "body": m.Body, "data": m.Data})
+	payload, _ := json.Marshal(map[string]any{"title": clip(m.Title, 120), "body": clip(m.Body, 240), "data": m.Data})
 	body, err := Encrypt(sub, payload)
 	if err != nil {
+		if strings.Contains(err.Error(), "too large") {
+			return err // our payload, not the subscription: never delete the user's subscription for it
+		}
 		return notify.ErrGone{Reason: "bad subscription keys"}
 	}
 	jwt, err := c.vapidJWT(u.Scheme + "://" + u.Host)
@@ -316,4 +320,13 @@ func guardedClient(allowPrivate bool) *http.Client {
 	}
 	return &http.Client{Timeout: 15 * time.Second, Transport: tr,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
+
+// clip shortens s to at most n runes.
+func clip(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n-1]) + "…"
 }

@@ -1,4 +1,5 @@
 import { isPrivateNetworkUrl } from '../../core/provider/origin';
+import { BUILD_PROVIDER_POLICY, DEFAULT_EVM_CHAIN, type ProviderPolicy } from '../../core/harbour/policy';
 // The dApp provider's brain: request router (allowlist -> permission checks -> approval queue) and approval resolution.
 // Everything environment-specific (storage, signing, RPC, windows, ports) is injected so the whole flow is unit-testable with fakes.
 import { ERR, ProviderError, serializeError } from '../../core/provider/errors';
@@ -37,6 +38,8 @@ export interface DeliverTarget { tabId: number; frameId: number; documentId?: st
 export interface ServiceDeps {
   perms: PermissionStore; pending: PendingStore; signer: Signer; rpc: RpcCall; solRpc(method: string, params: unknown[]): Promise<any>;
   networks: { list(): EvmNetwork[]; get(chainId: number): EvmNetwork | undefined };
+  /** What this build may sign (core/harbour/policy.ts). Defaults to the shipped build policy; tests pass a wider one. */
+  policy?: ProviderPolicy;
   vaultStatus(): Promise<{ hasVault: boolean; unlocked: boolean }>;
   openApproval(): Promise<void>; closeApprovalIfIdle(): Promise<void>;
   deliver(t: DeliverTarget, reqId: string, outcome: Outcome): Promise<boolean>;
@@ -74,22 +77,26 @@ export interface Decision { approve: boolean; accountIndex?: number; chainId?: n
 const hex = (n: number) => '0x' + n.toString(16);
 const ok = (result: unknown): HandleResult => ({ done: true, outcome: { result } });
 const fail = (e: unknown): HandleResult => ({ done: true, outcome: { error: serializeError(e) } });
-export const DEFAULT_CHAIN = 1;
+export const DEFAULT_CHAIN = DEFAULT_EVM_CHAIN; // Harbour v3: the first network the backend serves (was 1, which this build does not offer)
 const KIND_OF: Record<string, PendingKind> = { connect: 'connect', permissionsRequest: 'permissions', sign: 'sign', typed: 'typed', tx: 'tx', switchChain: 'switchChain', addChain: 'addChain', watchAsset: 'watchAsset', solConnect: 'solConnect', solSignMessage: 'solSignMessage', solSignTx: 'solSignTx', solSignAll: 'solSignAll', solSignSend: 'solSignSend', multiConnect: 'multiConnect', multiSign: 'multiSign' };
 
 export class ProviderService {
-  private readLimiter: RateLimiter; private approvalLimiter: RateLimiter;
-  private now: () => number;
+  private readLimiter: RateLimiter; private approvalLimiter: RateLimiter; private rpcLimiter: RateLimiter; private rpcAllLimiter: RateLimiter;
+  private now: () => number; private policy: ProviderPolicy;
   constructor(private d: ServiceDeps) {
-    this.now = d.now ?? Date.now;
+    this.now = d.now ?? Date.now; this.policy = d.policy ?? BUILD_PROVIDER_POLICY;
     this.readLimiter = new RateLimiter({ capacity: 120, refillPerSec: 60 }, this.now);
     this.approvalLimiter = new RateLimiter({ capacity: 6, refillPerSec: 0.1 }, this.now);
+    // Proxied chain reads spend the wallet's own Harbour API quota (signed with the device key), so sites get a small share of it:
+    // 30/min per site and 60/min for all sites together, leaving the rest for the wallet's balances and sends.
+    this.rpcLimiter = new RateLimiter({ capacity: 20, refillPerSec: 0.5 }, this.now);
+    this.rpcAllLimiter = new RateLimiter({ capacity: 40, refillPerSec: 1 }, this.now);
   }
 
   // ------------------------------------------------------------------ state for a freshly injected page
   async initState(origin: string): Promise<InitState> {
     const c = await this.d.perms.get(origin); const prefs = await this.d.perms.prefs();
-    const chainId = c?.chainId ?? DEFAULT_CHAIN;
+    const chainId = c?.chainId ?? this.policy.defaultChain;
     const st = await this.d.vaultStatus(); const visible = st.hasVault && st.unlocked && !(await this.d.perms.isBlacklisted(origin));
     return { evm: { chainId: hex(chainId), networkVersion: String(chainId), accounts: visible && c?.evmAddress && c.namespaces.includes('evm') ? [c.evmAddress] : [], connected: true }, solana: { publicKey: visible && c?.solanaAddress && c.namespaces.includes('solana') ? c.solanaAddress : null }, multi: visible && c?.others && c.namespaces.includes('multi') ? c.others : {}, prefs: { defaultWallet: prefs.defaultWallet } };
   }
@@ -101,23 +108,26 @@ export class ProviderService {
   private async route(s: SenderInfo, req: PageRequest): Promise<HandleResult> {
     if (!this.readLimiter.take(s.origin)) throw new ProviderError(ERR.LIMIT_EXCEEDED);
     if (req.ns === 'evm' && UNSUPPORTED_EVM.has(req.method)) throw new ProviderError(ERR.UNSUPPORTED_METHOD, `Harbour does not support ${req.method}.`);
+    // Namespaces this build does not serve are refused before anything else (core/harbour/policy.ts).
+    if ((req.ns === 'solana' && !this.policy.families.solana) || (req.ns === 'multi' && !this.policy.families.multi)) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'This network is not available in Harbour.');
     const spec = specFor(req.ns, req.method);
     if (!spec) throw new ProviderError(ERR.METHOD_NOT_FOUND, `The method ${req.method} does not exist or is not available.`);
     if (await this.d.perms.isBlacklisted(s.origin)) {
-      if (req.method === 'eth_chainId' || req.method === 'net_version') return ok(req.method === 'eth_chainId' ? hex(DEFAULT_CHAIN) : String(DEFAULT_CHAIN));
+      if (req.method === 'eth_chainId' || req.method === 'net_version') return ok(req.method === 'eth_chainId' ? hex(this.policy.defaultChain) : String(this.policy.defaultChain));
       if (req.method === 'eth_accounts') return ok([]);
       throw new ProviderError(ERR.UNAUTHORIZED, 'This site is on your blacklist in Harbour settings.');
     }
     const conn = await this.d.perms.get(s.origin);
     const evmConn = conn && conn.namespaces.includes('evm') && conn.evmAddress ? conn : undefined;
     const solConn = conn && conn.namespaces.includes('solana') && conn.solanaAddress ? conn : undefined;
-    let chainId = conn?.chainId ?? DEFAULT_CHAIN;
+    let chainId = conn?.chainId ?? this.policy.defaultChain;
     void this.d.perms.touch(s.origin).catch(() => {});
 
     if (req.ns === 'evm') {
       switch (spec.kind) {
         case 'local': { const st = await this.d.vaultStatus(); return this.local(req, st.hasVault && st.unlocked ? evmConn : undefined, chainId); }
         case 'rpc': {
+          if (!this.rpcLimiter.take(s.origin) || !this.rpcAllLimiter.take('*')) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many requests from this site. Please wait a moment.');
           const params = req.params === undefined ? [] : Array.isArray(req.params) ? req.params : (() => { throw new ProviderError(ERR.INVALID_PARAMS, 'Params must be an array.'); })();
           return ok(await this.d.rpc(chainId, req.method, params));
         }
@@ -144,6 +154,7 @@ export class ProviderService {
           const n = normalizeTypedData(req.method, req.params, me);
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           const dc = (n.typedData.domain as any)?.chainId;
+          if (dc !== undefined && dc !== null && String(dc).length && !this.policy.isSigningEvmChain(dc)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
           if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = Number(dc); }
           return this.queue(s, req, 'typed', n, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
@@ -151,11 +162,12 @@ export class ProviderService {
           const tx = normalizeSendTx(req.params, me);
           if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
+          if (!this.policy.isSigningEvmChain(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
           return this.queue(s, req, 'tx', { tx, chainId }, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
-          if (!this.d.networks.get(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
+          if (!this.d.networks.get(target) || !this.policy.isSigningEvmChain(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
           // Trust Wallet (SwitchNetwork handler): a connected site is switched silently; only an unconnected site is prompted.
           if (evmConn) { await this.applyChain(s.origin, target, target === chainId); return ok(null); }
           if (target === chainId) return ok(null);
@@ -169,6 +181,7 @@ export class ProviderService {
           const requestedId = parseChainIdHex(candidate?.chainId);
           // Trust Wallet (WalletAddEthereumChain): a chain the wallet already has is handled as wallet_switchEthereumChain.
           if (this.d.networks.get(requestedId)) { if (evmConn && requestedId != null) await this.applyChain(s.origin, requestedId, requestedId === chainId); return ok(null); }
+          if (!this.policy.siteAddChain) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'Harbour does not support adding this network.');
           const a = normalizeAddChain(req.params);
           const rpcUrl = a.rpcUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
           if (!rpcUrl || !rpcUrl.ok) throw new ProviderError(ERR.INVALID_PARAMS, 'rpcUrls must contain at least one https:// URL.');
@@ -352,7 +365,7 @@ export class ProviderService {
         const a = accts.accounts[index]; if (!a) throw new ProviderError(ERR.INVALID_PARAMS, 'Unknown account.');
         if (ns === 'evm' && !a.evm) throw new ProviderError(ERR.UNAUTHORIZED, 'This account has no EVM address.');
         if (ns === 'solana' && !a.solana) throw new ProviderError(ERR.UNAUTHORIZED, 'This account has no Solana address.');
-        let chainId = existing?.chainId ?? DEFAULT_CHAIN;
+        let chainId = existing?.chainId ?? this.policy.defaultChain;
         if (ns === 'evm' && dec.chainId !== undefined) { if (!this.d.networks.get(dec.chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN); chainId = dec.chainId; }
         const prevAddr = existing?.evmAddress;
         const conn = await perms.connect({ origin: p.origin, title: p.title, icon: p.icon, walletId: accts.walletId, walletName: accts.walletName, accountIndex: index, accountName: a.name, chainId, namespaces: [ns], ...(ns === 'evm' ? { evmAddress: a.evm } : { solanaAddress: a.solana }), ...(existing?.evmAddress && ns === 'solana' ? { evmAddress: existing.evmAddress } : {}), ...(existing?.solanaAddress && ns === 'evm' ? { solanaAddress: existing.solanaAddress } : {}) });
@@ -374,7 +387,7 @@ export class ProviderService {
         if (chain === 'ton') { const same = await this.d.multi?.ton?.sameAddress(k.address, a.multi[chain]) ?? k.address === a.multi[chain]; if (!same) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.'); }
         else if (k.address !== a.multi[chain]) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.');
         const entry = { address: k.address, publicKey: bytesToHex(k.publicKey).slice(2) };
-        const conn = await perms.connect({ origin: p.origin, title: p.title, icon: p.icon, walletId: accts.walletId, walletName: accts.walletName, accountIndex: index, accountName: a.name, chainId: existing?.chainId ?? DEFAULT_CHAIN, namespaces: ['multi'], others: { ...(existing?.others ?? {}), [chain]: entry },
+        const conn = await perms.connect({ origin: p.origin, title: p.title, icon: p.icon, walletId: accts.walletId, walletName: accts.walletName, accountIndex: index, accountName: a.name, chainId: existing?.chainId ?? this.policy.defaultChain, namespaces: ['multi'], others: { ...(existing?.others ?? {}), [chain]: entry },
           ...(existing?.evmAddress ? { evmAddress: existing.evmAddress } : {}), ...(existing?.solanaAddress ? { solanaAddress: existing.solanaAddress } : {}) });
         this.d.emit(p.origin, 'multi', 'connect', { chain, ...entry });
         return chain === 'ton' ? this.tonResult(entry, p.params.proofPayload, p.origin, conn, { walletId: accts.walletId, accountIndex: index }) : entry;
@@ -437,6 +450,8 @@ export class ProviderService {
         if (conn.chainId !== chainId) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
         const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
         const fee: FeeValues = {}; if (dec.fee?.maxFeePerGas) fee.maxFeePerGas = BigInt(dec.fee.maxFeePerGas); if (dec.fee?.maxPriorityFeePerGas) fee.maxPriorityFeePerGas = BigInt(dec.fee.maxPriorityFeePerGas); if (dec.fee?.gasPrice) fee.gasPrice = BigInt(dec.fee.gasPrice);
+        // The fee must be the one the user saw: never let the node pick it at signing time (it could be anything).
+        if (!Object.keys(fee).length && tx.maxFeePerGas === undefined && tx.gasPrice === undefined) throw new ProviderError(ERR.INVALID_PARAMS, 'The network fee could not be shown, so this transaction was not sent. Try again.');
         const hash = await this.d.signer.sendTransaction(conn, net, tx, { gas: dec.gasLimit ? BigInt(dec.gasLimit) : undefined, fee: Object.keys(fee).length ? fee : undefined });
         const call = decodeCalldata(tx.data);
         if (call.kind === 'approve' && !call.decrease && tx.to) {

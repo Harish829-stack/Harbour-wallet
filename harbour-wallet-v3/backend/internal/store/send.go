@@ -42,6 +42,17 @@ func scanPending(r pgx.CollectableRow) (PendingRef, error) {
 	return p, r.Scan(&p.Chain, &p.TxHash, &p.From, &p.Nonce, &p.Checks, &p.At)
 }
 
+// PrunePending drops the device link of transactions settled more than unlinkAfter ago (the notifier has used it by
+// then) and deletes rows older than deleteAfter, so the table does not keep a lasting device -> sender address record.
+func (s *Store) PrunePending(ctx context.Context, unlinkAfter, deleteAfter time.Duration) error {
+	if _, err := s.Pool.Exec(ctx, `UPDATE pending_transactions SET device_id = NULL
+		WHERE device_id IS NOT NULL AND state <> 'pending' AND updated_at < now() - $1::interval`, unlinkAfter.String()); err != nil {
+		return err
+	}
+	_, err := s.Pool.Exec(ctx, `DELETE FROM pending_transactions WHERE state <> 'pending' AND submitted_at < now() - $1::interval`, deleteAfter.String())
+	return err
+}
+
 // DuePending claims pending transactions whose next check is due.
 func (s *Store) DuePending(ctx context.Context, limit int) ([]PendingRef, error) {
 	rows, err := s.Pool.Query(ctx, `UPDATE pending_transactions p SET next_check_at = now() + interval '30 seconds'
@@ -164,4 +175,20 @@ func (s *Store) PushSubForDevice(ctx context.Context, deviceID string) (PushSub,
 func scanSub(r pgx.CollectableRow) (PushSub, error) {
 	var p PushSub
 	return p, r.Scan(&p.DeviceID, &p.Channel, &p.Endpoint, &p.P256dh, &p.Auth)
+}
+
+// AssetTrust is the stored verdict on an asset: spam score (contract checks, provider flags) and verified flag.
+type AssetTrust struct {
+	SpamScore int
+	Verified  bool
+}
+
+// AssetTrust reads an asset's stored spam score and verified flag.
+func (s *Store) AssetTrust(ctx context.Context, chain, ref string) (AssetTrust, error) {
+	var t AssetTrust
+	err := s.Pool.QueryRow(ctx, `SELECT spam_score, verified FROM assets WHERE chain_id=$1 AND asset_ref=$2`, chain, ref).Scan(&t.SpamScore, &t.Verified)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return t, ErrNotFound
+	}
+	return t, err
 }

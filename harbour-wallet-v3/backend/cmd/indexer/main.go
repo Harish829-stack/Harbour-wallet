@@ -65,6 +65,7 @@ func main() {
 	if err != nil {
 		fail("secrets", err)
 	}
+	store.SetMediaKeySecret(secret)
 	box, err := store.NewSecretBox(secret, "webhook-signing-keys")
 	if err != nil {
 		fail("secrets", err)

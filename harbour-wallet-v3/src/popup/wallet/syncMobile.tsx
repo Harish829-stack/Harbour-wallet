@@ -16,7 +16,7 @@ type Step = 'intro' | 'scan' | 'code' | 'done';
 export const SyncWithMobile: React.FC<{ bg: (m: any) => Promise<any>; onClose: () => void; onImported?: () => void }> = ({ bg, onClose, onImported }) => {
   const [step, setStep] = useState<Step>('intro');
   const [qr, setQr] = useState(''); const [, setErr] = useState('');
-  const keysRef = useRef<any[] | null>(null);
+  const [stageId, setStageId] = useState(''); const [stageErr, setStageErr] = useState(''); // scanned keystores live in the worker
   const [result, setResult] = useState<{ imported: number; duplicates: number; skipped: number } | null>(null);
   useEffect(() => { void QRCode.toDataURL(SYNC_LINK, { margin: 1, width: 220 }).then(setQr).catch(() => {}); }, []);
 
@@ -34,8 +34,8 @@ export const SyncWithMobile: React.FC<{ bg: (m: any) => Promise<any>; onClose: (
       <div className="fx-row" style={{ marginTop: 28 }}><button className="ob-secondary" onClick={onClose}>Cancel</button><button className="ob-primary" onClick={() => { setErr(''); setStep('scan'); }}>I completed the scan</button></div>
     </div>
   );
-  if (step === 'scan') return <Scan onKeys={(k) => { keysRef.current = k; setStep('code'); }} onBack={() => setStep('intro')} />;
-  if (step === 'code') return <Code bg={bg} keysRef={keysRef} onBack={() => setStep('scan')} onDone={(r) => { setResult(r); setStep('done'); onImported?.(); }} />;
+  if (step === 'scan') return <>{stageErr && <div role="alert" style={{ color: T.error, fontSize: 13, marginBottom: 10 }}>{stageErr}</div>}<Scan onKeys={(k) => { setStageErr(''); void bg({ type: 'qrStage', storedKeys: k }).then((r) => { if (r?.ok) { setStageId(r.stageId); setStep('code'); } else setStageErr(r?.error || 'Could not read the QR code'); }).catch(() => setStageErr('Could not read the QR code')); }} onBack={() => setStep('intro')} /></>;
+  if (step === 'code') return <Code bg={bg} stageId={stageId} onBack={() => { setStageId(''); setStep('scan'); }} onDone={(r) => { setStageId(''); setResult(r); setStep('done'); onImported?.(); }} />;
   return (
     <div data-testid="sync-done">
       <div className="fx-success"><span className="fx-success-ic"><Check size={26}/></span><div><b>Wallet synced</b><span>
@@ -91,13 +91,13 @@ const Scan: React.FC<{ onKeys: (k: any[]) => void; onBack: () => void }> = ({ on
   );
 };
 
-const Code: React.FC<{ bg: (m: any) => Promise<any>; keysRef: React.MutableRefObject<any[] | null>; onBack: () => void; onDone: (r: any) => void }> = ({ bg, keysRef, onBack, onDone }) => {
+const Code: React.FC<{ bg: (m: any) => Promise<any>; stageId: string; onBack: () => void; onDone: (r: any) => void }> = ({ bg, stageId, onBack, onDone }) => {
   const [code, setCode] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const submit = async (c: string) => {
     if (busy || !ONE_TIME_CODE.test(c)) return; setBusy(true); setErr('');
-    const r = await bg({ type: 'qrSyncImport', storedKeys: keysRef.current, code: c }).catch(() => null);
-    setBusy(false);
-    if (r?.ok) onDone(r); else { setErr(r?.error === 'INCORRECT_CODE' ? 'Incorrect one-time code. Try again.' : r?.error || 'Import failed'); setCode(''); }
+    const r = await bg({ type: 'qrSyncImport', stageId, code: c }).catch(() => null);
+    setBusy(false); setCode('');
+    if (r?.ok) onDone(r); else setErr(r?.error === 'INCORRECT_CODE' ? 'Incorrect one-time code. Try again.' : r?.error === 'QR_EXPIRED' ? 'The scan expired. Go back and scan again.' : r?.error || 'Import failed');
   };
   return (
     <div data-testid="sync-code" style={{ textAlign: 'center' }}>

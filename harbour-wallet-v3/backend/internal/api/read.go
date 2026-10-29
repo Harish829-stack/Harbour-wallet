@@ -414,6 +414,11 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 			loading = true
 			okSet, _ := s.opt.Redis.SetNX(ctx, "hb:older:"+strconv.FormatInt(st.ID, 10), 1, time.Minute).Result()
 			if okSet {
+				// Each older page costs a provider call and grows the database: count it against the device's daily
+				// budget (10 pages per backfill allowance), so a stale cursor can't drive paging forever.
+				if within, err := s.dailyCounter(ctx, "hb:olderpages:"+deviceFrom(ctx).ID, 1, 10*s.tier(deviceFrom(ctx).Tier).BackfillsPerDay); err != nil || !within {
+					continue
+				}
 				b, _ := json.Marshal(map[string]int64{"tracked_address_id": st.ID})
 				if err := s.opt.Events.Publish(ctx, "address.history.more", b); err != nil {
 					s.opt.Log.Warn("publish history.more failed", "err", err)

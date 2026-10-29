@@ -5,14 +5,15 @@ import { validatePassword } from '../../core/passwordPolicy';
 import { Brand, PasswordField } from '../design/components';
 import { ChevronRight, ChevronLeft, Eye, LockKeyhole, Wallet, QrCode, Smartphone, ArrowUpRight, Usb, KeyRound, Fingerprint, Plus, Download, CheckCircle2 } from 'lucide-react';
 import { registerBiometrics, useBiometricAvailability, BiometricEnroll, type EnrollStage } from '../biometricsUi';
-import { isUserCancel, toHex } from '../../core/passkey';
-import { classifySecret, validateWalletName, MAX_WALLETS, type PkNetworkOption } from '../../core/importKey';
+import { isUserCancel } from '../../core/passkey';
+import { validateWalletName, MAX_WALLETS, type PkNetworkOption } from '../../core/importKey';
+import { useSecretField } from '../secureField';
 import { createIdleGuard, restoreStep, serializeStep, STEP_KEY, type OnboardingFlow, type OnboardingMode, type OnboardingStep } from '../../core/onboardingRules';
 import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './ImportSecret';
 import { QrScanner, type StoredKeys } from './qrScanner';
 import { BackupFlow } from './BackupFlow';
 import { Landing } from './Landing';
-import { FlowFrame, StepArt, PasswordMeter, Confetti, ThemedImg } from './FlowFrame';
+import { FlowFrame, StepArt, PasswordMeter, Confetti, ThemedImg, passwordStrength, EMPTY_STRENGTH, type PasswordStrength } from './FlowFrame';
 import { FEATURE_SCREENS } from '../wallet/features';
 import './onboarding.css';
 
@@ -33,6 +34,9 @@ const errorText = (code: string): string => ({
   WALLET_CREATION_IN_PROGRESS: 'A wallet is already being created. Wait a moment and try again.',
   INCORRECT_CODE: 'Incorrect encryption code. Check the code shown in your mobile app.',
   LOCKED: 'The wallet is locked. Unlock it and try again.',
+  QR_EXPIRED: 'The scan expired. Scan the QR code from your mobile app again.',
+  INVALID_WALLET_INPUT: 'Choose a valid password and try again.',
+  FORBIDDEN_REQUEST: 'This wallet already has a password. Unlock it to continue.',
 }[code] ?? code);
 
 type IconType = 'arrow' | 'eye' | 'lock' | 'wallet' | 'qr' | 'phone' | 'usb' | 'key' | 'finger' | 'plus' | 'download';
@@ -62,15 +66,16 @@ const Shell: React.FC<{ heading: React.ReactNode; title?: React.ReactNode; step?
 
 /** Unlock gate used when onboarding is opened while a vault exists but is locked (additional wallet, backup, passkey flows). */
 function UnlockGate({ onUnlocked }: { onUnlocked: () => void }) {
-  const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const pw = useSecretField(); const [filled, setFilled] = useState(false); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); if (busy || !pw) return; setBusy(true); setErr('');
-    try { const r = await bg({ type: 'unlock', password: pw }); if (!r?.ok) throw new Error(r?.error || 'Incorrect password'); setPw(''); onUnlocked(); }
+    e.preventDefault(); if (busy || !filled) return; setBusy(true); setErr('');
+    const password = pw.take(); setFilled(false); // read once, cleared from the field; never kept in state
+    try { const r = await bg({ type: 'unlock', password }); if (!r?.ok) throw new Error(r?.error || 'Incorrect password'); onUnlocked(); }
     catch (x: any) { setErr(x?.message || 'Incorrect password'); } finally { setBusy(false); }
   };
   return <Shell heading={<>Welcome<br/>back</>} title="Unlock your wallet to continue">
-    <form className="ob-password-form" onSubmit={submit}><PasswordField label="Password" value={pw} onChange={setPw} autoFocus disabled={busy} error={err || undefined} autoComplete="current-password"/>
-      <button className="ob-primary ob-half" disabled={!pw || busy}>{busy ? 'Unlocking...' : 'Unlock'}</button></form>
+    <form className="ob-password-form" onSubmit={submit}><PasswordField label="Password" inputRef={pw.ref} onInput={(el) => setFilled(!!el.value)} autoFocus disabled={busy} error={err || undefined} autoComplete="current-password"/>
+      <button className="ob-primary ob-half" disabled={!filled || busy}>{busy ? 'Unlocking...' : 'Unlock'}</button></form>
   </Shell>;
 }
 
@@ -83,21 +88,22 @@ export function Onboarding() {
   const [flow, setFlow] = useState<Flow>('create');
   const [source, setSource] = useState<Source>('other');
   const [terms, setTerms] = useState(false);
-  const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
-  const importPassword = useRef('');
+  // Secrets are never React state: the fields are uncontrolled and only derived flags are kept (popup/secureField.tsx).
+  const pwField = useSecretField(); const confirmField = useSecretField();
+  const [pwMeta, setPwMeta] = useState<{ policy: { valid: boolean; error?: string }; strength: PasswordStrength; confirmFilled: boolean; match: boolean }>({ policy: { valid: false }, strength: EMPTY_STRENGTH, confirmFilled: false, match: false });
   const firstMode = useRef<boolean | null>(null); // add-wallet vs first-run, fixed for the session (status.mode flips once a wallet exists)
-  const pendingPasskey = useRef<{ secret: string; credentialId: string } | null>(null);
   const [bioStage, setBioStage] = useState<EnrollStage>('idle');
   const bio = useBiometricAvailability();
   const [name, setName] = useState('');
-  const [secret, setSecret] = useState('');
+  const secretField = useSecretField<HTMLTextAreaElement>();
+  const [kind, setKind] = useState<'empty' | 'mnemonic' | 'privateKey'>('empty');
   const [network, setNetwork] = useState<PkNetworkOption | null>(null);
   const [check, setCheck] = useState<SecretCheck>({ state: 'idle' });
+  const checkSeq = useRef(0); const checkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [pendingId, setPendingId] = useState('');
   const [solana, setSolana] = useState<SolanaAccount[]>([]);
   const [solanaPick, setSolanaPick] = useState<'default' | 'phantom'>('default');
-  const [qrKeys, setQrKeys] = useState<NonNullable<StoredKeys> | null>(null);
+  const [qrStageId, setQrStageId] = useState(''); // the scanned keystores live in the worker; the UI keeps only this id
   const [code, setCode] = useState('');
   const [qrSummary, setQrSummary] = useState('');
   const [busy, setBusy] = useState(false);
@@ -106,8 +112,9 @@ export function Onboarding() {
   const [pinGuide, setPinGuide] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [resumeChoice, setResumeChoice] = useState(false);
-  const policy = validatePassword(password);
-  const confirmationError = confirmation && password !== confirmation ? 'Passwords do not match' : undefined;
+  const confirmationError = pwMeta.confirmFilled && !pwMeta.match ? 'Passwords do not match' : undefined;
+  const onPasswordInput = () => { const a = pwField.peek(); const b = confirmField.peek(); setPwMeta({ policy: validatePassword(a), strength: passwordStrength(a), confirmFilled: b.length > 0, match: a.length > 0 && a === b }); };
+  const resetPasswordFields = () => { pwField.clear(); confirmField.clear(); setPwMeta({ policy: { valid: false }, strength: EMPTY_STRENGTH, confirmFilled: false, match: false }); };
   const mode: OnboardingMode = status?.mode ?? 'first-wallet';
   const additional = mode === 'additional-wallet' || mode === 'interrupted';
 
@@ -128,7 +135,6 @@ export function Onboarding() {
   useEffect(() => { void loadStatus(); }, [loadStatus]);
   // Persist the step so a reload resumes the same screen; secrets and passwords are never stored.
   useEffect(() => { if (!status) return; if (step === 'completed') writeSaved(null); else writeSaved(serializeStep({ step, flow, source })); }, [status, step, flow, source]);
-  useEffect(() => () => { importPassword.current = ''; }, []);
   useEffect(() => {
     if (step !== 'completed') return;
     const timer = setInterval(() => setSlide((i) => (i + 1) % 3), 7000);
@@ -136,52 +142,62 @@ export function Onboarding() {
     return () => clearInterval(timer);
   }, [step]);
 
-  const kind = classifySecret(secret);
   const nameError = status ? validateWalletName(name, status.names).error : undefined;
-  // Live validation: phrases through the wallet-core checker, keys per the selected network's curve. Nothing is stored.
-  useEffect(() => {
-    setCheck({ state: 'idle' });
-    if (kind === 'empty') return;
-    let live = true; setCheck({ state: 'checking' });
-    const t = setTimeout(() => {
-      const req = kind === 'mnemonic' ? bg({ type: 'validateMnemonic', mnemonic: secret.trim().replace(/\s+/g, ' ').toLowerCase() }) : network ? bg({ type: 'validatePrivateKey', privateKey: secret.trim(), chainId: network.chainId, group: network.kind === 'evm-group' }) : null;
-      if (!req) { if (live) setCheck({ state: 'idle' }); return; }
-      req.then((r) => { if (live) setCheck(r?.valid === true ? { state: 'valid' } : { state: 'invalid', error: kind === 'mnemonic' ? 'Invalid Secret Phrase' : 'Invalid Private Key' }); }).catch(() => { if (live) setCheck({ state: 'idle' }); });
+  // Live validation in the worker (`importCheck`: kind + validity only). The text is read from the uncontrolled field when the
+  // check runs and is not kept here.
+  const runCheck = (net: PkNetworkOption | null) => {
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    const seq = ++checkSeq.current;
+    checkTimer.current = setTimeout(() => {
+      const value = secretField.peek();
+      if (!value.trim()) { setKind('empty'); setCheck({ state: 'idle' }); return; }
+      setCheck({ state: 'checking' });
+      bg({ type: 'importCheck', secret: value, chainId: net?.chainId, group: net?.kind === 'evm-group' }).then((r) => {
+        if (seq !== checkSeq.current) return;
+        if (!r?.ok) { setCheck({ state: 'idle' }); return; }
+        setKind(r.kind === 'mnemonic' || r.kind === 'privateKey' ? r.kind : 'empty');
+        setCheck(r.kind === 'empty' || r.needsNetwork ? { state: 'idle' } : r.valid ? { state: 'valid' } : { state: 'invalid', error: r.kind === 'mnemonic' ? 'Invalid Secret Phrase' : 'Invalid Private Key' });
+      }).catch(() => { if (seq === checkSeq.current) setCheck({ state: 'idle' }); });
     }, 200);
-    return () => { live = false; clearTimeout(t); };
-  }, [secret, network, kind]);
+  };
+  useEffect(() => { if (kind === 'privateKey') runCheck(network); }, [network]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (checkTimer.current) clearTimeout(checkTimer.current); }, []);
+  const clearSecret = () => { checkSeq.current++; secretField.clear(); setKind('empty'); setCheck({ state: 'idle' }); };
 
   const go = (next: Step) => { setError(''); setStep(next); };
   const start = (next: Flow) => {
-    setFlow(next); setPassword(''); setConfirmation('');
+    setFlow(next); resetPasswordFields();
     if (additional) { go(next === 'create' ? 'welcome' : next === 'qr' ? 'qr-mobile' : 'sources'); if (next === 'create') void createAdditional(); return; }
     go('authentication');
   };
-  const generatedPassword = () => toHex(crypto.getRandomValues(new Uint8Array(24)));
   const nextAfterAuth = (f: Flow) => go(f === 'qr' ? 'qr-mobile' : 'sources');
+  // Biometrics-only: the worker generates the wallet password and the passkey seals it; the UI never sees a password.
   async function runBiometricSetup() {
     if (busy || bioStage !== 'idle') return; setError('');
     try {
-      pendingPasskey.current = await registerBiometrics(setBioStage);
-      const pw = generatedPassword(); setBioStage('idle');
-      if (flow === 'create') { await createWithPassword(pw); return; }
-      importPassword.current = pw; nextAfterAuth(flow);
-    } catch (cause) { pendingPasskey.current = null; setBioStage('idle'); if (!isUserCancel(cause)) setError(cause instanceof Error ? cause.message : 'Biometrics failed'); }
+      const passkey = await registerBiometrics(setBioStage); setBioStage('idle');
+      if (flow === 'create') await createFirstWallet({ generatedPassword: true, passkey });
+      else await secureVault({ generatedPassword: true, passkey });
+    } catch (cause) { setBioStage('idle'); if (!isUserCancel(cause)) setError(cause instanceof Error ? cause.message : 'Biometrics failed'); }
   }
-  async function sealPendingPasskey() {
-    const p = pendingPasskey.current; if (!p) return;
-    const r = await bg({ type: 'passkeyEnroll', secret: p.secret, credentialId: p.credentialId, isPasswordGenerated: true });
-    pendingPasskey.current = null;
-    if (!r?.ok) throw new Error(r?.error || 'Could not save biometrics');
-  }
-  const complete = () => { setPassword(''); setConfirmation(''); importPassword.current = ''; setSecret(''); setCode(''); setQrKeys(null); setSolana([]); setPendingId(''); setStep('completed'); };
-  async function createWithPassword(pw: string) {
+  const complete = () => { resetPasswordFields(); clearSecret(); setCode(''); setQrStageId(''); setSolana([]); setPendingId(''); setStep('completed'); };
+  async function createFirstWallet(auth: { password: string } | { generatedPassword: true; passkey: { secret: string; credentialId: string } }) {
     setBusy(true); setError('');
     try {
-      const result = await bg({ type: 'createWallet', password: pw, name: name || 'Main wallet 1', newlyGenerated: true });
+      const result = await bg({ type: 'createWallet', ...auth, name: name || 'Main wallet 1', newlyGenerated: true });
       if (!result.ok) throw new Error(errorText(result.error || 'Unable to create wallet'));
-      await sealPendingPasskey(); complete();
+      complete();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create wallet'); }
+    finally { setBusy(false); }
+  }
+  // Import / QR flows: the worker creates the (empty) vault now, so the password is not held here until the import finishes.
+  async function secureVault(auth: { password: string } | { generatedPassword: true; passkey: { secret: string; credentialId: string } }) {
+    setBusy(true); setError('');
+    try {
+      const r = await bg({ type: 'onboardingSecure', ...auth });
+      if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to secure the wallet'));
+      nextAfterAuth(flow);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to secure the wallet'); }
     finally { setBusy(false); }
   }
   async function createAdditional() {
@@ -191,22 +207,23 @@ export function Onboarding() {
     finally { setBusy(false); }
   }
   async function submitPassword(event: React.FormEvent) {
-    event.preventDefault(); if (busy || !policy.valid || password !== confirmation) return;
-    if (flow !== 'create') { importPassword.current = password; setPassword(''); setConfirmation(''); nextAfterAuth(flow); return; }
-    await createWithPassword(password);
+    event.preventDefault(); if (busy || !pwMeta.policy.valid || !pwMeta.match) return;
+    const password = pwField.take(); resetPasswordFields(); // read once and cleared; it goes straight to the worker
+    if (flow === 'create') await createFirstWallet({ password }); else await secureVault({ password });
   }
   async function finishImport(id: string, variant: 'default' | 'phantom') {
-    const r = await bg({ type: 'importComplete', pendingId: id, name: name.trim(), password: importPassword.current || undefined, solanaVariant: variant });
+    const r = await bg({ type: 'importComplete', pendingId: id, name: name.trim(), solanaVariant: variant });
     if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to import wallet'));
-    await sealPendingPasskey(); complete();
+    complete();
   }
   const canSubmit = kind !== 'empty' && !nameError && check.state === 'valid' && (kind === 'mnemonic' || !!network);
   async function submitSecret(event: React.FormEvent) {
     event.preventDefault(); if (busy || !canSubmit) return;
     setBusy(true); setError('');
     try {
-      const r = await bg({ type: 'importInitiate', secret, name: name.trim(), chainId: network?.chainId, group: network?.kind === 'evm-group' });
+      const r = await bg({ type: 'importInitiate', secret: secretField.peek(), name: name.trim(), chainId: network?.chainId, group: network?.kind === 'evm-group' });
       if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to import wallet'));
+      secretField.clear(); // the worker holds the pending secret now (10 min, memory only)
       setPendingId(r.pendingId);
       if (r.solanaChoice) { setSolana(r.accounts ?? []); setSolanaPick(r.solanaVariant ?? 'default'); go('solana'); return; }
       await finishImport(r.pendingId, r.solanaVariant ?? 'default');
@@ -217,14 +234,23 @@ export function Onboarding() {
     if (busy) return; setBusy(true); setError('');
     try { await finishImport(pendingId, solanaPick); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to import wallet'); } finally { setBusy(false); }
   }
-  async function submitCode(value: string) {
-    if (busy || !qrKeys || value.length !== 6) return; setBusy(true); setError('');
+  // The scanned (encrypted) keystores go to the worker right away; only the stage id stays here.
+  async function stageQr(keys: NonNullable<StoredKeys>) {
+    setBusy(true); setError('');
     try {
-      const v = await bg({ type: 'qrVerify', storedKeys: qrKeys, code: value });
+      const r = await bg({ type: 'qrStage', storedKeys: keys });
+      if (!r?.ok) throw new Error(errorText(r?.error || 'Could not read the QR code'));
+      setQrStageId(r.stageId); go('qr-code');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not read the QR code'); }
+    finally { setBusy(false); }
+  }
+  async function submitCode(value: string) {
+    if (busy || !qrStageId || value.length !== 6) return; setBusy(true); setError('');
+    try {
+      const v = await bg({ type: 'qrVerify', stageId: qrStageId, code: value });
       if (!v?.ok) throw new Error(errorText(v?.error || 'Could not read the QR code'));
-      const r = await bg({ type: 'qrImportAll', storedKeys: qrKeys, code: value, password: importPassword.current || undefined });
+      const r = await bg({ type: 'qrImportAll', stageId: qrStageId, code: value });
       if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to import wallets'));
-      await sealPendingPasskey();
       setQrSummary(`${r.imported ?? 0} wallet${r.imported === 1 ? '' : 's'} imported${r.duplicates ? `, ${r.duplicates} already existed` : ''}.`); complete();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to import wallets'); setCode(''); }
     finally { setBusy(false); }
@@ -237,15 +263,15 @@ export function Onboarding() {
   }
   const back = () => {
     if (busy) return;
-    if (step === 'password' || step === 'biometrics') { setPassword(''); setConfirmation(''); pendingPasskey.current = null; go('authentication'); }
-    else if (step === 'secret') { setSecret(''); setNetwork(null); go(source === 'trust' ? 'trust-method' : 'sources'); }
+    if (step === 'password' || step === 'biometrics') { resetPasswordFields(); go('authentication'); }
+    else if (step === 'secret') { clearSecret(); setNetwork(null); go(source === 'trust' ? 'trust-method' : 'sources'); }
     else if (step === 'solana') { if (pendingId) void bg({ type: 'importCancel', pendingId }); setPendingId(''); go('secret'); }
     else if (step === 'qr-scan') go('qr-mobile');
-    else if (step === 'qr-code') { setQrKeys(null); setCode(''); go('qr-scan'); }
+    else if (step === 'qr-code') { setQrStageId(''); setCode(''); go('qr-scan'); }
     else if (step === 'trust-method' || step === 'ledger') go('sources');
     else if (step === 'qr-mobile') go(additional ? 'welcome' : 'authentication');
     else if (step === 'sources') go(additional ? 'welcome' : 'authentication');
-    else { importPassword.current = ''; setTerms(false); go('welcome'); }
+    else { setTerms(false); go('welcome'); }
   };
 
   // ---------- special and pre-flow screens ----------
@@ -309,8 +335,8 @@ export function Onboarding() {
       {step === 'completed' && <Confetti/>}
       {lede[step] && <p className="fx-lede">{lede[step]}</p>}
       {step === 'authentication' && <div className="ob-choices">
-        {bio.available && <Choice icon="finger" recommended desc="Unlock with your device passkey. Fast and phishing-resistant." testid="onboarding-biometrics" onClick={() => { pendingPasskey.current = null; go('biometrics'); }}>{bio.name}</Choice>}
-        <Choice icon="lock" desc="Create a password to unlock Harbour on this device." onClick={() => { pendingPasskey.current = null; go('password'); }}>Password</Choice>
+        {bio.available && <Choice icon="finger" recommended desc="Unlock with your device passkey. Fast and phishing-resistant." testid="onboarding-biometrics" onClick={() => go('biometrics')}>{bio.name}</Choice>}
+        <Choice icon="lock" desc="Create a password to unlock Harbour on this device." onClick={() => { resetPasswordFields(); go('password'); }}>Password</Choice>
       </div>}
       {step === 'biometrics' && <div className="ob-password-form">
         <div className="fx-callout"><Fingerprint size={18}/><span><b>A secure and simple way to unlock your wallet with {bio.name}.</b> Your device creates a passkey; Harbour never sees your fingerprint or face.</span></div>
@@ -319,16 +345,16 @@ export function Onboarding() {
         <button className="ob-primary ob-half" data-testid="onboarding-set-biometrics" disabled={busy || bioStage !== 'idle'} onClick={runBiometricSetup}>{busy ? 'Creating wallet...' : `Set up ${bio.name}`}</button>
       </div>}
       {step === 'password' && <form className="ob-password-form" onSubmit={submitPassword}>
-        <PasswordField label="Password" value={password} onChange={setPassword} placeholder="Min 8 characters" error={policy.error} autoFocus disabled={busy}/>
-        <PasswordMeter value={password}/>
-        <PasswordField label="Confirm password" value={confirmation} onChange={setConfirmation} placeholder="Password" error={confirmationError} disabled={busy}/>
+        <PasswordField label="Password" inputRef={pwField.ref} onInput={onPasswordInput} placeholder="Min 8 characters" error={pwMeta.policy.error} autoFocus disabled={busy}/>
+        <PasswordMeter strength={pwMeta.strength}/>
+        <PasswordField label="Confirm password" inputRef={confirmField.ref} onInput={onPasswordInput} placeholder="Password" error={confirmationError} disabled={busy}/>
         {error && <div className="ob-error" role="alert">{error}</div>}
-        <button className="ob-primary ob-half" disabled={!policy.valid || password !== confirmation || busy}>{busy ? 'Creating wallet...' : 'Continue'}</button>
+        <button className="ob-primary ob-half" disabled={!pwMeta.policy.valid || !pwMeta.match || busy}>{busy ? 'Creating wallet...' : 'Continue'}</button>
       </form>}
       {step === 'sources' && <div className="ob-choices"><Choice icon="phone" desc="Move wallets over from the Trust Wallet mobile app." testid="onboarding-select-import-method-trust-wallet" onClick={() => { setSource('trust'); go('trust-method'); }}>Trust Wallet Mobile</Choice><Choice icon="key" desc="Use a secret phrase or private key from any wallet." onClick={() => { setSource('other'); go('secret'); }}>Other mobile wallet or extension</Choice><p className="ob-muted ob-hardware">Hardware wallets</p><Choice icon="usb" desc="Keep keys on your Ledger and sign over USB." testid="onboarding-import-ledger" onClick={() => { setFlow('ledger'); go('ledger'); }}>Connect your Ledger</Choice></div>}
       {step === 'trust-method' && <div className="ob-choices"><Choice icon="qr" recommended desc="Scan a code with your phone. No typing required." onClick={() => { setFlow('qr'); go('qr-mobile'); }}>Import with QR Code from mobile</Choice><Choice icon="key" desc="Type or paste your 12 to 24 word phrase, or a private key." onClick={() => { setFlow('import'); go('secret'); }}>Import with Secret Phrase or Private Key</Choice></div>}
       {step === 'secret' && <SecretForm name={name} onName={(v) => { setName(v); setError(''); }} nameError={nameError} product={source === 'trust' ? 'trust-wallet' : 'other'}
-        secret={secret} onSecret={(v) => { setSecret(v); setError(''); }} kind={kind} check={check} network={network} onNetwork={setNetwork} error={error} busy={busy} canSubmit={canSubmit} onSubmit={submitSecret}/>}
+        secretRef={secretField.ref} onSecretInput={() => { setError(''); runCheck(network); }} kind={kind} check={check} network={network} onNetwork={setNetwork} error={error} busy={busy} canSubmit={canSubmit} onSubmit={submitSecret}/>}
       {step === 'solana' && <div className="ob-import-form" data-testid="solana-derivation">
         <p className="ob-muted">We found two ways your phrase can derive a Solana wallet. Choose the one that holds your funds; you can import the other later.</p>
         <div role="radiogroup" aria-label="Solana derivation" className="ob-choices">
@@ -350,7 +376,7 @@ export function Onboarding() {
         </div>
         <div className="fx-row" style={{ marginTop: 8 }}><button className="ob-secondary" onClick={() => { setFlow('import'); setSource('trust'); go('secret'); }}>Use secret phrase instead</button><button className="ob-primary" onClick={() => go('qr-scan')}>I completed the scan</button></div>
       </div>}
-      {step === 'qr-scan' && <div className="ob-qr-instructions"><QrScanner onKeys={(keys) => { setQrKeys(keys); go('qr-code'); }}/></div>}
+      {step === 'qr-scan' && <div className="ob-qr-instructions"><QrScanner onKeys={(keys) => { void stageQr(keys); }}/>{error && <p className="ob-error" role="alert">{error}</p>}</div>}
       {step === 'qr-code' && <div className="ob-import-form" data-testid="qr-code-step">
         <p className="ob-muted">Enter the 6-character code shown in your mobile app to decrypt your wallets.</p>
         <div className={`ob-code ${error ? 'bad' : ''}`} role="group" aria-label="Encryption code">{codeSlots.map((c, i) => <input key={i} aria-label={`Character ${i + 1}`} value={c} placeholder=" " maxLength={1} disabled={busy} autoFocus={i === code.length || (i === 5 && code.length === 6)} autoComplete="off"

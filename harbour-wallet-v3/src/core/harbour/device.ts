@@ -1,7 +1,7 @@
 // Per-install device identity for the Harbour API (twin of backend/clients/ts/hbclient.ts and backend/internal/devicesig).
 // The key proves "same install" and nothing else: it never signs transactions and never touches wallet secrets.
 // Preferred: a WebCrypto Ed25519 key created non-extractable and kept in IndexedDB. Browsers without WebCrypto Ed25519
-// fall back to a random seed in extension-local storage (still not a wallet credential).
+// fall back to a random seed kept in the same IndexedDB store (still not a wallet credential).
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { HB_API_URL } from './config';
@@ -82,6 +82,8 @@ export async function parseResponse(res: Response): Promise<any> {
   return body;
 }
 
+/** Highest proof-of-work difficulty the client accepts (the server uses 20-24 bits). */
+export const MAX_POW_BITS = 26;
 let pending: Promise<Identity> | null = null;
 /** The registered device, registering (proof-of-work) on first use. Concurrent callers share one registration. */
 export function deviceIdentity(base = HB_API_URL, f: typeof fetch = fetch): Promise<Identity> {
@@ -91,6 +93,8 @@ export function deviceIdentity(base = HB_API_URL, f: typeof fetch = fetch): Prom
     const sign = signer(k);
     if (!k.deviceId) {
       const ch = await parseResponse(await f(`${base}/v1/devices/challenge`, { method: 'POST' }));
+      // The server picks the difficulty; cap it so a hostile or broken server cannot stall the wallet forever.
+      if (!Number.isInteger(ch.difficulty) || ch.difficulty < 0 || ch.difficulty > MAX_POW_BITS) throw new HarbourApiError(0, 'bad_challenge', 'Harbour could not set up this device. Please try again later.', true);
       const counter = await solvePow(ch.challenge, k.pub, ch.difficulty);
       const sig = b64url(await sign(enc.encode(`HB1-register\n${ch.challenge}`)));
       const reg = await parseResponse(await f(`${base}/v1/devices`, { method: 'POST', headers: { 'Content-Type': 'application/json' },

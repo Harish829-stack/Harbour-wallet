@@ -36,6 +36,7 @@ type activity struct {
 	TrackedAddressID int64     `json:"tracked_address_id"`
 	Chain            string    `json:"chain"`
 	TxHash           string    `json:"tx_hash"`
+	Asset            string    `json:"asset"`
 	Kind             string    `json:"kind"`
 	AmountRaw        string    `json:"amount_raw"`
 	Symbol           string    `json:"symbol"`
@@ -81,21 +82,68 @@ func (n *Notifier) HandleActivity(ctx context.Context, data []byte) error {
 	if err != nil || len(subs) == 0 {
 		return err
 	}
-	title := "You received an NFT"
-	if a.Kind != "nft" && a.Kind != "multi" {
-		sym := a.Symbol
-		if sym == "" {
-			sym = "tokens"
+	title, body := "You received an NFT", "On "+chainLabel(a.Chain)
+	switch a.Kind {
+	case "nft", "multi":
+	case "native", "internal":
+		// The chain's own coin: amount and symbol come from chain config, not from the sender.
+		title = "Received " + displayAmount(a.AmountRaw, a.Decimals) + " " + safeSymbol(a.Symbol, "coins")
+	default:
+		// Anyone can deploy a token called "USDC" and airdrop it: only verified tokens get amount and symbol in the
+		// title, and the stored spam score (contract checks, provider flags) decides, not the per-event guess.
+		t, err := n.St.AssetTrust(ctx, a.Chain, a.Asset)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return err
 		}
-		title = "Received " + displayAmount(a.AmountRaw, a.Decimals) + " " + sym
+		if t.SpamScore >= 50 {
+			return nil
+		}
+		if t.Verified {
+			title = "Received " + displayAmount(a.AmountRaw, a.Decimals) + " " + safeSymbol(a.Symbol, "tokens")
+		} else {
+			title, body = "You received a token", "Unverified token · On "+chainLabel(a.Chain)
+		}
 	}
-	msg := notify.Message{Title: title, Body: "On " + chainLabel(a.Chain),
+	msg := notify.Message{Title: title, Body: body,
 		Data: map[string]string{"type": "incoming", "chain": a.Chain, "tx_hash": a.TxHash}}
-	var errs []error
+	n.deliverAll(ctx, subs, "in:"+a.Chain+":"+a.TxHash, msg)
+	return nil
+}
+
+// deliverAll sends to every subscription concurrently with a bounded fan-out. A failing or slow endpoint is logged and
+// left to its own dedupe key; it never fails (and so redelivers) the event for every other device.
+func (n *Notifier) deliverAll(ctx context.Context, subs []store.PushSub, key string, msg notify.Message) {
+	sem := make(chan struct{}, 16)
+	var wg sync.WaitGroup
 	for _, s := range subs {
-		errs = append(errs, n.deliver(ctx, s, "in:"+a.Chain+":"+a.TxHash, msg))
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(s store.PushSub) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := n.deliver(ctx, s, key, msg); err != nil {
+				n.Log.Warn("push delivery failed", "err", err)
+			}
+		}(s)
 	}
-	return errors.Join(errs...)
+	wg.Wait()
+}
+
+// safeSymbol keeps a short, plain symbol (letters, digits, . _ -) for notification text.
+func safeSymbol(sym, fallback string) string {
+	var b strings.Builder
+	for _, r := range sym {
+		if r < 128 && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '_' || r == '-') {
+			b.WriteRune(r)
+		}
+		if b.Len() >= 12 {
+			break
+		}
+	}
+	if b.Len() == 0 {
+		return fallback
+	}
+	return b.String()
 }
 
 // HandleTx notifies the device that broadcast a transaction once it settles.

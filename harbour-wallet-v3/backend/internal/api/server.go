@@ -50,9 +50,13 @@ type Options struct {
 	GatewayURL   string // e.g. http://rpc-gateway:8081
 	GatewayToken string
 	TrustProxy   bool // honour X-Forwarded-For (only behind your own load balancer)
+	// TrustedProxies are the load balancer networks whose X-Forwarded-For is believed (default: RFC 1918 ranges).
+	TrustedProxies []*net.IPNet
 	// AllowPrivateMedia lets the media proxy fetch from private addresses (tests only).
 	AllowPrivateMedia bool
-	PowDifficulty     int // overrides config when > 0
+	// AnyPushHost accepts push endpoints outside the known push services (tests only).
+	AnyPushHost   bool
+	PowDifficulty int // overrides config when > 0
 	// Simulator predicts asset changes before signing (nil: eth_call + estimate only).
 	Simulator risk.Simulator
 	// Realtime (Centrifugo): the HMAC secret for client tokens and the
@@ -112,7 +116,7 @@ func (s *Server) powDifficulty() int {
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	if s.opt.TrustProxy {
-		r.Use(middleware.RealIP)
+		r.Use(s.realIP)
 	}
 	r.Use(middleware.Recoverer, s.accessLog, maxBody(1<<20))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +141,7 @@ func (s *Server) Handler() http.Handler {
 			r.Use(s.deviceAuth, s.rateLimit)
 			r.Get("/me", s.handleMe)
 			r.Get("/me/addresses", s.handleListAddresses)
-			r.With(s.idempotency).Put("/me/addresses", s.handlePutAddresses)
+			r.With(s.idempotencyNoBody).Put("/me/addresses", s.handlePutAddresses)
 			r.Post("/rpc/{chain}", s.handleRPC)
 			r.Get("/me/portfolio", s.handlePortfolio)
 			r.Get("/me/portfolio/chart", s.handleChart)
@@ -208,12 +212,85 @@ func (s *Server) accessLog(next http.Handler) http.Handler {
 	})
 }
 
+// clientIP is the rate-limit identity of a caller: the IPv4 address, or the IPv6 /64 (one subscriber usually holds a
+// whole /64, so per-address keys would be free to rotate).
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
 	}
-	return host
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return host
+	}
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String()
+	}
+	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
+}
+
+var defaultTrustedProxies = func() []*net.IPNet {
+	var out []*net.IPNet
+	for _, c := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "::1/128", "fc00::/7"} {
+		_, n, _ := net.ParseCIDR(c)
+		out = append(out, n)
+	}
+	return out
+}()
+
+// ParseCIDRs parses a comma-separated CIDR list (TRUSTED_PROXY_CIDRS).
+func ParseCIDRs(list string) ([]*net.IPNet, error) {
+	var out []*net.IPNet
+	for _, c := range strings.Split(list, ",") {
+		if c = strings.TrimSpace(c); c == "" {
+			continue
+		}
+		_, n, err := net.ParseCIDR(c)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, nil
+}
+
+func inNets(ip net.IP, nets []*net.IPNet) bool {
+	for _, n := range nets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// realIP replaces RemoteAddr with the client address a trusted load balancer appended to X-Forwarded-For. Only a
+// request that arrives from a trusted proxy is rewritten, and the chain is read from the right, skipping trusted hops,
+// so a client cannot choose its own address by sending the header itself.
+func (s *Server) realIP(next http.Handler) http.Handler {
+	trusted := s.opt.TrustedProxies
+	if len(trusted) == 0 {
+		trusted = defaultTrustedProxies
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			host = r.RemoteAddr
+		}
+		if peer := net.ParseIP(host); peer != nil && inNets(peer, trusted) {
+			hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+			for i := len(hops) - 1; i >= 0; i-- {
+				ip := net.ParseIP(strings.TrimSpace(hops[i]))
+				if ip == nil {
+					break
+				}
+				if !inNets(ip, trusted) {
+					r.RemoteAddr = net.JoinHostPort(ip.String(), "0")
+					break
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 var evmAddr = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)

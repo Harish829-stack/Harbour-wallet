@@ -1,5 +1,15 @@
 # Local stack. Run from backend/:  make up   (reads backend/.env)
 name: harbour
+
+# Shared, non-secret settings and connection strings (YAML anchors). Services connect to Postgres as harbour_svc
+# (member of harbour_app), never as the owner, and to NATS with a password.
+x-common: &common
+  APP_ENV: ${APP_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  ENABLED_CHAINS: ${ENABLED_CHAINS:-}
+x-pg: &pg postgres://harbour_svc:${POSTGRES_APP_PASSWORD}@postgres:5432/harbour?sslmode=disable
+x-nats: &nats nats://harbour:${NATS_PASSWORD}@nats:4222
+
 services:
   postgres:
     build: ./postgres
@@ -30,8 +40,10 @@ services:
 
   nats:
     image: nats:2.10-alpine
-    command: ["-js", "-sd", "/data", "-m", "8222"]
-    ports: ["127.0.0.1:4222:4222", "127.0.0.1:8222:8222"]
+    # Authentication required: without it any local process could publish forged balance, transaction and "Received"
+    # push events. The monitoring port is not published.
+    command: ["-js", "-sd", "/data", "--user", "harbour", "--pass", "${NATS_PASSWORD:?run scripts/setup.sh}"]
+    ports: ["127.0.0.1:4222:4222"]
     volumes: [natsdata:/data]
 
   centrifugo:
@@ -47,33 +59,56 @@ services:
     depends_on:
       redis: {condition: service_healthy}
 
+  # Runs as the database owner: applies migrations and creates the services' own login (POSTGRES_APP_USER), which is a
+  # member of harbour_app (data access only: no DDL, no roles, no superuser).
   migrate:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/migrate", "-maintain"]
     environment:
       POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_APP_USER: harbour_svc
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?run scripts/setup.sh}
     depends_on:
       postgres: {condition: service_healthy}
 
+  # Every service gets only the secrets it uses (no shared env_file). x-common holds the non-secret settings.
   rpc-gateway:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/rpc-gateway", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
+      <<: *common
       GATEWAY_ADDR: ":8081"
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?run scripts/setup.sh}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}
+      ALCHEMY_API_KEY_2: ${ALCHEMY_API_KEY_2:-}
+      INFURA_API_KEY: ${INFURA_API_KEY:-}
+      INFURA_API_SECRET: ${INFURA_API_SECRET:-}
+      INFURA_API_KEY_2: ${INFURA_API_KEY_2:-}
+      QUICKNODE_ETH_URL: ${QUICKNODE_ETH_URL:-}
+      QUICKNODE_BASE_URL: ${QUICKNODE_BASE_URL:-}
+      CHAINSTACK_ETH_URL: ${CHAINSTACK_ETH_URL:-}
+      CHAINSTACK_BASE_URL: ${CHAINSTACK_BASE_URL:-}
     ports: ["127.0.0.1:8081:8081"]
 
   api:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/api", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
+      <<: *common
       API_ADDR: ":8080"
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: *pg
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       RPC_GATEWAY_URL: http://rpc-gateway:8081
-      NATS_URL: nats://nats:4222
-      REALTIME_PUBLIC_URL: ws://localhost:8000/connection/websocket
+      NATS_URL: *nats
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN}
+      ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY:?run scripts/setup.sh}
+      CENTRIFUGO_TOKEN_HMAC_SECRET: ${CENTRIFUGO_TOKEN_HMAC_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      POW_DIFFICULTY: ${POW_DIFFICULTY:-}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-0}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}        # transaction simulator (risk: in providers.yaml)
+      REALTIME_PUBLIC_URL: ${REALTIME_PUBLIC_URL:-ws://localhost:8000/connection/websocket}
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -84,12 +119,18 @@ services:
   indexer:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/indexer", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
+      <<: *common
       INDEXER_ADDR: ":8083"
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: *pg
       RPC_GATEWAY_URL: http://rpc-gateway:8081
-      NATS_URL: nats://nats:4222
+      NATS_URL: *nats
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN}
+      ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}
+      ALCHEMY_NOTIFY_TOKEN: ${ALCHEMY_NOTIFY_TOKEN:-}
+      ALCHEMY_WEBHOOK_SIGNING_KEYS: ${ALCHEMY_WEBHOOK_SIGNING_KEYS:-}
+      WEBHOOK_PUBLIC_URL: ${WEBHOOK_PUBLIC_URL:-}
     ports: ["127.0.0.1:8083:8083"]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -99,11 +140,14 @@ services:
   webhook-ingest:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/webhook-ingest", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
+      <<: *common
       WEBHOOK_ADDR: ":8082"
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
-      NATS_URL: nats://nats:4222
+      POSTGRES_URL: *pg
+      NATS_URL: *nats
+      ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}        # the source adapter is built to verify deliveries
+      ALCHEMY_WEBHOOK_SIGNING_KEYS: ${ALCHEMY_WEBHOOK_SIGNING_KEYS:-}
     # cloudflared (or ngrok) on your Mac forwards the public URL to this port.
     ports: ["127.0.0.1:8082:8082"]
     depends_on:
@@ -113,11 +157,14 @@ services:
   price-poller:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/price-poller", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      <<: *common
+      POSTGRES_URL: *pg
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      NATS_URL: nats://nats:4222
+      NATS_URL: *nats
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      COINGECKO_PLAN: ${COINGECKO_PLAN:-demo}
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
@@ -126,11 +173,12 @@ services:
   tx-tracker:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/tx-tracker", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      <<: *common
+      POSTGRES_URL: *pg
       RPC_GATEWAY_URL: http://rpc-gateway:8081
-      NATS_URL: nats://nats:4222
+      NATS_URL: *nats
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN}
     depends_on:
       migrate: {condition: service_completed_successfully}
       rpc-gateway: {condition: service_started}
@@ -139,10 +187,11 @@ services:
   realtime-bridge:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/realtime-bridge"]
-    env_file: [../.env]
     environment:
-      NATS_URL: nats://nats:4222
+      <<: *common
+      NATS_URL: *nats
       CENTRIFUGO_API_URL: http://centrifugo:8000/api
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY}
     depends_on:
       centrifugo: {condition: service_started}
       nats: {condition: service_started}
@@ -150,11 +199,16 @@ services:
   notifier:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/notifier", "-config", "/app/config"]
-    env_file: [../.env]
     environment:
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      <<: *common
+      POSTGRES_URL: *pg
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      NATS_URL: nats://nats:4222
+      NATS_URL: *nats
+      ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      FCM_CREDENTIALS_FILE: ${FCM_CREDENTIALS_FILE:-}
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}

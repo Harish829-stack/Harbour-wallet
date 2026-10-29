@@ -112,14 +112,14 @@ func TestDeviceFlow(t *testing.T) {
 	if len(added) != 2 || added[1].(map[string]any)["backfill_state"] != "skipped" {
 		t.Fatalf("put: %v", put)
 	}
-	// Idempotent replay returns the same body without re-running.
+	// Idempotent replay answers without re-running; the address list is not kept in Redis (privacy), only the status.
 	var again map[string]any
 	_, err = c.Do(ctx, "PUT", "/v1/me/addresses", map[string]any{"add": []map[string]string{
 		{"chain": "base", "address": "0x1111111111111111111111111111111111111111"},
 		{"chain": "ethereum", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"},
 	}}, &again, http.Header{"Idempotency-Key": {"k1"}})
 	must(t, err)
-	if len(again["added"].([]any)) != 2 {
+	if again["replayed"] != true {
 		t.Fatalf("replay: %v", again)
 	}
 	wantStatus(t, status(c.Do(ctx, "PUT", "/v1/me/addresses", map[string]any{"add": []map[string]string{

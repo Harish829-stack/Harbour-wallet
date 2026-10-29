@@ -6,7 +6,8 @@
 import type { HandlerMap, HandlerCtx, Msg } from './types';
 import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
-import { removePasskey } from '../../core/passkeyService';
+import { removePasskey, enrollPasskey } from '../../core/passkeyService';
+import { readQrStage, clearQrStage } from '../qrStage';
 import { armLockTimer } from '../settingsService';
 import { ALL_CHAINS, chainById } from '../../core/chains/index';
 import { fetchNativeBalance } from '../../core/chains/adapters';
@@ -14,6 +15,8 @@ import { solanaRpcUrl } from '../../core/rpc';
 import { MAX_WALLETS, WALLET_LIMIT_ERROR, canCreateWallet, classifySecret, normalizeMnemonic, validatePrivateKey, hasDuplicateAddress, pickSolanaVariants, solanaHasHistory, evmFamily, validateWalletName, defaultWalletName, IMPORT_ERRORS, type SolanaVariant } from '../../core/importKey';
 import { onboardingMode } from '../../core/onboardingRules';
 import { decryptStoredKeys } from '../../core/qrImport';
+
+const generatePassword = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
 
 const PENDING_TTL_MS = 10 * 60_000;
 type PendingMnemonic = { kind: 'mnemonic'; mnemonic: string; at: number };
@@ -32,7 +35,7 @@ async function readState(ctx: HandlerCtx): Promise<{ hasVault: boolean; unlocked
 }
 const walletNames = (state: any): string[] => Object.values(state?.wallets ?? {}).map((w: any) => String(w?.label ?? w?.name ?? ''));
 
-async function dropVaultKeys() {
+export async function dropVaultKeys() {
   for (const k of [KEYS.VAULT, KEYS.VAULT_ID, KEYS.PBKDF2, KEYS.THROTTLE]) await local.remove(k);
   await session.remove(KEYS.PASSWORD); await session.remove(KEYS.UNLOCK); await session.remove(KEYS.REVEAL);
   await removePasskey().catch(() => {});
@@ -118,6 +121,32 @@ export const handlers: HandlerMap = {
     return { ok: true };
   },
 
+  // Import / QR flows: create the (empty) vault as soon as the password is chosen (TW order: SavePassword, then import), so the
+  // UI can drop the password immediately instead of holding it until the import completes. `generatedPassword` (biometrics only)
+  // makes the worker pick a random password that the passkey seals; the UI never sees it. Choosing again replaces an empty vault.
+  async onboardingSecure(m, ctx) {
+    if (busy) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
+    const generated = m.generatedPassword === true;
+    const passkey = m.passkey && typeof m.passkey === 'object' ? { secret: String(m.passkey.secret ?? ''), credentialId: String(m.passkey.credentialId ?? '') } : null;
+    if (generated && !passkey) return { ok: false, error: 'INVALID_WALLET_INPUT' };
+    const password: unknown = generated ? generatePassword() : m.password;
+    if (typeof password !== 'string' || !validatePassword(password).valid) return { ok: false, error: 'INVALID_WALLET_INPUT' };
+    busy = true;
+    try {
+      const s = await readState(ctx);
+      if (s.hasVault) {
+        if (!s.unlocked) return { ok: false, error: 'LOCKED' };
+        if (Object.keys(s.state?.wallets ?? {}).length > 0) return { ok: false, error: 'FORBIDDEN_REQUEST' };
+        await dropVaultKeys(); pending.clear();
+      }
+      const v = await ensureVault(ctx, password); if (v.error) return { ok: false, error: v.error };
+      if (passkey) { try { await enrollPasskey(passkey.secret, passkey.credentialId, generated); } catch (e: any) { await dropVaultKeys(); return { ok: false, error: e?.message || 'Could not save biometrics' }; } }
+      await armLockTimer().catch(() => {});
+      return { ok: true };
+    } catch (e: any) { await dropVaultKeys().catch(() => {}); return { ok: false, error: e?.message || 'Could not secure the wallet' }; }
+    finally { busy = false; }
+  },
+
   // Per-key validation for the live "Invalid private key" hint. No secret is stored.
   async validatePrivateKey(m, ctx) {
     const chain = m.group ? chainById('ethereum') : chainById(String(m.chainId ?? ''));
@@ -193,8 +222,8 @@ export const handlers: HandlerMap = {
 
   // ---- QR import (mobile export): verify the one-time code, then import every key (TW VERIFY_STORED_KEYS / IMPORT_STORED_KEYS).
   async qrVerify(m, ctx) {
-    const keys = Array.isArray(m.storedKeys) ? m.storedKeys : [];
-    if (!keys.length || keys.length > 100) return { ok: false, error: 'Unexpected QR contents' };
+    const keys = (await readQrStage(m.stageId)) ?? [];
+    if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
     const r = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
     for (const s of r.secrets) if (s.kind === 'privateKey') s.bytes.fill(0);
     if (!r.secrets.length) return { ok: false, error: r.wrong ? 'INCORRECT_CODE' : 'No importable wallets in this QR code', skipped: r.skipped };
@@ -202,8 +231,8 @@ export const handlers: HandlerMap = {
   },
   async qrImportAll(m, ctx) {
     if (busy) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
-    const keys = Array.isArray(m.storedKeys) ? m.storedKeys : [];
-    if (!keys.length || keys.length > 100) return { ok: false, error: 'Unexpected QR contents' };
+    const keys = (await readQrStage(m.stageId)) ?? [];
+    if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
     busy = true; let createdVault = false;
     try {
       const dec = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
@@ -224,6 +253,7 @@ export const handlers: HandlerMap = {
       }
       if (!imported && !duplicates) { if (createdVault) await dropVaultKeys(); return { ok: false, error: lastErr || 'Import failed' }; }
       if (!imported && createdVault) { await dropVaultKeys(); return { ok: false, error: 'MNEMONIC_ALREADY_EXISTS' }; }
+      await clearQrStage();
       await armLockTimer().catch(() => {});
       return { ok: true, imported, duplicates, skipped: dec.skipped };
     } catch (e: any) { if (createdVault) await dropVaultKeys(); return { ok: false, error: e?.message || 'Import failed' }; }

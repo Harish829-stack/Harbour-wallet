@@ -19,6 +19,7 @@ import { checkAddress } from '../../kit/clients/securityClient';
 import { evmSendCall, evmTxRequest } from '../../core/chains/send/evm';
 import { utxoSelection } from '../../core/chains/send/utxo';
 import { serializeTransaction, recoverTransactionAddress, keccak256 } from 'viem';
+import { assertSigningChain } from '../../core/harbour/policy';
 
 const TIERS = new Set(['slow', 'average', 'fast']);
 const env = (core: any): SendEnv => ({ core, fetch: (...a: Parameters<typeof fetch>) => fetch(...a) });
@@ -34,6 +35,7 @@ async function prepare(ctx: HandlerCtx, msg: Msg): Promise<Prepared> {
   const acc = await activeAccount(ctx);
   const chain = resolveSendChain(msg.chainId ? String(msg.chainId) : undefined, undefined, customNetworks());
   if (!chain) throw new Error('Unknown network');
+  assertSigningChain(chain); // only networks this build serves (core/harbour/policy.ts)
   const sup = sendSupport(chain); if (!sup.supported) throw new Error(sup.reason);
   const from = addressFor(chain, acc.addresses) || (chain.kind === 'evm' ? acc.addresses.ethereum : '') || '';
   if (!from) throw new Error(`No ${chain.name} address in this account`);
@@ -81,7 +83,6 @@ async function hwPath(ctx: HandlerCtx, ct: string): Promise<string> {
   if (!path) throw new Error('This Ledger account has no address for this network');
   return path;
 }
-const be = (hex: string) => hex.match(/../g)!.reverse().join('');
 export const handlers: HandlerMap = {
   /** Which chains can send, and with what memo kind / token support (SelectAsset greys out the rest with the documented reason). */
   async sendSupport() {
@@ -195,7 +196,7 @@ export const handlers: HandlerMap = {
   /** NFT transfer for the NFT feature: `nft` = { chainId, standard, contract, tokenId, amount?, to }. */
   async sendNftQuote(msg, ctx) {
     try {
-      const acc = await activeAccount(ctx); const chain = resolveSendChain(String(msg.chainId ?? ''), undefined, customNetworks()); if (!chain) throw new Error('Unknown network');
+      const acc = await activeAccount(ctx); const chain = resolveSendChain(String(msg.chainId ?? ''), undefined, customNetworks()); if (!chain) throw new Error('Unknown network'); assertSigningChain(chain);
       const from = addressFor(chain, acc.addresses); const p: NftTransferParams = { chain, from, to: String(msg.to ?? from).trim(), standard: msg.standard, contract: String(msg.contract), tokenId: String(msg.tokenId), amount: msg.amount ? BigInt(msg.amount) : undefined };
       return { ok: true, quote: quoteToWire(await quoteNftTransfer(env(ctx.core), p)), from };
     } catch (e: any) { return err(e); }
@@ -203,7 +204,7 @@ export const handlers: HandlerMap = {
   async sendNftSubmit(msg, ctx) {
     let keys: Awaited<ReturnType<typeof openActiveKeys>> | undefined; let key: Uint8Array | undefined;
     try {
-      const acc = await activeAccount(ctx); const chain = resolveSendChain(String(msg.chainId ?? ''), undefined, customNetworks()); if (!chain) throw new Error('Unknown network');
+      const acc = await activeAccount(ctx); const chain = resolveSendChain(String(msg.chainId ?? ''), undefined, customNetworks()); if (!chain) throw new Error('Unknown network'); assertSigningChain(chain);
       const from = addressFor(chain, acc.addresses); const p: NftTransferParams = { chain, from, to: String(msg.to ?? '').trim(), standard: msg.standard, contract: String(msg.contract), tokenId: String(msg.tokenId), amount: msg.amount ? BigInt(msg.amount) : undefined };
       const q = await quoteNftTransfer(env(ctx.core), p); const blocking = q.issues.find((i) => i.blocking); if (blocking) throw new SendError(blocking.code, blocking.message);
       const tier: FeeTierId = TIERS.has(msg.tier) ? msg.tier : 'average';

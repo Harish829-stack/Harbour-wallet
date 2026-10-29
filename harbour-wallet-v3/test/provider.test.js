@@ -50,6 +50,8 @@ function setup(over = {}) {
     solSign: async (c, msgs) => { log.signed.push(['sol', c.solanaAddress, msgs.length]); return msgs.map(() => new Uint8Array(64).fill(7)); },
   };
   const deps = {
+    // The generic provider is tested with every family and chain on (the v3 build policy is tested separately below).
+    policy: { families: { evm: true, solana: true, multi: true }, isSigningEvmChain: () => true, siteAddChain: true, defaultChain: 1 }, 
     perms, pending, signer, now: () => clock.t, version: '9.9.9',
     rpc: async (chainId, method, params) => { log.rpc.push([chainId, method, params]); if (method === 'eth_blockNumber') return '0x10'; if (method === 'eth_call') return '0x'; return null; },
     solRpc: async (m, p) => { log.sol.push([m, p]); return 'SOLSIG'; },
@@ -331,7 +333,7 @@ test('eth_sendTransaction: approval signs/broadcasts with the connected account 
 test('a signing failure reaches the dApp as a -32603 error without leaking internals', async () => {
   const ctx = setup({}); const s = sender(); await connect(ctx, s); ctx.log.delivered.length = 0;
   ctx.svc.d.signer.sendTransaction = async () => { throw Object.assign(new Error('insufficient funds for gas'), { stack: 'hidden' }); };
-  await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }])); const r = await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
+  await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }])); const r = await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true, fee: { gasPrice: '1' } });
   assert.equal(r.ok, false); const e = ctx.log.delivered.at(-1).outcome.error; assert.equal(e.code, -32603); assert.match(e.message, /insufficient funds/); assert.ok(!('stack' in e));
 });
 
@@ -690,4 +692,27 @@ test('eth_sign is refused unless enabled, and then only for a 32-byte hash', asy
   assert.equal((await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x' + 'ee'.repeat(32)]))).outcome.error.code, 4200);
   ctx = setup(); s = sender(); await connect(ctx, s, 0);
   assert.equal((await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x68656c6c6f']))).outcome.error.code, -32602);
+});
+
+// ------------------------------------------------------------------ Harbour v3 build policy (core/harbour/policy.ts)
+test('v3 build policy: only Sepolia / Base Sepolia sign; Solana, multi-chain and site-added networks are refused', async () => {
+  const NETS3 = [...NETS, { chainId: 84532, id: 'base-sepolia', name: 'Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['http://rpcb'], testnet: true, custom: false }];
+  const ctx = setup({ policy: undefined, networks: { list: () => NETS3, get: (id) => NETS3.find((n) => n.chainId === id) } }); const s = sender();
+  assert.equal((await ctx.svc.handle(s, req('eth_chainId'))).outcome.result, '0xaa36a7');               // default chain is Sepolia, not mainnet
+  await connect(ctx, s);
+  assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome.error.code, 4902);
+  assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]))).outcome, { result: null });
+  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x1' }]))).outcome.error.code, 4902);
+  const typed = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'a', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 137 }, message: { a: 1 } };
+  assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(typed)]))).outcome.error.code, 4902);
+  assert.equal((await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x2105', chainName: 'X', rpcUrls: ['https://x.example'], nativeCurrency: { name: 'E', symbol: 'ETH', decimals: 18 } }]))).outcome.error.code, 4902);
+  assert.equal((await ctx.svc.handle(s, req('connect', undefined, 'solana'))).outcome.error.code, 4200);
+  assert.equal((await ctx.svc.handle(s, req('connect', { chain: 'cosmoshub-4' }, 'multi'))).outcome.error.code, 4200);
+  assert.equal(ctx.log.signed.length, 0);
+});
+test('a dApp transaction is never sent without the fee the user saw', async () => {
+  const ctx = setup(); const s = sender(); await connect(ctx, s);
+  await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }])); const r = await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
+  assert.equal(r.ok, false); assert.match(ctx.log.delivered.at(-1).outcome.error.message, /network fee could not be shown/);
+  assert.equal(ctx.log.signed.filter((x) => x[0] === 'tx').length, 0);
 });

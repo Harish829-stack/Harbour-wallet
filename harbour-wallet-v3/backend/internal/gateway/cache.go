@@ -8,27 +8,50 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"harbour/backend/internal/config"
 )
 
-// cache is an in-process LRU with per-entry expiry. Finalized results never
-// expire (only evicted); results at latest live about one block.
+// cache is an in-process LRU with per-entry expiry, bounded by entry count AND total bytes. Results at latest live about
+// one block; finalized results live finalTTL (they never change, but an unbounded "forever" set lets any caller fill
+// memory with distinct finalized blocks). Results above maxEntry bytes are not cached at all.
 type cache struct {
-	mu    sync.Mutex
-	max   int
-	ll    *list.List
-	items map[string]*list.Element
-	hits  atomic.Uint64
-	miss  atomic.Uint64
+	mu       sync.Mutex
+	max      int
+	maxBytes int64
+	maxEntry int
+	finalTTL time.Duration
+	bytes    int64
+	ll       *list.List
+	items    map[string]*list.Element
+	hits     atomic.Uint64
+	miss     atomic.Uint64
 }
 
 type centry struct {
 	key     string
 	val     json.RawMessage
-	expires time.Time // zero = never
+	expires time.Time
 }
 
+func (e *centry) size() int64 { return int64(len(e.key) + len(e.val) + 96) }
+
 func newCache(max int) *cache {
-	return &cache{max: max, ll: list.New(), items: map[string]*list.Element{}}
+	return &cache{max: max, maxBytes: 256 << 20, maxEntry: 256 << 10, finalTTL: 24 * time.Hour, ll: list.New(), items: map[string]*list.Element{}}
+}
+
+func newCacheFor(g config.Gateway) *cache {
+	c := newCache(g.CacheMaxEntries)
+	if g.CacheMaxBytes > 0 {
+		c.maxBytes = g.CacheMaxBytes
+	}
+	if g.CacheMaxEntrySize > 0 {
+		c.maxEntry = g.CacheMaxEntrySize
+	}
+	if g.CacheFinalTTL > 0 {
+		c.finalTTL = g.CacheFinalTTL
+	}
+	return c
 }
 
 func (c *cache) get(key string) (json.RawMessage, bool) {
@@ -40,9 +63,8 @@ func (c *cache) get(key string) (json.RawMessage, bool) {
 		return nil, false
 	}
 	e := el.Value.(*centry)
-	if !e.expires.IsZero() && time.Now().After(e.expires) {
-		c.ll.Remove(el)
-		delete(c.items, key)
+	if time.Now().After(e.expires) {
+		c.remove(el)
 		c.miss.Add(1)
 		return nil, false
 	}
@@ -51,26 +73,30 @@ func (c *cache) get(key string) (json.RawMessage, bool) {
 	return e.val, true
 }
 
+func (c *cache) remove(el *list.Element) {
+	e := el.Value.(*centry)
+	c.ll.Remove(el)
+	delete(c.items, e.key)
+	c.bytes -= e.size()
+}
+
 func (c *cache) put(key string, val json.RawMessage, ttl time.Duration, forever bool) {
-	if c.max <= 0 {
+	if c.max <= 0 || len(val) > c.maxEntry {
 		return
 	}
-	var exp time.Time
-	if !forever {
-		exp = time.Now().Add(ttl)
+	if forever {
+		ttl = c.finalTTL
 	}
+	e := &centry{key, val, time.Now().Add(ttl)}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if el, ok := c.items[key]; ok {
-		el.Value = &centry{key, val, exp}
-		c.ll.MoveToFront(el)
-		return
+		c.remove(el)
 	}
-	c.items[key] = c.ll.PushFront(&centry{key, val, exp})
-	for c.ll.Len() > c.max {
-		last := c.ll.Back()
-		c.ll.Remove(last)
-		delete(c.items, last.Value.(*centry).key)
+	c.items[key] = c.ll.PushFront(e)
+	c.bytes += e.size()
+	for c.ll.Len() > c.max || c.bytes > c.maxBytes {
+		c.remove(c.ll.Back())
 	}
 }
 

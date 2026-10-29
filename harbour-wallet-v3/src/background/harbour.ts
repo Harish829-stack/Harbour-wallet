@@ -5,7 +5,7 @@ import { store, actions } from './store';
 import { onUiOpenChange } from './kernel/port';
 import { refsFor, syncTracked, invalidatePortfolio } from '../core/harbour/data';
 import { realtimeToken, vapidKey, putPush, deletePush } from '../core/harbour/client';
-import { chainIdOfBackend } from '../core/harbour/config';
+import { chainIdOfBackend, isSecureEndpoint } from '../core/harbour/config';
 import { chainById, explorerTxUrl } from '../core/chains/index';
 import { logWarn } from '../core/logger';
 
@@ -56,6 +56,8 @@ async function connectRealtime(): Promise<void> {
   let tok: Awaited<ReturnType<typeof realtimeToken>>;
   try { tok = await realtimeToken(); } catch { return scheduleRetry(); }
   if (!uiOpen || ws) return;
+  // Live updates only over wss (plain ws only for a backend on this computer): the tokens below must not travel in clear text.
+  if (!isSecureEndpoint(tok.url, 'ws')) return;
   const sock = new WebSocket(tok.url); ws = sock;
   const send = (m: unknown) => { try { sock.send(JSON.stringify(m)); } catch { /* closing */ } };
   sock.onopen = () => {

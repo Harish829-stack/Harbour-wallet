@@ -12,5 +12,5 @@ export function evmNetworks(): EvmNetwork[] {
   return [...builtin, ...custom];
 }
 export const evmNetwork = (chainId: number): EvmNetwork | undefined => evmNetworks().find((n) => n.chainId === chainId);
-export const DEFAULT_DAPP_CHAIN = ENABLED_CHAINS.find((c) => c.kind === 'evm')?.evmChainId ?? 11155111; // Harbour v3: Sepolia
+export { DEFAULT_EVM_CHAIN as DEFAULT_DAPP_CHAIN } from '../../core/harbour/policy'; // Harbour v3: Sepolia
 export const txUrl = (n: EvmNetwork | undefined, hash: string): string => (n?.explorer ? n.explorer.replace(/\/$/, '') + (n.txPath ?? '/tx/{id}').replace('{id}', hash) : '');

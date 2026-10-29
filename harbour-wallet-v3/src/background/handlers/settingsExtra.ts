@@ -1,13 +1,11 @@
 // Feature message handlers: settingsExtra. Every message here is UI-only (the router enforces isInternalWalletSender before dispatch).
 // walletsDetailed - wallet list incl. kind/blockchain/addresses; walletBalances - native balances for one account (migration screens);
-// revealPrivateKey - the single key of an imported private-key wallet, behind the same one-shot re-authentication grant as the phrase.
+// (revealPrivateKey moved to handlers/secrets.ts: it now returns an image of the key, never the key.)
 import type { HandlerMap } from './types';
-import { local, session, KEYS } from '../../core/storage';
-import { ALL_CHAINS, chainById } from '../../core/chains/index';
+import { ALL_CHAINS } from '../../core/chains/index';
 import { fetchNativeBalance, BALANCE_ADAPTERS } from '../../core/chains/adapters';
 import { walletKind } from '../../core/settingsExtra';
 
-const pwBytes = (s: string) => new TextEncoder().encode(s);
 
 export const handlers: HandlerMap = {
   async walletsDetailed(_m, ctx) {
@@ -39,29 +37,5 @@ export const handlers: HandlerMap = {
       }));
       return { ok: true, assets: rows };
     } catch (e: any) { return { ok: false, error: e?.message || 'Balance lookup failed' }; }
-  },
-
-  async revealPrivateKey(m, ctx) {
-    try {
-      const passwordKey = await session.get<string>(KEYS.PASSWORD); if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
-      const grant = await session.get<number>(KEYS.REVEAL); await session.remove(KEYS.REVEAL); // one-shot
-      if (!grant || grant < Date.now()) return { ok: false, error: 'AUTH_REQUIRED' };
-      const st: any = await ctx.vault.getState(); const id = String(m.walletId ?? '');
-      const w = st.wallets?.[id]; if (!w) return { ok: false, error: 'Wallet not found' };
-      if (walletKind(w) !== 'privateKey') return { ok: false, error: 'This wallet has no private key to show' };
-      const ks = await local.get<any>(id); if (!ks) return { ok: false, error: 'Wallet not found' };
-      const { core } = ctx; const ct = (w.blockchain && w.blockchain !== 'evm' ? w.blockchain : 'ethereum');
-      const chain = ALL_CHAINS.find((c) => c.ct === ct) ?? chainById('ethereum')!;
-      const sk = core.StoredKey.importJSON(pwBytes(JSON.stringify(ks)));
-      try {
-        const pk = sk.privateKey(core.CoinType[chain.ct], pwBytes(passwordKey));
-        try {
-          const data: Uint8Array = pk.data();
-          // Solana keys are shown as base58 (what Solana wallets import); everything else as hex.
-          const key = chain.kind === 'solana' ? core.Base58.encodeNoCheck(data) : core.HexCoding.encode(data).replace(/^0x/, '');
-          return { ok: true, key, format: chain.kind === 'solana' ? 'base58' : 'hex', network: chain.name };
-        } finally { pk.delete(); }
-      } finally { sk.delete(); }
-    } catch (e: any) { return { ok: false, error: e?.message || 'Reveal failed' }; }
   },
 };
