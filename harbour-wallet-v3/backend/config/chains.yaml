@@ -737,4 +737,232 @@ chains:
       - {provider: public, key: public, url: "https://zetachain-evm.blockpi.network/v1/rpc/public", weight: 1}
     prices:
       coingecko: {platform: zetachain, onchain_network: zeta}
+  hoodi:
+    family: evm
+    evm_chain_id: 560048
+    testnet: true
+    block_time: 12s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: eth-hoodi, weight: 4}
+      - {provider: public, key: public, url: "https://ethereum-hoodi-rpc.publicnode.com", weight: 1}
+      - {provider: public, key: public, url: "https://rpc.hoodi.ethpandaops.io", weight: 0.5}
+  arbitrum-sepolia:
+    family: evm
+    evm_chain_id: 421614
+    testnet: true
+    block_time: 250ms
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: arb-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia-rollup.arbitrum.io/rpc", weight: 1}
+      - {provider: public, key: public, url: "https://arbitrum-sepolia-rpc.publicnode.com", weight: 0.5}
+  optimism-sepolia:
+    family: evm
+    evm_chain_id: 11155420
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: opt-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia.optimism.io", weight: 1}
+      - {provider: public, key: public, url: "https://optimism-sepolia-rpc.publicnode.com", weight: 0.5}
+  polygon-amoy:
+    family: evm
+    evm_chain_id: 80002
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "POL", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: polygon-amoy, weight: 4}
+      - {provider: public, key: public, url: "https://rpc-amoy.polygon.technology", weight: 1}
+      - {provider: public, key: public, url: "https://polygon-amoy-bor-rpc.publicnode.com", weight: 0.5}
+  smartchain-testnet:
+    family: evm
+    evm_chain_id: 97
+    testnet: true
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "BNB", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: bnb-testnet, weight: 4}
+      - {provider: public, key: public, url: "https://bsc-testnet-rpc.publicnode.com", weight: 1}
+      - {provider: public, key: public, url: "https://data-seed-prebsc-1-s1.bnbchain.org:8545", weight: 0.5}
+  opbnb-testnet:
+    family: evm
+    evm_chain_id: 5611
+    testnet: true
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "BNB", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: opbnb-testnet, weight: 4}
+      - {provider: public, key: public, url: "https://opbnb-testnet-rpc.bnbchain.org", weight: 1}
+  avalanche-fuji:
+    family: evm
+    evm_chain_id: 43113
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "AVAX", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: avax-fuji, weight: 4}
+      - {provider: public, key: public, url: "https://api.avax-test.network/ext/bc/C/rpc", weight: 1}
+      - {provider: public, key: public, url: "https://avalanche-fuji-c-chain-rpc.publicnode.com", weight: 0.5}
+  linea-sepolia:
+    family: evm
+    evm_chain_id: 59141
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: linea-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://rpc.sepolia.linea.build", weight: 1}
+      - {provider: public, key: public, url: "https://linea-sepolia-rpc.publicnode.com", weight: 0.5}
+  scroll-sepolia:
+    family: evm
+    evm_chain_id: 534351
+    testnet: true
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: scroll-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia-rpc.scroll.io", weight: 1}
+      - {provider: public, key: public, url: "https://scroll-sepolia-rpc.publicnode.com", weight: 0.5}
+  zksync-sepolia:
+    family: evm
+    evm_chain_id: 300
+    testnet: true
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: zksync-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia.era.zksync.dev", weight: 1}
+  mantle-sepolia:
+    family: evm
+    evm_chain_id: 5003
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "MNT", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: mantle-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://rpc.sepolia.mantle.xyz", weight: 1}
+  blast-sepolia:
+    family: evm
+    evm_chain_id: 168587773
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: blast-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia.blast.io", weight: 1}
+      - {provider: public, key: public, url: "https://blast-sepolia.drpc.org", weight: 0.5}
+  unichain-sepolia:
+    family: evm
+    evm_chain_id: 1301
+    testnet: true
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: unichain-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://sepolia.unichain.org", weight: 1}
+  ink-sepolia:
+    family: evm
+    evm_chain_id: 763373
+    testnet: true
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: ink-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://rpc-gel-sepolia.inkonchain.com", weight: 1}
+  worldchain-sepolia:
+    family: evm
+    evm_chain_id: 4801
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: worldchain-sepolia, weight: 4}
+      - {provider: public, key: public, url: "https://worldchain-sepolia.g.alchemy.com/public", weight: 1}
+  polygon-zkevm-cardona:
+    family: evm
+    evm_chain_id: 2442
+    testnet: true
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.cardona.zkevm-rpc.com", weight: 1}
+  gnosis-chiado:
+    family: evm
+    evm_chain_id: 10200
+    testnet: true
+    block_time: 5s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "xDAI", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: gnosis-chiado, weight: 4}
+      - {provider: public, key: public, url: "https://rpc.chiadochain.net", weight: 1}
+      - {provider: public, key: public, url: "https://gnosis-chiado-rpc.publicnode.com", weight: 0.5}
+  monad-testnet:
+    family: evm
+    evm_chain_id: 10143
+    testnet: true
+    block_time: 400ms
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "MON", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: monad-testnet, weight: 4}
+      - {provider: public, key: public, url: "https://testnet-rpc.monad.xyz", weight: 1}
+  berachain-bepolia:
+    family: evm
+    evm_chain_id: 80069
+    testnet: true
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "BERA", decimals: 18}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: berachain-bepolia, weight: 4}
+      - {provider: public, key: public, url: "https://bepolia.rpc.berachain.com", weight: 1}
+  moonbase-alpha:
+    family: evm
+    evm_chain_id: 1287
+    testnet: true
+    block_time: 12s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "DEV", decimals: 18}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.api.moonbase.moonbeam.network", weight: 1}
 # END GENERATED

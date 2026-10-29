@@ -19,7 +19,7 @@ OUT = os.path.join(ROOT, 'config', 'chains.yaml')
 TS_OUT = os.path.join(ROOT, '..', 'src', 'core', 'harbour', 'chainList.gen.ts')
 BEGIN, END = '# BEGIN GENERATED (scripts/gen_chains.py)', '# END GENERATED'
 
-HAND = {'ethereum', 'base'}
+HAND = {'ethereum', 'base', 'sepolia', 'base-sepolia'}  # hand-written above the markers
 # id -> (alchemy network, alchemy webhook network, infura network, coingecko asset platform, geckoterminal network, finality, block_time)
 # finality: 'tag' = node serves the "finalized" tag; int = depth in blocks.
 T = {
@@ -64,6 +64,17 @@ T = {
   'manta':         (None, None, None, 'manta-pacific', 'manta-pacific', 30, '2s'),
   'merlin':        (None, None, None, 'merlin-chain', 'merlin', 30, '3s'),
 }
+# Test networks (src/core/chains/testnets.ts): id -> (alchemy network or None, block_time). Alchemy first where it serves the network,
+# the registry's public RPCs behind it; a wrong or retired slug only means the proxy fails over to the next upstream.
+TESTNET = {
+  'hoodi': ('eth-hoodi', '12s'), 'arbitrum-sepolia': ('arb-sepolia', '250ms'), 'optimism-sepolia': ('opt-sepolia', '2s'),
+  'polygon-amoy': ('polygon-amoy', '2s'), 'smartchain-testnet': ('bnb-testnet', '1s'), 'opbnb-testnet': ('opbnb-testnet', '1s'),
+  'avalanche-fuji': ('avax-fuji', '2s'), 'linea-sepolia': ('linea-sepolia', '2s'), 'scroll-sepolia': ('scroll-sepolia', '3s'),
+  'zksync-sepolia': ('zksync-sepolia', '1s'), 'mantle-sepolia': ('mantle-sepolia', '2s'), 'blast-sepolia': ('blast-sepolia', '2s'),
+  'unichain-sepolia': ('unichain-sepolia', '1s'), 'ink-sepolia': ('ink-sepolia', '1s'), 'worldchain-sepolia': ('worldchain-sepolia', '2s'),
+  'polygon-zkevm-cardona': (None, '3s'), 'gnosis-chiado': ('gnosis-chiado', '5s'), 'monad-testnet': ('monad-testnet', '400ms'),
+  'berachain-bepolia': ('berachain-bepolia', '2s'), 'moonbase-alpha': (None, '12s'),
+}
 DEFAULT = (None, None, None, None, None, 30, '3s')
 # Alchemy Transfers + Address Activity (indexed chains). "internal" transfers only where Alchemy offers them.
 INDEXED = {'polygon', 'arbitrum', 'optimism', 'smartchain', 'avalanchec', 'linea', 'scroll', 'zksync', 'blast', 'mantle', 'celo', 'xdai', 'opbnb', 'sonic'}
@@ -106,6 +117,29 @@ def entry(c):
     return '\n'.join(L)
 
 
+def load_testnets():
+    import re
+    src = open(os.path.join(REG, 'testnets.ts')).read()
+    rows = []
+    for m in re.finditer(r"\[\s*'([a-z0-9-]+)',\s*'([^']+)',\s*(\d+),\s*'([^']+)',\s*\[([^\]]*)\]", src):
+        cid, name, evm, sym, rpcs = m.groups()
+        if cid in HAND:
+            continue
+        rows.append({'id': cid, 'evmChainId': int(evm), 'symbol': sym, 'decimals': 18, 'rpcs': re.findall(r"'(https?://[^']+)'", rpcs)})
+    return rows
+
+
+def testnet_entry(c):
+    al, bt = TESTNET.get(c['id'], (None, '3s'))
+    L = [f"  {c['id']}:", "    family: evm", f"    evm_chain_id: {c['evmChainId']}", "    testnet: true", f"    block_time: {bt}", "    logs_max_range: 1000",
+         '    finality: {policy: finalized-tag}', f"    native: {{symbol: {json.dumps(c['symbol'])}, decimals: 18}}", "    upstreams:"]
+    if al:
+        L.append(f"      - {{provider: alchemy, key: alchemy-a, network: {al}, weight: 4}}")
+    for i, u in enumerate(c['rpcs'][:3]):
+        L.append(f"      - {{provider: public, key: public, url: {json.dumps(u)}, weight: {1 if i == 0 else 0.5}}}")
+    return '\n'.join(L)
+
+
 def ts_list():
     """The extension's view of what the backend serves: every chain in chains.yaml (hand-written + generated + testnets)."""
     import re
@@ -135,7 +169,7 @@ def ts_list():
 
 def main():
     cur = open(OUT).read()
-    block = BEGIN + '\n' + '\n'.join(entry(c) for c in load()) + '\n' + END
+    block = BEGIN + '\n' + '\n'.join([entry(c) for c in load()] + [testnet_entry(c) for c in load_testnets()]) + '\n' + END
     if BEGIN in cur:
         head, rest = cur.split(BEGIN, 1)
         tail = rest.split(END, 1)[1]
@@ -149,6 +183,6 @@ def main():
         sys.exit(0 if ok else 1)
     open(OUT, 'w').write(new)
     open(TS_OUT, 'w').write(ts_list())
-    print('wrote', len(load()), 'chains')
+    print('wrote', len(load()) + len(load_testnets()), 'chains')
 
 main()

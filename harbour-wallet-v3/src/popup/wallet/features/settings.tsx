@@ -38,7 +38,7 @@ export const DeveloperSettingsScreen: React.FC<Ctx> = (c) => {
     <Screen title="Developer settings" onBack={c.nav.pop}>
       {hidden == null ? <div aria-busy="true" style={{ display: 'grid', gap: 10 }}><Skeleton h={56}/><Skeleton h={56}/><Skeleton h={56}/></div> : <>
         <Group>
-          <SwitchRow first icon="faucet" label="Show testnets" sub={`Adds ${TESTNET_CHAINS.length} test networks (${TESTNET_CHAINS.map((t) => t.name).join(' and ')}) to Home. Test coins have no value.`} on={on} onToggle={toggleTestnets} testid="dev-testnets"/>
+          <SwitchRow first icon="faucet" label="Show testnets" sub={`Adds ${TESTNET_CHAINS.length} test networks (${TESTNET_CHAINS.slice(0, 3).map((t) => t.name).join(', ')} and more) to Home. Test coins have no value.`} on={on} onToggle={toggleTestnets} testid="dev-testnets"/>
           <NavRow icon="faucet" label="Testnet faucets" onClick={() => c.nav.push('settingsFaucets')} testid="dev-faucets"/>
           <NavRow icon="globe" label="Custom RPC and networks" onClick={() => c.nav.push('customNetworks')} testid="dev-custom-rpc"/>
         </Group>
