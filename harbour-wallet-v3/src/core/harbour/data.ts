@@ -16,20 +16,31 @@ export const refsFor = (evmAddress: string | undefined): AddressRef[] =>
 // ---------- tracking ----------
 const tracked = new Set<string>();
 const key = (r: AddressRef) => `${r.chain}:${r.address}`;
+/** One PUT, and if the API refuses the batch because it does not serve one of the networks (a stale or smaller backend), retry network by
+ *  network so the supported ones are still tracked. Returns the refs the API accepted. */
+async function putResilient(add: AddressRef[], remove: AddressRef[]): Promise<AddressRef[]> {
+  try { await putAddresses(add, remove); return add; } catch (e) {
+    if (!(e instanceof HarbourApiError) || e.code !== 'bad_address' || add.length + remove.length < 2) throw e;
+  }
+  const ok: AddressRef[] = [];
+  for (const r of add) { try { await putAddresses([r], []); ok.push(r); } catch (e) { if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e; } }
+  for (const r of remove) { try { await putAddresses([], [r]); } catch (e) { if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e; } }
+  return ok;
+}
 /** Makes sure the device tracks these refs (cheap no-op once known). */
 export async function ensureTracked(refs: AddressRef[]): Promise<void> {
   const missing = refs.filter((r) => !tracked.has(key(r)));
   if (!missing.length) return;
-  await putAddresses(missing, []);
-  for (const r of missing) tracked.add(key(r));
+  for (const r of await putResilient(missing, [])) tracked.add(key(r));
 }
 /** Replaces the device's tracked set with `want` (used by the background address sync). */
 export async function syncTracked(want: AddressRef[]): Promise<{ added: number; removed: number }> {
   const have = (await listAddresses()).addresses.map((a) => ({ chain: a.chain, address: lc(a.address) }));
   const wantKeys = new Set(want.map(key)); const haveKeys = new Set(have.map(key));
   const add = want.filter((r) => !haveKeys.has(key(r))); const remove = have.filter((r) => !wantKeys.has(key(r)));
-  for (let i = 0; i < Math.max(add.length, remove.length); i += 100) await putAddresses(add.slice(i, i + 100), remove.slice(i, i + 100));
-  tracked.clear(); for (const r of want) tracked.add(key(r));
+  const accepted = new Set<string>(have.filter((r) => wantKeys.has(key(r))).map(key));
+  for (let i = 0; i < Math.max(add.length, remove.length); i += 100) for (const r of await putResilient(add.slice(i, i + 100), remove.slice(i, i + 100))) accepted.add(key(r));
+  tracked.clear(); for (const r of want) if (accepted.has(key(r))) tracked.add(key(r));
   return { added: add.length, removed: remove.length };
 }
 /** Runs fn; if the API says an address isn't tracked yet, tracks it and retries once. */
