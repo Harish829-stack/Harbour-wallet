@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner } from './ui';
+import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle } from './ui';
 import { syncNetworks } from './networkStore';
 import type { Ctx } from './screens';
 
@@ -8,7 +8,7 @@ import type { Ctx } from './screens';
 // Tap "Add Custom Network" to get started!", "Built-in network RPCs" list with a pencil per row, bottom "Add custom network" button.
 // Add form: Network name, RPC URL, Chain ID, Token symbol, Block explorer URL (Optional), orange "Double check the network info" alert.
 // Harbour additions: the RPC is probed and its chain id must match; built-in networks only allow changing the RPC.
-const input: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6 };
+const input = inputStyle;
 const Field: React.FC<{ id: string; label: string; value: string; onChange?: (v: string) => void; readOnly?: boolean; error?: boolean; inputMode?: 'numeric' | 'url'; autoFocus?: boolean; testid: string }> = ({ id, label, value, onChange, readOnly, error, inputMode, autoFocus, testid }) => (
   <div style={{ marginTop: 14 }}>
     <label htmlFor={id} style={{ fontSize: 12, fontWeight: 700 }}>{label}</label>

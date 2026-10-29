@@ -5,7 +5,8 @@ import { userText } from '../../../core/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
-import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, IconBtn } from '../ui';
+import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, IconBtn, inputStyle, FieldLabel } from '../ui';
+import { NetworkField, type PickNetwork } from '../pickers';
 import type { Ctx } from '../screens';
 import { chainById, ENABLED_CHAINS } from '../../../core/chains/index';
 import { fmtRaw, Notice } from './earnParts';
@@ -229,7 +230,7 @@ const NftSendScreen: React.FC<Ctx> = (c) => {
 };
 
 // ---------------------------------------------------------------- import
-const nftField: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6 };
+const nftField = inputStyle;
 const NftImportScreen: React.FC<Ctx> = (c) => {
   const nets = ENABLED_CHAINS.filter((n) => n.kind === 'evm');
   const [chainId, setChainId] = useState<string>(c.networkFilter && nets.some((n) => n.id === c.networkFilter) ? c.networkFilter : (nets.find((n) => n.id === 'ethereum') ?? nets[0])?.id ?? '');
@@ -240,17 +241,20 @@ const NftImportScreen: React.FC<Ctx> = (c) => {
     const r = await bg({ type: 'nftAdd', chainId, contract, tokenId }).catch(() => null); setBusy(false);
     if (r?.ok) { notify(); c.nav.pop(); } else setErr(r?.error ? userText(r.error) : 'Could not import this NFT. Try again.');
   };
+  const picks: PickNetwork[] = nets.map((n) => ({ key: n.id, id: n.id, name: n.name, sym: n.symbol, testnet: !!(n as any).testnet }));
   return (
-    <Screen title="Import NFT" onBack={c.nav.pop}>
-      <label htmlFor="nft-net" style={{ fontSize: 12, color: T.sub }}>Network</label>
-      <select id="nft-net" data-testid="nft-import-network" value={chainId} onChange={(e) => setChainId(e.target.value)} style={nftField}>{nets.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}</select>
-      <label htmlFor="nft-contract" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Contract address</label>
-      <input id="nft-contract" data-testid="nft-import-contract" value={contract} onChange={(e) => setContract(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoComplete="off" style={{ ...nftField, fontFamily: 'monospace' }} />
-      <label htmlFor="nft-token" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Token ID</label>
-      <input id="nft-token" data-testid="nft-import-token-id" value={tokenId} inputMode="numeric" onChange={(e) => setTokenId(e.target.value.replace(/[^0-9]/g, ''))} placeholder="e.g. 1234" autoComplete="off" style={nftField} />
-      <div style={{ ...subtle, marginTop: 10 }}>You can find the contract address and token ID under “Blockchain details” on a marketplace. The NFT must be in your wallet’s address on the chosen network.</div>
-      {err && <div role="alert" data-testid="nft-import-error" style={{ color: T.error, fontSize: 13, marginTop: 12 }}>{err}</div>}
-      <div style={{ marginTop: 18 }}><Btn disabled={!ok || busy} onClick={add}>{busy ? 'Importing…' : 'Import NFT'}</Btn></div>
+    <Screen title="Import NFT" onBack={c.nav.pop} footer={<>
+      {err && <div role="alert" data-testid="nft-import-error" style={{ color: T.error, fontSize: 13 }}>{err}</div>}
+      <Btn disabled={!ok || busy} onClick={add}>{busy ? 'Importing…' : 'Import NFT'}</Btn>
+    </>}>
+      <FieldLabel htmlFor="nft-net" first>Network</FieldLabel>
+      <NetworkField id="nft-net" testid="nft-import-network" items={picks} value={chainId} onChange={setChainId} />
+      <FieldLabel htmlFor="nft-contract">Contract address</FieldLabel>
+      <input id="nft-contract" data-testid="nft-import-contract" value={contract} onChange={(e) => setContract(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoComplete="off" aria-invalid={!!contract && !/^0x[0-9a-fA-F]{40}$/.test(contract)} style={{ ...nftField, fontFamily: 'monospace', borderColor: contract && !/^0x[0-9a-fA-F]{40}$/.test(contract) ? T.error : T.border }} />
+      {contract && !/^0x[0-9a-fA-F]{40}$/.test(contract) && <div role="alert" style={{ color: T.error, fontSize: 13, marginTop: 6 }}>Enter a valid contract address.</div>}
+      <FieldLabel htmlFor="nft-token">Token ID</FieldLabel>
+      <input id="nft-token" data-testid="nft-import-token-id" value={tokenId} inputMode="numeric" onChange={(e) => setTokenId(e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={(e) => { if (e.key === 'Enter' && ok && !busy) void add(); }} placeholder="e.g. 1234" autoComplete="off" style={nftField} />
+      <div style={{ ...subtle, marginTop: 12, lineHeight: 1.5 }}>You can find the contract address and token ID under “Blockchain details” on a marketplace. The NFT must be in your wallet’s address on the chosen network.</div>
     </Screen>
   );
 };

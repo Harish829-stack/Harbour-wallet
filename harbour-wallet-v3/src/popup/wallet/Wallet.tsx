@@ -119,7 +119,7 @@ export const Wallet: React.FC<{
   const fmtAmt = (s?: string) => { const n = Number(s ?? 0); return n === 0 ? '0' : n < 0.0001 ? '<0.0001' : fmtNumber(n, { maximumFractionDigits: 6 }); };
 
   return (
-    <div className="hb-root hb-enter" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh', maxHeight: '100dvh' }}>
+    <div className="hb-root hb-enter" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 'calc(100dvh - var(--hb-banner-h, 0px))', minHeight: 'calc(100dvh - var(--hb-banner-h, 0px))', maxHeight: 'calc(100dvh - var(--hb-banner-h, 0px))' }}>
       <div className={stack.length ? 'hb-home under' : 'hb-home'} aria-hidden={stack.length ? true : undefined}>
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 8px' }}>
@@ -138,7 +138,7 @@ export const Wallet: React.FC<{
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className={tabDir} key={tab}>
         {tab === 'home' && <>
           {backupRequired && (
-            <div className="hb-tap" onClick={() => nav.push('backup')} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <div className="hb-tap" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav.push('backup'); } }} onClick={() => nav.push('backup')} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               <Ic d={ICON.shield} size={18}/><div style={{ flex: 1, fontSize: 13, color: 'var(--hb-warn-ink)' }}>Back up your secret phrase</div><span style={{ color: 'var(--hb-warn-ink)' }}><Ic d={ICON.chevron} size={16} /></span>
             </div>
           )}
@@ -215,13 +215,18 @@ const MODES: Array<{ id: string; name: string; clientSort?: 'gain' | 'lose'; hot
   { id: 'gainers', name: 'Top Gainers', clientSort: 'gain' },
   { id: 'losers', name: 'Top Losers', clientSort: 'lose' },
 ];
-const Dropdown: React.FC<{ label: React.ReactNode; children: (close: () => void) => React.ReactNode; minWidth?: number; align?: 'left' | 'right' }> = ({ label, children, minWidth = 160, align = 'right' }) => {
+const Dropdown: React.FC<{ label: React.ReactNode; children: (close: () => void) => React.ReactNode; minWidth?: number; align?: 'left' | 'right'; name?: string }> = ({ label, children, minWidth = 160, align = 'right', name }) => {
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  // Menus fade out like they fade in, and Escape / outside click close them with focus returned to the trigger.
+  const close = () => { if (!open || closing) return; if (reducedMotion()) { setOpen(false); return; } setClosing(true); setTimeout(() => { setOpen(false); setClosing(false); }, 140); };
+  const dismiss = () => { close(); btn.current?.focus(); };
   return (
-    <div style={{ position: 'relative' }}>
-      <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: open ? T.accentSoft : T.bgAlt, border: 'none', borderRadius: 999, padding: '7px 12px', fontWeight: 700, fontSize: 13, color: open ? T.accent : T.text, cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: 160, transition: 'background .15s' }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span><Ic d={ICON.chevron} size={14} /></button>
-      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />}
-      {open && <div className="hb-menu" style={{ position: 'absolute', top: 40, [align]: 0, zIndex: 20, maxWidth: 'calc(100vw - 32px)', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, boxShadow: T.shadow, overflow: 'hidden', minWidth, maxHeight: 300, overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>{children(() => setOpen(false))}</div>}
+    <div style={{ position: 'relative' }} onKeyDown={(e) => { if (e.key === 'Escape' && open) { e.stopPropagation(); dismiss(); } }}>
+      <button ref={btn} type="button" aria-haspopup="true" aria-expanded={open} aria-label={name ? `${name}: ${typeof label === 'string' ? label : ''}`.trim() : undefined} onClick={() => (open ? close() : setOpen(true))} className="hb-tap" style={{ display: 'flex', alignItems: 'center', gap: 4, background: open ? T.accentSoft : T.bgAlt, border: 'none', borderRadius: 999, padding: '9px 12px', minHeight: 36, fontWeight: 700, fontSize: 13, color: open ? T.accent : T.text, cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: 160 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span><span style={{ display: 'inline-flex', transition: 'transform .2s var(--hb-ease-out)', transform: open && !closing ? 'rotate(-90deg)' : 'rotate(90deg)' }}><Ic d={ICON.chevron} size={14} /></span></button>
+      {open && <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />}
+      {open && <div className="hb-menu" role="menu" style={{ position: 'absolute', top: 44, [align]: 0, zIndex: 20, maxWidth: 'calc(100vw - 32px)', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, boxShadow: T.shadow, overflow: 'hidden', minWidth, maxHeight: 300, overflowY: 'auto', opacity: closing ? 0 : 1, transform: closing ? 'translateY(-4px) scale(.98)' : undefined, transition: 'opacity .14s ease, transform .14s ease' }} onClick={(e) => e.stopPropagation()}>{children(dismiss)}</div>}
     </div>
   );
 };
@@ -269,7 +274,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
 
   const toggleSort = (col: 'price' | 'market') => setSort((s2) => s2 && s2.col === col ? { col, dir: s2.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'desc' });
   const Head: React.FC<{ col: 'price' | 'market'; label: string }> = ({ col, label }) => (
-    <div onClick={() => toggleSort(col)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, cursor: 'pointer', fontSize: 12, color: T.sub, fontWeight: 600 }}>{label}<span style={{ fontSize: 9, opacity: sort?.col === col ? 1 : 0.4 }}>{sort?.col === col && sort.dir === 'asc' ? '▲' : '▼'}</span></div>
+    <button type="button" onClick={() => toggleSort(col)} aria-label={`Sort by ${label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, cursor: 'pointer', fontSize: 12, color: T.sub, fontWeight: 600, background: 'none', border: 'none', padding: 0, width: '100%' }}>{label}<span style={{ fontSize: 9, opacity: sort?.col === col ? 1 : 0.4 }}>{sort?.col === col && sort.dir === 'asc' ? '▲' : '▼'}</span></button>
   );
   const netFiltered = TW_NETWORKS.filter((n) => n.cgCategory && (!netQ || n.name.toLowerCase().includes(netQ.toLowerCase())))
     .sort((a, b) => (tvl[chainByTwId(b.coinId)?.id ?? ''] ?? 0) - (tvl[chainByTwId(a.coinId)?.id ?? ''] ?? 0));
@@ -285,7 +290,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
         <Ic d={ICON.search} size={18} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Token name or contract address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <Dropdown align="left" minWidth={210} label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{net ? <Coin sym={chainByTwId(net.coinId)?.symbol ?? net.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(net.coinId)?.id} size={18} /> : <Ic d={ICON.globe} size={16} />}{net ? net.name : 'Networks'}</span>}>
+        <Dropdown name="Network" align="left" minWidth={210} label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{net ? <Coin sym={chainByTwId(net.coinId)?.symbol ?? net.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(net.coinId)?.id} size={18} /> : <Ic d={ICON.globe} size={16} />}{net ? net.name : 'Networks'}</span>}>
           {(close) => <div>
             <div style={{ padding: 8 }}><div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.bgAlt, borderRadius: 10, padding: '6px 10px' }}><Ic d={ICON.search} size={14} /><input autoFocus value={netQ} onChange={(e) => setNetQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13 }} /></div></div>
             {!netQ && <div className="hb-tap" onClick={() => { setNet(null); setNetQ(''); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><Ic d={ICON.globe} size={18} /><span style={{ flex: 1, fontWeight: 600 }}>All Networks</span>{net === null && <span style={{ color: T.accent }}><Ic d={ICON.check} size={16} /></span>}</div>}
@@ -293,10 +298,10 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
           </div>}
         </Dropdown>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Dropdown label={mode.name}>
+          <Dropdown name="Category" label={mode.name}>
             {(close) => <div>{MODES.map((m) => <div key={m.id} className="hb-tap" onClick={() => { setMode(m); setSort(null); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><span style={{ flex: 1, fontWeight: m.id === mode.id ? 700 : 500, color: m.id === mode.id ? T.accent : T.text }}>{m.name}</span>{m.id === mode.id && <Ic d={ICON.check} size={16} />}</div>)}</div>}
           </Dropdown>
-          <Dropdown minWidth={90} label={tf}>
+          <Dropdown name="Timeframe" minWidth={90} label={tf}>
             {(close) => <div>{TF.map((t) => <div key={t.key} className="hb-tap" onClick={() => { setTf(t.key); close(); }} style={{ padding: '10px 14px', fontSize: 14, fontWeight: t.key === tf ? 700 : 500, color: t.key === tf ? T.accent : T.text, cursor: 'pointer' }}>{t.key}</div>)}</div>}
           </Dropdown>
         </div>
@@ -313,7 +318,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
       ) : <div className="hb-stagger" key={`${mode.id}|${net?.coinId ?? ''}`}>{rows.map((t: any) => {
         const ch = t[field] ?? 0;
         return (
-          <div key={t.id ?? t.symbol} className="hb-tap hb-trow" onClick={() => nav.push('tokenDetail', { assetId: (ASSETS.find((a) => a.sym === (t.symbol || t.sym))?.id) ?? 'ethereum' })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <div key={t.id ?? t.symbol} className="hb-tap hb-trow" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} onClick={() => nav.push('tokenDetail', { assetId: (ASSETS.find((a) => a.sym === (t.symbol || t.sym))?.id) ?? 'ethereum' })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <div style={{ width: '42%', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <Coin sym={t.symbol || t.sym} size={34} />
               <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.symbol || t.sym}</div><div style={{ fontSize: 12, color: T.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net ? net.name : t.name}</div></div>

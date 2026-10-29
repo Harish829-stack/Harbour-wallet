@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Spinner } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Spinner, inputStyle, FieldLabel } from './ui';
+import { NetworkPicker, type PickNetwork } from './pickers';
 import { tokenNetworks, networkByChainId } from '../../core/customTokens';
 import { syncNetworks } from './networkStore';
 import { explorerAddress, explorerAddressById, assetOf } from './data';
@@ -24,24 +25,33 @@ const ADDR = /^0x[0-9a-fA-F]{40}$/;
 const Alert: React.FC<{ kind: 'warn' | 'error'; children: React.ReactNode }> = ({ kind, children }) => (
   <div role={kind === 'error' ? 'alert' : undefined} style={{ background: kind === 'error' ? 'color-mix(in srgb, var(--hb-error) 12%, transparent)' : T.bgAlt, color: kind === 'error' ? T.error : T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.5 }}>{children}</div>
 );
-const field: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6 };
+const field = inputStyle;
 
 export const SelectTokenNetworkScreen: React.FC<Ctx> = (c) => {
   const [, bump] = useState(0); useEffect(() => { void syncNetworks(c.bg).then(() => bump((n) => n + 1)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const evm: PickNetwork[] = tokenNetworks().map((n) => ({ key: `evm:${n.chainId}`, id: n.id, name: n.name, testnet: n.testnet, custom: (n as any).custom }));
+  const other: PickNetwork[] = Object.entries(TOKEN_CHAINS).flatMap(([id, std]) => { const ch = chainById(id); return ch ? [{ key: `chain:${id}`, id, name: ch.name, sym: ch.symbol, sub: `${STANDARD_LABEL[std as TokenStandard] ?? 'Custom'} tokens` }] : []; });
+  const pick = (n: PickNetwork) => {
+    if (n.key.startsWith('chain:')) c.nav.push('addChainToken', { chain: n.id, address: c.params?.address });
+    else c.nav.push('addCustomToken', { chainId: Number(n.key.slice(4)), address: c.params?.address });
+  };
   return (
   <Screen title="Select network" onBack={c.nav.pop}>
-    <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 8px' }}>Choose the network the token lives on</div>
-    {tokenNetworks().map((n) => (
-      <Row key={n.id} onClick={() => c.nav.push('addCustomToken', { chainId: n.chainId, address: c.params?.address })} left={<Coin sym={n.name.slice(0, 3)} assetId={n.id} />} title={n.name} sub={n.testnet ? 'Testnet' : undefined} right={<Ic d={ICON.chevron} size={18} />} />
-    ))}
-    {Object.entries(TOKEN_CHAINS).map(([id, std]) => { const ch = chainById(id); return ch ? (
-      <Row key={id} onClick={() => c.nav.push('addChainToken', { chain: id, address: c.params?.address })} left={<Coin sym={ch.symbol} assetId={id} />} title={ch.name} sub={`${STANDARD_LABEL[std as TokenStandard] ?? 'Custom'} tokens`} right={<Ic d={ICON.chevron} size={18} />} />
-    ) : null; })}
+    <div style={{ color: T.sub, fontSize: 13, margin: '0 0 10px' }}>Choose the network the token lives on. Search by name or ticker.</div>
+    <NetworkPicker items={[...evm, ...other]} onPick={pick} />
   </Screen>
   );
 };
 
 type Look = { state: 'idle' } | { state: 'loading' } | { state: 'ok'; name: string; symbol: string; decimals: number; address: string } | { state: 'error'; code: string; error: string };
+
+const NetworkBadge: React.FC<{ name: string; id: string; onChange: () => void }> = ({ name, id, onChange }) => (
+  <button type="button" className="hb-tap" onClick={onChange} aria-label={`Network: ${name}. Change network`} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: T.bgAlt, border: 'none', borderRadius: 14, padding: '10px 12px', margin: '0 0 16px', cursor: 'pointer', color: T.text, textAlign: 'left' }}>
+    <Coin sym={name.slice(0, 3)} assetId={id} size={32} />
+    <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: 'block', fontSize: 11, color: T.sub }}>Network</span><span style={{ display: 'block', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span></span>
+    <span style={{ color: T.accent, fontWeight: 700, fontSize: 13 }}>Change</span>
+  </button>
+);
 
 export const AddCustomTokenScreen: React.FC<Ctx> = (c) => {
   const chainId = Number(c.params?.chainId); const [, bump] = useState(0); useEffect(() => { void syncNetworks(c.bg).then(() => bump((n) => n + 1)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,27 +90,32 @@ export const AddCustomTokenScreen: React.FC<Ctx> = (c) => {
     setBusy(false);
     if (r?.ok) { await refreshTokens(c.bg); c.refresh?.(); c.nav.home(); } else setErr(r?.error || 'Could not add the token. Try again.');
   };
-  const showError = look.state === 'error' && address && !(look.code === 'INVALID_ADDRESS' && false);
+  const showError = look.state === 'error' && !!address;
+  const paste = async () => { try { const t = (await navigator.clipboard.readText()).trim(); if (t) setAddress(t); } catch { setErr('Paste is blocked here. Press Ctrl/Cmd+V in the field instead.'); } };
   return (
-    <Screen title="Add custom token" onBack={c.nav.pop}>
-      <div style={{ textAlign: 'center', padding: '4px 0 10px' }}>
-        <Coin sym={net.name.slice(0, 3)} assetId={net.id} size={44} />
-        <div style={{ color: T.sub, marginTop: 6 }}>on {net.name}</div>
-      </div>
-      <label htmlFor="ct-address" style={{ fontSize: 12, color: T.sub }}>Contract address</label>
+    <Screen title="Add custom token" onBack={c.nav.pop} footer={<>
+      {err && <Alert kind="error">{err}</Alert>}
+      <Btn disabled={!canAdd} onClick={add}>{busy ? 'Adding…' : 'Add token'}</Btn>
+    </>}>
+      <NetworkBadge name={net.name} id={net.id} onChange={c.nav.pop} />
+      <FieldLabel htmlFor="ct-address" first>Contract address</FieldLabel>
       <div style={{ position: 'relative' }}>
-        <input id="ct-address" data-testid="custom-asset-address-input" autoFocus value={address} onChange={(e) => setAddress(e.target.value.trim())} placeholder="Contract address" spellCheck={false} autoComplete="off"
-          style={{ ...field, fontFamily: 'monospace', paddingRight: 42, borderColor: showError ? T.error : T.border }} />
-        {look.state === 'loading' && <span style={{ position: 'absolute', right: 14, top: 22 }}><Spinner size={18} /></span>}
+        <input id="ct-address" data-testid="custom-asset-address-input" autoFocus value={address} onChange={(e) => setAddress(e.target.value.trim())} onKeyDown={(e) => { if (e.key === 'Enter') void add(); }} placeholder="0x…" spellCheck={false} autoComplete="off" aria-invalid={showError} aria-describedby={showError ? 'ct-address-err' : undefined}
+          style={{ ...field, fontFamily: 'monospace', paddingRight: 76, borderColor: showError ? T.error : T.border }} />
+        <span style={{ position: 'absolute', right: 8, top: 6 + 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {look.state === 'loading' && <Spinner size={18} />}
+          {look.state === 'ok' && <span style={{ color: T.success, display: 'inline-flex' }}><Ic d={ICON.check} size={18} /></span>}
+          {!address && <button type="button" className="hb-tap" onClick={paste} style={{ background: T.accentSoft, color: T.accent, border: 'none', borderRadius: 8, padding: '6px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Paste</button>}
+        </span>
       </div>
-      {showError && <div role="alert" data-testid="custom-asset-error" style={{ color: T.error, fontSize: 13, marginTop: 6 }}>{(look as any).error}</div>}
+      {showError && <div role="alert" id="ct-address-err" data-testid="custom-asset-error" style={{ color: T.error, fontSize: 13, marginTop: 6 }}>{(look as any).error}</div>}
 
       {manual && <>
-        <label htmlFor="ct-name" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Token name</label>
+        <FieldLabel htmlFor="ct-name">Token name</FieldLabel>
         <input id="ct-name" data-testid="custom-asset-name-input" value={name} maxLength={64} onChange={(e) => setName(e.target.value)} style={field} />
-        <label htmlFor="ct-symbol" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Token symbol</label>
+        <FieldLabel htmlFor="ct-symbol">Token symbol</FieldLabel>
         <input id="ct-symbol" data-testid="custom-asset-symbol-input" value={symbol} maxLength={32} onChange={(e) => setSymbol(e.target.value)} style={field} />
-        <label htmlFor="ct-decimals" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 16 }}>Token decimals</label>
+        <FieldLabel htmlFor="ct-decimals">Token decimals</FieldLabel>
         <input id="ct-decimals" data-testid="custom-asset-decimals-input" value={decimals} inputMode="numeric" readOnly={autoFilled} disabled={autoFilled} onChange={(e) => setDecimals(e.target.value.replace(/[^0-9]/g, ''))} style={{ ...field, opacity: autoFilled ? 0.6 : 1 }} />
         {decimals !== '' && (decNum < 0 || decNum > 32) && <div role="alert" style={{ color: T.error, fontSize: 13, marginTop: 6 }}>Decimals must be between 0 and 32.</div>}
       </>}
@@ -121,11 +136,9 @@ export const AddCustomTokenScreen: React.FC<Ctx> = (c) => {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 18 }}>
         <Alert kind="warn"><b style={{ fontWeight: 600 }}>Be careful.</b> Anyone can create a token, including fake versions of existing ones. Only add tokens you trust, and check the contract address.</Alert>
-        {err && <Alert kind="error">{err}</Alert>}
         {!manual && address && (
-          <button type="button" data-testid="custom-asset-add-token-manually-button" onClick={() => setManual(true)} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Add token manually</button>
+          <button type="button" data-testid="custom-asset-add-token-manually-button" onClick={() => setManual(true)} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 15, padding: 8 }}>Add token manually</button>
         )}
-        <Btn disabled={!canAdd} onClick={add}>{busy ? 'Adding…' : 'Add token'}</Btn>
       </div>
     </Screen>
   );
@@ -220,9 +233,12 @@ export const AddChainTokenScreen: React.FC<Ctx> = (c) => {
     if (r?.ok) { await refreshTokens(c.bg); c.refresh?.(); c.nav.home(); } else setErr(r?.error || 'Could not add the token. Try again.');
   };
   return (
-    <Screen title="Add custom token" onBack={c.nav.pop}>
-      <div style={{ textAlign: 'center', padding: '4px 0 10px' }}><Coin sym={ch.symbol} assetId={ch.id} size={44} /><div style={{ color: T.sub, marginTop: 6 }}>on {ch.name}</div></div>
-      <label htmlFor="ct-address" style={{ fontSize: 12, color: T.sub }}>{chainKey === 'solana' ? 'Token mint address' : 'Contract address'}</label>
+    <Screen title="Add custom token" onBack={c.nav.pop} footer={<>
+      {err && <Alert kind="error">{err}</Alert>}
+      <Btn disabled={!canAdd} onClick={add}>{busy ? 'Adding…' : 'Add token'}</Btn>
+    </>}>
+      <NetworkBadge name={ch.name} id={ch.id} onChange={c.nav.pop} />
+      <FieldLabel htmlFor="ct-address" first>{chainKey === 'solana' ? 'Token mint address' : 'Contract address'}</FieldLabel>
       <div style={{ position: 'relative' }}>
         <input id="ct-address" data-testid="custom-asset-address-input" autoFocus value={address} onChange={(e) => setAddress(e.target.value.trim())} placeholder={chainKey === 'solana' ? 'Token mint address' : 'Contract address'} spellCheck={false} autoComplete="off"
           style={{ ...field, fontFamily: 'monospace', paddingRight: 42, borderColor: look.state === 'error' ? T.error : T.border }} />
@@ -237,16 +253,14 @@ export const AddChainTokenScreen: React.FC<Ctx> = (c) => {
         </div>
         {needsManual && <>
           <div style={{ color: T.sub, fontSize: 13, margin: '12px 0 0' }}>The network does not publish a name for this token. Enter it yourself; decimals are read from the chain.</div>
-          <label htmlFor="ct-name" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 12 }}>Token name</label>
+          <FieldLabel htmlFor="ct-name">Token name</FieldLabel>
           <input id="ct-name" data-testid="custom-asset-name-input" value={name} maxLength={64} onChange={(e) => setName(e.target.value)} style={field} />
-          <label htmlFor="ct-symbol" style={{ fontSize: 12, color: T.sub, display: 'block', marginTop: 12 }}>Token symbol</label>
+          <FieldLabel htmlFor="ct-symbol">Token symbol</FieldLabel>
           <input id="ct-symbol" data-testid="custom-asset-symbol-input" value={symbol} maxLength={32} onChange={(e) => setSymbol(e.target.value)} style={field} />
         </>}
       </div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 18 }}>
         <Alert kind="warn"><b style={{ fontWeight: 600 }}>Be careful.</b> Anyone can create a token, including fake versions of existing ones. Only add tokens you trust, and check the address.</Alert>
-        {err && <Alert kind="error">{err}</Alert>}
-        <Btn disabled={!canAdd} onClick={add}>{busy ? 'Adding…' : 'Add token'}</Btn>
       </div>
     </Screen>
   );

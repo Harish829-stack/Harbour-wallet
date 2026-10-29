@@ -155,11 +155,11 @@ export const Coin: React.FC<{sym:string;size?:number;color?:string;assetId?:stri
   const [broken,setBroken]=React.useState(false);
   React.useEffect(()=>setBroken(false),[assetId]);
   const chain = assetId ? chainById(assetId) : undefined;
-  if (chain && !broken) return <span title={`${chain.name} logo`} aria-label={`${sym} asset`} style={{width:size,height:size,display:'inline-grid',placeItems:'center',flexShrink:0}}><img src={chainLogo(chain.id)} alt="" width={size} height={size} onError={()=>setBroken(true)} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover'}} /></span>;
+  if (chain && !broken) return <span title={`${chain.name} logo`} aria-label={`${sym} asset`} style={{width:size,height:size,display:'inline-grid',placeItems:'center',flexShrink:0}}><img src={chainLogo(chain.id)} alt="" width={size} height={size} loading="lazy" decoding="async" onError={()=>setBroken(true)} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover'}} /></span>;
   const normalized = sym.toUpperCase();
   const local = assetId==='polygon' || normalized==='POL' ? 'matic' : bundledLogos.has(normalized) ? normalized.toLowerCase() : null;
   return local
-    ? <span title={`${sym} asset logo`} aria-label={`${sym} asset`} style={{width:size,height:size,display:'inline-grid',placeItems:'center',flexShrink:0}}><img src={`/asset-logos/${local}.svg`} alt="" width={size} height={size} style={{width:size,height:size,borderRadius:'50%',objectFit:'contain'}}/></span>
+    ? <span title={`${sym} asset logo`} aria-label={`${sym} asset`} style={{width:size,height:size,display:'inline-grid',placeItems:'center',flexShrink:0}}><img src={`/asset-logos/${local}.svg`} alt="" width={size} height={size} loading="lazy" decoding="async" style={{width:size,height:size,borderRadius:'50%',objectFit:'contain'}}/></span>
     : <span title={`${sym} — asset logo unavailable`} aria-label={`${sym} asset`} style={{width:size,height:size,borderRadius:'50%',border:`1px solid ${T.border}`,background:T.bgAlt,color:T.sub,display:'inline-grid',placeItems:'center',flexShrink:0}}><span style={{width:size*.28,height:size*.28,border:'1.5px solid currentColor',borderRadius:3,transform:'rotate(45deg)'}}/></span>;
 };
 
@@ -172,15 +172,23 @@ export const Row: React.FC<{ left: React.ReactNode; title: React.ReactNode; sub?
 );
 
 // Full-screen pushed view with slide-in and a header (back + title + optional right).
-export const Screen: React.FC<{ title?: React.ReactNode; onBack: () => void; right?: React.ReactNode; children: React.ReactNode; pad?: boolean }> = ({ title, onBack, right, children, pad = true }) => (
+// `footer` pins the primary action to the bottom edge so it never scrolls out of reach (forms, pickers).
+export const Screen: React.FC<{ title?: React.ReactNode; onBack: () => void; right?: React.ReactNode; children: React.ReactNode; pad?: boolean; footer?: React.ReactNode }> = ({ title, onBack, right, children, pad = true, footer }) => (
   <div className="hb-screen" style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', zIndex: 20 }}>
-    <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 8 }}>
-      <IconBtn icon="back" onClick={onBack} />
-      <div style={{ flex: 1, textAlign: 'center', fontWeight: 800, fontSize: 16 }}>{title}</div>
+    <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 8, flexShrink: 0 }}>
+      <IconBtn icon="back" title="Back" onClick={onBack} />
+      <h1 style={{ flex: 1, minWidth: 0, margin: 0, textAlign: 'center', fontWeight: 800, fontSize: 16, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h1>
       <div style={{ minWidth: 36, display: 'flex', justifyContent: 'flex-end' }}>{right}</div>
     </div>
-    <div className="hb-screen-body" style={{ flex: 1, overflowY: 'auto', padding: pad ? '0 16px 20px' : 0 }}>{children}</div>
+    <div className="hb-screen-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: pad ? '0 16px 20px' : 0 }}>{children}</div>
+    {footer && <div className="hb-footer" style={{ flexShrink: 0, padding: '12px 16px', borderTop: `1px solid ${T.border}`, background: T.bg, display: 'flex', flexDirection: 'column', gap: 10 }}>{footer}</div>}
   </div>
+);
+
+// One input look for every form (token, NFT, network, contact): same radius, padding and spacing as the design system fields.
+export const inputStyle: React.CSSProperties = { width: '100%', padding: '13px 14px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6, minHeight: 48 };
+export const FieldLabel: React.FC<{ htmlFor: string; children: React.ReactNode; first?: boolean }> = ({ htmlFor, children, first }) => (
+  <label htmlFor={htmlFor} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.sub, marginTop: first ? 0 : 16 }}>{children}</label>
 );
 
 // Bottom sheet.
@@ -189,7 +197,7 @@ export const Sheet: React.FC<{ title?: string; onClose: () => void; children: Re
   const [closing, setClosing] = useState(false);
   // Backdrop / Escape dismissals play the slide-down before unmounting; in-sheet actions close immediately as before.
   const dismiss = () => { if (closing) return; if (reducedMotion()) return onClose(); setClosing(true); setTimeout(onClose, 210); };
-  useEffect(() => { const previous = document.activeElement as HTMLElement | null; dialog.current?.focus(); return () => previous?.focus(); }, []);
+  useEffect(() => { const previous = document.activeElement as HTMLElement | null; if (!dialog.current?.contains(document.activeElement)) dialog.current?.focus(); return () => previous?.focus(); }, []);
   return <div className={closing ? 'hb-fade hb-sheet-closing' : 'hb-fade'} onClick={dismiss} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); dismiss(); } }} style={{ position: 'absolute', inset: 0, background: 'var(--hb-overlay)', zIndex: 30, display: 'flex', alignItems: 'flex-end' }}>
     <div ref={dialog} className="hb-sheet" role="dialog" aria-modal="true" aria-label={title ?? 'Options'} tabIndex={-1} onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxHeight: '82%', background: T.surface, borderRadius: '20px 20px 0 0', padding: '12px 16px 20px', overflowY: 'auto', outline: 'none' }}>
       <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border, margin: '0 auto 10px' }} />

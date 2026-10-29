@@ -2,7 +2,7 @@ import { userText } from '../../core/errors';
 import React, { useEffect, useMemo, useState } from 'react';
 import browser from 'webextension-polyfill';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty, inputStyle } from './ui';
 import { useSettingsState, updateSettings, refreshSettings } from '../settingsStore';
 import { AUTO_LOCK_OPTIONS, autoLockLabel, SUPPORTED_LOCALES, localeLabel, COLOR_MODES, TOKEN_LAYOUTS, type ColorMode, type TokenLayout } from '../../core/settings';
 import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
@@ -286,7 +286,7 @@ export const AddressBookEditScreen: React.FC<Ctx> = (c) => {
     setBusy(true); const r = await c.bg({ type: 'addressBookRemove', id: entry!.id });
     setBusy(false); if (r?.ok) c.nav.pop(); else { setConfirm(false); setErr(r?.error || 'Could not remove contact'); }
   };
-  const input: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 14, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 14, boxSizing: 'border-box', marginTop: 6 };
+  const input = inputStyle;
   return (
     <Screen title={entry ? 'Edit contact' : 'New contact'} onBack={c.nav.pop} right={entry ? <IconBtn icon="trash" title="Delete contact" onClick={() => setConfirm(true)} /> : undefined}>
       <label style={{ fontSize: 12, color: T.sub }} htmlFor="ab-name">Name</label>
