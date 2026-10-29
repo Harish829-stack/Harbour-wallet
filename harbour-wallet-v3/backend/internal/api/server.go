@@ -86,6 +86,7 @@ type Server struct {
 type cachedDevice struct {
 	pub     ed25519.PublicKey
 	tier    string
+	created time.Time
 	revoked bool
 	until   time.Time
 }

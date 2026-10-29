@@ -2,8 +2,21 @@
 // non-EVM networks the extension reaches directly (CLIENT_CHAIN_IDS). Everything that moves value checks this file in the
 // background worker, so a network or feature is enabled in ONE place: add the chain to chains.yaml and run
 // backend/scripts/gen_chains.py, or flip a feature flag below once it is reviewed.
-import { HARBOUR_CHAINS, CLIENT_CHAIN_IDS } from './config';
+import { HARBOUR_CHAINS, CLIENT_CHAIN_IDS, HB_API_URL, HB_API_SECURE, isLoopbackUrl } from './config';
 import { customNetwork } from '../networkRegistry';
+import { chainById } from '../chains/index';
+
+/** Signing and broadcasting on real-value (mainnet) networks is a deliberate switch, not a side effect of a chain being listed.
+ *  All three must stay explicit so a review (and test/policy.test.js) can see what this build allows:
+ *   - mainnet: networks the Harbour backend serves that are not testnets, and the non-EVM networks the extension reaches directly;
+ *   - testnet: the curated test networks;
+ *   - custom: networks the user added (Manage networks) or approved from a site (wallet_addEthereumChain).
+ *  Mainnet signing additionally needs a secure backend: a release build must talk to https (a build pointing at a local backend is for
+ *  development only, and the app refuses to sign real-value transactions through it). Every signature still goes through the approval window. */
+export const SIGNING_POLICY: Readonly<{ mainnet: boolean; testnet: boolean; custom: boolean }> = Object.freeze({ mainnet: true, testnet: true, custom: true });
+const IS_RELEASE_BUILD: boolean = !!((import.meta as any).env ?? {}).PROD;
+export const mainnetSigningReady = (): boolean => SIGNING_POLICY.mainnet && HB_API_SECURE && !(IS_RELEASE_BUILD && isLoopbackUrl(HB_API_URL));
+export type SigningBasis = 'harbour-mainnet' | 'harbour-testnet' | 'client-chain' | 'custom-network';
 
 /** dApp provider namespaces injected into pages and served by the worker: EVM, Solana and the multi-chain family (Cosmos, Aptos, Sui, TON, Tron, Bitcoin). */
 export const PROVIDER_FAMILIES: Readonly<{ evm: boolean; solana: boolean; multi: boolean }> = { evm: true, solana: true, multi: true };
@@ -21,18 +34,25 @@ export const featureEnabled = (f: Feature): boolean => FEATURES[f] === true;
 /** Chain a site sees before it picks one (and after a disconnect): the first network this build serves. */
 export const DEFAULT_EVM_CHAIN: number = HARBOUR_CHAINS.find((c) => c.evmChainId)?.evmChainId ?? 11155111;
 
-const EVM_IDS = new Set(HARBOUR_CHAINS.map((c) => c.evmChainId));
 const CHAIN_IDS = new Set([...HARBOUR_CHAINS.map((c) => c.id), ...CLIENT_CHAIN_IDS]);
 
 /** True when this build may sign for the EVM chain id: a network the Harbour backend serves, or one the user added themselves
  *  (including through a site's add-chain request, which always goes through the approval window). */
-export const isSigningEvmChain = (chainId: number | bigint | string | null | undefined): boolean => {
-  if (chainId === null || chainId === undefined || chainId === '') return false;
-  try { const n = Number(BigInt(chainId as any)); return EVM_IDS.has(n) || !!customNetwork(n); } catch { return false; }
+export const evmSigningBasis = (chainId: number | bigint | string | null | undefined): SigningBasis | null => {
+  if (chainId === null || chainId === undefined || chainId === '') return null;
+  try {
+    const n = Number(BigInt(chainId as any));
+    const h = HARBOUR_CHAINS.find((c) => c.evmChainId === n);
+    if (h) return chainById(h.id)?.testnet ? 'harbour-testnet' : 'harbour-mainnet';
+    return customNetwork(n) ? 'custom-network' : null;
+  } catch { return null; }
 };
+const basisAllowed = (b: SigningBasis | null): boolean =>
+  b === 'harbour-mainnet' ? mainnetSigningReady() : b === 'harbour-testnet' ? SIGNING_POLICY.testnet : b === 'custom-network' ? SIGNING_POLICY.custom : b === 'client-chain' ? mainnetSigningReady() : false;
+export const isSigningEvmChain = (chainId: number | bigint | string | null | undefined): boolean => basisAllowed(evmSigningBasis(chainId));
 /** True when this build may sign for the registry chain (`sepolia`, `base-sepolia`, …) or its EVM chain id. */
 export const isSigningChain = (chain: { id?: string; kind?: string; evmChainId?: number } | null | undefined): boolean =>
-  !!chain && (chain.kind === 'evm' ? isSigningEvmChain(chain.evmChainId) : !!chain.id && CHAIN_IDS.has(chain.id));
+  !!chain && (chain.kind === 'evm' ? isSigningEvmChain(chain.evmChainId) : !!chain.id && CHAIN_IDS.has(chain.id) && basisAllowed('client-chain'));
 
 /** The provider-facing slice of the policy. ProviderService takes it as a dependency so the generic provider stays testable
  *  with every family on, while the build default (below) is what ships. */

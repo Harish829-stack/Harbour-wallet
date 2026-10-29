@@ -160,7 +160,22 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		s.internalErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, registerResp{DeviceID: d.ID, QuotaTier: d.QuotaTier, Quotas: s.quotas(d.QuotaTier)})
+	eff := s.effectiveTier(d.QuotaTier, d.CreatedAt, s.opt.Now())
+	writeJSON(w, http.StatusCreated, registerResp{DeviceID: d.ID, QuotaTier: eff, Quotas: s.quotas(eff)})
+}
+
+// effectiveTier is the quota tier a device is held to right now: a default-tier device stays on the probation tier for its first
+// ProbationPeriod (registering devices is cheap, so a fresh device must not get full quotas straight away). Tiers set by hand
+// (trusted, ...) are never lowered. A zero creation time (unknown) counts as "just created".
+func (s *Server) effectiveTier(tier string, created, now time.Time) string {
+	a := s.cfg.API
+	if a.ProbationTier == "" || tier != a.DefaultTier {
+		return tier
+	}
+	if created.IsZero() || now.Sub(created) < a.ProbationPeriod {
+		return a.ProbationTier
+	}
+	return tier
 }
 
 // ---------- signed requests ----------
@@ -177,7 +192,7 @@ func (s *Server) lookupDevice(ctx context.Context, id string) (cachedDevice, err
 	if err != nil {
 		return cachedDevice{}, err
 	}
-	cd := cachedDevice{pub: d.PublicKey, tier: d.QuotaTier, revoked: d.RevokedAt != nil, until: now.Add(time.Minute)}
+	cd := cachedDevice{pub: d.PublicKey, tier: d.QuotaTier, created: d.CreatedAt, revoked: d.RevokedAt != nil, until: now.Add(time.Minute)}
 	s.devCache.Store(id, cd)
 	return cd, nil
 }
@@ -257,7 +272,7 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 			return
 		}
 		go s.opt.Store.TouchDevice(context.WithoutCancel(ctx), dev) //nolint:errcheck
-		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, AuthDevice{ID: dev, Tier: cd.tier})))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, AuthDevice{ID: dev, Tier: s.effectiveTier(cd.tier, cd.created, s.opt.Now())})))
 	})
 }
 

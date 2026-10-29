@@ -5,10 +5,14 @@ FROM golang:1.26-alpine AS build
 WORKDIR /src
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 COPY go.mod go.sum ./
-RUN go mod download || true
+RUN go mod download
 COPY . .
-# tidy adds any go.sum lines missing from the checkout (golang.org/x modules).
-RUN go mod tidy && go build -trimpath -ldflags="-s -w" -o /out/ ./cmd/... \
+# Reproducible: the build uses go.mod/go.sum exactly as committed (-mod=readonly) and never rewrites them (audit V3-23).
+# CI checks `go mod tidy` leaves no diff. If go.sum is behind, run `go mod tidy` locally and commit it; for a one-off local
+# build only: docker build --build-arg ALLOW_TIDY=1 .
+ARG ALLOW_TIDY=0
+RUN if [ "$ALLOW_TIDY" = "1" ]; then go mod tidy; fi \
+ && go build -mod=readonly -trimpath -ldflags="-s -w" -o /out/ ./cmd/... \
  && chmod -R a+rX /src/config
 
 FROM gcr.io/distroless/static-debian12:nonroot

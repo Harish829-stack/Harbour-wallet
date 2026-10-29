@@ -7,8 +7,13 @@ api:
   clock_skew: 5m                     # allowed X-HB-Date drift
   idempotency_ttl: 24h
   default_tier: default
+  # A new default-tier device runs on the (lower) probation tier for its first 24 h: devices are cheap to create, so quotas per device
+  # alone do not bound abuse (audit V3-08). Hand-set tiers such as trusted are never lowered.
+  probation_tier: probation
+  probation_period: 24h
   tiers:
     default:  {max_addresses: 400, backfills_per_day: 300,  requests_per_minute: 900, rpc_per_minute: 600, gateway_per_minute: 600}
+    probation: {max_addresses: 100, backfills_per_day: 40, requests_per_minute: 400, rpc_per_minute: 200, gateway_per_minute: 200}
     trusted:  {max_addresses: 800, backfills_per_day: 600, requests_per_minute: 2400, rpc_per_minute: 1800, gateway_per_minute: 1800}
   # Read-only methods the extension may call through POST /v1/rpc/{chain}.
   rpc_allowed_methods:

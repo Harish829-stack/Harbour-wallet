@@ -1,9 +1,20 @@
 name: harbour-ci
 on:
-  push: { paths: ['harbour-wallet-v2/**', 'evidences/re-evidence/**'] }
-  pull_request: { paths: ['harbour-wallet-v2/**', 'evidences/re-evidence/**'] }
+  push: { paths: ['harbour-wallet-v3/**', 'harbour-wallet-v2/**', 'evidences/re-evidence/**', '.github/workflows/harbour-ci.yml'] }
+  pull_request: { paths: ['harbour-wallet-v3/**', 'harbour-wallet-v2/**', 'evidences/re-evidence/**', '.github/workflows/harbour-ci.yml'] }
 jobs:
-  verify:
+  verify-v3:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: harbour-wallet-v3 } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: harbour-wallet-v3/package-lock.json }
+      - run: npm ci --ignore-scripts
+      - run: npm run verify
+      # The zod advisory (GHSA-mrhx-c7xc-m3w5) has no patched release that viem/abitype accept yet; everything else must stay below "high".
+      - run: npm audit --omit=dev --audit-level=critical
+  verify-v2:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: harbour-wallet-v2 } }
     steps:

@@ -1,5 +1,5 @@
 # GitHub Actions workflow for harbour-wallet-v3/backend.
-# Copy to <repo root>/.github/workflows/backend.yml (GitHub only reads it there).
+# Installed at <repo root>/.github/workflows/backend.yml (GitHub only reads it there); keep backend/ci/backend.yml in sync.
 name: backend
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: {go-version: "1.24", cache-dependency-path: harbour-wallet-v3/backend/go.sum}
+        with: {go-version-file: harbour-wallet-v3/backend/go.mod, cache-dependency-path: harbour-wallet-v3/backend/go.sum}
       - run: go mod tidy && git diff --exit-code go.mod go.sum
       - run: go vet ./...
       - uses: golangci/golangci-lint-action@v8
@@ -34,3 +34,5 @@ jobs:
         env:
           HB_TEST_POSTGRES_URL: postgres://harbour:harbour@localhost:5432/harbour_test?sslmode=disable
           HB_TEST_REDIS_URL: redis://localhost:6379/15
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
+      - run: go install github.com/securego/gosec/v2/cmd/gosec@latest && gosec -quiet ./...

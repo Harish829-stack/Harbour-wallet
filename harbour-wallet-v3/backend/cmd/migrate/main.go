@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"harbour/backend/internal/config"
@@ -38,6 +40,19 @@ func main() {
 			die(log, "app user", err)
 		}
 		log.Info("app database user ready", "user", u)
+	}
+	// One login per service ("user:password,user:password"), each a member of harbour_app, so credentials are isolated per service.
+	if list := os.Getenv("POSTGRES_SERVICE_USERS"); list != "" {
+		for _, kv := range strings.Split(list, ",") {
+			u, p, ok := strings.Cut(strings.TrimSpace(kv), ":")
+			if !ok || u == "" || p == "" {
+				die(log, "service users", fmt.Errorf("POSTGRES_SERVICE_USERS entries must look like user:password"))
+			}
+			if err := st.EnsureAppLogin(ctx, u, p); err != nil {
+				die(log, "service user "+u, err)
+			}
+			log.Info("service database user ready", "user", u)
+		}
 	}
 	if *maintain {
 		if err := st.MaintainPartitions(ctx); err != nil {

@@ -150,13 +150,16 @@ type API struct {
 	PowTTL            time.Duration `yaml:"pow_ttl"`
 	ChallengesPerHour int           `yaml:"challenges_per_ip_per_hour"`
 	// RegistrationsPerHour caps new devices across all callers (per-device quotas mean little if devices are free).
-	RegistrationsPerHour int             `yaml:"registrations_per_hour"`
-	ClockSkew            time.Duration   `yaml:"clock_skew"`
-	DefaultTier          string          `yaml:"default_tier"`
-	Tiers                map[string]Tier `yaml:"tiers"`
-	RPCAllowedMethods    []string        `yaml:"rpc_allowed_methods"`
-	BackfillDenyList     []string        `yaml:"backfill_deny_list"`
-	IdempotencyTTL       time.Duration   `yaml:"idempotency_ttl"`
+	RegistrationsPerHour int           `yaml:"registrations_per_hour"`
+	ClockSkew            time.Duration `yaml:"clock_skew"`
+	DefaultTier          string        `yaml:"default_tier"`
+	// ProbationTier is the (lower) quota tier a new default-tier device is held to for its first ProbationPeriod; empty disables it.
+	ProbationTier     string          `yaml:"probation_tier"`
+	ProbationPeriod   time.Duration   `yaml:"probation_period"`
+	Tiers             map[string]Tier `yaml:"tiers"`
+	RPCAllowedMethods []string        `yaml:"rpc_allowed_methods"`
+	BackfillDenyList  []string        `yaml:"backfill_deny_list"`
+	IdempotencyTTL    time.Duration   `yaml:"idempotency_ttl"`
 }
 
 // Config is all static configuration.
@@ -281,6 +284,9 @@ func (c *Config) defaults() {
 	if a.DefaultTier == "" {
 		a.DefaultTier = "default"
 	}
+	if a.ProbationTier != "" {
+		defD(&a.ProbationPeriod, 24*time.Hour)
+	}
 	for name, ch := range c.Chains {
 		if ch.BlockTime == 0 {
 			ch.BlockTime = 2 * time.Second
@@ -304,6 +310,11 @@ func (c *Config) validate() error {
 	}
 	if _, ok := c.API.Tiers[c.API.DefaultTier]; !ok {
 		return fmt.Errorf("config: default tier %q not defined", c.API.DefaultTier)
+	}
+	if pt := c.API.ProbationTier; pt != "" {
+		if _, ok := c.API.Tiers[pt]; !ok {
+			return fmt.Errorf("config: probation tier %q not defined", pt)
+		}
 	}
 	for name, ch := range c.Chains {
 		if ch.Family == "" {
