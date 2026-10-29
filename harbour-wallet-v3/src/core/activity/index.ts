@@ -23,7 +23,7 @@ export function evmOf(assetId: string): { chainId: number; symbol: string } | nu
 export const activitySupported = (assetId: string): boolean => !!evmOf(assetId) || historySupportedFor(chainById(assetId));
 export const activityUnsupportedReason = 'No public history source for this network yet.';
 
-const idOfChain = (chainId: number): string | undefined => chainByEvmId(chainId)?.id ?? (customNetwork(chainId) ? `custom-${chainId}` : undefined);
+const idOfChain = (chainId: number): string | undefined => customNetwork(chainId) ? `custom-${chainId}` : chainByEvmId(chainId)?.id;
 const explorerUrl = (assetId: string, hash: string): string | undefined => {
   const m = CUSTOM.exec(assetId); if (m) { const base = customExplorer(Number(m[1])); return base ? `${base.replace(/\/+$/, '')}/tx/${hash}` : undefined; }
   return explorerTxFor(assetId, hash);

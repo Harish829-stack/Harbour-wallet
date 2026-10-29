@@ -2,10 +2,11 @@
 // block-explorer URL; EVM only; warning "A malicious network provider can lie about the state of the blockchain…").
 // [certain: field set and warning text from the screenshots/bundle]. Validation rules below are Harbour's own.
 import { cleanText } from './erc20';
-import { evmChains } from './chains/index';
+import { ENABLED_CHAINS } from './chains/index';
 import { customNetworks, type CustomNetwork, type NetworkState } from './networkRegistry';
 
-export const BUILTIN_EVM = evmChains().map((c) => ({ chainId: c.evmChainId!, name: c.name, testnet: !!c.testnet }));
+// Built-in = the EVM networks this build ships (Default + curated testnets). Every other chain, even one wallet-core knows, is added by the user or a site as a custom network.
+export const BUILTIN_EVM = ENABLED_CHAINS.filter((c) => c.kind === 'evm' && c.evmChainId).map((c) => ({ chainId: c.evmChainId!, name: c.name, testnet: !!c.testnet }));
 export const isBuiltinChain = (chainId: number) => BUILTIN_EVM.some((c) => c.chainId === chainId);
 const MAX_CUSTOM = 50;
 

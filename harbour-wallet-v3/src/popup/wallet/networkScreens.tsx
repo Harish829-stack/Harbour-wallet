@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle } from './ui';
 import { syncNetworks } from './networkStore';
+import { NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import type { Ctx } from './screens';
 
 // Settings > Custom Networks, after Trust Wallet 26.41.0 [certain: layout from screenshots]: empty state "No custom networks added /
@@ -37,20 +38,20 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
     <Screen title="Manage networks" onBack={c.nav.pop}>
       <div style={{ paddingBottom: 80 }}>
         {!data ? <div style={{ textAlign: 'center', paddingTop: 40 }}><Spinner size={28} /></div> : <>
-          {data.custom.length === 0 ? (
-            <div data-testid="networks-empty" style={{ textAlign: 'center', padding: '16px 0 8px' }}>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>No custom networks added</div>
-              <div style={{ color: T.sub, fontSize: 13, marginTop: 6 }}>Tap “Add custom network” to get started!</div>
-            </div>
-          ) : <>
-            <div style={{ fontWeight: 700, margin: '8px 0 10px' }}>Custom networks</div>
-            {data.custom.map((n: any) => <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
-          </>}
-          {([['Default networks', false], ['Testnets', true]] as const).map(([label, tn]) => {
-            const list = data.builtin.filter((n: any) => !!n.testnet === tn); if (!list.length) return null;
-            return <div key={label}>
-              <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>{label}</div>
-              {list.map((n: any) => <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
+          {/* Same groups, labels and order as Home > Select network: Default, Custom, Testnets. */}
+          {NETWORK_CATEGORIES.map((cat) => {
+            const list: any[] = cat === 'custom' ? data.custom : data.builtin.filter((n: any) => !!n.testnet === (cat === 'testnet'));
+            if (!list.length && cat !== 'custom') return null;
+            return <div key={cat} data-testid={`networks-${cat}`}>
+              <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
+              {list.length === 0 ? (
+                <div data-testid="networks-empty" style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>No custom networks added</div>
+                  <div style={{ color: T.sub, fontSize: 13, marginTop: 6 }}>Tap “Add custom network” to get started!</div>
+                </div>
+              ) : list.map((n: any) => cat === 'custom'
+                ? <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />
+                : <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
             </div>;
           })}
         </>}

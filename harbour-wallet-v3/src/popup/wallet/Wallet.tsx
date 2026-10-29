@@ -93,6 +93,15 @@ export const Wallet: React.FC<{
     void syncNetworks(bg).then(() => { setNetworkVersion((v) => v + 1); return refreshTokens(bg); });
     return startActivityPings(bg);
   }, []);
+  // A site (chainlist, ...) can add a network while this popup is open: re-read the custom-network list whenever the popup is refocused or balances refresh,
+  // so Home's network list matches Settings > Custom networks.
+  useEffect(() => {
+    const resync = () => { void syncNetworks(bg).then((r) => { if (r) setNetworkVersion((v) => v + 1); }); };
+    const onVis = () => { if (document.visibilityState === 'visible') resync(); };
+    window.addEventListener('focus', resync); document.addEventListener('visibilitychange', onVis);
+    return () => { window.removeEventListener('focus', resync); document.removeEventListener('visibilitychange', onVis); };
+  }, []);
+  useEffect(() => { void syncNetworks(bg).then((r) => { if (r) setNetworkVersion((v) => v + 1); }); }, [balances]);
 
 
   const nav: Nav = {

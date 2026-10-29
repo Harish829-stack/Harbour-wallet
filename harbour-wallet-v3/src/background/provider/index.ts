@@ -80,6 +80,8 @@ export function getProvider(): ProviderService {
     ethSignEnabled: async () => (await loadSettings()).developerSettings.isEthSignEnabled === true,
     probeChainId: async (url) => { const r = await probeRpcChainId(url, fetch, { fromSite: true }); if (!r.ok) throw new Error(r.error); return r.chainId; },
     saveCustomNetwork: async (n) => {
+      // After a service-worker restart the stored list may not be loaded yet; saving before that would overwrite it with a one-item list.
+      await networksReady;
       // A second approval may have added this ID while the first RPC probe ran.
       if (evmNetwork(n.chainId)) return;
       const st = getNetworkState(); const prev = customNetwork(n.chainId);

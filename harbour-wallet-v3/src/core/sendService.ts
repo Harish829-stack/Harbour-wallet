@@ -151,7 +151,7 @@ export const customChainInfo = (n: CustomNetwork): ChainInfo => ({
 });
 export function resolveSendChain(id: string | undefined, evmChainId: number | undefined, custom: CustomNetwork[]): ChainInfo | undefined {
   if (id) { const c = chainById(id); if (c) return c; const m = /^custom-(\d+)$/.exec(id); if (m) { const n = custom.find((x) => x.chainId === Number(m[1])); if (n) return customChainInfo(n); } }
-  if (evmChainId != null) { const c = chainByEvmId(evmChainId); if (c) return c; const n = custom.find((x) => x.chainId === evmChainId); if (n) return customChainInfo(n); }
+  if (evmChainId != null) { const n = custom.find((x) => x.chainId === evmChainId); if (n) return customChainInfo(n); const c = chainByEvmId(evmChainId); if (c) return c; }
   return undefined;
 }
 /** Validate a user-supplied token descriptor for non-EVM families (contract / mint / asset id / denom). */

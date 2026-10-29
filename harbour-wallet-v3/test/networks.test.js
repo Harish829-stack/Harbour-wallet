@@ -37,11 +37,16 @@ test('registry feeds rpcUrl, token networks and native symbol; overrides win', (
   assert.equal(N.networkByChainId(31337).name, 'Local Dev'); assert.ok(N.tokenNetworks().some((n) => n.chainId === 31337)); assert.equal(N.nativeSymbol(31337), 'LDV'); assert.equal(N.nativeSymbol(137), 'POL');
   N.setNetworkState(null); assert.equal(N.rpcUrl(31337), undefined); assert.equal(N.networkByChainId(31337), undefined);
 });
-test('all built-in EVM chains are reserved, and legacy duplicate custom rows become RPC overrides', () => {
-  assert.equal(N.isBuiltinChain(61), true, 'Ethereum Classic is in the full registry');
-  assert.equal(N.validateNetwork({ ...good, chainId: '61' }, []).ok, false);
-  N.setNetworkState({ custom: [{ chainId: 61, name: 'Duplicate Classic', rpcUrl: 'https://saved.example/rpc', symbol: 'ETC', addedAt: 1 }], rpcOverrides: {} });
+test('shipped EVM chains are reserved; legacy duplicate rows become RPC overrides; other registry chains can be added as custom', () => {
+  assert.equal(N.isBuiltinChain(1), true, 'Ethereum is shipped');
+  assert.equal(N.validateNetwork({ ...good, chainId: '1' }, []).ok, false);
+  N.setNetworkState({ custom: [{ chainId: 1, name: 'Duplicate Ethereum', rpcUrl: 'https://saved.example/rpc', symbol: 'ETH', addedAt: 1 }], rpcOverrides: {} });
   assert.deepEqual(N.customNetworks(), []);
-  assert.equal(N.rpcOverride(61), 'https://saved.example/rpc');
+  assert.equal(N.rpcOverride(1), 'https://saved.example/rpc');
+  // A chain wallet-core knows but this build does not ship (Callisto) is not built in: chainlist/site adds must persist.
+  assert.equal(N.isBuiltinChain(820), false);
+  assert.equal(N.validateNetwork({ ...good, chainId: '820' }, []).ok, true);
+  N.setNetworkState({ custom: [{ chainId: 820, name: 'Callisto', rpcUrl: 'https://clo.example/rpc', symbol: 'CLO', addedAt: 1 }], rpcOverrides: {} });
+  assert.equal(N.customNetworks().length, 1);
   N.setNetworkState(null);
 });

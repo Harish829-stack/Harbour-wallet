@@ -1,7 +1,7 @@
 // Runtime registry of user-added EVM networks and RPC overrides for built-in ones. Kept in module state so the synchronous
 // `rpcUrl()` / `networkByChainId()` lookups can see them; the background loads it from storage on every service-worker start,
 // and the popup fills it from the `networkList` message.
-import { chainByEvmId } from './chains/index';
+import { chainByEvmId, isEnabledChain } from './chains/index';
 export interface CustomNetwork { chainId: number; name: string; rpcUrl: string; symbol: string; explorerUrl?: string; addedAt: number }
 export interface NetworkState { custom: CustomNetwork[]; rpcOverrides: Record<string, string> }
 let state: NetworkState = { custom: [], rpcOverrides: {} };
@@ -11,7 +11,8 @@ export const setNetworkState = (s: Partial<NetworkState> | null | undefined) => 
   // Older builds allowed a built-in chain to be saved as a second custom row.
   // Keep its chosen RPC as an override, while exposing just one chain identity.
   state = { custom: custom.filter((n) => {
-    if (!chainByEvmId(n.chainId)) return true;
+    const known = chainByEvmId(n.chainId);
+    if (!known || !isEnabledChain(known.id)) return true; // only chains this build ships are 'built-in'
     rpcOverrides[String(n.chainId)] ??= n.rpcUrl;
     return false;
   }), rpcOverrides };

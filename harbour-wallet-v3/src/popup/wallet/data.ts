@@ -34,8 +34,8 @@ export const allAssets = (): Asset[] => [...ASSETS, ...customNetworkAssets(), ..
 export const assetOf = (id: string) => allAssets().find((a) => a.id === id);
 export const EXPLORER: Record<number, string> = Object.fromEntries([...ALL_CHAINS, ...TESTNET_CHAINS].filter((c) => c.evmChainId && c.explorer).map((c) => [c.evmChainId!, c.explorer!]));
 const explorerBase = (chainId?: number) => (chainId ? EXPLORER[chainId] ?? customExplorer(chainId) : undefined);
-export const explorerTx = (chainId: number | undefined, hash: string) => { const c = chainByEvmId(chainId); if (c) return explorerTxUrl(c, hash); const b = explorerBase(chainId); return b ? `${b}/tx/${hash}` : ''; };
-export const explorerAddress = (chainId: number | undefined, addr: string) => { const c = chainByEvmId(chainId); if (c) return explorerAddressUrl(c, addr); const b = explorerBase(chainId); return b ? `${b}/address/${addr}` : ''; };
+export const explorerTx = (chainId: number | undefined, hash: string) => { const c = customExplorer(chainId) ? undefined : chainByEvmId(chainId); if (c) return explorerTxUrl(c, hash); const b = explorerBase(chainId); return b ? `${b}/tx/${hash}` : ''; };
+export const explorerAddress = (chainId: number | undefined, addr: string) => { const c = customExplorer(chainId) ? undefined : chainByEvmId(chainId); if (c) return explorerAddressUrl(c, addr); const b = explorerBase(chainId); return b ? `${b}/address/${addr}` : ''; };
 /** Explorer links for any chain by registry id (non-EVM chains included). */
 export const explorerTxById = (id: string, hash: string) => explorerTxUrl(chainById(id), hash);
 export const explorerAddressById = (id: string, addr: string) => explorerAddressUrl(chainById(id), addr);

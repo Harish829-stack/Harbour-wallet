@@ -8,7 +8,7 @@ import { validateNetwork, checkNetwork, isBuiltinChain, normalizeUrl, BUILTIN_EV
 import { ensureAccounts, activeEntry } from '../walletState';
 import { tokenItems } from '../../core/harbour/data';
 import type { HandlerMap } from '../handlers/types';
-import { saveNetworks } from './shared';
+import { saveNetworks, networksReady } from './shared';
 
 export const handlers: HandlerMap = {
   tokenProbe: async (msg, ctx) => {
@@ -24,6 +24,7 @@ export const handlers: HandlerMap = {
   networkList: async (msg, ctx) => {
     const { core, vault, wallet, sender } = ctx as any;
  {
+      await networksReady;
       const st = getNetworkState();
       return { ok: true, custom: st.custom, builtin: BUILTIN_EVM.map((c) => ({ chainId: c.chainId, name: c.name, testnet: c.testnet, rpcUrl: getRpcUrls(chainByEvmId(c.chainId)!)[0] ?? '', overridden: !!st.rpcOverrides[String(c.chainId)] })), rpcOverrides: st.rpcOverrides };
     }
@@ -31,6 +32,7 @@ export const handlers: HandlerMap = {
   networkSave: async (msg, ctx) => {
     const { core, vault, wallet, sender } = ctx as any;
  {
+      await networksReady;
       // Add (msg.editing undefined) or edit a custom network, or change the RPC of a built-in one.
       try {
         const st = getNetworkState();
@@ -61,6 +63,7 @@ export const handlers: HandlerMap = {
   networkRemove: async (msg, ctx) => {
     const { core, vault, wallet, sender } = ctx as any;
  {
+      await networksReady;
       // Custom network: delete it. Built-in: reset its RPC to the default.
       const st = getNetworkState(); const chainId = Number(msg.chainId);
       if (isBuiltinChain(chainId)) { const { [String(chainId)]: _x, ...rest } = st.rpcOverrides; setNetworkState({ ...st, rpcOverrides: rest }); }
