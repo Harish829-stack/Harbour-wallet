@@ -66,6 +66,9 @@ type Options struct {
 	// VAPIDPublicKey is the Web Push application server key (base64url).
 	VAPIDPublicKey string
 	Now            func() time.Time
+	// GatewayKeys / GatewayHosts configure the third-party gateway (/v1/gw). Nil uses the environment and the real upstreams.
+	GatewayKeys  *GatewayKeys
+	GatewayHosts *GatewayHosts
 }
 
 // Server holds dependencies.
@@ -77,6 +80,7 @@ type Server struct {
 	devCache sync.Map // device id -> cachedDevice
 	http     *http.Client
 	media    *http.Client
+	gw       *gateway
 }
 
 type cachedDevice struct {
@@ -96,6 +100,18 @@ func New(opt Options) *Server {
 	}
 	s := &Server{opt: opt, cfg: opt.Config, rpcAllow: map[string]bool{}, deny: map[string]bool{},
 		http: &http.Client{Timeout: 30 * time.Second}, media: newMediaClient(opt.AllowPrivateMedia)}
+	keys, hosts := GatewayKeysFromEnv(), DefaultGatewayHosts()
+	if opt.GatewayKeys != nil {
+		keys = *opt.GatewayKeys
+	}
+	if opt.GatewayHosts != nil {
+		hosts = *opt.GatewayHosts
+	}
+	var cache gwCache
+	if opt.Redis != nil {
+		cache = redisGWCache{rdb: opt.Redis}
+	}
+	s.gw = newGateway(keys, hosts, alchemySlugs(opt.Config), cache)
 	for _, m := range opt.Config.API.RPCAllowedMethods {
 		s.rpcAllow[m] = true
 	}
@@ -143,6 +159,8 @@ func (s *Server) Handler() http.Handler {
 			r.Get("/me/addresses", s.handleListAddresses)
 			r.With(s.idempotencyNoBody).Put("/me/addresses", s.handlePutAddresses)
 			r.Post("/rpc/{chain}", s.handleRPC)
+			r.Get("/gw/*", s.handleGateway)
+			r.Post("/gw/*", s.handleGateway)
 			r.Get("/me/portfolio", s.handlePortfolio)
 			r.Get("/me/portfolio/chart", s.handleChart)
 			r.Get("/me/history", s.handleHistory)

@@ -140,6 +140,8 @@ type Tier struct {
 	BackfillsPerDay   int `yaml:"backfills_per_day"`
 	RequestsPerMinute int `yaml:"requests_per_minute"`
 	RPCPerMinute      int `yaml:"rpc_per_minute"`
+	// GatewayPerMinute bounds third-party gateway calls (/v1/gw: swap quotes, market data, explorer history); 0 means 600.
+	GatewayPerMinute int `yaml:"gateway_per_minute"`
 }
 
 // API is api.yaml.
