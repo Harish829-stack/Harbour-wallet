@@ -252,9 +252,9 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
     bg({ type: 'getTrending', categoryId: mode.clientSort ? 'trending' : mode.id, networkCoinId: net?.coinId }).then((r) => { if (!cancel) setData(r?.ok ? (r.list ?? []) : []); }).catch(() => { if (!cancel) setData([]); });
     return () => { cancel = true; };
   }, [net, mode]);
-  // Perps / predictions entry points follow the signed remote-config flags
-  const [flags, setFlags] = useState<Record<string, boolean>>({});
-  useEffect(() => { bg({ type: 'getRemoteConfig' }).then((r) => { if (r?.ok) setFlags({ ...(r.flags ?? {}), perps: !!r.flags?.perps && featureEnabled('perps'), predictions: !!r.flags?.predictions && featureEnabled('predictions') }); }).catch(() => {}); }, []);
+  // Perps / predictions entry points: on by default (build flag); a signed remote-config flag set to false switches them off
+  const [flags, setFlags] = useState<Record<string, boolean>>({ perps: featureEnabled('perps'), predictions: featureEnabled('predictions') });
+  useEffect(() => { bg({ type: 'getRemoteConfig' }).then((r) => { if (r?.ok) setFlags({ ...(r.flags ?? {}), perps: featureEnabled('perps') && r.flags?.perps !== false, predictions: featureEnabled('predictions') && r.flags?.predictions !== false }); }).catch(() => {}); }, []);
   // Networks ordered by DeFi TVL (DefiLlama) when available, so the busiest networks come first in the filter
   const [tvl, setTvl] = useState<Record<string, number>>({});
   useEffect(() => { bg({ type: 'getTrendingNetworks' }).then((r) => { if (r?.ok) setTvl(Object.fromEntries((r.list ?? []).map((n: any) => [n.chainId, n.tvl]))); }).catch(() => {}); }, []);

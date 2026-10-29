@@ -7,6 +7,7 @@ import { signedRequest, broadcastTx, setRawFetch, HarbourApiError } from './clie
 import { keccak256 } from 'viem';
 
 const PREFIX = `${HB_API_URL}/v1/rpc/`;
+const GW_PREFIX = `${HB_API_URL}/v1/gw/`;
 let onBroadcast: ((chain: string, hash: string) => void) | null = null;
 /** Called after the API accepted a broadcast (the service worker refreshes its realtime subscriptions). */
 export const setBroadcastListener = (f: (chain: string, hash: string) => void): void => { onBroadcast = f; };
@@ -36,17 +37,32 @@ export async function harbourRpc(chain: string, body: string, signal?: AbortSign
     const res = await signedRequest('POST', `/v1/rpc/${chain}`, body, { 'X-HB-Session': sessionFor(chain) }, signal);
     if (res.ok || res.status === 429) return res; // 429 already carries a JSON-RPC error body
     const b = await res.json().catch(() => ({}));
-    return rpcReply(parsed?.id, { error: { code: -32000, message: b?.error?.message ?? 'Network busy, please try again.' } });
+    return rpcReply(parsed?.id, { error: { code: -32000, message: b?.error?.message ?? 'Network busy, please try again.', data: { harbour: 'upstream' } } });
   } catch (e: any) {
     if (signal?.aborted) throw e;
-    return rpcReply(parsed?.id, { error: { code: -32000, message: e instanceof HarbourApiError ? e.message : 'Network busy, please try again.' } });
+    return rpcReply(parsed?.id, { error: { code: -32000, message: e instanceof HarbourApiError ? e.message : 'Network busy, please try again.', data: { harbour: 'upstream' } } });
   }
 }
 
-/** Wraps fetch so requests to the Harbour RPC proxy are signed. Everything else passes through untouched. */
+/** A call to the backend's third-party gateway (swap quotes, market data, explorer history, ...): signed with the device key.
+ *  The API answers with its own friendly error body when the gateway or an upstream is down. */
+export async function harbourGateway(url: string, init: RequestInit | undefined, base: typeof fetch): Promise<Response> {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  const body = init?.body == null ? undefined : typeof init.body === 'string' ? init.body : null;
+  if (body === null || (method !== 'GET' && method !== 'POST')) return base(url, init); // unsupported shape: let it fail visibly
+  const accept = new Headers(init?.headers).get('accept');
+  try { return await signedRequest(method, url.slice(HB_API_URL.length), body, accept ? { accept } : {}, init?.signal ?? undefined); }
+  catch (e: any) {
+    if (init?.signal?.aborted) throw e;
+    return new Response(JSON.stringify({ error: { code: 'unavailable', message: e instanceof HarbourApiError ? e.message : 'This service is temporarily unavailable. Please try again.', retryable: true } }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+  }
+}
+
+/** Wraps fetch so requests to the Harbour RPC proxy and gateway are signed. Everything else passes through untouched. */
 export function makeHarbourFetch(base: typeof fetch): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith(GW_PREFIX)) return harbourGateway(url, init ?? (input instanceof Request ? { method: input.method, headers: input.headers } : undefined), base);
     if (!url.startsWith(PREFIX)) return base(input, init);
     const chain = url.slice(PREFIX.length).split(/[/?#]/)[0];
     if (!evmIdOfBackend(chain) || (init?.method ?? 'GET').toUpperCase() !== 'POST' || typeof init?.body !== 'string') return base(input, init);

@@ -85,9 +85,14 @@ export async function parseResponse(res: Response): Promise<any> {
 /** Highest proof-of-work difficulty the client accepts (the server uses 20-24 bits). */
 export const MAX_POW_BITS = 26;
 let pending: Promise<Identity> | null = null;
+/** The popup, side panel and service worker all call the API: one at a time creates and registers the key (Web Locks), the others reuse it. */
+const withDeviceLock = <T,>(fn: () => Promise<T>): Promise<T> => {
+  const locks = (globalThis as any).navigator?.locks;
+  return locks?.request ? locks.request('harbour-device-identity', fn) : fn();
+};
 /** The registered device, registering (proof-of-work) on first use. Concurrent callers share one registration. */
 export function deviceIdentity(base = HB_API_URL, f: typeof fetch = fetch): Promise<Identity> {
-  pending ??= (async () => {
+  pending ??= withDeviceLock(async () => {
     let k = await load();
     if (!k) { k = await newKey(); await save(k); }
     const sign = signer(k);
@@ -102,7 +107,7 @@ export function deviceIdentity(base = HB_API_URL, f: typeof fetch = fetch): Prom
       k = { ...k, deviceId: String(reg.device_id) }; await save(k);
     }
     return { deviceId: k.deviceId!, publicKeyB64: k.pub, sign };
-  })();
+  });
   pending.catch(() => { pending = null; }); // retry on the next call after a failure
   return pending;
 }

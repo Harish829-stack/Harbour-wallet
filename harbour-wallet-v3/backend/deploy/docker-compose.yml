@@ -106,6 +106,20 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       POW_DIFFICULTY: ${POW_DIFFICULTY:-}
       TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-0}
+      # Third-party gateway (/v1/gw): the keys live only here, never in the extension. Empty = that provider's routes answer "unavailable".
+      ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}
+      LIFI_API_KEY: ${LIFI_API_KEY:-}
+      JUP_API_KEY: ${JUP_API_KEY:-}
+      RELAY_API_KEY: ${RELAY_API_KEY:-}
+      PIMLICO_API_KEY: ${PIMLICO_API_KEY:-}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      COINGECKO_PLAN: ${COINGECKO_PLAN:-demo}
+      HELIUS_API_KEY: ${HELIUS_API_KEY:-}
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+      TRONGRID_API_KEY: ${TRONGRID_API_KEY:-}
+      TONCENTER_API_KEY: ${TONCENTER_API_KEY:-}
+      CONFIG_JSON: ${CONFIG_JSON:-}
+      CONFIG_SIG: ${CONFIG_SIG:-}
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
       ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}        # transaction simulator (risk: in providers.yaml)
       REALTIME_PUBLIC_URL: ${REALTIME_PUBLIC_URL:-ws://localhost:8000/connection/websocket}

@@ -1,10 +1,10 @@
 // EVM networks a dApp can use: Harbour's chain registry (Trust Wallet's 86 chains + Sepolia) plus the user's custom networks.
 import { ENABLED_CHAINS, type ChainInfo } from '../../core/chains/index';
-import { getRpcUrls } from '../../core/chains/rpcUrls';
+import { getRpcUrls, getPublicRpcUrls } from '../../core/chains/rpcUrls';
 import { customNetworks, rpcOverride } from '../../core/networkRegistry';
 
-export interface EvmNetwork { chainId: number; id: string; name: string; symbol: string; decimals: number; rpcs: string[]; explorer?: string; txPath?: string; accountPath?: string; testnet: boolean; custom: boolean }
-const fromChain = (c: ChainInfo): EvmNetwork => ({ chainId: c.evmChainId!, id: c.id, name: c.name, symbol: c.symbol, decimals: c.decimals, rpcs: getRpcUrls(c), explorer: c.explorer, txPath: c.txPath, accountPath: c.accountPath, testnet: !!c.testnet, custom: false });
+export interface EvmNetwork { chainId: number; id: string; name: string; symbol: string; decimals: number; rpcs: string[]; /** public endpoints a dApp's read-only calls may fall back to when the Harbour API cannot answer */ fallbackRpcs?: string[]; explorer?: string; txPath?: string; accountPath?: string; testnet: boolean; custom: boolean }
+const fromChain = (c: ChainInfo): EvmNetwork => ({ chainId: c.evmChainId!, id: c.id, name: c.name, symbol: c.symbol, decimals: c.decimals, rpcs: getRpcUrls(c), fallbackRpcs: getPublicRpcUrls(c).filter((u) => /^https:\/\//.test(u)).slice(0, 3), explorer: c.explorer, txPath: c.txPath, accountPath: c.accountPath, testnet: !!c.testnet, custom: false });
 export function evmNetworks(): EvmNetwork[] {
   const builtin = ENABLED_CHAINS.filter((c) => c.kind === 'evm' && c.evmChainId).map(fromChain);
   const seen = new Set(builtin.map((n) => n.chainId));

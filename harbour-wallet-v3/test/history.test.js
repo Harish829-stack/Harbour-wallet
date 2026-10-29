@@ -34,8 +34,8 @@ test('fetchChart: unsupported asset, failure, 429, All falls back to 1Y, caching
   const good = { prices: [[1, 1], [2, 2]] }; const calls = [];
   const f = async (url) => { calls.push(url); return url.includes('days=max') ? { ok: false, status: 400, json: async () => ({}) } : { ok: true, status: 200, json: async () => good }; };
   const r = await M.fetchChart('bitcoin', 'All', f, 1);
-  assert.equal(r.ok, true); assert.equal(calls.length, 2); assert.match(calls[1], /days=365/);
-  await M.fetchChart('bitcoin', 'All', f, 2); assert.equal(calls.length, 2); // served from cache
+  assert.equal(r.ok, true); assert.equal(calls.length, 3); assert.match(calls[0], /\/v2\/market\/charts/); assert.match(calls[2], /days=365/); // gateway, direct, direct (1Y)
+  await M.fetchChart('bitcoin', 'All', f, 2); assert.equal(calls.length, 3); // served from cache
   const rate = await M.fetchChart('solana', '1W', async () => ({ ok: false, status: 429, json: async () => ({}) }), 3);
   assert.equal(rate.ok, false); assert.match(rate.error, /rate-limited/);
   const net = await M.fetchChart('polygon', '1M', async () => { throw new Error('offline'); }, 4);

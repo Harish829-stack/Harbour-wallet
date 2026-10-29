@@ -695,7 +695,7 @@ test('eth_sign is refused unless enabled, and then only for a 32-byte hash', asy
 });
 
 // ------------------------------------------------------------------ Harbour v3 build policy (core/harbour/policy.ts)
-test('v3 build policy: only Harbour-served EVM networks sign; unserved chains and site-added networks are refused; Solana and multi-chain connect through the approval window', async () => {
+test('v3 build policy: only Harbour-served or user-approved EVM networks sign; unserved chains are refused; a site add-chain request goes to approval; Solana and multi-chain connect through the approval window', async () => {
   const NETS3 = [...NETS, { chainId: 84532, id: 'base-sepolia', name: 'Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['http://rpcb'], testnet: true, custom: false },
     { chainId: 99999, id: 'unserved', name: 'Unserved', symbol: 'UNS', decimals: 18, rpcs: ['http://rpcu'], testnet: false, custom: false }];
   const ctx = setup({ policy: undefined, networks: { list: () => NETS3, get: (id) => NETS3.find((n) => n.chainId === id) } }); const s = sender();
@@ -707,7 +707,9 @@ test('v3 build policy: only Harbour-served EVM networks sign; unserved chains an
   assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x1869f' }]))).outcome.error.code, 4902);
   const typed = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'a', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 99999 }, message: { a: 1 } };
   assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(typed)]))).outcome.error.code, 4902);
-  assert.equal((await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x2710', chainName: 'X', rpcUrls: ['https://x.example'], nativeCurrency: { name: 'E', symbol: 'ETH', decimals: 18 } }]))).outcome.error.code, 4902);
+  // a site's add-chain request is no longer refused outright: it waits for the user's approval, and nothing is signed or added before then
+  const add = await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x2710', chainName: 'X', rpcUrls: ['https://x.example'], nativeCurrency: { name: 'E', symbol: 'ETH', decimals: 18 } }]));
+  assert.equal(add.outcome?.error, undefined); assert.ok(add.pending || (await pendingOf(ctx)).id);
   assert.equal(ctx.log.signed.length, 0);
 });
 test('a dApp transaction is never sent without the fee the user saw', async () => {

@@ -87,10 +87,10 @@ export class ProviderService {
     this.now = d.now ?? Date.now; this.policy = d.policy ?? BUILD_PROVIDER_POLICY;
     this.readLimiter = new RateLimiter({ capacity: 120, refillPerSec: 60 }, this.now);
     this.approvalLimiter = new RateLimiter({ capacity: 6, refillPerSec: 0.1 }, this.now);
-    // Proxied chain reads spend the wallet's own Harbour API quota (signed with the device key), so sites get a small share of it:
-    // 30/min per site and 60/min for all sites together, leaving the rest for the wallet's balances and sends.
-    this.rpcLimiter = new RateLimiter({ capacity: 20, refillPerSec: 0.5 }, this.now);
-    this.rpcAllLimiter = new RateLimiter({ capacity: 40, refillPerSec: 1 }, this.now);
+    // Proxied chain reads spend the wallet's own Harbour API quota (signed with the device key). A dApp's first page load makes
+    // dozens of reads, so a site gets a burst of 300 then 20/s (identical reads are cached and shared by background/provider/rpc.ts).
+    this.rpcLimiter = new RateLimiter({ capacity: 300, refillPerSec: 20 }, this.now);
+    this.rpcAllLimiter = new RateLimiter({ capacity: 1000, refillPerSec: 60 }, this.now);
   }
 
   // ------------------------------------------------------------------ state for a freshly injected page

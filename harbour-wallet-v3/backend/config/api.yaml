@@ -29,6 +29,13 @@ api:
     - eth_getBlockByNumber
     - eth_getBlockByHash
     - eth_getLogs
+    - eth_getBlockReceipts
+    - eth_createAccessList
+    - eth_getBlockTransactionCountByNumber
+    - eth_getBlockTransactionCountByHash
+    - eth_getTransactionByBlockNumberAndIndex
+    - eth_getTransactionByBlockHashAndIndex
+    - eth_getProof
   # Tracked live but never backfilled (exchange hot wallets, popular contracts).
   backfill_deny_list:
     - "0x28c6c06298d514db089934071355e5743bf21d60"   # Binance 14

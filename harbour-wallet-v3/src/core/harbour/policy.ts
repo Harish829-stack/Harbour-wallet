@@ -3,16 +3,18 @@
 // background worker, so a network or feature is enabled in ONE place: add the chain to chains.yaml and run
 // backend/scripts/gen_chains.py, or flip a feature flag below once it is reviewed.
 import { HARBOUR_CHAINS, CLIENT_CHAIN_IDS } from './config';
+import { customNetwork } from '../networkRegistry';
 
 /** dApp provider namespaces injected into pages and served by the worker: EVM, Solana and the multi-chain family (Cosmos, Aptos, Sui, TON, Tron, Bitcoin). */
 export const PROVIDER_FAMILIES: Readonly<{ evm: boolean; solana: boolean; multi: boolean }> = { evm: true, solana: true, multi: true };
 
-/** Value-moving features that talk to third parties outside the Harbour backend. Off for the testnet-only build. */
+/** Value-moving features that talk to third parties. Their calls go through the Harbour backend gateway (/v1/gw, kit/endpoints.ts),
+ *  which holds the API keys. A feature can still be switched off at build time here, or at run time by the signed remote config. */
 export type Feature = 'swap' | 'earn' | 'ramps' | 'perps' | 'predictions' | 'walletconnect' | 'siteAddChain';
 export const FEATURES: Readonly<Record<Feature, boolean>> = {
-  swap: false, earn: false, ramps: false, perps: false, predictions: false, walletconnect: false,
-  /** wallet_addEthereumChain from a site for a chain this build does not serve. */
-  siteAddChain: false,
+  swap: true, earn: true, ramps: true, perps: true, predictions: true, walletconnect: true,
+  /** wallet_addEthereumChain from a site for a chain this build does not serve: becomes a user-approved custom network. */
+  siteAddChain: true,
 };
 export const featureEnabled = (f: Feature): boolean => FEATURES[f] === true;
 
@@ -22,10 +24,11 @@ export const DEFAULT_EVM_CHAIN: number = HARBOUR_CHAINS.find((c) => c.evmChainId
 const EVM_IDS = new Set(HARBOUR_CHAINS.map((c) => c.evmChainId));
 const CHAIN_IDS = new Set([...HARBOUR_CHAINS.map((c) => c.id), ...CLIENT_CHAIN_IDS]);
 
-/** True when this build may sign for the EVM chain id. */
+/** True when this build may sign for the EVM chain id: a network the Harbour backend serves, or one the user added themselves
+ *  (including through a site's add-chain request, which always goes through the approval window). */
 export const isSigningEvmChain = (chainId: number | bigint | string | null | undefined): boolean => {
   if (chainId === null || chainId === undefined || chainId === '') return false;
-  try { return EVM_IDS.has(Number(BigInt(chainId as any))); } catch { return false; }
+  try { const n = Number(BigInt(chainId as any)); return EVM_IDS.has(n) || !!customNetwork(n); } catch { return false; }
 };
 /** True when this build may sign for the registry chain (`sepolia`, `base-sepolia`, …) or its EVM chain id. */
 export const isSigningChain = (chain: { id?: string; kind?: string; evmChainId?: number } | null | undefined): boolean =>

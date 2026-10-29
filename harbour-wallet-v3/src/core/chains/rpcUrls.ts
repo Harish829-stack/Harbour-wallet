@@ -6,6 +6,12 @@ import { harbourRpcUrl } from '../harbour/config';
 export function getRpcUrls(chain: ChainInfo): string[] {
   const id = chain.evmChainId;
   const hb = id != null ? harbourRpcUrl(id) : undefined; if (hb) return [hb]; // Harbour networks: the API's RPC proxy only
+  return getPublicRpcUrls(chain);
+}
+/** The registry's public endpoints (override, env, gateway, public list). Wallet reads never use them for Harbour networks;
+ *  a dApp's read-only calls fall back to them only when the Harbour API cannot answer (background/provider/rpc.ts). */
+export function getPublicRpcUrls(chain: ChainInfo): string[] {
+  const id = chain.evmChainId;
   const out: string[] = [];
   if (id != null) {
     const o = rpcOverride(id); if (o) out.push(o);
