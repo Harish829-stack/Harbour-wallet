@@ -28,9 +28,10 @@ test('every configured EVM chain and Solana has at least three independent provi
 });
 
 test('a 429 or failure moves to the next endpoint of the same chain', async () => {
+  // EVM networks go through the Harbour API proxy (one URL; the backend fails over between providers itself), so use Solana's list.
   const calls = [];
   const f = makeFailoverFetch(async (u) => { calls.push(String(u)); return calls.length === 1 ? new Response('{}', { status: 429 }) : ok(); });
-  const res = await f(cfg.evm['1'][0], { method: 'POST', body });
+  const res = await f(cfg.solana[0], { method: 'POST', body });
   assert.equal(res.status, 200);
   assert.ok(calls.length >= 2 && calls[0] !== calls[1], calls.join(' | '));
 });

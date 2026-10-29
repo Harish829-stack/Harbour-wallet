@@ -8,8 +8,8 @@ api:
   idempotency_ttl: 24h
   default_tier: default
   tiers:
-    default:  {max_addresses: 50,  backfills_per_day: 20,  requests_per_minute: 120, rpc_per_minute: 120}
-    trusted:  {max_addresses: 200, backfills_per_day: 100, requests_per_minute: 600, rpc_per_minute: 600}
+    default:  {max_addresses: 400, backfills_per_day: 300,  requests_per_minute: 120, rpc_per_minute: 120}
+    trusted:  {max_addresses: 800, backfills_per_day: 600, requests_per_minute: 600, rpc_per_minute: 600}
   # Read-only methods the extension may call through POST /v1/rpc/{chain}.
   rpc_allowed_methods:
     - eth_chainId

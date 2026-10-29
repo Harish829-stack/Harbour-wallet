@@ -111,12 +111,12 @@ test('report state: user report, suspected spam default-hidden, unhide override,
 });
 test('loadCollections: partial failures are reported per chain; results sorted non-suspicious first', async () => {
   const f = async (u) => {
-    if (String(u).includes('base.blockscout')) return json({ items: [{ amount: '1', token: { address_hash: C1, name: 'Claim free airdrop', symbol: 'X', type: 'ERC-721' }, token_instances: [] }] });
-    if (String(u).includes('optimism.blockscout')) return json({ items: [{ amount: '3', token: { address_hash: C2, name: 'Good', symbol: 'G', type: 'ERC-721' }, token_instances: [] }] });
+    if (String(u).includes('explorer.kava.io')) return json({ items: [{ amount: '1', token: { address_hash: C1, name: 'Claim free airdrop', symbol: 'X', type: 'ERC-721' }, token_instances: [] }] });
+    if (String(u).includes('neon.blockscout')) return json({ items: [{ amount: '3', token: { address_hash: C2, name: 'Good', symbol: 'G', type: 'ERC-721' }, token_instances: [] }] });
     return json({}, 503);
   };
-  const r = await M.loadCollections({ f, solUrls: () => [] }, () => OWNER, ['base', 'optimism', 'arbitrum']);
-  assert.deepEqual(r.collections.map((c) => c.name), ['Good', 'Claim free airdrop']); assert.deepEqual(r.errors.map((e) => e.chainId), ['arbitrum']);
+  const r = await M.loadCollections({ f, solUrls: () => [] }, () => OWNER, ['kavaevm', 'neon', 'megaeth']);
+  assert.deepEqual(r.collections.map((c) => c.name), ['Good', 'Claim free airdrop']); assert.deepEqual(r.errors.map((e) => e.chainId), ['megaeth']);
 });
 
 // ---------------------------------------------------------------- transfers

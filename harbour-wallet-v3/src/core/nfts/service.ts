@@ -5,20 +5,20 @@ import { BLOCKSCOUT_HOSTS, fetchBlockscoutCollections, fetchBlockscoutOwned } fr
 import { fetchDas, fetchMagicEden } from './solana';
 import { alchemyAvailable, fetchAlchemyCollections } from './alchemy';
 import { fillMissingMetadata } from './onchain';
-import { isHarbourChain } from '../harbour/config';
+import { isIndexedChain } from '../harbour/config';
 import { fetchHarbourNfts } from '../harbour/data';
 import { ENABLED_CHAIN_IDS } from '../chains/index';
 
 export interface NftEnv { f: Fetcher; solUrls: () => string[]; /** EVM RPCs for the on-chain metadata fallback (optional). */ rpcUrls?: (chainId: string) => string[] }
 /** Mainnet chains queried by default (testnets only when asked). */
 // Harbour v3: only the enabled (backend-served) networks.
-export const NFT_CHAINS: string[] = [...Object.keys(BLOCKSCOUT_HOSTS).filter((c) => c !== 'sepolia'), 'solana'].filter((c) => ENABLED_CHAIN_IDS.includes(c)).concat(ENABLED_CHAIN_IDS.filter(isHarbourChain));
+export const NFT_CHAINS: string[] = [...Object.keys(BLOCKSCOUT_HOSTS), 'solana'].filter((c) => ENABLED_CHAIN_IDS.includes(c) && !isIndexedChain(c)).concat(ENABLED_CHAIN_IDS.filter((c) => isIndexedChain(c) && !c.includes('sepolia')));
 export interface CollectionsResult { collections: NftCollection[]; errors: Array<{ chainId: string; error: string }>; sources: Record<string, string> }
 
 export async function loadCollections(env: NftEnv, addressOf: (chainId: string) => string, chainIds: string[] = NFT_CHAINS, limit = 4): Promise<CollectionsResult> {
   const res: CollectionsResult = { collections: [], errors: [], sources: {} };
   // Harbour networks: one API call covers all of them (indexed holdings, images through Harbour's media proxy).
-  const hb = chainIds.filter(isHarbourChain);
+  const hb = chainIds.filter(isIndexedChain);
   if (hb.length) {
     const addr = addressOf(hb[0]);
     if (addr) {
@@ -26,7 +26,7 @@ export async function loadCollections(env: NftEnv, addressOf: (chainId: string) 
       catch (e: any) { for (const c of hb) res.errors.push({ chainId: c, error: String(e?.message ?? 'failed').slice(0, 160) }); }
     }
   }
-  const wanted = chainIds.filter((c) => !isHarbourChain(c) && (c === 'solana' || BLOCKSCOUT_HOSTS[c]));
+  const wanted = chainIds.filter((c) => !isIndexedChain(c) && (c === 'solana' || BLOCKSCOUT_HOSTS[c]));
   let i = 0;
   const worker = async () => {
     while (i < wanted.length) {
@@ -55,7 +55,7 @@ export async function loadCollections(env: NftEnv, addressOf: (chainId: string) 
 
 /** Full item list of one collection (Blockscout pages through /nft; Solana already carries every item). */
 export async function loadCollectionItems(env: NftEnv, c: Pick<NftCollection, 'chainId' | 'contract' | 'items'>, owner: string): Promise<NftItem[]> {
-  if (c.chainId === 'solana' || isHarbourChain(c.chainId)) return c.items; // already complete
+  if (c.chainId === 'solana' || isIndexedChain(c.chainId)) return c.items; // already complete
   const all = await fetchBlockscoutOwned(c.chainId, owner, c.contract, env.f);
   if (!all.length) return c.items;
   // keep metadata already resolved on-chain for the list, then resolve the rest

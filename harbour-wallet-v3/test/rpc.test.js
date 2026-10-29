@@ -14,11 +14,9 @@ test('Harbour networks resolve to the Harbour API RPC proxy only', () => {
   assert.deepEqual(rpcUrlList(84532), ['http://localhost:8080/v1/rpc/base-sepolia']);
 });
 
-test('known EVM chains resolve to https RPC URLs', () => {
-  for (const id of [1, 56, 137, 42161, 8453]) {
-    const u = rpcUrl(id);
-    assert.ok(typeof u === 'string' && u.startsWith('https://'), `chain ${id} -> ${u}`);
-  }
+test('every EVM mainnet the backend serves resolves to its Harbour RPC proxy path', () => {
+  const names = { 1: 'ethereum', 56: 'smartchain', 137: 'polygon', 42161: 'arbitrum', 8453: 'base', 10: 'optimism', 43114: 'avalanchec', 25: 'cronos' };
+  for (const [id, name] of Object.entries(names)) assert.deepEqual(rpcUrlList(Number(id)), [`http://localhost:8080/v1/rpc/${name}`], `chain ${id}`);
 });
 
 test('Sepolia is the only testnet endpoint wired', () => {

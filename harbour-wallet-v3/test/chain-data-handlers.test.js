@@ -19,9 +19,11 @@ const routeFetch = () => { globalThis.fetch = async (url, init = {}) => { const 
   return j({}, 404); }; };
 test('chainDataCapabilities reports honest per-chain support', () => {
   const r = M.handlers.chainDataCapabilities({}, {});
-  // Harbour v3 offers only the backend-served networks.
-  assert.equal(r.ok, true); assert.deepEqual(Object.keys(r.chains).sort(), ['base-sepolia', 'sepolia']);
-  for (const id of ['sepolia', 'base-sepolia']) assert.deepEqual([r.chains[id].balance, r.chains[id].history, r.chains[id].tokens, r.chains[id].gas], [true, true, true, true]);
+  // Harbour v3 offers the backend-served networks: the indexed ones (history, tokens) and the RPC-only ones.
+  const ids = Object.keys(r.chains);
+  assert.equal(r.ok, true); assert.ok(ids.length >= 50 && ids.includes('ethereum') && ids.includes('classic') && ids.includes('sepolia'), ids.length);
+  for (const id of ['ethereum', 'polygon', 'sepolia', 'base-sepolia']) assert.deepEqual([r.chains[id].balance, r.chains[id].history, r.chains[id].tokens, r.chains[id].gas], [true, true, true, true], id);
+  assert.equal(r.chains.classic.balance, true); assert.equal(r.chains.classic.gas, true);
 });
 test('non-EVM custom token: probe -> add (chain-verified decimals, name from index) -> balances -> remove', async () => {
   routeFetch(); try {

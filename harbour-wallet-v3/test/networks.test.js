@@ -32,9 +32,10 @@ test('RPC probe requires a JSON-RPC answer with the same chain id', async () => 
 });
 test('registry feeds rpcUrl, token networks and native symbol; overrides win', () => {
   N.setNetworkState({ custom: [{ chainId: 31337, name: 'Local Dev', rpcUrl: 'https://rpc.example.org', symbol: 'LDV', addedAt: 1 }], rpcOverrides: { '1': 'https://my.node' } });
-  assert.equal(N.rpcUrl(31337), 'https://rpc.example.org'); assert.equal(N.rpcUrl(1), 'https://my.node'); assert.match(N.rpcUrl(56), /binance/);
+  assert.equal(N.rpcUrl(31337), 'https://rpc.example.org'); assert.match(N.rpcUrl(56), /\/v1\/rpc\/smartchain$/);
+  assert.match(N.rpcUrl(1), /\/v1\/rpc\/ethereum$/, 'Harbour networks ignore RPC overrides: the API proxy is the only endpoint');
   assert.equal(N.networkByChainId(31337).name, 'Local Dev'); assert.ok(N.tokenNetworks().some((n) => n.chainId === 31337)); assert.equal(N.nativeSymbol(31337), 'LDV'); assert.equal(N.nativeSymbol(137), 'POL');
-  N.setNetworkState(null); assert.equal(N.rpcUrl(1) !== 'https://my.node', true); assert.equal(N.networkByChainId(31337), undefined);
+  N.setNetworkState(null); assert.equal(N.rpcUrl(31337), undefined); assert.equal(N.networkByChainId(31337), undefined);
 });
 test('all built-in EVM chains are reserved, and legacy duplicate custom rows become RPC overrides', () => {
   assert.equal(N.isBuiltinChain(61), true, 'Ethereum Classic is in the full registry');

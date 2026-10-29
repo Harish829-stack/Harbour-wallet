@@ -7,7 +7,7 @@
 import browser from 'webextension-polyfill';
 import { local } from '../core/storage';
 import { chainById, explorerTxUrl, ENABLED_CHAIN_IDS } from '../core/chains/index';
-import { isHarbourChain } from '../core/harbour/config';
+import { isIndexedChain } from '../core/harbour/config';
 import { fetchActivity } from '../core/activity/index';
 import { syncWebPush } from './harbour';
 import { fetchHistory, historySupportedFor } from '../core/txHistory';
@@ -39,7 +39,7 @@ export async function watchedAddresses(getState: () => Promise<any>): Promise<Ar
   const accounts: any[] = Array.isArray(w.accounts) && w.accounts.length ? w.accounts : [{ addresses: w.addresses ?? {} }];
   const a = accounts[typeof w.activeAccount === 'number' && accounts[w.activeAccount] ? w.activeAccount : 0]?.addresses ?? {};
   return WATCH_CHAINS.map((chainId) => { const c = chainById(chainId); const address = c ? (a[c.ct] ?? (c.kind === 'evm' ? a.ethereum : '')) : ''; return { chainId, address }; })
-    .filter((x) => x.address && (isHarbourChain(x.chainId) || historySupportedFor(chainById(x.chainId))));
+    .filter((x) => x.address && (isIndexedChain(x.chainId) || historySupportedFor(chainById(x.chainId))));
 }
 
 export async function showNotification(title: string, message: string, url?: string): Promise<void> {
@@ -57,7 +57,7 @@ export async function pollActivity(getState: () => Promise<any>, f: typeof fetch
   let shown = 0;
   for (const { chainId, address } of await watchedAddresses(getState)) {
     const key = `${chainId}:${address}`;
-    const r = await (isHarbourChain(chainId) ? fetchActivity(chainId, address) : fetchHistory(chainId, address, { solanaRpc: solanaRpcUrl() }, f)).catch(() => null);
+    const r = await (isIndexedChain(chainId) ? fetchActivity(chainId, address) : fetchHistory(chainId, address, { solanaRpc: solanaRpcUrl() }, f)).catch(() => null);
     if (!r || !r.ok) continue;
     const { fresh, seen } = newIncoming(r.items.slice(0, 25), seenAll[key]); seenAll[key] = seen;
     for (const it of fresh.slice(0, 3 - shown)) {

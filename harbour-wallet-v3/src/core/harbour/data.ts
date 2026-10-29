@@ -5,13 +5,13 @@ import { formatUnits } from 'viem';
 import type { HistoryItem } from '../txHistory';
 import type { NftCollection, NftItem } from '../nfts/types';
 import type { CustomToken } from '../customTokens';
-import { HARBOUR_CHAINS, backendChainOf, chainIdOfBackend, evmIdOfBackend } from './config';
+import { INDEXED_CHAINS, backendChainOf, chainIdOfBackend, evmIdOfBackend } from './config';
 import { getPortfolio, getHistory, getNfts, putAddresses, listAddresses, mediaUrl, HarbourApiError, type AddressRef, type Portfolio, type HistoryRow, type NftView } from './client';
 
 const lc = (s: string) => s.toLowerCase();
-/** The Harbour refs for one EVM address: the same address on every Harbour network. */
+/** The Harbour refs for one EVM address: the same address on every network the backend indexes. */
 export const refsFor = (evmAddress: string | undefined): AddressRef[] =>
-  evmAddress && /^0x[0-9a-fA-F]{40}$/.test(evmAddress) ? HARBOUR_CHAINS.map((c) => ({ chain: c.backend, address: lc(evmAddress) })) : [];
+  evmAddress && /^0x[0-9a-fA-F]{40}$/.test(evmAddress) ? INDEXED_CHAINS.map((c) => ({ chain: c.backend, address: lc(evmAddress) })) : [];
 
 // ---------- tracking ----------
 const tracked = new Set<string>();

@@ -20,15 +20,15 @@ export const chainByEvmId = (n?: number | null): ChainInfo | undefined => (n == 
 export const evmChains = (): ChainInfo[] => [...ALL_CHAINS, ...TESTNET_CHAINS].filter((c) => c.kind === 'evm' && c.evmChainId);
 export const chainLogo = (id: string): string => `/chains/${id}.png`;
 
-/** Networks this build offers (Harbour v3: the networks the Harbour backend serves). Lookups (chainById etc.) still see the
+/** Networks this build offers (Harbour v3: every network the Harbour backend serves, see harbour/chainList.gen.ts). Lookups (chainById etc.) still see the
  *  whole registry; lists the user can pick from (home, Manage crypto, dApp networks, NFTs) are limited to these. */
 import { HARBOUR_CHAIN_IDS } from '../harbour/config';
 export const ENABLED_CHAIN_IDS: readonly string[] = HARBOUR_CHAIN_IDS;
 export const isEnabledChain = (id: string): boolean => ENABLED_CHAIN_IDS.includes(id);
 export const ENABLED_CHAINS: ChainInfo[] = [...ALL_CHAINS, ...TESTNET_CHAINS].filter((c) => isEnabledChain(c.id));
 
-/** Chains shown on a brand-new wallet's home; everything else is enabled from Manage crypto. */
-export const DEFAULT_HOME_CHAINS: string[] = [...ENABLED_CHAIN_IDS];
+/** Chains shown on a brand-new wallet's home; everything else (other mainnets, testnets) is turned on from Manage crypto. */
+export const DEFAULT_HOME_CHAINS: string[] = ['ethereum', 'base', 'polygon', 'arbitrum', 'optimism', 'smartchain', 'avalanchec'].filter((id) => ENABLED_CHAIN_IDS.includes(id));
 
 /** Explorer URL helpers built from wallet-core's explorer templates (`/tx/{id}`, `/address/{address}`). */
 export function explorerTxUrl(c: ChainInfo | undefined, hash: string): string {

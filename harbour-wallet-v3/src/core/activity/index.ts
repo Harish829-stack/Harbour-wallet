@@ -8,7 +8,7 @@ import { fetchHistory, historySupportedFor, explorerTxFor, type HistoryItem } fr
 import { createActivityEngine, type Store, type ActivityEngine } from './engine';
 import { makeRpc } from './evm';
 import { mergeSources, hashOf } from './merge';
-import { isHarbourChain, isHarbourEvm } from '../harbour/config';
+import { isIndexedChain, isIndexedEvm } from '../harbour/config';
 import { fetchHarbourHistory } from '../harbour/data';
 
 const CUSTOM = /^custom-(\d+)$/;
@@ -36,7 +36,7 @@ export function startActivityEngine(store: Store, onPending?: (has: boolean) => 
     rpcFor: (chainId) => makeRpc(rpcUrlList(chainId)),
     chainIdOf: (id) => evmOf(id)?.chainId, assetIdOf: idOfChain,
     nativeSymbol: (id) => evmOf(id)?.symbol ?? '', explorerTx: explorerUrl,
-    logScan: (chainId) => !isHarbourEvm(chainId),
+    logScan: (chainId) => !isIndexedEvm(chainId),
   });
   return engine;
 }
@@ -47,7 +47,7 @@ export async function fetchActivity(chainOrId: ChainInfo | string, address: stri
   const id = typeof chainOrId === 'string' ? chainOrId : chainOrId.id;
   if (!address) return { ok: false, error: 'No address for this network.' };
   if (!evmOf(id)) return fetchHistory(chainOrId, address, opts, f);   // non-EVM: explorer adapter exactly as before
-  if (isHarbourChain(id)) return harbourActivity(id, address, eng);
+  if (isIndexedChain(id)) return harbourActivity(id, address, eng);
   const chain = typeof chainOrId === 'string' ? chainById(chainOrId) : chainOrId;
   const [ex, own] = await Promise.allSettled([chain && historySupportedFor(chain) ? fetchHistory(chain, address, opts, f) : Promise.resolve(null), eng ? eng.read(id, address) : Promise.reject(new Error('activity engine not started'))]);
   const explorerRows = ex.status === 'fulfilled' && ex.value?.ok ? ex.value.items : []; const explorerOk = ex.status === 'fulfilled' && ex.value?.ok === true;

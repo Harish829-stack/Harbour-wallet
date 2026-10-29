@@ -9,7 +9,7 @@ import { fetchNativePrices } from '../../core/priceService';
 import { probeChainToken, chainTokenBalance, validTokenAddress, TOKEN_CHAINS, type TokenStandard } from '../../core/chains/adapters/tokens';
 import { activeEntry, ensureAccounts } from '../walletState';
 import { cleanText } from '../../core/erc20';
-import { isHarbourChain } from '../../core/harbour/config';
+import { isIndexedChain } from '../../core/harbour/config';
 import { nativeBalance } from '../../core/harbour/data';
 
 export interface ChainToken { id: string; chain: string; chainId: number; address: string; name: string; symbol: string; decimals: number; standard: TokenStandard; manual: boolean; addedAt: number }
@@ -32,7 +32,7 @@ export const handlers: HandlerMap = {
   chainDataBalance: async (msg, ctx) => {
     const chain = chainById(String(msg.chainId ?? '')); if (!chain) return { ok: false, error: 'Unknown network' };
     const address = addressFor(chain, await activeAddresses(ctx, msg.addresses)); if (!address) return { ok: false, error: 'No address for this network' };
-    const r = isHarbourChain(chain.id) ? await nativeBalance(chain.id, address) : await fetchNativeBalance(chain, address);
+    const r = isIndexedChain(chain.id) ? await nativeBalance(chain.id, address) : await fetchNativeBalance(chain, address);
     return { ok: r.ok, chainId: chain.id, symbol: chain.symbol, raw: r.raw, formatted: r.formatted, error: r.error };
   },
   chainDataHistory: async (msg, ctx) => {

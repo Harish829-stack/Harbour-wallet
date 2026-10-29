@@ -695,17 +695,19 @@ test('eth_sign is refused unless enabled, and then only for a 32-byte hash', asy
 });
 
 // ------------------------------------------------------------------ Harbour v3 build policy (core/harbour/policy.ts)
-test('v3 build policy: only Sepolia / Base Sepolia sign; Solana, multi-chain and site-added networks are refused', async () => {
-  const NETS3 = [...NETS, { chainId: 84532, id: 'base-sepolia', name: 'Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['http://rpcb'], testnet: true, custom: false }];
+test('v3 build policy: only Harbour-served EVM networks sign; unserved chains, Solana/multi-chain (until their step) and site-added networks are refused', async () => {
+  const NETS3 = [...NETS, { chainId: 84532, id: 'base-sepolia', name: 'Base Sepolia', symbol: 'ETH', decimals: 18, rpcs: ['http://rpcb'], testnet: true, custom: false },
+    { chainId: 99999, id: 'unserved', name: 'Unserved', symbol: 'UNS', decimals: 18, rpcs: ['http://rpcu'], testnet: false, custom: false }];
   const ctx = setup({ policy: undefined, networks: { list: () => NETS3, get: (id) => NETS3.find((n) => n.chainId === id) } }); const s = sender();
-  assert.equal((await ctx.svc.handle(s, req('eth_chainId'))).outcome.result, '0xaa36a7');               // default chain is Sepolia, not mainnet
+  assert.equal((await ctx.svc.handle(s, req('eth_chainId'))).outcome.result, '0x1');                    // default chain is the first network the backend serves
   await connect(ctx, s);
-  assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome.error.code, 4902);
+  assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome, { result: null });
   assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]))).outcome, { result: null });
-  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x1' }]))).outcome.error.code, 4902);
-  const typed = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'a', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 137 }, message: { a: 1 } };
+  assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1869f' }]))).outcome.error.code, 4902);
+  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x1869f' }]))).outcome.error.code, 4902);
+  const typed = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'a', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 99999 }, message: { a: 1 } };
   assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(typed)]))).outcome.error.code, 4902);
-  assert.equal((await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x2105', chainName: 'X', rpcUrls: ['https://x.example'], nativeCurrency: { name: 'E', symbol: 'ETH', decimals: 18 } }]))).outcome.error.code, 4902);
+  assert.equal((await ctx.svc.handle(s, req('wallet_addEthereumChain', [{ chainId: '0x2710', chainName: 'X', rpcUrls: ['https://x.example'], nativeCurrency: { name: 'E', symbol: 'ETH', decimals: 18 } }]))).outcome.error.code, 4902);
   assert.equal((await ctx.svc.handle(s, req('connect', undefined, 'solana'))).outcome.error.code, 4200);
   assert.equal((await ctx.svc.handle(s, req('connect', { chain: 'cosmoshub-4' }, 'multi'))).outcome.error.code, 4200);
   assert.equal(ctx.log.signed.length, 0);

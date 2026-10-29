@@ -62,7 +62,9 @@ test('mappers: history rows and NFTs in the wallet shapes (spam airdrops dropped
   assert.deepEqual([items[1].kind, items[1].amount, items[1].token.address, items[1].url], ['send', '2.5', '0xusdc', 'https://x/base-sepolia/0xh1']);
   const cols = H.nftCollections([{ chain: 'sepolia', address: '0xa', contract: '0xC0', collection: 'Cats', token_id: '7', amount: '1', name: null, standard: 'erc721', image_url: '/v1/media/' + 'a'.repeat(32), spam: false }]);
   assert.deepEqual([cols[0].id, cols[0].items[0].name, cols[0].image], ['sepolia:0xc0', '#7', 'https://api.test/v1/media/' + 'a'.repeat(32)]);
-  assert.deepEqual(H.refsFor('0xABCDEFabcdefABCDEFabcdefABCDEFabcdefABCD').map((r) => r.chain), ['sepolia', 'base-sepolia']);
+  const tracked = H.refsFor('0xABCDEFabcdefABCDEFabcdefABCDEFabcdefABCD').map((r) => r.chain);       // indexed networks only; RPC-only ones are read live
+  for (const c of ['ethereum', 'base', 'polygon', 'sepolia', 'base-sepolia']) assert.ok(tracked.includes(c), c);
+  assert.ok(!tracked.includes('classic') && !tracked.includes('metis'));
 });
 
 test('a broadcast whose returned hash is not keccak256(raw) is refused', async () => {

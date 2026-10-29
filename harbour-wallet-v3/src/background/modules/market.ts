@@ -1,6 +1,6 @@
 import { local, KEYS } from '../../core/storage';
 import { ENABLED_CHAINS } from '../../core/chains/index';
-import { isHarbourChain } from '../../core/harbour/config';
+import { isIndexedChain } from '../../core/harbour/config';
 import { nativeBalance } from '../../core/harbour/data';
 import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
 import { fetchNativePrices, fetchTrending, fetchHot, fetchTrendingNetworks } from '../../core/priceService';
@@ -31,7 +31,7 @@ export const handlers: HandlerMap = {
         const wanted: string[] = Array.isArray(msg.chainIds) && msg.chainIds.length ? msg.chainIds.map(String) : [...ENABLED_CHAINS, ...custom.map((n) => customChainInfo(n))].map((c) => c.id).filter((id) => !hidden.has(id));
         const chains = wanted.map((id) => resolveSendChain(id, undefined, custom)).filter((c): c is NonNullable<typeof c> => !!c);
         // Harbour networks read the backend's database (indexed, refreshed from chain); others keep the per-family adapters.
-        const hbChains = chains.filter((c) => isHarbourChain(c.id)); const others = chains.filter((c) => !isHarbourChain(c.id));
+        const hbChains = chains.filter((c) => isIndexedChain(c.id)); const others = chains.filter((c) => !isIndexedChain(c.id));
         const results = await fetchNativeBalances(others.map((chain) => ({ chain, address: addressFor(chain, addresses) })));
         await Promise.all(hbChains.map(async (c) => {
           const r = await nativeBalance(c.id, addressFor(c, addresses));
