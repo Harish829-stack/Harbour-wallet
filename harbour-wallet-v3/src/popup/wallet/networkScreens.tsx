@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle } from './ui';
 import { syncNetworks } from './networkStore';
+import { networkOptions } from './data';
 import { NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import type { Ctx } from './screens';
 
@@ -22,14 +23,18 @@ const Warn: React.FC = () => (
     <b style={{ fontWeight: 600 }}>Double check the network info.</b> A malicious network provider can lie about the state of the blockchain and record your network activity. Only add custom networks you trust.
   </div>
 );
-const NetRow: React.FC<{ name: string; sub?: string; onEdit: () => void; testid?: string }> = ({ name, sub, onEdit, testid }) => (
+// Same icon source as Home > Select network (networkOptions: registry chain logo, else symbol logo / initials), so both lists look identical.
+const NetRow: React.FC<{ name: string; chainId: number; symbol?: string; sub?: string; onEdit: () => void; testid?: string }> = ({ name, chainId, symbol, sub, onEdit, testid }) => {
+  const o = networkOptions().find((x) => x.chainId === chainId);
+  return (
   <div className="hb-tap" role="button" tabIndex={0} data-testid={testid} onClick={onEdit} onKeyDown={(e) => { if (e.key === 'Enter') onEdit(); }}
     style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.bgAlt, borderRadius: 14, padding: '12px 14px', marginBottom: 8, cursor: 'pointer' }}>
-    <Coin sym={name.slice(0, 3)} size={36} />
+    <Coin sym={o?.sym ?? symbol ?? name.slice(0, 3)} assetId={o?.id} size={40} color={o?.color} />
     <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>{name}</div>{sub && <div style={{ fontSize: 12, color: T.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>}</div>
     <Ic d={ICON.edit} size={18} />
   </div>
-);
+  );
+};
 
 export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
   const [data, setData] = useState<any>(null);
@@ -50,8 +55,8 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
                   <div style={{ color: T.sub, fontSize: 13, marginTop: 6 }}>Tap “Add custom network” to get started!</div>
                 </div>
               ) : list.map((n: any) => cat === 'custom'
-                ? <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />
-                : <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
+                ? <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} symbol={n.symbol} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />
+                : <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
             </div>;
           })}
         </>}
