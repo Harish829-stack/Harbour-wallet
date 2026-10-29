@@ -71,3 +71,670 @@ chains:
       - {provider: infura,  key: infura-a,  network: base-sepolia}
     sources:
       alchemy: {network: base-sepolia, webhook_network: BASE_SEPOLIA, categories: "external,erc20,erc721,erc1155"}
+# BEGIN GENERATED (scripts/gen_chains.py)
+  classic:
+    family: evm
+    evm_chain_id: 61
+    block_time: 13s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 400}}
+    native: {symbol: "ETC", decimals: 18, price_ids: {coingecko: ethereum-classic}}
+    upstreams:
+      - {provider: public, key: public, url: "https://etc.rivet.link", weight: 1}
+    prices:
+      coingecko: {platform: ethereum-classic, onchain_network: etc}
+  manta:
+    family: evm
+    evm_chain_id: 169
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: public, key: public, url: "https://pacific-rpc.manta.network/http", weight: 1}
+    prices:
+      coingecko: {platform: manta-pacific, onchain_network: manta-pacific}
+  opbnb:
+    family: evm
+    evm_chain_id: 204
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "BNB", decimals: 18, price_ids: {coingecko: binancecoin, alchemy: BNB}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: opbnb-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: opbnb-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: opbnb-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: opbnb-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://opbnb-mainnet-rpc.bnbchain.org", weight: 1}
+    sources:
+      alchemy: {network: opbnb-mainnet, webhook_network: OPBNB_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: opbnb, onchain_network: opbnb}
+      alchemy: {network: opbnb-mainnet}
+  tomochain:
+    family: evm
+    evm_chain_id: 88
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "VIC", decimals: 18, price_ids: {coingecko: viction}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.viction.xyz", weight: 1}
+  polygon:
+    family: evm
+    evm_chain_id: 137
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "POL", decimals: 18, price_ids: {coingecko: polygon-ecosystem-token, alchemy: POL}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: polygon-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: polygon-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: polygon-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: polygon-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://polygon-rpc.com", weight: 1}
+      - {provider: public, key: public, url: "https://polygon.drpc.org", weight: 0.5}
+    sources:
+      alchemy: {network: polygon-mainnet, webhook_network: MATIC_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: polygon-pos, onchain_network: polygon_pos}
+      alchemy: {network: polygon-mainnet}
+  thundertoken:
+    family: evm
+    evm_chain_id: 108
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "TT", decimals: 18, price_ids: {coingecko: thunder-token}}
+    upstreams:
+      - {provider: public, key: public, url: "https://mainnet-rpc.thundercore.com", weight: 1}
+  cfxevm:
+    family: evm
+    evm_chain_id: 1030
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 60}}
+    native: {symbol: "CFX", decimals: 18, price_ids: {coingecko: conflux-token}}
+    upstreams:
+      - {provider: public, key: public, url: "https://evm.confluxrpc.com", weight: 1}
+    prices:
+      coingecko: {platform: conflux, onchain_network: conflux}
+  merlin:
+    family: evm
+    evm_chain_id: 4200
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "BTC", decimals: 18, price_ids: {coingecko: bitcoin}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.merlinchain.io", weight: 1}
+    prices:
+      coingecko: {platform: merlin-chain, onchain_network: merlin}
+  megaeth:
+    family: evm
+    evm_chain_id: 4326
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 60}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: infura, key: infura-a, network: megaeth-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: megaeth-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://mainnet.megaeth.com/rpc", weight: 1}
+  mantle:
+    family: evm
+    evm_chain_id: 5000
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "MNT", decimals: 18, price_ids: {coingecko: mantle, alchemy: MNT}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: mantle-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: mantle-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: mantle-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: mantle-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.mantle.xyz", weight: 1}
+    sources:
+      alchemy: {network: mantle-mainnet, webhook_network: MANTLE_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: mantle, onchain_network: mantle}
+      alchemy: {network: mantle-mainnet}
+  bouncebit:
+    family: evm
+    evm_chain_id: 6001
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "BB", decimals: 18, price_ids: {coingecko: bouncebit}}
+    upstreams:
+      - {provider: public, key: public, url: "https://fullnode-mainnet.bouncebitapi.com", weight: 1}
+  gochain:
+    family: evm
+    evm_chain_id: 60
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "GO", decimals: 18, price_ids: {coingecko: gochain}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.gochain.io", weight: 1}
+  plasma:
+    family: evm
+    evm_chain_id: 9745
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "XPL", decimals: 18, price_ids: {coingecko: plasma}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.plasma.to", weight: 1}
+  monad:
+    family: evm
+    evm_chain_id: 143
+    block_time: 400ms
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "MON", decimals: 18, price_ids: {coingecko: monad, alchemy: MON}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: monad-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: monad-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: monad-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: monad-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.monad.xyz", weight: 1}
+      - {provider: public, key: public, url: "https://rpc1.monad.xyz", weight: 0.5}
+  celo:
+    family: evm
+    evm_chain_id: 42220
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "CELO", decimals: 18, price_ids: {coingecko: celo, alchemy: CELO}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: celo-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: celo-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: celo-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: celo-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://forno.celo.org", weight: 1}
+    sources:
+      alchemy: {network: celo-mainnet, webhook_network: CELO_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: celo, onchain_network: celo}
+      alchemy: {network: celo-mainnet}
+  linea:
+    family: evm
+    evm_chain_id: 59144
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: linea-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: linea-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: linea-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: linea-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.linea.build", weight: 1}
+    sources:
+      alchemy: {network: linea-mainnet, webhook_network: LINEA_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: linea, onchain_network: linea}
+      alchemy: {network: linea-mainnet}
+  blast:
+    family: evm
+    evm_chain_id: 81457
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: blast-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: blast-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: blast-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: blast-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.blast.io", weight: 1}
+    sources:
+      alchemy: {network: blast-mainnet, webhook_network: BLAST_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: blast, onchain_network: blast}
+      alchemy: {network: blast-mainnet}
+  scroll:
+    family: evm
+    evm_chain_id: 534352
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: scroll-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: scroll-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: scroll-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: scroll-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.scroll.io", weight: 1}
+    sources:
+      alchemy: {network: scroll-mainnet, webhook_network: SCROLL_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: scroll, onchain_network: scroll}
+      alchemy: {network: scroll-mainnet}
+  zklinknova:
+    family: evm
+    evm_chain_id: 810180
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.zklink.io", weight: 1}
+  wanchain:
+    family: evm
+    evm_chain_id: 888
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "WAN", decimals: 18, price_ids: {coingecko: wanchain}}
+    upstreams:
+      - {provider: public, key: public, url: "https://gwan-ssl.wandevs.org:56891", weight: 1}
+      - {provider: public, key: public, url: "https://gwan2-ssl.wandevs.org", weight: 0.5}
+  cronos:
+    family: evm
+    evm_chain_id: 25
+    block_time: 6s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "CRO", decimals: 18, price_ids: {coingecko: crypto-com-chain}}
+    upstreams:
+      - {provider: public, key: public, url: "https://evm.cronos.org", weight: 1}
+    prices:
+      coingecko: {platform: cronos, onchain_network: cro}
+  optimism:
+    family: evm
+    evm_chain_id: 10
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: opt-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: opt-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: optimism-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: optimism-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://mainnet.optimism.io", weight: 1}
+      - {provider: public, key: public, url: "https://optimism-rpc.publicnode.com", weight: 0.5}
+    sources:
+      alchemy: {network: opt-mainnet, webhook_network: OPT_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: optimistic-ethereum, onchain_network: optimism}
+      alchemy: {network: opt-mainnet}
+  xdai:
+    family: evm
+    evm_chain_id: 100
+    block_time: 5s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "xDAI", decimals: 18, price_ids: {coingecko: xdai, alchemy: xDAI}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: gnosis-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: gnosis-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.gnosischain.com", weight: 1}
+    sources:
+      alchemy: {network: gnosis-mainnet, webhook_network: GNOSIS_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: xdai, onchain_network: xdai}
+      alchemy: {network: gnosis-mainnet}
+  sonic:
+    family: evm
+    evm_chain_id: 146
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 10}}
+    native: {symbol: "S", decimals: 18, price_ids: {coingecko: sonic-3, alchemy: S}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: sonic-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: sonic-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.soniclabs.com", weight: 1}
+    sources:
+      alchemy: {network: sonic-mainnet, webhook_network: SONIC_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: sonic, onchain_network: sonic}
+      alchemy: {network: sonic-mainnet}
+  fantom:
+    family: evm
+    evm_chain_id: 250
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 10}}
+    native: {symbol: "FTM", decimals: 18, price_ids: {coingecko: fantom}}
+    upstreams:
+      - {provider: public, key: public, url: "https://fantom-rpc.publicnode.com", weight: 1}
+    prices:
+      coingecko: {platform: fantom, onchain_network: ftm}
+  boba:
+    family: evm
+    evm_chain_id: 288
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "BOBAETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: public, key: public, url: "https://mainnet.boba.network", weight: 1}
+    prices:
+      coingecko: {platform: boba, onchain_network: boba}
+  kcc:
+    family: evm
+    evm_chain_id: 321
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "KCS", decimals: 18, price_ids: {coingecko: kucoin-shares}}
+    upstreams:
+      - {provider: public, key: public, url: "https://kcc-rpc.com", weight: 1}
+    prices:
+      coingecko: {platform: kucoin-community-chain, onchain_network: kcc}
+  zksync:
+    family: evm
+    evm_chain_id: 324
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: zksync-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: zksync-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: zksync-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: zksync-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://mainnet.era.zksync.io", weight: 1}
+    sources:
+      alchemy: {network: zksync-mainnet, webhook_network: ZKSYNC_MAINNET, categories: "external,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: zksync, onchain_network: zksync}
+      alchemy: {network: zksync-mainnet}
+  hyperevm:
+    family: evm
+    evm_chain_id: 999
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "HYPE", decimals: 18, price_ids: {coingecko: hyperliquid}}
+    upstreams:
+      - {provider: infura, key: infura-a, network: hyperevm-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: hyperevm-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.hyperliquid.xyz/evm", weight: 1}
+  metis:
+    family: evm
+    evm_chain_id: 1088
+    block_time: 4s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "METIS", decimals: 18, price_ids: {coingecko: metis-token, alchemy: METIS}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: metis-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: metis-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://metis-pokt.nodies.app", weight: 1}
+      - {provider: public, key: public, url: "https://api.blockeden.xyz/metis/67nCBdZQSH9z3YqDDjdm", weight: 0.5}
+      - {provider: public, key: public, url: "https://metis-andromeda.gateway.tenderly.co", weight: 0.5}
+    prices:
+      coingecko: {platform: metis-andromeda, onchain_network: metis}
+      alchemy: {network: metis-mainnet}
+  moonbeam:
+    family: evm
+    evm_chain_id: 1284
+    block_time: 6s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "GLMR", decimals: 18, price_ids: {coingecko: moonbeam}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.api.moonbeam.network", weight: 1}
+    prices:
+      coingecko: {platform: moonbeam, onchain_network: glmr}
+  moonriver:
+    family: evm
+    evm_chain_id: 1285
+    block_time: 6s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "MOVR", decimals: 18, price_ids: {coingecko: moonriver}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.api.moonriver.moonbeam.network", weight: 1}
+    prices:
+      coingecko: {platform: moonriver, onchain_network: movr}
+  ronin:
+    family: evm
+    evm_chain_id: 2020
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "RON", decimals: 18, price_ids: {coingecko: ronin, alchemy: RON}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: ronin-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: ronin-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://api.roninchain.com/rpc", weight: 1}
+    prices:
+      coingecko: {platform: ronin, onchain_network: ronin}
+      alchemy: {network: ronin-mainnet}
+  kavaevm:
+    family: evm
+    evm_chain_id: 2222
+    block_time: 6s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "KAVA", decimals: 18, price_ids: {coingecko: kava}}
+    upstreams:
+      - {provider: public, key: public, url: "https://evm.kava.io", weight: 1}
+    prices:
+      coingecko: {platform: kava, onchain_network: kava}
+  robinhoodchain:
+    family: evm
+    evm_chain_id: 4663
+    block_time: 250ms
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: infura, key: infura-a, network: robinhood-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: robinhood-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.mainnet.chain.robinhood.com", weight: 1}
+      - {provider: public, key: public, url: "https://rpc.ordofi.network", weight: 0.5}
+  iotexevm:
+    family: evm
+    evm_chain_id: 4689
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "IOTX", decimals: 18, price_ids: {coingecko: iotex}}
+    upstreams:
+      - {provider: public, key: public, url: "https://babel-api.mainnet.iotex.io", weight: 1}
+  arc:
+    family: evm
+    evm_chain_id: 5042
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 10}}
+    native: {symbol: "USDC", decimals: 18, price_ids: {coingecko: usd-coin}}
+    upstreams:
+      - {provider: infura, key: infura-a, network: arc-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: arc-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://rpc.mainnet.arc.io", weight: 1}
+      - {provider: public, key: public, url: "https://rpc.blockdaemon.mainnet.arc.io", weight: 0.5}
+      - {provider: public, key: public, url: "https://rpc.drpc.mainnet.arc.io", weight: 0.5}
+  klaytn:
+    family: evm
+    evm_chain_id: 8217
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 10}}
+    native: {symbol: "KAIA", decimals: 18, price_ids: {coingecko: kaia}}
+    upstreams:
+      - {provider: public, key: public, url: "https://public-en-cypress.klaytn.net", weight: 1}
+    prices:
+      coingecko: {platform: klay-token, onchain_network: klaytn}
+  avalanchec:
+    family: evm
+    evm_chain_id: 43114
+    block_time: 2s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 10}}
+    native: {symbol: "AVAX", decimals: 18, price_ids: {coingecko: avalanche-2, alchemy: AVAX}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: avax-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: avax-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: avalanche-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: avalanche-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://api.avax.network/ext/bc/C/rpc", weight: 1}
+    sources:
+      alchemy: {network: avax-mainnet, webhook_network: AVAX_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: avalanche, onchain_network: avax}
+      alchemy: {network: avax-mainnet}
+  arbitrum:
+    family: evm
+    evm_chain_id: 42161
+    block_time: 250ms
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: arb-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: arb-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: arbitrum-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: arbitrum-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://arb1.arbitrum.io/rpc", weight: 1}
+    sources:
+      alchemy: {network: arb-mainnet, webhook_network: ARB_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: arbitrum-one, onchain_network: arbitrum}
+      alchemy: {network: arb-mainnet}
+  smartchain:
+    family: evm
+    evm_chain_id: 56
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "BNB", decimals: 18, price_ids: {coingecko: binancecoin, alchemy: BNB}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: bnb-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: bnb-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: bsc-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: bsc-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://bsc-dataseed.binance.org", weight: 1}
+    sources:
+      alchemy: {network: bnb-mainnet, webhook_network: BNB_MAINNET, categories: "external,internal,erc20,erc721,erc1155"}
+    prices:
+      coingecko: {platform: binance-smart-chain, onchain_network: bsc}
+      alchemy: {network: bnb-mainnet}
+  neon:
+    family: evm
+    evm_chain_id: 245022934
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "NEON", decimals: 18, price_ids: {coingecko: neon}}
+    upstreams:
+      - {provider: public, key: public, url: "https://neon-proxy-mainnet.solana.p2p.org", weight: 1}
+  aurora:
+    family: evm
+    evm_chain_id: 1313161554
+    block_time: 1s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: public, key: public, url: "https://mainnet.aurora.dev", weight: 1}
+    prices:
+      coingecko: {platform: aurora, onchain_network: aurora}
+  rootstock:
+    family: evm
+    evm_chain_id: 30
+    block_time: 30s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 40}}
+    native: {symbol: "RBTC", decimals: 18, price_ids: {coingecko: rootstock}}
+    upstreams:
+      - {provider: public, key: public, url: "https://public-node.rsk.co", weight: 1}
+    prices:
+      coingecko: {platform: rootstock, onchain_network: rsk}
+  tfuelevm:
+    family: evm
+    evm_chain_id: 361
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "TFUEL", decimals: 18, price_ids: {coingecko: theta-fuel}}
+    upstreams:
+      - {provider: public, key: public, url: "https://eth-rpc-api.thetatoken.org/rpc", weight: 1}
+  seievm:
+    family: evm
+    evm_chain_id: 1329
+    block_time: 400ms
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "SEI", decimals: 18, price_ids: {coingecko: sei-network, alchemy: SEI}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: sei-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: sei-mainnet, weight: 2}
+      - {provider: infura, key: infura-a, network: sei-mainnet, weight: 3}
+      - {provider: infura, key: infura-b, network: sei-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://evm-rpc.sei-apis.com", weight: 1}
+  lightlink:
+    family: evm
+    evm_chain_id: 1890
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum}}
+    upstreams:
+      - {provider: public, key: public, url: "https://replicator.phoenix.lightlink.io/rpc/v1", weight: 1}
+  meter:
+    family: evm
+    evm_chain_id: 82
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "MTR", decimals: 18, price_ids: {coingecko: meter}}
+    upstreams:
+      - {provider: public, key: public, url: "https://rpc.meter.io", weight: 1}
+  acalaevm:
+    family: evm
+    evm_chain_id: 787
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 30}}
+    native: {symbol: "ACA", decimals: 18, price_ids: {coingecko: acala}}
+    upstreams:
+      - {provider: public, key: public, url: "https://eth-rpc-acala.aca-api.network", weight: 1}
+  polygonzkevm:
+    family: evm
+    evm_chain_id: 1101
+    block_time: 3s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: polygonzkevm-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: polygonzkevm-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://zkevm-rpc.com", weight: 1}
+    prices:
+      coingecko: {platform: polygon-zkevm, onchain_network: polygon-zkevm}
+      alchemy: {network: polygonzkevm-mainnet}
+  arbitrumnova:
+    family: evm
+    evm_chain_id: 42170
+    block_time: 250ms
+    logs_max_range: 1000
+    finality: {policy: finalized-tag}
+    native: {symbol: "ETH", decimals: 18, price_ids: {coingecko: ethereum, alchemy: ETH}}
+    upstreams:
+      - {provider: alchemy, key: alchemy-a, network: arbnova-mainnet, weight: 4}
+      - {provider: alchemy, key: alchemy-b, network: arbnova-mainnet, weight: 2}
+      - {provider: public, key: public, url: "https://nova.arbitrum.io/rpc", weight: 1}
+    prices:
+      coingecko: {platform: arbitrum-nova, onchain_network: arbitrum_nova}
+      alchemy: {network: arbnova-mainnet}
+  zetaevm:
+    family: evm
+    evm_chain_id: 7000
+    block_time: 6s
+    logs_max_range: 1000
+    finality: {policy: depth, options: {confirmations: 20}}
+    native: {symbol: "ZETA", decimals: 18, price_ids: {coingecko: zetachain}}
+    upstreams:
+      - {provider: public, key: public, url: "https://zetachain-evm.blockpi.network/v1/rpc/public", weight: 1}
+    prices:
+      coingecko: {platform: zetachain, onchain_network: zeta}
+# END GENERATED

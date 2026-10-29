@@ -221,3 +221,31 @@ func TestClientAgainstFakeChain(t *testing.T) {
 		t.Fatalf("chunked: %d %v", len(bals), err)
 	}
 }
+
+type headOnly struct {
+	chain.Client
+	head uint64
+}
+
+func (h headOnly) LatestBlock(context.Context) (uint64, error) { return h.head, nil }
+
+func TestDepthPolicy(t *testing.T) {
+	p, err := NewDepth(headOnly{head: 1000}, map[string]any{"confirmations": 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fin, err := p.FinalizedBlock(context.Background())
+	if err != nil || fin != 988 {
+		t.Fatalf("finalized=%d err=%v", fin, err)
+	}
+	if p.Classify(988, 1000, fin) != chain.Finalized || p.Classify(989, 1000, fin) != chain.Confirmed || p.Classify(1001, 1000, fin) != chain.Pending {
+		t.Fatal("classification")
+	}
+	short, _ := NewDepth(headOnly{head: 5}, nil)
+	if f, _ := short.FinalizedBlock(context.Background()); f != 0 {
+		t.Fatalf("short chain finalized=%d", f)
+	}
+	if _, err := NewDepth(headOnly{}, map[string]any{"confirmations": "x"}); err == nil {
+		t.Fatal("bad option accepted")
+	}
+}

@@ -58,3 +58,38 @@ func TestEnabledChains(t *testing.T) {
 		t.Fatal("unknown chain accepted")
 	}
 }
+
+func TestPublicUpstreamsAndAllChains(t *testing.T) {
+	c, err := Load("../../config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Chains) < 50 {
+		t.Fatalf("expected the full EVM list, got %d chains", len(c.Chains))
+	}
+	seenID := map[uint64]string{}
+	for name, ch := range c.Chains {
+		if other, dup := seenID[ch.EVMChainID]; dup {
+			t.Errorf("evm chain id %d used by %s and %s", ch.EVMChainID, name, other)
+		}
+		seenID[ch.EVMChainID] = name
+		ups, _ := c.Upstreams(name, func(string) string { return "" })
+		ids := map[string]bool{}
+		for _, u := range ups {
+			if ids[u.Config.ID] {
+				t.Errorf("%s: duplicate upstream id %s", name, u.Config.ID)
+			}
+			ids[u.Config.ID] = true
+		}
+	}
+	ups, _ := c.Upstreams("polygon", func(k string) string { return map[string]string{"ALCHEMY_API_KEY": "a"}[k] })
+	var public int
+	for _, u := range ups {
+		if u.Config.URL != "" && u.Config.Provider == "public" {
+			public++
+		}
+	}
+	if public != 2 {
+		t.Fatalf("polygon public upstreams = %d, want 2 (%+v)", public, ups)
+	}
+}

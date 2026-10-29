@@ -29,6 +29,7 @@ const Name = "evm"
 func init() {
 	registry.ChainClients.Register(Name, New)
 	registry.Finality.Register("finalized-tag", NewFinalizedTag)
+	registry.Finality.Register("depth", NewDepth)
 }
 
 // maxCallsPerMulticall keeps each eth_call well under provider gas and size limits.
@@ -408,6 +409,68 @@ func (f *FinalizedTag) FinalizedBlock(ctx context.Context) (uint64, error) {
 
 // Classify maps a mined block to pending/confirmed/finalized.
 func (f *FinalizedTag) Classify(block, latest, finalized uint64) chain.Finality {
+	switch {
+	case block == 0 || block > latest:
+		return chain.Pending
+	case finalized > 0 && block <= finalized:
+		return chain.Finalized
+	default:
+		return chain.Confirmed
+	}
+}
+
+// Depth treats a block as final once it is `confirmations` blocks behind the
+// head. It is for chains whose nodes have no "finalized" tag (most sidechains
+// and independent L1s); pick a depth that makes a reorg implausible.
+type Depth struct {
+	c             chain.Client
+	confirmations uint64
+}
+
+// defaultDepth is used when chains.yaml gives no finality.options.confirmations.
+const defaultDepth = 30
+
+// NewDepth builds the depth policy; options: confirmations (integer).
+func NewDepth(c chain.Client, opts map[string]any) (chain.FinalityPolicy, error) {
+	n := uint64(defaultDepth)
+	switch v := opts["confirmations"].(type) {
+	case nil:
+	case int:
+		if v > 0 {
+			n = uint64(v)
+		}
+	case int64:
+		if v > 0 {
+			n = uint64(v)
+		}
+	case uint64:
+		if v > 0 {
+			n = v
+		}
+	case float64:
+		if v >= 1 {
+			n = uint64(v)
+		}
+	default:
+		return nil, fmt.Errorf("depth: confirmations must be a number, got %T", v)
+	}
+	return &Depth{c: c, confirmations: n}, nil
+}
+
+// FinalizedBlock is head minus the configured depth (0 while the chain is shorter).
+func (d *Depth) FinalizedBlock(ctx context.Context) (uint64, error) {
+	head, err := d.c.LatestBlock(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if head <= d.confirmations {
+		return 0, nil
+	}
+	return head - d.confirmations, nil
+}
+
+// Classify maps a mined block to pending/confirmed/finalized.
+func (d *Depth) Classify(block, latest, finalized uint64) chain.Finality {
 	switch {
 	case block == 0 || block > latest:
 		return chain.Pending

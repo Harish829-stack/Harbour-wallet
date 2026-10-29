@@ -47,10 +47,13 @@ type Native struct {
 
 // UpstreamRef points at one provider key, in priority order.
 type UpstreamRef struct {
-	Provider string  `yaml:"provider"`
-	Key      string  `yaml:"key"`
-	Network  string  `yaml:"network"`
-	Weight   float64 `yaml:"weight"`
+	Provider string `yaml:"provider"`
+	Key      string `yaml:"key"`
+	Network  string `yaml:"network"`
+	// URL is a fixed public endpoint (no secret in it) for providers with the
+	// "url" adapter, e.g. a chain's own public RPC. Keyed providers use Network.
+	URL    string  `yaml:"url"`
+	Weight float64 `yaml:"weight"`
 }
 
 // Provider is one entry of providers.yaml.
@@ -380,6 +383,11 @@ func (c *Config) Upstreams(chainName string, getenv func(string) string) ([]Reso
 		}
 		if env := k.URLEnv[chainName]; env != "" {
 			uc.URL = strings.TrimSpace(getenv(env))
+		}
+		if u.URL != "" {
+			uc.URL = u.URL
+			// Several fixed endpoints can share one provider key; each is its own upstream.
+			uc.ID = fmt.Sprintf("%s/%s#%d", chainName, u.Key, i)
 		}
 		if uc.Key == "" && uc.URL == "" {
 			skipped = append(skipped, uc.ID)
