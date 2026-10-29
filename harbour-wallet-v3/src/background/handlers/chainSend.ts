@@ -1,5 +1,6 @@
 // Feature message handlers: chainSend (Send / Receive / Transaction detail backend). Every message here is UI-only (the router enforces
 // isInternalWalletSender before dispatch). Signing keys exist only inside one handler call: derived from the unlocked session, used, zeroed.
+import { findHbToken } from '../../core/harbour/data';
 import type { HandlerMap, HandlerCtx, Msg } from './types';
 import { activeEntry, ensureAccounts } from '../walletState';
 import { openActiveKeys } from '../keys';
@@ -41,7 +42,10 @@ async function prepare(ctx: HandlerCtx, msg: Msg): Promise<Prepared> {
   if (!from) throw new Error(`No ${chain.name} address in this account`);
   let asset: SendAsset = { kind: 'native', decimals: chain.decimals, symbol: chain.symbol }; let assetKey = chain.id;
   if (msg.tokenId) {
-    const t = readTokens(acc.wallet.customTokens).find((x) => x.id === msg.tokenId);
+    // Tokens the Harbour indexer found (`hb-<chain>-<contract>`) are not stored in the wallet: look them up in the portfolio.
+    const id = String(msg.tokenId);
+    const t = readTokens(acc.wallet.customTokens).find((x) => x.id === id)
+      ?? (id.startsWith('hb-') ? await findHbToken(id, acc.addresses.ethereum ?? '').catch(() => undefined) : undefined);
     if (!t || t.chainId !== chain.evmChainId) throw new Error('Token not found in your wallet');
     asset = { kind: 'token', contract: t.address, decimals: t.decimals, symbol: t.symbol }; assetKey = `${chain.id}:${t.address.toLowerCase()}`;
   } else if (msg.token) {
