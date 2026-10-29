@@ -1,10 +1,11 @@
-// What this build may sign and broadcast. Harbour v3 serves only the networks the Harbour backend indexes (HARBOUR_CHAINS in
-// config.ts). Everything that moves value checks this file in the background worker, so a network or feature is enabled in ONE
-// place: add the chain to HARBOUR_CHAINS (and the backend's chains.yaml), or flip a feature flag below once it is reviewed.
-import { HARBOUR_CHAINS } from './config';
+// What this build may sign and broadcast: the EVM networks the Harbour backend serves (HARBOUR_CHAINS in config.ts) and the
+// non-EVM networks the extension reaches directly (CLIENT_CHAIN_IDS). Everything that moves value checks this file in the
+// background worker, so a network or feature is enabled in ONE place: add the chain to chains.yaml and run
+// backend/scripts/gen_chains.py, or flip a feature flag below once it is reviewed.
+import { HARBOUR_CHAINS, CLIENT_CHAIN_IDS } from './config';
 
-/** dApp provider namespaces injected into pages and served by the worker. Non-EVM families stay off until the backend serves them. */
-export const PROVIDER_FAMILIES: Readonly<{ evm: boolean; solana: boolean; multi: boolean }> = { evm: true, solana: false, multi: false };
+/** dApp provider namespaces injected into pages and served by the worker: EVM, Solana and the multi-chain family (Cosmos, Aptos, Sui, TON, Tron, Bitcoin). */
+export const PROVIDER_FAMILIES: Readonly<{ evm: boolean; solana: boolean; multi: boolean }> = { evm: true, solana: true, multi: true };
 
 /** Value-moving features that talk to third parties outside the Harbour backend. Off for the testnet-only build. */
 export type Feature = 'swap' | 'earn' | 'ramps' | 'perps' | 'predictions' | 'walletconnect' | 'siteAddChain';
@@ -19,7 +20,7 @@ export const featureEnabled = (f: Feature): boolean => FEATURES[f] === true;
 export const DEFAULT_EVM_CHAIN: number = HARBOUR_CHAINS.find((c) => c.evmChainId)?.evmChainId ?? 11155111;
 
 const EVM_IDS = new Set(HARBOUR_CHAINS.map((c) => c.evmChainId));
-const CHAIN_IDS = new Set(HARBOUR_CHAINS.map((c) => c.id));
+const CHAIN_IDS = new Set([...HARBOUR_CHAINS.map((c) => c.id), ...CLIENT_CHAIN_IDS]);
 
 /** True when this build may sign for the EVM chain id. */
 export const isSigningEvmChain = (chainId: number | bigint | string | null | undefined): boolean => {

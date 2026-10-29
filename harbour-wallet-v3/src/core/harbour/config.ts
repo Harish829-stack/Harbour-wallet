@@ -1,6 +1,6 @@
 // Harbour backend (backend/ in this repo) endpoints and the networks it serves. Build-time, public values only: the extension
 // authenticates with a per-install device key (device.ts), never with an API key.
-import { HARBOUR_CHAIN_LIST } from './chainList.gen';
+import { HARBOUR_CHAIN_LIST, HARBOUR_CLIENT_CHAIN_IDS } from './chainList.gen';
 const env = ((import.meta as any).env ?? {}) as Record<string, string | undefined>;
 
 /** Extension-facing API, e.g. http://localhost:8080 in development. */
@@ -26,6 +26,10 @@ const byEvm = new Map(HARBOUR_CHAINS.map((c) => [c.evmChainId, c]));
 const byBackend = new Map(HARBOUR_CHAINS.map((c) => [c.backend, c]));
 
 export const HARBOUR_CHAIN_IDS: string[] = HARBOUR_CHAINS.map((c) => c.id);
+/** Non-EVM networks this build offers. The backend does not serve them: the extension talks to each chain's public endpoints. */
+export const CLIENT_CHAIN_IDS: string[] = [...HARBOUR_CLIENT_CHAIN_IDS];
+const clientSet = new Set(CLIENT_CHAIN_IDS);
+export const isClientChain = (id?: string | null): boolean => !!id && clientSet.has(id);
 export const isHarbourChain = (id?: string | null): boolean => !!id && byId.has(id);
 export const isHarbourEvm = (chainId?: number | null): boolean => chainId != null && byEvm.has(Number(chainId));
 /** Chains whose balances, history and NFTs come from the backend database (the rest are read from RPC / public explorers). */

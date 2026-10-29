@@ -124,6 +124,12 @@ def ts_list():
     for name, cid, idx, tn in rows:
         out.append(f"  {{ id: '{name}', backend: '{name}', evmChainId: {cid}, indexed: {'true' if idx else 'false'}, testnet: {'true' if tn else 'false'} }},")
     out.append('];')
+    enabled = set(json.load(open(os.path.join(REG, 'extra-enabled.json'))))
+    base_ids = {c['id'] for c in json.load(open(os.path.join(REG, 'registry.json')))}
+    client = [c['id'] for c in reg if c['kind'] != 'evm' and (c['id'] in base_ids or c['id'] in enabled)]
+    out += ['', '/** Non-EVM chains. The backend does not serve them: balances, history and sending use each chain\'s own public endpoints, directly from the extension. */',
+            'export const HARBOUR_CLIENT_CHAIN_IDS: ReadonlyArray<string> = [']
+    out += [f"  '{i}'," for i in client] + ['];']
     return '\n'.join(out) + '\n'
 
 

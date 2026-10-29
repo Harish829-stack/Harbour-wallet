@@ -51,3 +51,7 @@ test('chainDataHistory / chainDataBalance validate input and use the active acco
   try { const b = await M.handlers.chainDataBalance({ chainId: 'solana' }, ctx); assert.deepEqual([b.ok, b.formatted, b.symbol], [true, '1.5', 'SOL']); } finally { globalThis.fetch = realFetch; }
   assert.equal((await M.handlers.chainDataGas({ chainId: 'bitcoin' }, ctx)).ok, false);
 });
+test('non-EVM chains are offered with their own adapters (balance, send, history where supported)', () => {
+  const r = M.handlers.chainDataCapabilities({}, {});
+  for (const id of ['bitcoin', 'solana', 'tron', 'ripple', 'cosmos', 'ton', 'sui', 'aptos']) { assert.ok(r.chains[id], id); assert.equal(r.chains[id].balance, true, id); }
+});
