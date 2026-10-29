@@ -19,7 +19,7 @@ import { handlers as approvals } from './approvals';
 import { handlers as secrets } from './secrets';
 import { featureEnabled } from '../../core/harbour/policy';
 
-// Value-moving third-party features are registered only when core/harbour/policy.ts enables them (off in the testnet-only build).
+// Value-moving third-party features are registered only when core/harbour/policy.ts enables them (each is a flag in that file).
 const on = (f: Parameters<typeof featureEnabled>[0], m: HandlerMap): HandlerMap => (featureEnabled(f) ? m : {});
 const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
 export const allExtraHandlers = (): HandlerMap => ALL;

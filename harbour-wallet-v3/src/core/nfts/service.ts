@@ -7,12 +7,12 @@ import { alchemyAvailable, fetchAlchemyCollections } from './alchemy';
 import { fillMissingMetadata } from './onchain';
 import { isIndexedChain } from '../harbour/config';
 import { fetchHarbourNfts } from '../harbour/data';
-import { ENABLED_CHAIN_IDS } from '../chains/index';
+import { ENABLED_CHAIN_IDS, chainById } from '../chains/index';
 
 export interface NftEnv { f: Fetcher; solUrls: () => string[]; /** EVM RPCs for the on-chain metadata fallback (optional). */ rpcUrls?: (chainId: string) => string[] }
 /** Mainnet chains queried by default (testnets only when asked). */
 // Harbour v3: only the enabled (backend-served) networks.
-export const NFT_CHAINS: string[] = [...Object.keys(BLOCKSCOUT_HOSTS), 'solana'].filter((c) => ENABLED_CHAIN_IDS.includes(c) && !isIndexedChain(c)).concat(ENABLED_CHAIN_IDS.filter((c) => isIndexedChain(c) && !c.includes('sepolia')));
+export const NFT_CHAINS: string[] = [...Object.keys(BLOCKSCOUT_HOSTS), 'solana'].filter((c) => ENABLED_CHAIN_IDS.includes(c) && !isIndexedChain(c)).concat(ENABLED_CHAIN_IDS.filter((c) => isIndexedChain(c) && !chainById(c)?.testnet));
 export interface CollectionsResult { collections: NftCollection[]; errors: Array<{ chainId: string; error: string }>; sources: Record<string, string> }
 
 export async function loadCollections(env: NftEnv, addressOf: (chainId: string) => string, chainIds: string[] = NFT_CHAINS, limit = 4): Promise<CollectionsResult> {

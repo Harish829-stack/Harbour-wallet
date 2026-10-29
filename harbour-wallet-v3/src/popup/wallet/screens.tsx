@@ -13,7 +13,7 @@ import { CHART_RANGES, type ChartRange } from '../../core/marketData';
 import type { HistoryItem } from '../../core/txHistory';
 import { activitySupported } from '../../core/activity/index';
 import { mergeActivity, activityNetworks, orderChains } from '../../core/activityFeed';
-import { chainById, NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
+import { chainById, chainCategory, networkSubtitle, NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
 import { useWorkerState } from '../api';
@@ -53,7 +53,7 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
       {/* header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 8 }}>
         <IconBtn icon="back" onClick={c.nav.pop} />
-        <div style={{ flex: 1, textAlign: 'center' }}><div style={{ fontWeight: 800, fontSize: 16 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{a.id === 'sepolia' ? 'Sepolia testnet' : a.name}</div></div>
+        <div style={{ flex: 1, textAlign: 'center' }}><div style={{ fontWeight: 800, fontSize: 16 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{networkSubtitle(a.id, a.name)}</div></div>
         <IconBtn icon="star" />
       </div>
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 90 }}>
@@ -82,7 +82,7 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
               <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{price != null ? usd(price) : '—'}</div></div>
               <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 700 }} data-testid="native-balance">{!b ? '…' : b.ok === false ? 'Unavailable' : `${Number(b.formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${a.sym}`}</div><div style={{ fontSize: 12, color: T.sub }}>{b?.ok === false ? "Couldn't load balance" : b?.usd != null ? usd(b.usd) : '—'}</div></div>
             </div>
-            {a.evm && a.native && a.id !== 'sepolia' && <Row onClick={() => c.nav.push('gasStation', { assetId: a.id })} left={<Coin sym="GAS" color={a.color} />} title="Gas station" sub="Live network fees" right={<Ic d={ICON.chevron} size={18} />} />}
+            {a.evm && a.native && chainCategory(a.id) !== 'testnet' && <Row onClick={() => c.nav.push('gasStation', { assetId: a.id })} left={<Coin sym="GAS" color={a.color} />} title="Gas station" sub="Live network fees" right={<Ic d={ICON.chevron} size={18} />} />}
           </>}
           {tab === 'history' && <TokenHistory c={c} assetId={a.id} address={address} color={a.color} />}
           {tab === 'about' && <TokenAbout c={c} assetId={a.id} sym={a.sym} name={a.name} />}

@@ -57,7 +57,8 @@ export const isSigningChain = (chain: { id?: string; kind?: string; evmChainId?:
 /** The provider-facing slice of the policy. ProviderService takes it as a dependency so the generic provider stays testable
  *  with every family on, while the build default (below) is what ships. */
 export interface ProviderPolicy { families: { evm: boolean; solana: boolean; multi: boolean }; isSigningEvmChain(chainId: number | bigint | string): boolean; siteAddChain: boolean; defaultChain: number }
-export const BUILD_PROVIDER_POLICY: ProviderPolicy = { families: PROVIDER_FAMILIES, isSigningEvmChain, siteAddChain: FEATURES.siteAddChain, defaultChain: DEFAULT_EVM_CHAIN };
+// Solana and the multi-chain family sign on real-value networks only, so they follow the same mainnet switch as EVM mainnets.
+export const BUILD_PROVIDER_POLICY: ProviderPolicy = { families: { evm: PROVIDER_FAMILIES.evm, solana: PROVIDER_FAMILIES.solana && mainnetSigningReady(), multi: PROVIDER_FAMILIES.multi && mainnetSigningReady() }, isSigningEvmChain, siteAddChain: FEATURES.siteAddChain, defaultChain: DEFAULT_EVM_CHAIN };
 
 export class NetworkNotEnabledError extends Error {
   readonly code = 'NETWORK_NOT_ENABLED';

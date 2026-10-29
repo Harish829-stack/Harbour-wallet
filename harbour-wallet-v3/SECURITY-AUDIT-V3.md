@@ -360,3 +360,25 @@ cd .. && npm ci --ignore-scripts && npm run verify && npm audit --omit=dev
 - Ledger flows, WalletConnect relay handling, perps, predictions and swap reachability were not re-audited (they should be removed per V3-02).
 - `prices/poller.go`, the risk adapters, `gateway/health.go` and `metrics.go` were only skimmed.
 - The deployed Cloudflare gateway and the remote config were not checked.
+
+---
+
+## 8. Re-audit and follow-up fixes (2026-10-29, branch harbour-v3)
+
+Features are now on (swap, earn, ramps, perps, predictions, WalletConnect, site add-chain, dApp reads), so the V3-02 fix was re-checked.
+
+| ID | Status | What changed / what is left |
+|---|---|---|
+| V3-02 (re-check) | FIXED, now deliberate | `core/harbour/policy.ts` has an explicit `SIGNING_POLICY` (mainnet / testnet / custom). Mainnet and non-EVM signing also need a secure backend (a release build refuses a loopback API). Solana and the multi-chain providers follow the same switch at signing time. Chains the user adds (Manage networks or a site's add-chain request, approved by the user) sign as `custom-network`. `test/policy.test.js` |
+| New: re-auth before adding secrets | FIXED | Creating, importing or QR-importing another seed or key into an existing wallet needs the unlock password or biometrics, once per operation (`background/reauth.ts`; popup, onboarding tab and a biometric tab route). Backup and reveal already had their own grant. `test/reauth-gate.test.js` |
+| New: networks | FIXED | Default networks (Harbour-served mainnets), Custom networks (user or site added) and Testnets, in the picker and in Manage networks. Curated testnets: Sepolia, Base Sepolia, Arbitrum Sepolia, Polygon Amoy, Monad, MegaETH (new). The backend list (`chains.yaml`, `chainList.gen.ts`) is generated from the same list, faucets match, hard-coded `sepolia` checks replaced by the testnet flag |
+| V3-04 | YOUR ACTION | Rotate Infura project `423f2a…` and replace `INFURA_API_KEY_2` in `backend/.env` |
+| V3-07, V3-19 | PARTLY FIXED | One Postgres login per service (`harbour_<service>`, created by `migrate` from `POSTGRES_SERVICE_USERS`), all members of `harbour_app`. Table-level narrowing per service and RDS IAM auth are still to do |
+| V3-17 | FIXED (verify on first run) | One NATS login per service with subject permissions (`deploy/nats/nats.conf`); `harbour` is admin for host tools only. If a service logs a permissions violation, widen that service's list |
+| V3-08 | FIXED | New default-tier devices run on a `probation` quota tier for 24 h (`probation_tier`, `probation_period` in `api.yaml`) |
+| V3-21 | PARTLY FIXED | `release-signer.pub` pinned from the public half of `harbour-release-key.json` (confirm it is the key you release with). CI now runs `npm run verify` for v3 (workflow previously ran v2 only) |
+| V3-22 | OPEN (upstream) | The `zod` advisory has no patched release that viem/abitype (peer `zod ^3`) accept; CI audits at `critical` |
+| V3-23 | PARTLY FIXED | Dockerfile no longer runs `go mod tidy` (`-mod=readonly`, escape hatch `--build-arg ALLOW_TIDY=1`); CI runs `go mod tidy` diff check, `govulncheck` and `gosec`. Run them locally once |
+| V3-10 | OPEN (product decision) | Every wallet address is still linked to the device id without opt-in |
+
+Not run here: Go build/tests, `npm test` (the esbuild-based tests need a Linux install), `npm run verify`, Docker. `tsc`, `eslint` and `gofmt` passed on the changed files.

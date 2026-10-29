@@ -9,7 +9,7 @@ import { chainOfAsset } from './lib';
 import { SearchBox } from './select';
 import { CopyBtn, Notice } from './parts';
 import { addressFor } from '../../../core/chains/adapters';
-import { chainById } from '../../../core/chains/index';
+import { chainById, chainCategory } from '../../../core/chains/index';
 import { receiveNote } from '../../../core/sendService';
 import { networkByChainId } from '../../../core/customTokens';
 import type { Asset } from '../data';
@@ -27,7 +27,7 @@ export const ReceiveSelect: React.FC<Ctx> = (c) => {
       <SearchBox value={q} onChange={setQ} placeholder="Search" />
       {rows.length === 0 ? <Empty title="No results" sub="Try a different network or asset name." icon="search" />
         : rows.map((a) => <Row key={a.id} onClick={() => (a.token ? c.nav.push('receiveAsset', { assetId: a.id }) : c.nav.push('receiveChain', { blockchainId: chainOfAsset(a)?.id ?? a.id }))}
-          left={<Coin sym={a.sym} assetId={a.id} color={a.color} />} title={a.name} sub={a.id === 'sepolia' ? 'Testnet' : a.token ? `${a.sym} · ${networkByChainId(a.chainId)?.name ?? ''}` : a.sym} />)}
+          left={<Coin sym={a.sym} assetId={a.id} color={a.color} />} title={a.name} sub={chainCategory(a.id) === 'testnet' ? 'Testnet' : a.token ? `${a.sym} · ${networkByChainId(a.chainId)?.name ?? ''}` : a.sym} />)}
     </Screen>
   );
 };

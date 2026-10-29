@@ -32,6 +32,8 @@ export type NetworkCategory = 'default' | 'custom' | 'testnet';
 export const NETWORK_CATEGORIES: readonly NetworkCategory[] = ['default', 'custom', 'testnet'];
 export const NETWORK_CATEGORY_LABEL: Record<NetworkCategory, string> = { default: 'Default networks', custom: 'Custom networks', testnet: 'Testnets' };
 export const chainCategory = (id: string): NetworkCategory => (id.startsWith('custom-') ? 'custom' : chainById(id)?.testnet ? 'testnet' : 'default');
+/** Network name with a "testnet" marker where the name does not already say it ("Sepolia" -> "Sepolia testnet"). */
+export const networkSubtitle = (id: string, name: string): string => (chainCategory(id) === 'testnet' && !/testnet/i.test(name) ? `${name} testnet` : name);
 
 /** Chains shown on a brand-new wallet's home; everything else (other mainnets, testnets) is turned on from Manage crypto. */
 export const DEFAULT_HOME_CHAINS: string[] = ['bitcoin', 'ethereum', 'solana', 'tron', 'smartchain', 'base', 'polygon', 'arbitrum', 'optimism', 'avalanchec'].filter((id) => ENABLED_CHAIN_IDS.includes(id));
