@@ -183,13 +183,15 @@ export class ProviderService {
           if (this.d.networks.get(requestedId)) { if (evmConn && requestedId != null) await this.applyChain(s.origin, requestedId, requestedId === chainId); return ok(null); }
           if (!this.policy.siteAddChain) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'Harbour does not support adding this network.');
           const a = normalizeAddChain(req.params);
-          const rpcUrl = a.rpcUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
+          // chainlist sends several RPCs and the first is often rate-limited: keep every usable https one and try them in order on approval.
+          const usable = a.rpcUrls.map((u) => normalizeUrl(u)).filter((r): r is { ok: true; url: string } => r.ok && !isPrivateNetworkUrl(r.url));
+          const rpcUrl = usable[0];
           if (!rpcUrl || !rpcUrl.ok) throw new ProviderError(ERR.INVALID_PARAMS, 'rpcUrls must contain at least one https:// URL.');
           if (isPrivateNetworkUrl(rpcUrl.url)) throw new ProviderError(ERR.INVALID_PARAMS, 'This RPC address points at a private network and cannot be added by a site.');
           const explorer = a.explorerUrls.map((u) => normalizeUrl(u)).find((r) => r.ok);
           const v = validateNetwork({ name: a.chainName, rpcUrl: rpcUrl.url, chainId: a.chainId, symbol: a.symbol, explorerUrl: explorer && explorer.ok ? explorer.url : '' }, customNetworks());
           if (!v.ok) throw new ProviderError(ERR.INVALID_PARAMS, v.error);
-          return this.queue(s, req, 'addChain', { chainId: a.chainId, known: false, network: { name: v.network.name, rpcUrl: v.network.rpcUrl, symbol: v.network.symbol, explorerUrl: v.network.explorerUrl ?? '' } }, evmConn);
+          return this.queue(s, req, 'addChain', { chainId: a.chainId, known: false, network: { name: v.network.name, rpcUrl: v.network.rpcUrl, symbol: v.network.symbol, explorerUrl: v.network.explorerUrl ?? '', rpcUrls: usable.map((r) => r.url).slice(0, 6) } }, evmConn);
         }
         case 'watchAsset': return this.queue(s, req, 'watchAsset', { asset: normalizeWatchAsset(req.params), chainId }, evmConn);
         default: throw new ProviderError(ERR.METHOD_NOT_FOUND);
@@ -464,15 +466,23 @@ export class ProviderService {
         await this.needConn(p, 'evm'); await this.applyChain(p.origin, chainId); return null;
       }
       case 'addChain': {
-        const { chainId, known, network } = p.params as { chainId: number; known: boolean; network?: { name: string; rpcUrl: string; symbol: string; explorerUrl: string } };
+        const { chainId, known, network } = p.params as { chainId: number; known: boolean; network?: { name: string; rpcUrl: string; symbol: string; explorerUrl: string; rpcUrls?: string[] } };
         await this.needConn(p, 'evm');
         // Another approval or Settings action may have added the chain while
         // this request was pending. Never replace that saved RPC or metadata.
         if (this.d.networks.get(chainId)) return null;
         if (known) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network was removed while the request was pending.');
         if (!network) throw new ProviderError(ERR.INVALID_PARAMS);
-        const seen = await this.d.probeChainId(network.rpcUrl).catch(() => { throw new ProviderError(ERR.INTERNAL, 'Could not reach this RPC URL.'); });
-        if (seen !== chainId) throw new ProviderError(ERR.INVALID_PARAMS, `This RPC belongs to chain ID ${seen}, not ${chainId}.`);
+        // First RPC that answers with the requested chain ID wins; a rate-limited or dead endpoint just moves on to the next one.
+        const candidates = [...new Set([network.rpcUrl, ...(network.rpcUrls ?? [])])].slice(0, 6);
+        let chosen: string | null = null; let wrong: number | null = null;
+        for (const url of candidates) {
+          const seen = await this.d.probeChainId(url).catch(() => null);
+          if (seen === chainId) { chosen = url; break; }
+          if (seen != null) wrong = seen;
+        }
+        if (!chosen) { if (wrong != null) throw new ProviderError(ERR.INVALID_PARAMS, `This RPC belongs to chain ID ${wrong}, not ${chainId}.`); throw new ProviderError(ERR.INTERNAL, 'Could not reach any RPC URL for this network (they may be rate-limited). Try again in a moment.'); }
+        network.rpcUrl = chosen;
         if (this.d.networks.get(chainId)) return null;
         await this.d.saveCustomNetwork({ chainId, name: network.name, rpcUrl: network.rpcUrl, symbol: network.symbol, explorerUrl: network.explorerUrl || undefined });
         await perms.update(p.origin, { chainId }); this.d.emit(p.origin, 'evm', 'chainChanged', hex(chainId)); this.d.emit(p.origin, 'evm', 'networkChanged', String(chainId)); return null;
