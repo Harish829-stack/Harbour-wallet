@@ -4,12 +4,10 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 
-const load = async (rel) => {
-  const out = await build({ entryPoints: [fileURLToPath(new URL(rel, import.meta.url))], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
-  return import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
-};
-const P = await load('../src/core/harbour/policy.ts');
-const R = await load('../src/core/networkRegistry.ts');
+// One bundle for both modules: policy.ts reads the same networkRegistry instance the test mutates.
+const out = await build({ stdin: { contents: `export * from './core/harbour/policy'; export { setNetworkState } from './core/networkRegistry';`, resolveDir: fileURLToPath(new URL('../src/', import.meta.url)), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
+const P = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
+const R = P;
 
 test('the three signing switches are explicit and on in this build', () => {
   assert.deepEqual({ ...P.SIGNING_POLICY }, { mainnet: true, testnet: true, custom: true });
