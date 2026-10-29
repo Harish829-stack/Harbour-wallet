@@ -120,15 +120,17 @@ export const handlers: HandlerMap = {
         const w = entry[1]; const accts = ensureAccounts(w);
         const owner: string | undefined = msg.address || accts[w.activeAccount]?.addresses?.ethereum;
         if (!owner) return { ok: true, items: [] };
-        // Tokens the Harbour indexer found on its networks (no need to add them by hand); custom tokens on those networks
-        // are dropped in favour of the indexed row so nothing shows twice.
+        // Only tokens the user added are listed (a chain shows its native coin until then). For those on Harbour networks the indexer's
+        // balance and price are used when it has them; everything else is read from the network.
+        const tokens = readTokens(w.customTokens);
+        if (!tokens.length) return { ok: true, items: [] };
         const indexed = await tokenItems(owner).catch(() => []);
-        const seen = new Set(indexed.map((i) => `${i.token.chainId}:${i.token.address.toLowerCase()}`));
-        const tokens = readTokens(w.customTokens).filter((t) => !seen.has(`${t.chainId}:${t.address.toLowerCase()}`));
-        if (!tokens.length) return { ok: true, items: indexed };
+        const held = new Map(indexed.map((i) => [`${i.token.chainId}:${i.token.address.toLowerCase()}`, i]));
         const prices = await fetchTokenPrices(tokens);
         const items = await Promise.all(tokens.map(async (t) => {
           const price = prices[t.id] ?? null; const c = clientFor(t.chainId);
+          const h = held.get(`${t.chainId}:${t.address.toLowerCase()}`);
+          if (h) return { token: t, ok: true, raw: h.raw, formatted: h.formatted, price: h.price ?? price?.price ?? null, change: price?.change ?? null, usd: h.usd ?? (price ? Number(h.formatted) * price.price : null) };
           if (!c) return { token: t, ok: false, raw: '0', formatted: '0', price: price?.price ?? null, change: price?.change ?? null, usd: null };
           try {
             const raw = await tokenBalance(c, t.address, owner);
@@ -136,7 +138,7 @@ export const handlers: HandlerMap = {
             return { token: t, ok: true, raw: raw.toString(), formatted, price: price?.price ?? null, change: price?.change ?? null, usd: price ? Number(formatted) * price.price : null };
           } catch { return { token: t, ok: false, raw: '0', formatted: '0', price: price?.price ?? null, change: price?.change ?? null, usd: null }; }
         }));
-        return { ok: true, items: [...indexed, ...items] };
+        return { ok: true, items };
       } catch (e: any) { return { ok: false, error: e?.message || 'Balances unavailable', items: [] }; }
     }
   },
