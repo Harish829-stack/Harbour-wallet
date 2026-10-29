@@ -67,13 +67,8 @@ T = {
 # Test networks (src/core/chains/testnets.ts): id -> (alchemy network or None, block_time). Alchemy first where it serves the network,
 # the registry's public RPCs behind it; a wrong or retired slug only means the proxy fails over to the next upstream.
 TESTNET = {
-  'hoodi': ('eth-hoodi', '12s'), 'arbitrum-sepolia': ('arb-sepolia', '250ms'), 'optimism-sepolia': ('opt-sepolia', '2s'),
-  'polygon-amoy': ('polygon-amoy', '2s'), 'smartchain-testnet': ('bnb-testnet', '1s'), 'opbnb-testnet': ('opbnb-testnet', '1s'),
-  'avalanche-fuji': ('avax-fuji', '2s'), 'linea-sepolia': ('linea-sepolia', '2s'), 'scroll-sepolia': ('scroll-sepolia', '3s'),
-  'zksync-sepolia': ('zksync-sepolia', '1s'), 'mantle-sepolia': ('mantle-sepolia', '2s'), 'blast-sepolia': ('blast-sepolia', '2s'),
-  'unichain-sepolia': ('unichain-sepolia', '1s'), 'ink-sepolia': ('ink-sepolia', '1s'), 'worldchain-sepolia': ('worldchain-sepolia', '2s'),
-  'polygon-zkevm-cardona': (None, '3s'), 'gnosis-chiado': ('gnosis-chiado', '5s'), 'monad-testnet': ('monad-testnet', '400ms'),
-  'berachain-bepolia': ('berachain-bepolia', '2s'), 'moonbase-alpha': (None, '12s'),
+  'arbitrum-sepolia': ('arb-sepolia', '250ms'), 'polygon-amoy': ('polygon-amoy', '2s'),
+  'monad-testnet': ('monad-testnet', '400ms'), 'megaeth-testnet': ('megaeth-testnet', '1s'),
 }
 DEFAULT = (None, None, None, None, None, 30, '3s')
 # Alchemy Transfers + Address Activity (indexed chains). "internal" transfers only where Alchemy offers them.

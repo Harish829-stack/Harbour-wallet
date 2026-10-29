@@ -27,6 +27,12 @@ export const ENABLED_CHAIN_IDS: readonly string[] = [...HARBOUR_CHAIN_IDS, ...CL
 export const isEnabledChain = (id: string): boolean => ENABLED_CHAIN_IDS.includes(id);
 export const ENABLED_CHAINS: ChainInfo[] = [...ALL_CHAINS, ...TESTNET_CHAINS].filter((c) => isEnabledChain(c.id));
 
+/** How the network pickers group a network: Default (the mainnets this build serves), Custom (added by the user or by a site) and Testnets. */
+export type NetworkCategory = 'default' | 'custom' | 'testnet';
+export const NETWORK_CATEGORIES: readonly NetworkCategory[] = ['default', 'custom', 'testnet'];
+export const NETWORK_CATEGORY_LABEL: Record<NetworkCategory, string> = { default: 'Default networks', custom: 'Custom networks', testnet: 'Testnets' };
+export const chainCategory = (id: string): NetworkCategory => (id.startsWith('custom-') ? 'custom' : chainById(id)?.testnet ? 'testnet' : 'default');
+
 /** Chains shown on a brand-new wallet's home; everything else (other mainnets, testnets) is turned on from Manage crypto. */
 export const DEFAULT_HOME_CHAINS: string[] = ['bitcoin', 'ethereum', 'solana', 'tron', 'smartchain', 'base', 'polygon', 'arbitrum', 'optimism', 'avalanchec'].filter((id) => ENABLED_CHAIN_IDS.includes(id));
 

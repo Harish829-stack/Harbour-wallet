@@ -14,6 +14,6 @@ export const KEYS = {
   STORE: 'wallet:store', PBKDF2: 'wallet:pbkdf2', VAULT: 'wallet:vault',
   VAULT_ID: 'wallet:vaultId', THROTTLE: 'wallet:throttle',
   PASSWORD: 'wallet:password', UNLOCK: 'wallet:unlock', UI: 'wallet:ui',
-  SETTINGS: 'wallet:settings', PASSKEY: 'wallet:passkey', REVEAL: 'wallet:revealGrant', NETWORKS: 'wallet:networks', PASSKEY_VAULT: 'wallet:passkey:vault', FIAT_RATES: 'wallet:fiatRates',
+  SETTINGS: 'wallet:settings', PASSKEY: 'wallet:passkey', REVEAL: 'wallet:revealGrant', ADD_WALLET: 'wallet:addWalletGrant', NETWORKS: 'wallet:networks', PASSKEY_VAULT: 'wallet:passkey:vault', FIAT_RATES: 'wallet:fiatRates',
   wallets: (vaultId: string) => `wallet:wallets:${vaultId}`,
 };

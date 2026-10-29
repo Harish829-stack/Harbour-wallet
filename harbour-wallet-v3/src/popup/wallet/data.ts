@@ -1,5 +1,5 @@
 import { customExplorer, customNetworks } from '../../core/networkRegistry';
-import { ALL_CHAINS, TESTNET_CHAINS, ENABLED_CHAINS, chainByEvmId, chainById, explorerTxUrl, explorerAddressUrl, type ChainKind } from '../../core/chains/index';
+import { ALL_CHAINS, TESTNET_CHAINS, ENABLED_CHAINS, chainByEvmId, chainById, chainCategory, explorerTxUrl, explorerAddressUrl, type ChainKind } from '../../core/chains/index';
 import { money } from '../settingsStore';
 // Dummy/presentation data for screens that need the network in a real deployment.
 // Live data (Sepolia balance, send) comes from the background via RPC; everything here is
@@ -43,7 +43,7 @@ export const explorerAddressById = (id: string, addr: string) => explorerAddress
 // (Static trending/dApp/buy-provider samples removed: real data now comes from features/ramps + features/discover.)
 // Networks for the filter chip row + selector (derived from the home asset set).
 export const NETWORKS = ASSETS.map((a) => ({ id: a.id, name: a.name, sym: a.sym, color: a.color, chainId: a.chainId }));
-export const networkOptions = () => allAssets().filter((a) => a.native).map((a) => ({ id: a.id, name: a.name, sym: a.sym, color: a.color, chainId: a.chainId }));
+export const networkOptions = () => allAssets().filter((a) => a.native).map((a) => ({ id: a.id, name: a.name, sym: a.sym, color: a.color, chainId: a.chainId, category: chainCategory(a.id) }));
 
 export interface Activity { id: string; type: 'send' | 'receive' | 'swap'; sym: string; color: string; amount: string; sub: string; usd: string; time: string; status: 'confirmed' | 'pending'; }
 export const ACTIVITY: Activity[] = [

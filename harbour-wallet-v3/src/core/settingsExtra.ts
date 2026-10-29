@@ -41,13 +41,11 @@ export interface Faucet { chainId: string; label: string; url: string }
 // TW's Arbitrum Sepolia row points at the Ethereum Sepolia Alchemy page (an apparent TW slip); Harbour links the Arbitrum page.
 export const FAUCETS: Faucet[] = [
   { chainId: 'sepolia', label: 'Ethereum Sepolia', url: 'https://sepolia-faucet.pk910.de/' },
-  { chainId: 'smartchain-testnet', label: 'BNB Smart Chain testnet', url: 'https://testnet.bnbchain.org/faucet-smart' },
+  { chainId: 'base-sepolia', label: 'Base Sepolia', url: 'https://www.alchemy.com/faucets/base-sepolia' },
   { chainId: 'arbitrum-sepolia', label: 'Arbitrum Sepolia', url: 'https://www.alchemy.com/faucets/arbitrum-sepolia' },
-  { chainId: 'optimism-sepolia', label: 'Optimism Sepolia', url: 'https://www.alchemy.com/faucets/optimism-sepolia' },
-  { chainId: 'avalanche-fuji', label: 'Avalanche Fuji', url: 'https://faucet.avax.network/' },
   { chainId: 'polygon-amoy', label: 'Polygon Amoy', url: 'https://faucet.polygon.technology/' },
-  { chainId: 'fantom-testnet', label: 'Fantom Testnet', url: 'https://faucet.fantom.network/' },
-  { chainId: 'moonbase-alpha', label: 'Moonbase Alpha', url: 'https://apps.moonbeam.network/moonbase-alpha/faucet/' },
+  { chainId: 'monad-testnet', label: 'Monad Testnet', url: 'https://faucet.monad.xyz/' },
+  { chainId: 'megaeth-testnet', label: 'MegaETH Testnet', url: 'https://docs.megaeth.com/user-guide/faucet' },
 ];
 export const isSafeFaucetUrl = (u: string): boolean => { try { const x = new URL(u); return x.protocol === 'https:' && !x.username && !x.password; } catch { return false; } };
 

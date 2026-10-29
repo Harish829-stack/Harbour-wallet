@@ -191,7 +191,7 @@ test('developer settings: testnets toggle and flags', () => {
   const s = M.DEFAULT_SETTINGS('en');
   for (const f of DEVELOPER_FLAGS) { const n = M.applyPatch(s, { developerSettings: { [f.key]: true } }); assert.equal(n.developerSettings[f.key], true, f.key); }
   assert.equal(M.applyPatch(s, { developerSettings: { bogus: true } }).developerSettings.bogus, undefined);
-  assert.equal(FAUCETS.length, 8); assert.ok(FAUCETS.every((f) => isSafeFaucetUrl(f.url)));
+  assert.equal(FAUCETS.length, 6); assert.ok(FAUCETS.every((f) => isSafeFaucetUrl(f.url)));
   assert.equal(FAUCETS.find((f) => f.chainId === 'arbitrum-sepolia').url.includes('arbitrum-sepolia'), true);
   assert.equal(isSafeFaucetUrl('javascript:alert(1)'), false); assert.equal(isSafeFaucetUrl('http://x.test'), false);
 });

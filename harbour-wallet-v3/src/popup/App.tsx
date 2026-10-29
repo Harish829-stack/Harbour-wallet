@@ -7,6 +7,7 @@ import { T } from './theme';
 import { bg, useWorkerState } from './api';
 import { Onboarding } from './onboarding/Onboarding';
 import { FlowFrame } from './onboarding/FlowFrame';
+import { AddWalletReauth } from './wallet/addWalletReauth';
 import { BackupFlow } from './onboarding/BackupFlow';
 import { ProviderSurface, TokenApprovalsSurface } from './wallet/features/provider';
 import { Wallet } from './wallet/Wallet';
@@ -160,6 +161,8 @@ function WalletApp() {
   // Opened in a full tab from Settings so the OS biometric sheet can appear without closing the popup.
   // Opened in a full tab from Settings > Sync with Mobile (needs the webcam, which a popup cannot hold on to).
   if (screen === 'home' && params.get('sync')) return <FlowFrame heading={<>Sync with<br/>mobile</>} art="qr-mobile" note="Only seed-phrase wallets are imported. Your phone keeps its own copy."><SyncWithMobile bg={bg} onClose={() => { window.history.replaceState(null, '', window.location.pathname); window.close(); window.location.reload(); }} /></FlowFrame>;
+  // Opened in a full tab from the add-wallet gate so the OS biometric sheet can appear.
+  if (screen === 'home' && params.get('reauth') === 'add') return <FlowFrame heading={<>Verify<br/>it’s you</>} title="Add a wallet" art="backup"><AddWalletReauth bg={bg} then={params.get('then') === 'create' ? 'create' : 'import'}/></FlowFrame>;
   // Opened in a full tab from the reveal gate so the OS biometric sheet can appear.
   if (screen === 'home' && params.get('reveal')) return <FlowFrame heading={<>Back up your<br/>secret phrase</>} title="Back up your Secret Phrase" art="backup"><BackupFlow bg={bg} walletId={params.get('wallet') || undefined} autoBiometric onDone={() => window.close()} onCancel={() => window.close()}/></FlowFrame>;
   if (screen === 'home' && params.get('enroll')) return <FlowFrame heading="Secure your wallet" title="Set up biometrics" art="biometrics"><BiometricEnroll bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.location.reload(); }} /></FlowFrame>;

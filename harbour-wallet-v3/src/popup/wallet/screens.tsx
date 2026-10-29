@@ -13,7 +13,7 @@ import { CHART_RANGES, type ChartRange } from '../../core/marketData';
 import type { HistoryItem } from '../../core/txHistory';
 import { activitySupported } from '../../core/activity/index';
 import { mergeActivity, activityNetworks, orderChains } from '../../core/activityFeed';
-import { chainById } from '../../core/chains/index';
+import { chainById, NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
 import { useWorkerState } from '../api';
@@ -276,8 +276,15 @@ export const NetworkSelectorScreen: React.FC<Ctx> = (c) => {
       {!nq && (
         <Row onClick={() => choose(null)} left={<div style={{ width: 40, height: 40, borderRadius: 999, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic d={ICON.globe} size={20} /></div>} title="All Networks" right={<Radio on={sel === null} />} />
       )}
-      {nets.map((n) => <Row key={n.id} onClick={() => choose(n.id)} left={<Coin sym={n.sym} assetId={n.id} size={40} color={n.color} />} title={n.name} right={<Radio on={sel === n.id} />} />)}
+      {NETWORK_CATEGORIES.map((cat) => {
+        const list = nets.filter((n) => n.category === cat); if (!list.length) return null;
+        return <div key={cat} data-testid={`networks-${cat}`}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, margin: '14px 2px 6px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
+          {list.map((n) => <Row key={n.id} onClick={() => choose(n.id)} left={<Coin sym={n.sym} assetId={n.id} size={40} color={n.color} />} title={n.name} right={<Radio on={sel === n.id} />} />)}
+        </div>;
+      })}
       {nq && !nets.length && <Empty title="No networks found" sub="Try a different name." icon="globe" />}
+      <div style={{ padding: '14px 0 20px' }}><Btn variant="ghost" onClick={() => c.nav.push('customNetworks')} data-testid="manage-networks">Manage networks</Btn></div>
     </Screen>
   );
 };

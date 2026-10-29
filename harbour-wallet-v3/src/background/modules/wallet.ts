@@ -11,10 +11,12 @@ import { verifyPasskeySecret } from '../../core/passkeyService';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 import type { HandlerMap } from '../handlers/types';
-import { dispatchEvent } from '../kernel/events';
+import { grantReauth, consumeReauth, purposeOf } from '../reauth';
 import { dropVaultKeys } from '../handlers/onboardingExtra';
 
 let creatingWallet = false;
+/** Marks an addWallet call made inside the worker after the batch was authorised once (a JSON message from a page cannot carry a Symbol). */
+const AUTHORIZED = Symbol('addWalletAuthorized');
 export const handlers: HandlerMap = {
   status: async (msg, ctx) => {
     const { vault } = ctx as any;
@@ -187,7 +189,7 @@ export const handlers: HandlerMap = {
     }
   },
   qrSyncImport: async (msg, ctx) => {
-    const { core, vault, sender } = ctx as any;
+    const { core, vault } = ctx as any;
  {
       // Decrypt wallets exported by the mobile app with the 6-character one-time code, then add each seed phrase like `addWallet`.
       // msg.dryRun only verifies the code. Only mnemonic wallets are imported; others are counted as skipped.
@@ -208,9 +210,10 @@ export const handlers: HandlerMap = {
         }
         if (!mnemonics.length) return { ok: false, error: wrong ? 'INCORRECT_CODE' : 'No seed-phrase wallets in this QR code', skipped };
         if (msg.dryRun) return { ok: true, count: mnemonics.length, skipped };
+        if (!(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; // adding seeds needs the unlock credential
         let imported = 0, duplicates = 0; let lastErr = '';
         for (const m of mnemonics) {
-          const r: any = await dispatchEvent('INTERNAL', 'addWallet', { type: 'addWallet', mnemonic: m }, { sender });
+          const r: any = await handlers.addWallet({ type: 'addWallet', mnemonic: m, [AUTHORIZED]: true } as any, ctx);
           if (r?.ok) imported++; else if (r?.error === 'This wallet already exists') duplicates++; else lastErr = r?.error || 'Import failed';
         }
         if (!imported && !duplicates) return { ok: false, error: lastErr || 'Import failed' };
@@ -231,6 +234,8 @@ export const handlers: HandlerMap = {
         { const cur: any = await vault.getState(); if (!canCreateWallet(Object.keys(cur.wallets ?? {}).length)) return { ok: false, error: WALLET_LIMIT_ERROR }; }
         const importing = typeof msg.mnemonic === 'string' && msg.mnemonic.trim().length > 0;
         if (importing && !wallet.isValidMnemonic(msg.mnemonic.trim())) return { ok: false, error: 'Invalid secret phrase' };
+        // Adding another seed to a wallet that already holds funds needs the unlock credential (password or biometrics), once per add.
+        if (Object.keys((await vault.getState()).wallets ?? {}).length > 0 && (msg as any)[AUTHORIZED] !== true && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' };
         const mnemonic = importing ? msg.mnemonic.trim() : await wallet.generateMnemonic();
         const newlyGenerated = !importing;
         const state: any = await vault.getState();
@@ -300,7 +305,7 @@ export const handlers: HandlerMap = {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
         if (msg.method === 'passkey') await verifyPasskeySecret(String(msg.secret ?? ''));
         else await vault.checkPassword(String(msg.password ?? ''));
-        await session.set(KEYS.REVEAL, Date.now() + 120_000);
+        await grantReauth(purposeOf(msg.purpose));
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e?.message || 'Verification failed' }; }
     }

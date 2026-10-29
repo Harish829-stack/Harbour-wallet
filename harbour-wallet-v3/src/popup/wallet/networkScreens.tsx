@@ -34,7 +34,7 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
   const [data, setData] = useState<any>(null);
   useEffect(() => { void syncNetworks(c.bg).then(setData); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Screen title="Custom Networks" onBack={c.nav.pop}>
+    <Screen title="Manage networks" onBack={c.nav.pop}>
       <div style={{ paddingBottom: 80 }}>
         {!data ? <div style={{ textAlign: 'center', paddingTop: 40 }}><Spinner size={28} /></div> : <>
           {data.custom.length === 0 ? (
@@ -46,8 +46,13 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
             <div style={{ fontWeight: 700, margin: '8px 0 10px' }}>Custom networks</div>
             {data.custom.map((n: any) => <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
           </>}
-          <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>Built-in network RPCs</div>
-          {data.builtin.map((n: any) => <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
+          {([['Default networks', false], ['Testnets', true]] as const).map(([label, tn]) => {
+            const list = data.builtin.filter((n: any) => !!n.testnet === tn); if (!list.length) return null;
+            return <div key={label}>
+              <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>{label}</div>
+              {list.map((n: any) => <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
+            </div>;
+          })}
         </>}
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px', background: T.bg }}>

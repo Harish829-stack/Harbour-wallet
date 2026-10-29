@@ -12,6 +12,7 @@ import { createIdleGuard, restoreStep, serializeStep, STEP_KEY, type OnboardingF
 import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './ImportSecret';
 import { QrScanner, type StoredKeys } from './qrScanner';
 import { BackupFlow } from './BackupFlow';
+import { RevealGate } from '../wallet/revealGate';
 import { Landing } from './Landing';
 import { FlowFrame, StepArt, PasswordMeter, Confetti, ThemedImg, passwordStrength, EMPTY_STRENGTH, type PasswordStrength } from './FlowFrame';
 import { FEATURE_SCREENS } from '../wallet/features';
@@ -36,6 +37,7 @@ const errorText = (code: string): string => ({
   LOCKED: 'The wallet is locked. Unlock it and try again.',
   QR_EXPIRED: 'The scan expired. Scan the QR code from your mobile app again.',
   INVALID_WALLET_INPUT: 'Choose a valid password and try again.',
+  AUTH_REQUIRED: 'Verify it’s you to continue.',
   FORBIDDEN_REQUEST: 'This wallet already has a password. Unlock it to continue.',
 }[code] ?? code);
 
@@ -108,6 +110,7 @@ export function Onboarding() {
   const [qrSummary, setQrSummary] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [needAuth, setNeedAuth] = useState(false); // adding to an existing wallet: ask for the unlock password / biometrics first
   const [slide, setSlide] = useState(0);
   const [pinGuide, setPinGuide] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -202,7 +205,7 @@ export function Onboarding() {
   }
   async function createAdditional() {
     setBusy(true); setError('');
-    try { const r = await bg({ type: 'addWallet' }); if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to create wallet')); complete(); }
+    try { const r = await bg({ type: 'addWallet' }); if (r?.error === 'AUTH_REQUIRED') { setNeedAuth(true); return; } if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to create wallet')); complete(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create wallet'); setStep('welcome'); }
     finally { setBusy(false); }
   }
@@ -222,6 +225,7 @@ export function Onboarding() {
     setBusy(true); setError('');
     try {
       const r = await bg({ type: 'importInitiate', secret: secretField.peek(), name: name.trim(), chainId: network?.chainId, group: network?.kind === 'evm-group' });
+      if (r?.error === 'AUTH_REQUIRED') { setNeedAuth(true); return; }
       if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to import wallet'));
       secretField.clear(); // the worker holds the pending secret now (10 min, memory only)
       setPendingId(r.pendingId);
@@ -250,6 +254,7 @@ export function Onboarding() {
       const v = await bg({ type: 'qrVerify', stageId: qrStageId, code: value });
       if (!v?.ok) throw new Error(errorText(v?.error || 'Could not read the QR code'));
       const r = await bg({ type: 'qrImportAll', stageId: qrStageId, code: value });
+      if (r?.error === 'AUTH_REQUIRED') { setNeedAuth(true); return; }
       if (!r?.ok) throw new Error(errorText(r?.error || 'Unable to import wallets'));
       setQrSummary(`${r.imported ?? 0} wallet${r.imported === 1 ? '' : 's'} imported${r.duplicates ? `, ${r.duplicates} already existed` : ''}.`); complete();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to import wallets'); setCode(''); }
@@ -330,6 +335,7 @@ export function Onboarding() {
     sources: 'Where is the wallet you want to bring over?',
     'trust-method': 'Pick the quickest way to move your Trust Wallet over.',
   };
+  if (needAuth) return <FlowFrame heading={<>Verify<br/>it’s you</>} title="Add a wallet" art="backup"><RevealGate bg={bg} purpose="addWallet" message="add a wallet" autoBiometric onGranted={() => { setNeedAuth(false); setError(''); }} onCancel={() => setNeedAuth(false)}/></FlowFrame>;
   return <FlowFrame heading={heading} title={title} labels={labels} active={stepNo} done={step === 'completed'} art={animation} sidebar={sidebar} stageKey={step} wide={step === 'completed' || step === 'qr-mobile'}
     onBack={step !== 'completed' ? back : undefined} busy={busy} note={step === 'completed' ? 'Back up your secret phrase from Settings any time. It is the only way to recover this wallet.' : undefined}>
       {step === 'completed' && <Confetti/>}

@@ -15,6 +15,7 @@ import { solanaRpcUrl } from '../../core/rpc';
 import { MAX_WALLETS, WALLET_LIMIT_ERROR, canCreateWallet, classifySecret, normalizeMnemonic, validatePrivateKey, hasDuplicateAddress, pickSolanaVariants, solanaHasHistory, evmFamily, validateWalletName, defaultWalletName, IMPORT_ERRORS, type SolanaVariant } from '../../core/importKey';
 import { onboardingMode } from '../../core/onboardingRules';
 import { decryptStoredKeys } from '../../core/qrImport';
+import { consumeReauth } from '../reauth';
 
 const generatePassword = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
 
@@ -160,6 +161,8 @@ export const handlers: HandlerMap = {
     const s = await readState(ctx);
     if (s.hasVault && !s.unlocked) return { ok: false, error: 'LOCKED' };
     if (s.state && !canCreateWallet(Object.keys(s.state.wallets ?? {}).length)) return { ok: false, error: WALLET_LIMIT_ERROR };
+    // Importing another seed or key into a wallet that already has one needs the unlock credential (the first wallet has nothing to protect yet).
+    if (Object.keys(s.state?.wallets ?? {}).length > 0 && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' };
     const secret = String(m.secret ?? '');
     const kind = classifySecret(secret);
     const id = crypto.randomUUID();
@@ -237,6 +240,7 @@ export const handlers: HandlerMap = {
     try {
       const dec = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
       if (!dec.secrets.length) return { ok: false, error: dec.wrong ? 'INCORRECT_CODE' : 'No importable wallets in this QR code' };
+      { const cur = await readState(ctx); if (Object.keys(cur.state?.wallets ?? {}).length > 0 && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; }
       const v = await ensureVault(ctx, m.password); if (v.error) return { ok: false, error: v.error }; createdVault = v.created;
       let imported = 0, duplicates = 0, lastErr = '';
       for (const sec of dec.secrets) {
