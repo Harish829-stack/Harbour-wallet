@@ -16,7 +16,7 @@ import { isKilled } from '../../kit/failover';
 import * as PM from '../../core/predictions/polymarket';
 
 const getStore = () => import('../store'); // same chunk as the background entry (no runtime import())
-const CREDS_KEY = 'predictions:creds:v1';
+const CREDS_KEY = KEYS.PREDICTIONS_CREDS;
 const env = ((import.meta as any).env ?? {}) as Record<string, string | undefined>;
 const BUILDER_CODE = /^0x[0-9a-fA-F]{64}$/.test(env.VITE_HB_PM_BUILDER_CODE ?? '') ? env.VITE_HB_PM_BUILDER_CODE : undefined;
 const fail = (error: string, code = 'error') => ({ ok: false as const, error, code });

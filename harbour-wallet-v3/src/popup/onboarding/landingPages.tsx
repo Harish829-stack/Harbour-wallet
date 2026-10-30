@@ -187,7 +187,7 @@ export function SecurityPage({ cta }: { cta: ReactNode }) {
     <section className="lp-section lp-tight">
       <div className="lp-head" data-reveal><h2>How your vault<br/>is sealed.</h2><p>Your password never gets stored. It is stretched into an encryption key that only exists while the wallet is unlocked.</p></div>
       <div className="lp-flow" data-reveal>
-        {([[LockKeyhole, 'Your password', 'Typed by you, never saved'], [Radar, 'PBKDF2-SHA256', 'Stretches it into a key'], [ShieldCheck, 'AES-GCM 256-bit', 'Encrypts your keys'], [Server, 'This device', 'The sealed vault stays here']] as const).map(([I, t, d], i, a) => <div key={t} className="lp-flow-wrap"><div className="lp-flow-node"><span><I size={22}/></span><b>{t}</b><small>{d}</small></div>{i < a.length - 1 && <ArrowRight className="lp-flow-arrow" size={22}/>}</div>)}
+        {([[LockKeyhole, 'Your password', 'Typed by you, never saved'], [Radar, 'Argon2id', 'Stretches it into a key'], [ShieldCheck, 'AES-GCM 256-bit', 'Encrypts your keys'], [Server, 'This device', 'The sealed vault stays here']] as const).map(([I, t, d], i, a) => <div key={t} className="lp-flow-wrap"><div className="lp-flow-node"><span><I size={22}/></span><b>{t}</b><small>{d}</small></div>{i < a.length - 1 && <ArrowRight className="lp-flow-arrow" size={22}/>}</div>)}
       </div>
     </section>
 

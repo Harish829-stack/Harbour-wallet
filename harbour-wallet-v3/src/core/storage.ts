@@ -3,6 +3,8 @@ import browser from 'webextension-polyfill';
 export const local = {
   async get<T=any>(k: string): Promise<T | undefined> { return (await browser.storage.local.get(k))[k] as T; },
   async set(k: string, v: unknown) { await browser.storage.local.set({ [k]: v }); },
+  /** Several keys in one write, which storage applies all-or-nothing (used by the key-schedule migration). */
+  async setMany(o: Record<string, unknown>) { await browser.storage.local.set(o); },
   async remove(k: string) { await browser.storage.local.remove(k); },
 };
 export const session = {
@@ -15,5 +17,7 @@ export const KEYS = {
   VAULT_ID: 'wallet:vaultId', THROTTLE: 'wallet:throttle',
   PASSWORD: 'wallet:password', UNLOCK: 'wallet:unlock', UI: 'wallet:ui',
   SETTINGS: 'wallet:settings', PASSKEY: 'wallet:passkey', REVEAL: 'wallet:revealGrant', ADD_WALLET: 'wallet:addWalletGrant', NETWORKS: 'wallet:networks', PASSKEY_VAULT: 'wallet:passkey:vault', FIAT_RATES: 'wallet:fiatRates',
+  // Blobs encrypted under the keystore passphrase (they must be re-encrypted together with the keystores on a key-schedule migration).
+  PERPS_AGENTS: 'perps:agents:v1', PREDICTIONS_CREDS: 'predictions:creds:v1',
   wallets: (vaultId: string) => `wallet:wallets:${vaultId}`,
 };

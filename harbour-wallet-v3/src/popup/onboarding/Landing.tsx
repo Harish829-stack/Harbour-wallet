@@ -153,7 +153,7 @@ export function Landing({ terms, setTerms, busy, error, onStart }: { terms: bool
       <section className="lp-section" id="lp-security">
         <div className="lp-head" data-reveal><h2>Security that<br/>stays with you.</h2><p>Harbour is self-custody: nobody else, including us, can move your funds or recover your phrase.</p><a className="lp-more" href={pageHref('security')}>See how Harbour protects you<ArrowRight size={16}/></a></div>
         <div className="lp-sec">
-          {([[KeyRound, 'Complete self-custody', 'Your secret phrase is generated on this device and never leaves it.'], [LockKeyhole, 'Encrypted vault', 'Keys are sealed with your password (PBKDF2-SHA256 → AES-GCM) and the wallet locks itself when idle.'], [ScanEye, 'Approval control', 'See which apps can spend your tokens, and revoke access in a tap.']] as const).map(([I, t, d], i) =>
+          {([[KeyRound, 'Complete self-custody', 'Your secret phrase is generated on this device and never leaves it.'], [LockKeyhole, 'Encrypted vault', 'Keys are sealed with your password (Argon2id → AES-GCM) and the wallet locks itself when idle.'], [ScanEye, 'Approval control', 'See which apps can spend your tokens, and revoke access in a tap.']] as const).map(([I, t, d], i) =>
             <article key={t} className="lp-sec-card" data-reveal style={{ ['--d' as any]: `${i * 90}ms` }}><span className="lp-sec-ic"><I size={22}/></span><h3>{t}</h3><p>{d}</p></article>)}
         </div>
         <div className="lp-checks" data-reveal>{['Open-source wallet-core cryptography', 'Hardware wallet support', 'Auto-lock timer', 'Back up any time from Settings'].map((t) => <span key={t}><Check size={16}/>{t}</span>)}</div>

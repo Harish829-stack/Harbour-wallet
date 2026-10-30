@@ -19,7 +19,7 @@ import {
 } from '../../core/perps/hyperliquid';
 
 const getStore = () => import('../store'); // same chunk as the background entry (no runtime import())
-const AGENT_KEY = 'perps:agents:v1';
+const AGENT_KEY = KEYS.PERPS_AGENTS;
 const env = ((import.meta as any).env ?? {}) as Record<string, string | undefined>;
 const BUILDER: Builder | null = /^0x[0-9a-fA-F]{40}$/.test(env.VITE_HB_HL_BUILDER ?? '') ? { b: env.VITE_HB_HL_BUILDER!.toLowerCase(), f: Math.min(100, Math.max(1, Number(env.VITE_HB_HL_BUILDER_FEE ?? 10))) } : null;
 const maxFeeRate = (b: Builder) => `${(b.f / 1000).toString()}%`; // tenths of a basis point -> percent ("10" -> "0.01%")

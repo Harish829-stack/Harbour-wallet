@@ -1,21 +1,30 @@
-import { PasswordService, DEFAULT_ITERATIONS, UNLOCK_ITERATIONS } from './passwordService';
+import { PasswordService, DEFAULT_ITERATIONS } from './passwordService';
 import * as passworder from './passworder';
 import { local, session, KEYS } from './storage';
+import { ARGON2_DEFAULT, deriveV2, isV2, v2Record, type Argon2Params, type KdfRecord } from './keySchedule';
+import { rekeyBlob, rekeyKeystore } from './keyMigration';
 const FREE_ATTEMPTS = 5, BASE_DELAY_MS = 5000, MAX_DELAY_MS = 300000;
 type Throttle = { failedAttempts: number; lockedUntil: number };
 
 export class VaultService {
   private pw: PasswordService;
-  constructor(private core: any) { this.pw = new PasswordService(core); }
+  /** `argon2` is overridable for tests only; production always uses ARGON2_DEFAULT. */
+  constructor(private core: any, private argon2: Argon2Params = ARGON2_DEFAULT) { this.pw = new PasswordService(core); }
+
+  /** Password -> the two session keys, for whichever key schedule the stored record uses (v1 PBKDF2 or v2 Argon2id). */
+  private derive(password: string, rec: KdfRecord): { unlockKey: string; passwordKey: string } {
+    const salt = this.core.HexCoding.decode(rec.salt);
+    if (isV2(rec)) return deriveV2(password, salt, rec);
+    return { unlockKey: this.pw.deriveKeyHex(password, salt, rec.iterations), passwordKey: this.pw.deriveKeyHex(password, salt, DEFAULT_ITERATIONS) };
+  }
 
   async exists(): Promise<boolean> { return Boolean(await local.get(KEYS.VAULT)); }
 
   async create(password: string, initialState: Record<string, unknown> = {}): Promise<string> {
     if (await this.exists()) throw new Error('FORBIDDEN_REQUEST');
     const salt = this.pw.generateSalt(32);
-    const passwordKey = this.pw.deriveKeyHex(password, salt, DEFAULT_ITERATIONS);
-    const unlockKey = this.pw.deriveKeyHex(password, salt, UNLOCK_ITERATIONS);
-    await local.set(KEYS.PBKDF2, { salt: this.core.HexCoding.encode(salt), iterations: UNLOCK_ITERATIONS });
+    const { unlockKey, passwordKey } = deriveV2(password, salt, this.argon2);
+    await local.set(KEYS.PBKDF2, v2Record(this.core.HexCoding.encode(salt), this.argon2));
     await session.set(KEYS.PASSWORD, passwordKey);
     await session.set(KEYS.UNLOCK, unlockKey);
     const vaultId = crypto.randomUUID();
@@ -42,28 +51,65 @@ export class VaultService {
   private async unlockInner<T=any>(password: string): Promise<T> {
     const t = await this.throttle();
     if (t.lockedUntil > Date.now()) throw new Error('TOO_MANY_ATTEMPTS');
-    const pb = await local.get<{ salt: string; iterations: number }>(KEYS.PBKDF2);
+    const pb = await local.get<KdfRecord>(KEYS.PBKDF2);
     if (!pb) throw new Error('VAULT_IS_EMPTY');
-    const saltBytes = this.core.HexCoding.decode(pb.salt);
-    const unlockKey = this.pw.deriveKeyHex(password, saltBytes, pb.iterations);
+    let keys = this.derive(password, pb);
     const blob = await local.get<string>(KEYS.VAULT);
     let state: T;
-    try { state = await passworder.decrypt<T>(unlockKey, blob!); }
+    try { state = await passworder.decrypt<T>(keys.unlockKey, blob!); }
     catch { await this.arm(t); throw new Error('Incorrect password'); }
     await this.reset();
-    await session.set(KEYS.PASSWORD, this.pw.deriveKeyHex(password, saltBytes, DEFAULT_ITERATIONS));
-    await session.set(KEYS.UNLOCK, unlockKey);
+    // Wallets created before the Argon2id key schedule are upgraded the first time the right password is typed. The upgrade is
+    // all-or-nothing; if anything goes wrong the old data is untouched and the wallet simply unlocks as before.
+    if (!isV2(pb)) { try { keys = await this.migrateToV2(password, state, keys); } catch { /* nothing was written; the upgrade is attempted again on the next unlock */ } }
+    await session.set(KEYS.PASSWORD, keys.passwordKey);
+    await session.set(KEYS.UNLOCK, keys.unlockKey);
     return state;
+  }
+
+  // v1 -> v2. Re-encrypts every blob that depends on the password (vault, keystores, perps agent keys, prediction credentials)
+  // under the Argon2id-derived keys, checks each result, then commits everything in a single storage write.
+  private async migrateToV2(password: string, state: any, old: { unlockKey: string; passwordKey: string }): Promise<{ unlockKey: string; passwordKey: string }> {
+    const salt = this.pw.generateSalt(32);
+    const neu = deriveV2(password, salt, this.argon2);
+    const updates: Record<string, unknown> = {};
+    const vaultId = (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
+    const ids = new Set<string>([...Object.keys(state?.wallets ?? {}), ...(vaultId ? ((await local.get<string[]>(KEYS.wallets(vaultId))) ?? []) : [])]);
+    for (const id of ids) {
+      const ks = await local.get<any>(id);
+      if (ks && typeof ks === 'object') updates[id] = rekeyKeystore(this.core, ks, old.passwordKey, neu.passwordKey); // throws -> abort, nothing written
+    }
+    const agents = await local.get<Record<string, any>>(KEYS.PERPS_AGENTS);
+    if (agents) {
+      const next: Record<string, any> = {};
+      for (const [scope, rec] of Object.entries(agents)) { const enc = await rekeyBlob(rec?.enc, old.passwordKey, neu.passwordKey); if (enc) next[scope] = { ...rec, enc }; } // unreadable agent keys are dropped: perps asks to enable again
+      updates[KEYS.PERPS_AGENTS] = next;
+    }
+    const creds = await local.get<Record<string, string>>(KEYS.PREDICTIONS_CREDS);
+    if (creds) {
+      const next: Record<string, string> = {};
+      for (const [scope, blob] of Object.entries(creds)) { const enc = await rekeyBlob(blob, old.passwordKey, neu.passwordKey); if (enc) next[scope] = enc; } // unreadable ones are re-derived on demand
+      updates[KEYS.PREDICTIONS_CREDS] = next;
+    }
+    const vaultBlob = await passworder.encrypt(neu.unlockKey, state);
+    if (JSON.stringify(await passworder.decrypt(neu.unlockKey, vaultBlob)) !== JSON.stringify(state)) throw new Error('VAULT_REKEY_MISMATCH');
+    updates[KEYS.VAULT] = vaultBlob;
+    updates[KEYS.PBKDF2] = v2Record(this.core.HexCoding.encode(salt), this.argon2);
+    await local.setMany(updates);
+    // The biometric blob holds the OLD keys; it cannot be re-sealed without the authenticator, so it is cleared and the user
+    // sets biometrics up again from Settings.
+    await local.remove(KEYS.PASSKEY); await local.remove(KEYS.PASSKEY_VAULT);
+    return neu;
   }
   // Re-authentication for sensitive actions (reveal phrase): verifies the password against the stored vault WITHOUT touching the
   // session, with the same throttling as the lock screen.
   private async checkPasswordInner(password: string): Promise<void> {
     const t = await this.throttle();
     if (t.lockedUntil > Date.now()) throw new Error('TOO_MANY_ATTEMPTS');
-    const pb = await local.get<{ salt: string; iterations: number }>(KEYS.PBKDF2);
+    const pb = await local.get<KdfRecord>(KEYS.PBKDF2);
     const blob = await local.get<string>(KEYS.VAULT);
     if (!pb || !blob) throw new Error('VAULT_IS_EMPTY');
-    const key = this.pw.deriveKeyHex(String(password ?? ''), this.core.HexCoding.decode(pb.salt), pb.iterations);
+    const key = this.derive(String(password ?? ''), pb).unlockKey;
     try { await passworder.decrypt(key, blob); } catch { await this.arm(t); throw new Error('Incorrect password'); }
     await this.reset();
   }

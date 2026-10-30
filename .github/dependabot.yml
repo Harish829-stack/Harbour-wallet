@@ -1,0 +1,15 @@
+# Automatic update PRs so security fixes (Go toolchain image, Go modules, npm packages, CI actions) do not wait for a manual audit.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /harbour-wallet-v3/backend
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /harbour-wallet-v3/backend
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /harbour-wallet-v3
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

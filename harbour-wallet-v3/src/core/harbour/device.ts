@@ -1,22 +1,19 @@
 // Per-install device identity for the Harbour API (twin of backend/clients/ts/hbclient.ts and backend/internal/devicesig).
 // The key proves "same install" and nothing else: it never signs transactions and never touches wallet secrets.
-// Preferred: a WebCrypto Ed25519 key created non-extractable and kept in IndexedDB. Browsers without WebCrypto Ed25519
-// fall back to a random seed kept in the same IndexedDB store (still not a wallet credential).
-import { ed25519 } from '@noble/curves/ed25519';
+// The key is a WebCrypto Ed25519 key created non-extractable and kept in IndexedDB, so its private half can never be read by
+// script. There is no software fallback (audit V3-33): the manifest requires a Chrome that has WebCrypto Ed25519, and if the
+// browser still cannot create the key the wallet refuses to register rather than keep a raw seed in storage.
 import { sha256 } from '@noble/hashes/sha256';
 import { HB_API_URL } from './config';
 
 export interface Identity { deviceId: string; publicKeyB64: string; sign: (msg: Uint8Array) => Promise<Uint8Array> }
-interface StoredKey { kind: 'webcrypto'; priv: CryptoKey; pub: string; deviceId?: string }
-interface StoredSeed { kind: 'seed'; seed: string; pub: string; deviceId?: string }
-type Stored = StoredKey | StoredSeed;
+interface Stored { kind: 'webcrypto'; priv: CryptoKey; pub: string; deviceId?: string }
 
 const enc = new TextEncoder();
 export const b64url = (bytes: Uint8Array): string => {
   let s = ''; for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
-const unb64url = (s: string): Uint8Array => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 // ---- persistence (IndexedDB holds CryptoKey objects by structured clone) ----
 const DB = 'harbour-device', OS = 'keys', KEY = 'device';
@@ -49,12 +46,11 @@ async function newKey(): Promise<Stored> {
     const pub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
     return { kind: 'webcrypto', priv: kp.privateKey, pub: b64url(pub) };
   } catch {
-    const seed = crypto.getRandomValues(new Uint8Array(32));
-    return { kind: 'seed', seed: b64url(seed), pub: b64url(ed25519.getPublicKey(seed)) };
+    throw new HarbourApiError(0, 'unsupported_browser', 'Harbour needs a newer version of Chrome to connect this device. Please update Chrome and try again.', false);
   }
 }
 const signer = (k: Stored) => async (msg: Uint8Array): Promise<Uint8Array> =>
-  k.kind === 'webcrypto' ? new Uint8Array(await crypto.subtle.sign({ name: 'Ed25519' } as any, k.priv, msg)) : ed25519.sign(msg, unb64url(k.seed));
+  new Uint8Array(await crypto.subtle.sign({ name: 'Ed25519' } as any, k.priv, msg));
 
 // ---- proof-of-work registration ----
 const leadingZeroBits = (h: Uint8Array): number => {
@@ -94,6 +90,8 @@ const withDeviceLock = <T,>(fn: () => Promise<T>): Promise<T> => {
 export function deviceIdentity(base = HB_API_URL, f: typeof fetch = fetch): Promise<Identity> {
   pending ??= withDeviceLock(async () => {
     let k = await load();
+    // Older builds could leave a raw seed in IndexedDB (software fallback). Wipe it and enrol a fresh non-extractable key.
+    if (k && (k as { kind?: string }).kind !== 'webcrypto') { await forgetDevice(); k = undefined; }
     if (!k) { k = await newKey(); await save(k); }
     const sign = signer(k);
     if (!k.deviceId) {

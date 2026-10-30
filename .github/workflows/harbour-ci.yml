@@ -12,8 +12,8 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: harbour-wallet-v3/package-lock.json }
       - run: npm ci --ignore-scripts
       - run: npm run verify
-      # The zod advisory (GHSA-mrhx-c7xc-m3w5) has no patched release that viem/abitype accept yet; everything else must stay below "high".
-      - run: npm audit --omit=dev --audit-level=critical
+      # Fails on any high/critical advisory unless it has a dated entry in audit-exceptions.json (zod via @ton/ton, V3-22).
+      - run: node scripts/audit-gate.mjs
   verify-v2:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: harbour-wallet-v2 } }

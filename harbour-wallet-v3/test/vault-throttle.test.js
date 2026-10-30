@@ -21,7 +21,7 @@ const core = { HexCoding: { encode: (u) => Buffer.from(u).toString('hex'), decod
   PBKDF2: { hmacSha512: (p, s, i, l) => new Uint8Array(pbkdf2Sync(p, s, 1, l, 'sha512')) } }; // 1 iteration: speed only
 
 test('parallel wrong passwords cannot outrun the throttle', async () => {
-  const v = new VaultService(core);
+  const v = new VaultService(core, { m: 8, t: 1, p: 1 });
   await v.create('correct horse battery', { wallets: {} }); await v.lock();
   const guesses = await Promise.allSettled(Array.from({ length: 12 }, (_, i) => v.unlock('wrong-' + i)));
   const msgs = guesses.map((g) => g.reason?.message);
