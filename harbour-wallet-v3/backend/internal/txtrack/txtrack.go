@@ -77,7 +77,8 @@ func (t *Tracker) Run(ctx context.Context) {
 		// Privacy: settled sends lose their device link after an hour and disappear after 30 days.
 		if time.Since(lastPrune) > 10*time.Minute {
 			lastPrune = time.Now()
-			if err := t.St.PrunePending(ctx, time.Hour, 30*24*time.Hour); err != nil && ctx.Err() == nil {
+			// HW-2026-020: unlink the device soon after settle (the notifier has pushed by then); keep rows 7 days.
+			if err := t.St.PrunePending(ctx, 10*time.Minute, 7*24*time.Hour); err != nil && ctx.Err() == nil {
 				t.Log.Warn("prune pending failed", "err", err)
 			}
 		}

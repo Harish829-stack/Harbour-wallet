@@ -11,15 +11,15 @@ const out = await build({
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
 // ---------- auto-lock (TW: AUTO_LOCK_OPTIONS=[1,5,10,15,30,60,0], default 10) ----------
-test('auto-lock options, default and sanitising match the TW bundle', () => {
-  assert.deepEqual([...M.AUTO_LOCK_OPTIONS], [1, 5, 10, 15, 30, 60, 0]);
-  assert.equal(M.DEFAULT_LOCK_MINUTES, 10);
-  assert.equal(M.sanitizeLockTime(30), 30); assert.equal(M.sanitizeLockTime(0), 0);
+test('auto-lock options, default and sanitising (HW-011: no "Never", max 4 h)', () => {
+  assert.deepEqual([...M.AUTO_LOCK_OPTIONS], [1, 5, 10, 15, 30, 60, 240]);
+  assert.equal(M.DEFAULT_LOCK_MINUTES, 10); assert.equal(M.MAX_LOCK_MINUTES, 240);
+  assert.equal(M.sanitizeLockTime(30), 30); assert.equal(M.sanitizeLockTime(0), 10); assert.equal(M.sanitizeLockTime(240), 240);
   for (const bad of [2, -1, 61, '5', null, undefined, NaN]) assert.equal(M.sanitizeLockTime(bad), 10);
   assert.equal(M.isAutoLockEnabled(0), false); assert.equal(M.isAutoLockEnabled(1), true);
 });
 test('auto-lock labels follow useAutoLockLabel', () => {
-  assert.deepEqual([1, 5, 10, 15, 30, 60, 0].map(M.autoLockLabel), ['1 minute', '5 minutes', '10 minutes', '15 minutes', '30 minutes', '1 hour', 'Never']);
+  assert.deepEqual([1, 5, 10, 15, 30, 60, 240].map(M.autoLockLabel), ['1 minute', '5 minutes', '10 minutes', '15 minutes', '30 minutes', '1 hour', '4 hours']);
   assert.equal(M.autoLockLabel(120), '2 hours');
 });
 
@@ -67,7 +67,7 @@ test('push toggle moves send&receive with it; topics only accept boolean + sane 
 });
 test('normalizeSettings tolerates corrupt / old storage', () => {
   for (const raw of [undefined, null, 5, 'x', [], { colorMode: 42 }]) { const n = M.normalizeSettings(raw, 'en', M.CURRENCY_CODES); assert.equal(n.colorMode, 'system'); assert.equal(n.lockTimeInMinutes, 10); }
-  assert.equal(M.normalizeSettings({ colorMode: 'light', lockTimeInMinutes: 0 }).lockTimeInMinutes, 0);
+  assert.equal(M.normalizeSettings({ colorMode: 'light', lockTimeInMinutes: 0 }).lockTimeInMinutes, 10); // a legacy "Never" is migrated to the default
 });
 test('sideEffects only reports what changed', () => {
   const a = M.DEFAULT_SETTINGS('en');

@@ -88,7 +88,7 @@ export function ProviderSurface() {
   };
   const unlockBio = async () => {
     if (!pk?.credentialId || bioBusy || busy) return; setBioBusy(true); setError('');
-    const r = await biometricUnlock(bg, pk.credentialId); setBioBusy(false);
+    const r = await biometricUnlock(bg, pk.credentialId, !!pk.legacy); setBioBusy(false);
     if (r.ok) setLocked(false); else if (!r.cancelled) setError(r.error);
   };
   return <div className="hb-root" style={{ background: T.bg, color: T.text, fontFamily: 'Inter, system-ui, sans-serif', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -126,7 +126,10 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
   const wcPrev = wcs ? v.wc?.preview?.find((p: any) => p.index === account) : null;
   const warnings: string[] = v.warnings ?? [];
   const risk = v.site?.risk === 'high' || v.site?.risk === 'blocked' || v.site?.risk === 'malicious' || v.site?.risk === 'phishing';
-  const dangerous = risk || (wcs && (v.wc?.verify?.isScam || v.wc?.verify?.validation === 'INVALID')) || v.message?.rawHash || v.message?.ethSign || warnings.length > 0 || v.typed?.warnings?.length > 0 || v.siwe?.issues?.length > 0;
+  const dangerous = risk || !!v.switchedFrom || (wcs && (v.wc?.verify?.isScam || v.wc?.verify?.validation === 'INVALID')) || v.message?.rawHash || v.message?.ethSign || warnings.length > 0 || v.typed?.warnings?.length > 0 || v.siwe?.issues?.length > 0;
+  // Phishing-listed sites are blocked (HW-2026-006): approving needs the user to type the site's host; the worker re-checks it.
+  const [override, setOverride] = useState(''); const siteHost = (() => { try { return new URL(v.origin).host.toLowerCase(); } catch { return ''; } })();
+  const overrideOk = !risk || (!!siteHost && override.trim().toLowerCase() === siteHost);
   const high = risk || warnings.some((w) => ['maliciousAddress', 'maliciousSpender', 'unlimitedApproval', 'unlimitedAllowance', 'simulationFailed', 'hiddenApproval', 'setApprovalForAll'].includes(w)) || v.message?.rawHash || v.message?.ethSign;
   const selected = v.accounts?.find((a: any) => a.index === account);
   const fee = v.fees?.presets?.[feeLevel];
@@ -146,8 +149,9 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
   return <>
     {executing && <Warning>This request is executing. Its outcome may be uncertain if the worker stops. Do not submit it again.</Warning>}
     <h2 style={{ margin: '8px 0 14px', fontSize: 23 }}>{v.kind === 'addChain' && v.alreadyAdded ? 'Network already added' : titles[v.kind] ?? 'Review request'}</h2>
-    <Group><div style={{ padding: 14 }}><strong>{v.title}</strong><div style={{ ...mono, fontWeight: 700 }}>{v.origin}</div>{v.embedded && <Detail label="Embedded in" value={v.topOrigin}/>}</div></Group>
-    {risk && <Warning>This site is flagged as dangerous. Approving can expose your assets.</Warning>}
+    <Group><div style={{ padding: 14 }}>{/* HW-2026-017 F-03: the browser-verified origin leads; the page-controlled title is secondary and labelled */}<div data-testid="approval-origin" style={{ ...mono, fontWeight: 800, fontSize: 15 }}>{v.origin}</div>{v.title && v.title !== v.origin && <div style={{ color: T.sub, fontSize: 12.5, marginTop: 4 }}>Page title (set by the site): {String(v.title).slice(0, 80)}</div>}{v.embedded && <Detail label="Embedded in" value={v.topOrigin}/>}</div></Group>
+    {risk && <><Warning>Harbour blocked this request: {siteHost || 'this site'} is on a phishing list. Sites like this steal funds. Reject it unless you are certain the list is wrong.</Warning><details data-testid="risk-override"><summary>I understand the risk and want to continue</summary><label htmlFor="risk-override-input" style={{ fontSize: 12 }}>Type <strong>{siteHost}</strong> to continue</label><input id="risk-override-input" style={field} value={override} onChange={(e) => setOverride(e.target.value)} autoComplete="off"/></details></>}
+    {v.switchedFrom && <Warning>This site switched your network from {v.switchedFrom.name} to {v.chain?.name} for this request. Check that this is the network you expect.</Warning>}
     {v.site?.insecure && <Warning>This site uses an insecure connection.</Warning>}
     {v.site?.lookalike && <Warning>This internationalized domain may resemble another site. Check its full address.</Warning>}
     {v.site?.risk === 'unavailable' && <Note>Site safety check is unavailable. Check the site address carefully.</Note>}
@@ -187,7 +191,7 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
     {v.bio?.required && <Note>You will be asked to confirm with biometrics before this is signed.</Note>}{bioErr && <Warning>{bioErr}</Warning>}
     {dangerous && <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, margin: '18px 0', fontSize: 13 }}><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)}/>I reviewed the warnings and understand this request.</label>}
     {high && <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 0 18px', fontSize: 13 }}><input type="checkbox" checked={ack2} onChange={(e) => setAck2(e.target.checked)}/>I accept the risk of losing funds if this site or address is malicious.</label>}
-    <div style={{ display: 'flex', gap: 10, marginTop: 20 }}><Btn variant="ghost" disabled={busy || executing} onClick={() => { void resolve({ approve: false }); }}>Reject</Btn><Btn disabled={busy || executing || !!blocked || dangerous && !ack || !!high && !ack2} onClick={() => { void resolve({ approve: true, ...(connect ? { accountIndex: account, chainId: chain } : {}), ...(v.kind === 'tx' ? { gasLimit: gas, ...(fee ? { fee } : {}), ...(limitChanged && limitRaw != null ? { allowanceLimit: limitRaw.toString() } : {}) } : {}) }); }}>{busy ? 'Processing…' : connect ? 'Connect' : ['sign', 'typed', 'solSignMessage', 'solSignTx', 'solSignAll', 'multiSign'].includes(v.kind) ? 'Sign' : v.kind === 'tx' || v.kind === 'solSignSend' ? 'Confirm' : 'Approve'}</Btn></div>
+    <div style={{ display: 'flex', gap: 10, marginTop: 20 }}><Btn variant="ghost" disabled={busy || executing} onClick={() => { void resolve({ approve: false }); }}>Reject</Btn><Btn disabled={busy || executing || !!blocked || !overrideOk || dangerous && !ack || !!high && !ack2} onClick={() => { void resolve({ approve: true, ...(risk ? { riskOverride: override.trim() } : {}), ...(connect ? { accountIndex: account, chainId: chain } : {}), ...(v.kind === 'tx' ? { gasLimit: gas, ...(fee ? { fee } : {}), ...(limitChanged && limitRaw != null ? { allowanceLimit: limitRaw.toString() } : {}) } : {}) }); }}>{busy ? 'Processing…' : connect ? 'Connect' : ['sign', 'typed', 'solSignMessage', 'solSignTx', 'solSignAll', 'multiSign'].includes(v.kind) ? 'Sign' : v.kind === 'tx' || v.kind === 'solSignSend' ? 'Confirm' : 'Approve'}</Btn></div>
   </>;
 }
 
@@ -219,8 +223,9 @@ export const ConnectionDetailScreen: React.FC<Ctx> = (c) => {
 export const SCREENS_provider: Record<string, React.FC<Ctx>> = { connections: ConnectionsScreen, connectionsBlacklist: BlacklistScreen, connectionDetail: ConnectionDetailScreen };
 
 
-// Only allowances Harbour has actually tracked are listed; every row is re-read on chain.
-export function TokenApprovalsPanel({ send = bg }: { send?: Ctx['bg'] }) {
+// Allowances Harbour tracked itself, re-read on chain. HW-2026-016: `onScanAll` links to the full scan (Settings > Security >
+// Token approvals: every ERC-20 allowance for the address, discovered via GoPlus and verified on chain) so other allowances are revocable too.
+export function TokenApprovalsPanel({ send = bg, onScanAll }: { send?: Ctx['bg']; onScanAll?: () => void }) {
   const [items, setItems] = useState<any[] | null>(null); const [error, setError] = useState(''); const [selected, setSelected] = useState<any>(null); const [busy, setBusy] = useState(false); const [hash, setHash] = useState('');
   const load = async () => { setError(''); try { const r = await send({ type: 'providerApprovals' }); if (!r?.ok) throw new Error(r?.error || 'Could not load allowances.'); setItems(r.items ?? []); } catch (e: any) { setError(e.message); } };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,7 +235,7 @@ export function TokenApprovalsPanel({ send = bg }: { send?: Ctx['bg'] }) {
     try { const r = await send({ type: 'providerRevoke', id: selected.id }); if (!r?.ok) throw new Error(r?.locked ? 'Unlock your wallet before revoking.' : r?.error || 'Revocation failed.'); setHash(r.hash ?? ''); setSelected(null); await load(); }
     catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
-  return <><Note>Token allowances granted through Harbour, checked on chain. Other allowances may exist. Disconnecting a site does not revoke its allowances.</Note><Btn variant="ghost" disabled={busy} onClick={() => { void load(); }}>Refresh allowances</Btn>
+  return <><Note>Token allowances granted through Harbour, checked on chain. Other allowances may exist{onScanAll ? '; scan the full list below' : ''}. Disconnecting a site does not revoke its allowances.</Note>{onScanAll && <Btn disabled={busy} onClick={onScanAll}>Scan all token allowances</Btn>}<Btn variant="ghost" disabled={busy} onClick={() => { void load(); }}>Refresh allowances</Btn>
     {items === null ? <div style={{ padding: 20 }}><Spinner/></div> : items.length === 0 ? <Empty title="No tracked token approvals" sub="Allowances granted through Harbour appear here after they are confirmed on chain." icon="shield"/> : items.map((a) => <div key={a.id} style={{ borderBottom: `1px solid ${T.border}`, padding: '12px 0' }}><strong>{a.symbol} · {a.chainName}</strong><Detail label="Spender" value={a.spender}/><Detail label="Token contract" value={a.token}/><Detail label="Allowance" value={a.unavailable ? 'On-chain check unavailable' : a.unlimited ? 'Unlimited' : a.formatted}/>{a.host && <Detail label="Site" value={a.host}/>}<Btn variant="ghost" disabled={busy || a.unavailable} onClick={() => setSelected(a)}>Review revocation</Btn></div>)}
     {hash && <Note>Revocation submitted. Transaction hash: <span style={mono}>{hash}</span>. Confirmation is still required on chain.</Note>}<ErrorLine msg={error}/>
     {selected && <Sheet title="Revoke token allowance" onClose={() => { if (!busy) setSelected(null); }}><Detail label="Network" value={selected.chainName}/><Detail label="Token" value={selected.token}/><Detail label="Owner" value={selected.owner}/><Detail label="Spender" value={selected.spender}/><Warning>This submits an on-chain transaction setting this spender’s allowance to zero. A network fee is required. The background estimates the fee before signing; final fee depends on network conditions.</Warning><ErrorLine msg={error}/><Btn disabled={busy} onClick={() => { void revoke(); }}>{busy ? 'Submitting…' : 'Confirm revocation'}</Btn><Btn variant="ghost" disabled={busy} style={{ marginTop: 8 }} onClick={() => setSelected(null)}>Cancel</Btn></Sheet>}

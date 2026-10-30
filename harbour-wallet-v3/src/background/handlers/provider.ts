@@ -17,7 +17,7 @@ const NEEDS_BIO = new Set(['sign', 'typed', 'tx', 'solSignMessage', 'solSignTx',
 async function bioRequirement(kind: string, params?: any): Promise<{ required: boolean; credentialId: string | null }> {
   const needs = NEEDS_BIO.has(kind) || (kind === 'multiConnect' && typeof params?.proofPayload === 'string'); // a TON ton_proof is a signature
   if (!needs || !(await perms.prefs()).biometricApproval) return { required: false, credentialId: null };
-  const meta = await passkeyMeta(); return { required: !!meta, credentialId: meta?.credentialId ?? null };
+  const meta = await passkeyMeta(); return { required: !!meta && !meta.legacy, credentialId: meta && !meta.legacy ? meta.credentialId : null }; // HW-001: legacy seals cannot gate approvals
 }
 
 const conView = (c: any) => ({ id: c.id, origin: c.origin, host: displayHost(c.origin), title: c.title, icon: c.icon ?? null, walletName: c.walletName, accountName: c.accountName, accountIndex: c.accountIndex, walletId: c.walletId, evmAddress: c.evmAddress ?? null, solanaAddress: c.solanaAddress ?? null, chainId: c.chainId, chainName: evmNetwork(c.chainId)?.name ?? `Chain ${c.chainId}`, namespaces: c.namespaces, connectedAt: c.connectedAt, lastUsedAt: c.lastUsedAt });

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { gateRoute } from './backupGate';
 import { TokenApprovalsPanel } from './features/provider';
 import { T } from '../theme';
 import { bg } from '../api';
@@ -74,8 +75,8 @@ export const Wallet: React.FC<{
     if (detail) return [{ name: 'connections' }, { name: 'connectionDetail', params: { id: decodeURIComponent(detail[1]) } }];
     return [];
   };
-  const [stack, setStack] = useState<Array<{ name: string; params?: any }>>(fromHash);
-  useEffect(() => { const change = () => setStack(fromHash()); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, []);
+  const [stack, setStack] = useState<Array<{ name: string; params?: any }>>(() => fromHash().map((r) => gateRoute(r, !!backupRequired)));
+  useEffect(() => { const change = () => setStack(fromHash().map((r) => gateRoute(r, !!backupRequired))); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, [backupRequired]);
   const [sub, setSub] = useState<'crypto' | 'approvals'>('crypto');
   // TW hides the earn branch for hardware accounts: ask the background whether Earn is available for the active wallet.
   const [earnOk, setEarnOk] = useState(featureEnabled('earn'));
@@ -110,7 +111,7 @@ export const Wallet: React.FC<{
 
 
   const nav: Nav = {
-    push: (name, params) => setStack((s) => [...s, { name, params }]),
+    push: (name, params) => setStack((s) => [...s, gateRoute({ name, params }, !!backupRequired)]),
     pop: () => setStack((s) => s.slice(0, -1)),
     home: () => { setStack([]); setTab('home'); },
     lock: onLock, backup: () => setStack([{ name: 'backup', params: {} }]),
@@ -188,7 +189,7 @@ export const Wallet: React.FC<{
           }).concat(visibleTokens.map((i) => (
             <TokenCell key={i.token.id} layout={layout} hide={hide} onClick={() => nav.push('tokenDetail', { assetId: i.token.id })}
               d={{ name: i.token.name, sym: i.token.symbol, color: tokenColor(i.token.id), evm: true, amount: i.ok ? fmtAmt(i.formatted) : '—', fiatUsd: i.usd, price: i.price, change: i.change }} />
-          ))) as any) : <TokenApprovalsPanel send={bg}/>}
+          ))) as any) : <TokenApprovalsPanel send={bg} onScanAll={() => nav.push('tokenApprovals')}/>}
           </div>
         </>}
 

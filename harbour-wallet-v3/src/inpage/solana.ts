@@ -1,5 +1,5 @@
 import { logError } from '../core/logger';
-// Solana provider (window.trustwallet.solana / window.solana) + Wallet Standard registration.
+// Solana provider (window.harbour.solana / window.solana) + Wallet Standard registration.
 // Trust Wallet parity: connect / disconnect / signMessage / signTransaction / signAllTransactions / signAndSendTransaction (evidences/re-evidence/12-dapp-provider, Solana adapter).
 import { Emitter, ProviderRpcError } from './emitter';
 import type { Bridge, BridgeEvent } from './bridge';
@@ -32,7 +32,7 @@ function attach(tx: any, address: string, sig: Uint8Array) {
 const toBytes = (m: unknown): Uint8Array => { if (m instanceof Uint8Array) return m; if (m instanceof ArrayBuffer) return new Uint8Array(m); if (Array.isArray(m)) return Uint8Array.from(m as number[]); throw new ProviderRpcError(-32602, 'Message must be a Uint8Array.'); };
 
 export class HarbourSolana extends Emitter {
-  readonly isHarbour = true; isTrust = true; isTrustWallet = true; isPhantom = false;
+  readonly isHarbour = true; isPhantom = false;
   publicKey: SolPublicKey | null = null; isConnected = false;
   constructor(private bridge: Bridge) {
     super();

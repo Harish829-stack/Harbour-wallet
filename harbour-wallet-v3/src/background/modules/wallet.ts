@@ -1,7 +1,7 @@
 import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
 import { armLockTimer, clearLockTimer } from '../settingsService';
-import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
+import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey, dropLegacyPasskey } from '../../core/passkeyService';
 // Dumb-UI rule: no handler here returns a recovery phrase, private key or password (see handlers/secrets.ts, core/uiSafe.ts).
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
 import { readQrStage, clearQrStage } from '../qrStage';
@@ -67,7 +67,7 @@ export const handlers: HandlerMap = {
   unlock: async (msg, ctx) => {
     const { vault } = ctx as any;
  {
-      try { const state = await vault.unlock(msg.password); await armLockTimer().catch(() => {}); return { ok: true, state }; }
+      try { const state = await vault.unlock(msg.password); await dropLegacyPasskey().catch(() => {}); await armLockTimer().catch(() => {}); return { ok: true, state }; }
       catch (e: any) { return { ok: false, error: e.message }; }
     }
   },
@@ -75,7 +75,7 @@ export const handlers: HandlerMap = {
     const { core, vault, wallet, sender } = ctx as any;
  {
       const m = await passkeyMeta();
-      return { ok: true, enabled: !!m, credentialId: m?.credentialId ?? null, isPasswordGenerated: !!m?.isPasswordGenerated };
+      return { ok: true, enabled: !!m, credentialId: m?.credentialId ?? null, isPasswordGenerated: !!m?.isPasswordGenerated, legacy: !!m?.legacy };
     }
   },
   passkeyEnroll: async (msg, ctx) => {
@@ -84,7 +84,9 @@ export const handlers: HandlerMap = {
       // Wallet must be unlocked: the unlock material being sealed is the live session's.
       try {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
-        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), false);
+        // Re-enrolling a password-less legacy wallet keeps it password-less (its password is still unknown to the user).
+        const prev = await passkeyMeta();
+        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), !!prev?.isPasswordGenerated);
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
@@ -112,7 +114,7 @@ export const handlers: HandlerMap = {
       const password: unknown = msg.password;
       if (typeof password !== 'string' || !validatePassword(password).valid) return { ok: false, error: 'INVALID_WALLET_INPUT' };
       const secret = String(msg.secret ?? '');
-      await verifyPasskeySecret(secret);
+      await verifyPasskeySecret(secret, { allowLegacy: true });
       await vault.setPassword(password, secret);
       return { ok: true };
     } catch (e: any) { return { ok: false, error: e?.message || 'Could not add a password' }; }

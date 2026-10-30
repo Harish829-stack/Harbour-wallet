@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Install: ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+# HW-2026-002: refuse commits that contain secrets or local key files.
+set -e
+if git diff --cached --name-only | grep -Eq '(^|/)\.env$|\.hbdevice\.json$|release-key|harbour-keys\.env|flows\.mitm$|deploy/postgres/certs/'; then
+  echo "pre-commit: refusing to commit a secret or key file"; exit 1
+fi
+if command -v gitleaks >/dev/null 2>&1; then gitleaks git --staged --no-banner --redact; else echo "pre-commit: gitleaks not installed (brew install gitleaks); skipped scan"; fi

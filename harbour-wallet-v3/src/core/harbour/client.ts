@@ -4,6 +4,7 @@ import { sha256 } from '@noble/hashes/sha256';
 import { HB_API_URL, HB_API_SECURE } from './config';
 import { deviceIdentity, resetDevice, b64url, parseResponse, HarbourApiError, type Identity } from './device';
 export { HarbourApiError };
+import { checkPortfolio, checkHistory, checkNfts, checkAddresses, checkBroadcast } from './schema';
 
 const enc = new TextEncoder();
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
@@ -56,16 +57,16 @@ export interface NftView { chain: string; address: string; contract: string; col
 export interface AddressRef { chain: string; address: string }
 
 const q = (refs?: AddressRef[]) => (refs?.length ? `addresses=${encodeURIComponent(refs.map((r) => `${r.chain}:${r.address}`).join(','))}` : '');
-export const getPortfolio = (refs?: AddressRef[]) => api<Portfolio>('GET', `/v1/me/portfolio${refs?.length ? `?${q(refs)}` : ''}`);
-export const getHistory = (refs: AddressRef[], cursor?: string, limit = 50) =>
-  api<History>('GET', `/v1/me/history?${[q(refs), `limit=${limit}`, cursor ? `cursor=${encodeURIComponent(cursor)}` : ''].filter(Boolean).join('&')}`);
-export const getNfts = (refs?: AddressRef[]) => api<{ nfts: NftView[] }>('GET', `/v1/me/nfts${refs?.length ? `?${q(refs)}` : ''}`);
-export const listAddresses = () => api<{ addresses: Array<AddressRef & { backfill_state: string; synced: boolean }> }>('GET', '/v1/me/addresses');
+export const getPortfolio = async (refs?: AddressRef[]) => checkPortfolio(await api('GET', `/v1/me/portfolio${refs?.length ? `?${q(refs)}` : ''}`), refs);
+export const getHistory = async (refs: AddressRef[], cursor?: string, limit = 50): Promise<History> =>
+  checkHistory(await api('GET', `/v1/me/history?${[q(refs), `limit=${limit}`, cursor ? `cursor=${encodeURIComponent(cursor)}` : ''].filter(Boolean).join('&')}`), refs);
+export const getNfts = async (refs?: AddressRef[]) => checkNfts(await api('GET', `/v1/me/nfts${refs?.length ? `?${q(refs)}` : ''}`), refs);
+export const listAddresses = async () => checkAddresses(await api('GET', '/v1/me/addresses'));
 export const putAddresses = (add: AddressRef[], remove: AddressRef[]) =>
   api('PUT', '/v1/me/addresses', { add, remove }, { 'Idempotency-Key': crypto.randomUUID() });
-export const broadcastTx = (chain: string, raw: string, session?: string) =>
-  api<{ tx_hash: string; status: string; channel?: string; channel_token?: string }>('POST', `/v1/tx/${chain}/broadcast`, { raw },
-    { 'Idempotency-Key': `bc-${raw.slice(-24)}`, ...(session ? { 'X-HB-Session': session } : {}) });
+export const broadcastTx = async (chain: string, raw: string, session?: string) =>
+  checkBroadcast(await api('POST', `/v1/tx/${chain}/broadcast`, { raw },
+    { 'Idempotency-Key': `bc-${raw.slice(-24)}`, ...(session ? { 'X-HB-Session': session } : {}) }), raw);
 export const realtimeToken = () => api<{ url: string; token: string; expires_at: number; subscriptions: Array<{ channel: string; token: string }> }>('POST', '/v1/realtime/token', {});
 export const vapidKey = async (): Promise<string> => { if (!HB_API_SECURE) throw new HarbourApiError(0, 'insecure_api', 'Harbour cannot reach its servers securely.', false); return (await parseResponse(await rawFetch(`${HB_API_URL}/v1/push/vapid`, { credentials: 'omit' }))).public_key; };
 export const putPush = (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) => api('PUT', '/v1/me/push', sub);

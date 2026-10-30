@@ -1,0 +1,302 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@ethersproject/abi": {
+      "name": "@ethersproject/abi",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/hash"
+      ],
+      "effects": [
+        "@ledgerhq/hw-app-eth"
+      ],
+      "range": "5.0.10 - 5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/abi"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/abstract-provider": {
+      "name": "@ethersproject/abstract-provider",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/transactions"
+      ],
+      "effects": [
+        "@ethersproject/abstract-signer"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/abstract-provider"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/abstract-signer": {
+      "name": "@ethersproject/abstract-signer",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-provider"
+      ],
+      "effects": [
+        "@ethersproject/hash"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/abstract-signer"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/hash": {
+      "name": "@ethersproject/hash",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-signer"
+      ],
+      "effects": [
+        "@ethersproject/abi",
+        "@ledgerhq/evm-tools"
+      ],
+      "range": "5.0.6 - 5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/hash"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/signing-key": {
+      "name": "@ethersproject/signing-key",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "elliptic"
+      ],
+      "effects": [
+        "@ethersproject/transactions"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/signing-key"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/transactions": {
+      "name": "@ethersproject/transactions",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/signing-key"
+      ],
+      "effects": [
+        "@ethersproject/abstract-provider",
+        "@ledgerhq/hw-app-eth"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/transactions"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ledgerhq/evm-tools": {
+      "name": "@ledgerhq/evm-tools",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/hash"
+      ],
+      "effects": [],
+      "range": ">=1.2.5-nightly.0",
+      "nodes": [
+        "node_modules/@ledgerhq/evm-tools"
+      ],
+      "fixAvailable": true
+    },
+    "@ledgerhq/hw-app-eth": {
+      "name": "@ledgerhq/hw-app-eth",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "@ethersproject/abi",
+        "@ethersproject/transactions",
+        "@ledgerhq/evm-tools"
+      ],
+      "effects": [],
+      "range": ">=6.23.0",
+      "nodes": [
+        "node_modules/@ledgerhq/hw-app-eth"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@ton/ton": {
+      "name": "@ton/ton",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "zod"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ton/ton"
+      ],
+      "fixAvailable": false
+    },
+    "abitype": {
+      "name": "abitype",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "zod"
+      ],
+      "effects": [
+        "viem"
+      ],
+      "range": "<=0.0.0-main-20230430000127 || 0.7.0-canary.20230307T162852 - 1.0.9",
+      "nodes": [
+        "node_modules/abitype"
+      ],
+      "fixAvailable": {
+        "name": "viem",
+        "version": "2.57.13",
+        "isSemVerMajor": false
+      }
+    },
+    "elliptic": {
+      "name": "elliptic",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1112030,
+          "name": "elliptic",
+          "dependency": "elliptic",
+          "title": "Elliptic Uses a Cryptographic Primitive with a Risky Implementation",
+          "url": "https://github.com/advisories/GHSA-848j-6mx2-7j84",
+          "severity": "low",
+          "cwe": [
+            "CWE-1240"
+          ],
+          "cvss": {
+            "score": 5.6,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L"
+          },
+          "range": "<=6.6.1"
+        }
+      ],
+      "effects": [
+        "@ethersproject/signing-key"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/elliptic"
+      ],
+      "fixAvailable": {
+        "name": "@ledgerhq/hw-app-eth",
+        "version": "6.40.3",
+        "isSemVerMajor": true
+      }
+    },
+    "viem": {
+      "name": "viem",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "abitype"
+      ],
+      "effects": [],
+      "range": "<=0.0.0-wagmiv2-20230628182101 || 0.1.10 - 2.37.1",
+      "nodes": [
+        "node_modules/viem"
+      ],
+      "fixAvailable": {
+        "name": "viem",
+        "version": "2.57.13",
+        "isSemVerMajor": false
+      }
+    },
+    "zod": {
+      "name": "zod",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243066,
+          "name": "zod",
+          "dependency": "zod",
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "severity": "high",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<4.6.6"
+        }
+      ],
+      "effects": [
+        "@ton/ton",
+        "abitype"
+      ],
+      "range": "<4.6.6",
+      "nodes": [
+        "node_modules/zod"
+      ],
+      "fixAvailable": {
+        "name": "viem",
+        "version": "2.57.13",
+        "isSemVerMajor": false
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 9,
+      "moderate": 0,
+      "high": 4,
+      "critical": 0,
+      "total": 13
+    },
+    "dependencies": {
+      "prod": 392,
+      "dev": 270,
+      "optional": 67,
+      "peer": 30,
+      "peerOptional": 0,
+      "total": 705
+    }
+  }
+}

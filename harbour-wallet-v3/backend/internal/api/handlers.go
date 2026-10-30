@@ -114,7 +114,7 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if n > 0 {
-			ok, err := s.dailyCounter(ctx, "hb:bf:"+d.ID, int64(n), s.tier(d.Tier).BackfillsPerDay)
+			ok, err := s.dailyCounter(ctx, "hb:bf:"+s.devTag(d.ID), int64(n), s.tier(d.Tier).BackfillsPerDay)
 			if err != nil {
 				s.internalErr(w, r, err)
 				return
@@ -188,7 +188,7 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ok, err := s.counter(ctx, "hb:rlrpc:"+d.ID, int64(len(reqs)), s.tier(d.Tier).RPCPerMinute)
+	ok, err := s.counter(ctx, "hb:rlrpc:"+s.devTag(d.ID), int64(len(reqs)), s.tier(d.Tier).RPCPerMinute)
 	if err != nil {
 		s.internalErr(w, r, err)
 		return

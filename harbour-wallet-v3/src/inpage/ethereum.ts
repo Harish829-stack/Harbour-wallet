@@ -1,4 +1,4 @@
-// EIP-1193 provider (window.ethereum / window.trustwallet). Trust Wallet parity notes: evidences/re-evidence/12-dapp-provider (EthereumAdapter + request switch).
+// EIP-1193 provider (window.ethereum / window.harbour). Trust Wallet parity notes: evidences/re-evidence/12-dapp-provider (EthereumAdapter + request switch).
 import { Emitter, ProviderRpcError } from './emitter';
 import type { Bridge, BridgeEvent } from './bridge';
 import type { InitState } from '../core/provider/protocol';
@@ -6,7 +6,7 @@ import type { InitState } from '../core/provider/protocol';
 const STATIC = new Set(['eth_chainId', 'net_version', 'eth_accounts', 'eth_coinbase']);
 export class HarbourEthereum extends Emitter {
   readonly isHarbour = true;
-  isTrust = true; isTrustWallet = true; isMetaMask = false;   // Trust Wallet's flags, kept so dApps that special-case Trust keep working
+  isMetaMask = false;   // HW-2026-010: no isTrust/isTrustWallet. Harbour identifies only as itself (isHarbour, EIP-6963 rdns app.harbourwallet).
   chainId: string | null = null; networkVersion: string | null = null; selectedAddress: string | null = null;
   private accounts: string[] = [];
   private connected = false;

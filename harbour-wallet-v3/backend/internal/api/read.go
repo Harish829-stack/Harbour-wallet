@@ -170,7 +170,7 @@ func synced(state string) bool { return state == "done" || state == "capped" || 
 
 func (s *Server) cacheKey(r *http.Request, kind string) string {
 	h := sha256.Sum256([]byte(r.URL.RawQuery))
-	return "hb:rc:" + kind + ":" + deviceFrom(r.Context()).ID + ":" + hex.EncodeToString(h[:8])
+	return "hb:rc:" + kind + ":" + s.devTag(deviceFrom(r.Context()).ID) + ":" + hex.EncodeToString(h[:8])
 }
 
 func (s *Server) cached(w http.ResponseWriter, r *http.Request, key string) bool {

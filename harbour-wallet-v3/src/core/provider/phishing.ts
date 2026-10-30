@@ -53,18 +53,25 @@ export function checkHost(cfg: { black: Set<string>; white: Set<string> }, host:
 }
 let mem: { at: number; black: Set<string>; white: Set<string> } | null = null;
 export function resetPhishingCache() { mem = null; }
+/** storage.session holds 10 MB in total; the merged lists are larger than that, so only a cache that fits is persisted (HW-2026-018). */
+export const MAX_CACHE_CHARS = 6_000_000;
+/** Adds every entry with a loop: spreading a list of hundreds of thousands of domains into push() overflows the call stack (HW-2026-018). */
+export function addAll(set: Set<string>, list: Iterable<string>): Set<string> { for (const d of list) set.add(d); return set; }
 export async function siteRisk(origin: string, kv: KV, f: typeof fetch = fetch, now: () => number = Date.now): Promise<SiteRisk> {
   const host = hostnameOf(origin); if (!host) return { level: 'unavailable' };
   try {
     if (!mem || now() - mem.at > TTL) {
-      const cached = await kv.get<{ at: number; black: string; white: string }>(KEY);
+      const cached = await kv.get<{ at: number; black: string; white: string }>(KEY).catch(() => undefined);
       if (cached && now() - cached.at <= TTL) mem = { at: cached.at, black: new Set(cached.black ? cached.black.split('\n') : []), white: new Set(cached.white ? cached.white.split('\n') : []) };
       else {
-        const res = await f(PHISHING_URL, { signal: AbortSignal.timeout(6000) }); if (!res.ok) throw new Error('http ' + res.status);
+        const res = await f(PHISHING_URL, { signal: AbortSignal.timeout(15000) }); if (!res.ok) throw new Error('http ' + res.status);
         const cfg = parsePhishingConfig(await res.json()); if (!cfg) throw new Error('bad config');
-        cfg.blacklist.push(...(await optionalList(f, SCAMSNIFFER_DOMAINS)));
-        mem = { at: now(), black: new Set(cfg.blacklist), white: new Set(cfg.whitelist) };
-        await kv.set(KEY, { at: mem.at, black: cfg.blacklist.join('\n'), white: cfg.whitelist.join('\n') }).catch(() => {});
+        const black = addAll(new Set<string>(), cfg.blacklist); const white = new Set(cfg.whitelist);
+        // The MetaMask list alone decides when ScamSniffer is unavailable; a failure there never discards it.
+        addAll(black, await optionalList(f, SCAMSNIFFER_DOMAINS));
+        mem = { at: now(), black, white };
+        const blackText = [...black].join('\n'); const whiteText = cfg.whitelist.join('\n');
+        if (blackText.length + whiteText.length <= MAX_CACHE_CHARS) await kv.set(KEY, { at: mem.at, black: blackText, white: whiteText }).catch(() => {});
       }
     }
     return checkHost(mem, host) === 'blocked' ? { level: 'high', reason: 'blocklist' } : { level: 'ok' };

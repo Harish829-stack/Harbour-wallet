@@ -1,0 +1,43 @@
+# GitHub Actions workflow for the extension (HW-2026-008, CCSS K-01..K-05, SLSA build L2).
+# Install at <repo root>/.github/workflows/extension.yml (GitHub only reads it there); keep ci/extension.yml in sync.
+# Repository settings that make this a control (not code, set them by hand):
+#   - branch protection on main: require this workflow + 1 review, no force push, signed commits
+#   - environment "release" with 2 required reviewers; HB_RELEASE_KEY_PEM stored only as that environment's secret
+name: extension
+on:
+  push: {branches: [main]}
+  pull_request:
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version-file: .nvmrc, cache: npm}
+      - run: npm ci --ignore-scripts
+      - run: npm run verify
+      - name: SBOM (CycloneDX)
+        run: npm sbom --omit=dev --sbom-format cyclonedx > sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with: {name: sbom, path: sbom.cdx.json}
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: release   # 2 required reviewers; their logins become HB_RELEASE_APPROVERS
+    permissions: {contents: write, id-token: write, attestations: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version-file: .nvmrc, cache: npm}
+      - run: npm ci --ignore-scripts
+      - run: node scripts/release.mjs
+        env:
+          HB_RELEASE_KEY_PEM: ${{ secrets.HB_RELEASE_KEY_PEM }}
+          HB_RELEASE_APPROVERS: ${{ vars.HB_RELEASE_APPROVERS }}
+      - run: node scripts/repro.mjs
+      - uses: actions/attest-build-provenance@v1
+        with: {subject-path: "releases/*.zip"}
+      - uses: actions/upload-artifact@v4
+        with: {name: release, path: releases/}

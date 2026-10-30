@@ -610,7 +610,7 @@ func (s *Server) gwLimit(tier string) int {
 // handleGateway serves /v1/gw/*.
 func (s *Server) handleGateway(w http.ResponseWriter, r *http.Request) {
 	d := deviceFrom(r.Context())
-	ok, err := s.counter(r.Context(), "hb:rlgw:"+d.ID, 1, s.gwLimit(d.Tier))
+	ok, err := s.counter(r.Context(), "hb:rlgw:"+s.devTag(d.ID), 1, s.gwLimit(d.Tier))
 	if err != nil {
 		s.internalErr(w, r, err)
 		return

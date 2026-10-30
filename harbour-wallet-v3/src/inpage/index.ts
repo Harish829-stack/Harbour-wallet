@@ -1,5 +1,5 @@
 // Harbour page provider (runs in the page's MAIN world, registered with chrome.scripting at document_start; see background/provider/index.ts).
-// Defines window.ethereum (unless another wallet owns it and Harbour is not the default wallet), window.trustwallet, window.trustwallet.solana, EIP-6963 announce.
+// Defines window.ethereum (unless another wallet owns it and Harbour is not the default wallet), window.harbour, window.harbour.solana, EIP-6963 announce.
 import { Bridge } from './bridge';
 import { HarbourEthereum } from './ethereum';
 import { HarbourSolana, HARBOUR_ICON, registerWalletStandard } from './solana';
@@ -22,10 +22,11 @@ function uuid(): string { try { if (crypto.randomUUID) return crypto.randomUUID(
   const sol = SOL ? new HarbourSolana(bridge) : undefined;
   const keplr = MULTI ? new HarbourKeplr(bridge) : undefined; const aptos = MULTI ? new HarbourAptos(bridge) : undefined; const tron = MULTI ? new HarbourTron(bridge) : undefined; const btc = MULTI ? new HarbourBitcoin(bridge) : undefined; const ton = MULTI ? new HarbourTon(bridge, HARBOUR_ICON) : undefined;
 
-  // window.trustwallet: TW exposes the Ethereum provider's API plus per-chain providers on this namespace.
-  const tw: any = { isHarbour: true, isTrust: true, isTrustWallet: true, request: eth.request, send: eth.send, sendAsync: eth.sendAsync, on: (e: string, f: any) => eth.on(e, f), off: (e: string, f: any) => eth.off(e, f), removeListener: (e: string, f: any) => eth.removeListener(e, f), removeAllListeners: (e?: string) => eth.removeAllListeners(e), enable: eth.enable, ethereum: eth, ...(sol ? { solana: sol } : {}), ...(MULTI ? { cosmos: keplr, aptos, tron, bitcoin: btc, ton } : {}) };
+  // window.harbour: the Ethereum provider's API plus per-chain providers. HW-2026-010: Harbour no longer defines window.trustwallet /
+  // window.trustWallet or the isTrust flags, so dApps cannot mistake it for another vendor's wallet.
+  const tw: any = { isHarbour: true, request: eth.request, send: eth.send, sendAsync: eth.sendAsync, on: (e: string, f: any) => eth.on(e, f), off: (e: string, f: any) => eth.off(e, f), removeListener: (e: string, f: any) => eth.removeListener(e, f), removeAllListeners: (e?: string) => eth.removeAllListeners(e), enable: eth.enable, ethereum: eth, ...(sol ? { solana: sol } : {}), ...(MULTI ? { cosmos: keplr, aptos, tron, bitcoin: btc, ton } : {}) };
   const twProxy = new Proxy(tw, { get(t, k, r) { switch (k) { case 'chainId': return eth.getChainId; case 'networkVersion': return eth.getNetworkVersion; case 'address': return eth.getAddress; } return Reflect.get(t, k, r); } });
-  define('trustwallet', twProxy); define('trustWallet', twProxy); define('harbour', twProxy);
+  define('harbour', twProxy);
 
   // window.ethereum: take it when free; if another wallet got there first, only replace it when the user made Harbour the default wallet.
   const existing = (window as any).ethereum;

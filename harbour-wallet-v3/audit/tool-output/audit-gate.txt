@@ -1,0 +1,2 @@
+accepted until 2027-01-31: GHSA-mrhx-c7xc-m3w5 (zod) - Memory exhaustion (denial of service only; no key or fund exposure). The patched line is zod 4.x, but @ton/ton (all versions, incl. 16.3.0) depends on zod ^3 and calls the one-argument z.record() that zod 4 removed, so it cannot be forced to 4. Harbour's own code does not import zod and viem does not use it at runtime. Reachable only through TON RPC responses. Re-check when @ton/ton moves to zod 4.
+npm audit gate passed (1 high/critical advisories, all with a current exception)

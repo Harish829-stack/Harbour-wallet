@@ -46,6 +46,10 @@ fi
 # Networks served: testnets only for now (older .env files predate this setting).
 grep -q '^ENABLED_CHAINS=' .env || { printf '\n# Networks served (chains.yaml names). Empty = all.\nENABLED_CHAINS=\n' >> .env; echo "added ENABLED_CHAINS="; }
 
+# HW-2026-007: Postgres TLS certificates, and host-side URLs upgraded from sslmode=disable to verify-full.
+./scripts/pg-certs.sh
+perl -pi -e 's|^(POSTGRES_URL=postgres://[^?\s]*)\?sslmode=disable|$1?sslmode=verify-full&sslrootcert=deploy/postgres/certs/ca.crt|' .env
+
 # Put the Postgres password into POSTGRES_URL for host-side tools.
 pw=$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2 | awk '{print $1}')
 PW="$pw" perl -pi -e 's|^POSTGRES_URL=postgres://harbour:\@|POSTGRES_URL=postgres://harbour:$ENV{PW}\@|' .env

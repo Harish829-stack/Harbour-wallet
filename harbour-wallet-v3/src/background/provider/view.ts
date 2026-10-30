@@ -37,6 +37,8 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
   };
   const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? DEFAULT_EVM_CHAIN; const net = d.networks.get(chainId);
   base.chain = net ? netView(net) : { chainId, name: `Chain ${chainId}`, symbol: '', testnet: false, custom: false, explorer: null };
+  // The site moved the wallet to this request's network just before asking (HW-2026-005): say so on the approval screen.
+  const sf = p.params?.switchedFrom; if (typeof sf === 'number') { const from = d.networks.get(sf); base.switchedFrom = from ? netView(from) : { chainId: sf, name: `Chain ${sf}` }; }
   base.account = conn ? { name: conn.accountName, evm: conn.evmAddress ?? null, solana: conn.solanaAddress ?? null, multi: Object.fromEntries(Object.entries(conn.others ?? {}).map(([k, v]) => [k, v.address])), walletName: conn.walletName } : null;
   if (p.ns === 'multi') { const cid = p.params?.chain as string; base.chain = { id: cid, chainId: cid, name: MULTI_CHAINS[cid]?.name ?? cid, symbol: '', testnet: false, custom: false, explorer: null }; }
   switch (p.kind) {

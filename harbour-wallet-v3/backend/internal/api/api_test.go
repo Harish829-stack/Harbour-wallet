@@ -53,6 +53,9 @@ func TestDeviceFlow(t *testing.T) {
 	tier := cfg.API.Tiers["default"]
 	tier.MaxAddresses = 2
 	cfg.API.Tiers["default"] = tier
+	// HW-2026-017: new devices would otherwise sit on the probation tier (auth.go effectiveTier), so the assertions below
+	// (quota of 2, forged key, stale clock, ...) never ran. Probation itself is covered by probation_test.go.
+	cfg.API.ProbationTier = ""
 	fams := map[string]string{}
 	for n, c := range cfg.Chains {
 		fams[n] = c.Family

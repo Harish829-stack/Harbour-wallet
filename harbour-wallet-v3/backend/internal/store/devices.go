@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -76,6 +77,23 @@ type LinkCrypto struct {
 
 // RouteTag is the push-route index for a tracked address (keyed, so the
 // push_routes table alone can't be joined to addresses).
+// DeviceTag is an opaque, keyed stand-in for a device id in Redis keys (HW-2026-020): a Redis dump or MONITOR no longer
+// shows which device sent which transaction or idempotent request. Stable per device so dedupe/replay still work.
+func (c *LinkCrypto) DeviceTag(deviceID string) string {
+	m := hmac.New(sha256.New, c.hmacKey)
+	m.Write([]byte("hb-redis-device-tag\x00"))
+	m.Write([]byte(deviceID))
+	return hex.EncodeToString(m.Sum(nil)[:16])
+}
+
+// KeyTag hashes a client-chosen key (an Idempotency-Key can embed transaction bytes) under the same secret.
+func (c *LinkCrypto) KeyTag(key string) string {
+	m := hmac.New(sha256.New, c.hmacKey)
+	m.Write([]byte("hb-redis-key-tag\x00"))
+	m.Write([]byte(key))
+	return hex.EncodeToString(m.Sum(nil)[:16])
+}
+
 func (c *LinkCrypto) RouteTag(trackedID int64) []byte {
 	m := hmac.New(sha256.New, c.routeKey)
 	var b [8]byte

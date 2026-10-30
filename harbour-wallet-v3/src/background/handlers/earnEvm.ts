@@ -1,7 +1,7 @@
 // Executes a staking call plan on an EVM chain: estimate -> sign (viem, local key) -> broadcast -> (wait between dependent calls).
 // Fee estimation never invents a number: if the node cannot estimate gas the plan's documented upper bound is used and labelled.
 import { createPublicClient, defineChain, fallback, http } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { evmAccountFromBytes } from '../../core/provider/evmAccount';
 import type { ChainInfo } from '../../core/chains/types';
 import { getRpcUrls } from '../../core/chains/rpcUrls';
 import type { CallPlan } from '../../core/staking/evm';
@@ -30,8 +30,8 @@ export async function estimatePlan(chain: ChainInfo, from: `0x${string}`, plan: 
   for (let i = 0; i < plan.length; i++) { const g = await estimateCall(client, from, plan[i], i === 0); gas += g.gas; exact = exact && g.estimated; }
   return { fee: gas * price, exact, steps: plan.length };
 }
-export async function runPlan(chain: ChainInfo, privateKey: `0x${string}`, plan: CallPlan[]): Promise<string[]> {
-  const client = evmClientFor(chain); const account = privateKeyToAccount(privateKey);
+export async function runPlan(chain: ChainInfo, privateKey: Uint8Array, plan: CallPlan[]): Promise<string[]> {
+  const client = evmClientFor(chain); const account = evmAccountFromBytes(privateKey);
   const legacy = chain.evmChainId === 56; const hashes: string[] = [];
   let nonce = await client.getTransactionCount({ address: account.address, blockTag: 'pending' });
   for (let i = 0; i < plan.length; i++) {

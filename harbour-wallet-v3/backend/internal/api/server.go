@@ -135,7 +135,7 @@ func (s *Server) Handler() http.Handler {
 	if s.opt.TrustProxy {
 		r.Use(s.realIP)
 	}
-	r.Use(middleware.Recoverer, s.accessLog, maxBody(1<<20))
+	r.Use(middleware.Recoverer, s.accessLog, s.securityHeaders, maxBody(1<<20))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
@@ -171,7 +171,7 @@ func (s *Server) Handler() http.Handler {
 			r.Get("/tx/{chain}/{hash}", s.handleTx)
 			r.Post("/tx/{chain}/estimate", s.handleEstimate)
 			r.Post("/tx/{chain}/simulate", s.handleSimulate)
-			r.With(s.idempotency).Post("/tx/{chain}/broadcast", s.handleBroadcast)
+			r.With(s.idempotencyBroadcast).Post("/tx/{chain}/broadcast", s.handleBroadcast)
 			r.Post("/realtime/token", s.handleRealtimeToken)
 			r.Put("/me/push", s.handlePutPush)
 			r.Delete("/me/push", s.handleDeletePush)
@@ -336,4 +336,22 @@ func (s *Server) tier(name string) config.Tier {
 		return t
 	}
 	return s.cfg.API.Tiers[s.cfg.API.DefaultTier]
+}
+
+// securityHeaders (HW-2026-012, OWASP ASVS V3.4 / V14.4): defaults for every API response. Handlers may override them
+// (for example the media proxy's Cache-Control). HSTS is sent only on HTTPS (direct TLS, or a trusted proxy's X-Forwarded-Proto).
+func (s *Server) securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		h.Set("Cross-Origin-Resource-Policy", "cross-origin")
+		h.Set("Cache-Control", "no-store")
+		if r.TLS != nil || (s.opt.TrustProxy && strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")) {
+			h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
 }

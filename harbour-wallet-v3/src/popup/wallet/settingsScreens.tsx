@@ -142,9 +142,7 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
         {bio.available && pk && <SwitchRow icon="shield" label={`Unlock with ${bio.name}`} sub={pk.enabled ? 'On. Your password still works as a fallback.' : 'Use your device biometrics instead of typing your password.'} on={pk.enabled} onToggle={toggle} testid="security-biometrics" />}
       </Group>
       <ErrorLine msg={err} />
-      <Note>{settings.lockTimeInMinutes === 0
-        ? 'Auto-lock is off. Harbour stays unlocked until you lock it or close the browser.'
-        : `Harbour locks itself after ${autoLockLabel(settings.lockTimeInMinutes)} without activity and asks to unlock again.`}</Note>
+      <Note>{`Harbour locks itself after ${autoLockLabel(settings.lockTimeInMinutes)} without activity and asks to unlock again.`}</Note>
     </Screen>
   );
 };

@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -23,11 +25,34 @@ type Store struct {
 	Pool *pgxpool.Pool
 }
 
+// requireTLS (HW-2026-007, CIS PostgreSQL / CCSS H-05): a non-loopback database must use verified TLS (sslmode=verify-full,
+// or verify-ca). Plain or unverified connections are refused unless HB_ALLOW_INSECURE_DB=1 (local experiments only).
+func requireTLS(host string, plain, unverified bool) error {
+	if !plain && !unverified {
+		return nil
+	}
+	if os.Getenv("HB_ALLOW_INSECURE_DB") == "1" || isLoopbackOrSocket(host) {
+		return nil
+	}
+	return fmt.Errorf("store: database %q must use sslmode=verify-full (set HB_ALLOW_INSECURE_DB=1 only for local experiments)", host)
+}
+
+func isLoopbackOrSocket(host string) bool {
+	if host == "" || strings.HasPrefix(host, "/") || host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 // Open connects and pings.
 func Open(ctx context.Context, url string) (*Store, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("store: parse url: %w", err)
+	}
+	if err := requireTLS(cfg.ConnConfig.Host, cfg.ConnConfig.TLSConfig == nil, cfg.ConnConfig.TLSConfig != nil && cfg.ConnConfig.TLSConfig.InsecureSkipVerify); err != nil {
+		return nil, err
 	}
 	cfg.MaxConnLifetime = 30 * time.Minute
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)

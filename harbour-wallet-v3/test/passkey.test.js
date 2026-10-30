@@ -18,15 +18,18 @@ const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFile
 const F = () => globalThis.__fake;
 beforeEach(() => { F().local.data = {}; F().session.data = {}; M.Biometrics.abortController = null; });
 
-// A fake authenticator: remembers the user handle given at create and echoes it (plus the challenge) on get.
-function fakeAuthenticator({ tamperChallenge = false, dropHandle = false, wrongHandle = false } = {}) {
-  let userId, rawId = new Uint8Array([1, 2, 3, 4]);
+// A fake PRF authenticator (HW-2026-001): a per-credential HMAC key that never leaves it; `prf.results.first` = HMAC(key, salt).
+import { createHmac } from 'node:crypto';
+function fakeAuthenticator({ tamperChallenge = false, noPrf = false, prfDisabledOnCreate = false, key = 'k1' } = {}) {
+  let userId; const rawId = new Uint8Array([1, 2, 3, 4]);
   return {
-    async create(o) { userId = new Uint8Array(o.publicKey.user.id); return { rawId, response: { getTransports: () => ['internal'] } }; },
+    async create(o) { userId = new Uint8Array(o.publicKey.user.id); return { rawId, response: { getTransports: () => ['internal'] }, getClientExtensionResults: () => ({ prf: { enabled: !prfDisabledOnCreate && !!o.publicKey.extensions?.prf } }) }; },
     async get(o) {
       const ch = tamperChallenge ? new Uint8Array(32) : new Uint8Array(o.publicKey.challenge);
       const clientDataJSON = new TextEncoder().encode(JSON.stringify({ challenge: M.b64url(ch), type: 'webauthn.get' }));
-      return { response: { clientDataJSON, userHandle: dropHandle ? null : wrongHandle ? new Uint8Array(32) : userId } };
+      const salt = o.publicKey.extensions?.prf?.eval?.first;
+      const first = !noPrf && salt ? new Uint8Array(createHmac('sha256', key).update(Buffer.from(salt)).digest()).buffer : undefined;
+      return { response: { clientDataJSON, userHandle: userId }, getClientExtensionResults: () => (first ? { prf: { results: { first } } } : {}) };
     },
   };
 }
@@ -37,35 +40,56 @@ test('toHex/fromHex round trip and reject bad hex', () => {
   assert.throws(() => M.fromHex('zz')); assert.throws(() => M.fromHex('abc'));
 });
 
-test('create -> verify -> login return the same 32-byte secret', async () => {
-  const bio = new M.Biometrics(fakeAuthenticator(), 'ext-id');
-  const c = await bio.create();
-  assert.match(c.secret, M.SECRET_HEX); assert.equal(c.credentialId, '01020304');
-  assert.equal(await bio.verify(c), true);
-  assert.equal((await bio.login(c.credentialId)).secret, c.secret);
+test('HW-001: create -> verify -> login derive the same PRF secret, never the user handle', async () => {
+  const auth = fakeAuthenticator(); const bio = new M.Biometrics(auth, 'ext-id');
+  const c = await bio.create(); assert.equal(c.credentialId, '01020304'); assert.equal(c.secret, undefined);
+  const { secret } = await bio.verify(c); assert.match(secret, M.SECRET_HEX);
+  assert.equal((await bio.login(c.credentialId)).secret, secret);
+  assert.notEqual(secret, M.toHex((await auth.get({ publicKey: { challenge: new Uint8Array(32) } })).response.userHandle), 'secret is not the user handle');
+  // a different authenticator key (someone else's device, or storage copied elsewhere) yields a different secret
+  assert.notEqual((await new M.Biometrics(fakeAuthenticator({ key: 'other' })).login('01020304')).secret, secret);
 });
 
-test('create asks for a resident, user-verifying credential on the extension rp id', async () => {
-  let seen; const bio = new M.Biometrics({ create: async (o) => { seen = o.publicKey; return { rawId: new Uint8Array([9]) }; }, get: async () => null }, 'abc');
+test('create asks for a resident, user-verifying credential with PRF on the extension rp id', async () => {
+  let seen; const bio = new M.Biometrics({ create: async (o) => { seen = o.publicKey; return { rawId: new Uint8Array([9]), getClientExtensionResults: () => ({ prf: { enabled: true } }) }; }, get: async () => null }, 'abc');
   await bio.create();
-  assert.equal(seen.rp.id, 'abc'); assert.equal(seen.authenticatorSelection.residentKey, 'required'); assert.equal(seen.user.id.length, 32);
+  assert.equal(seen.rp.id, 'abc'); assert.equal(seen.authenticatorSelection.residentKey, 'required'); assert.equal(seen.authenticatorSelection.userVerification, 'required'); assert.deepEqual(seen.extensions, { prf: {} });
 });
 
-test('verify/login reject a wrong secret, missing handle and a replayed challenge', async () => {
-  let a = new M.Biometrics(fakeAuthenticator({ wrongHandle: true })); let c = await a.create();
-  await assert.rejects(a.verify(c), (e) => e.code === 'secret_mismatch');
-  a = new M.Biometrics(fakeAuthenticator({ dropHandle: true })); c = await a.create();
-  await assert.rejects(a.verify(c), (e) => e.code === 'no_user_handle');
-  await assert.rejects(a.login(c.credentialId), (e) => e.code === 'no_user_handle');
-  a = new M.Biometrics(fakeAuthenticator({ tamperChallenge: true })); c = await a.create();
-  await assert.rejects(a.verify(c), (e) => e.code === 'bad_challenge');
-  await assert.rejects(a.login(c.credentialId), (e) => e.code === 'bad_challenge');
+test('HW-001: no PRF support means no biometrics (no user-handle fallback)', async () => {
+  await assert.rejects(new M.Biometrics(fakeAuthenticator({ prfDisabledOnCreate: true })).create(), (e) => e.code === 'prf_unsupported');
+  const a = new M.Biometrics(fakeAuthenticator({ noPrf: true })); const c = await a.create();
+  await assert.rejects(a.verify(c), (e) => e.code === 'prf_unsupported');
+  await assert.rejects(a.login(c.credentialId), (e) => e.code === 'prf_unsupported');
+  const t = new M.Biometrics(fakeAuthenticator({ tamperChallenge: true })); const d = await t.create();
+  await assert.rejects(t.verify(d), (e) => e.code === 'bad_challenge');
+  await assert.rejects(t.login(d.credentialId), (e) => e.code === 'bad_challenge');
 });
 
 test('a new login aborts the previous pending prompt', async () => {
-  const signals = []; const bio = new M.Biometrics({ create: async () => null, get: async (o) => { signals.push(o.signal); return { response: { clientDataJSON: new TextEncoder().encode(JSON.stringify({ challenge: M.b64url(new Uint8Array(o.publicKey.challenge)) })), userHandle: new Uint8Array(32) } }; } });
+  const signals = []; const auth = fakeAuthenticator(); await auth.create({ publicKey: { user: { id: new Uint8Array(32) }, extensions: { prf: {} } } });
+  const bio = new M.Biometrics({ create: async () => null, get: async (o) => { signals.push(o.signal); return auth.get(o); } });
   await bio.login('01'); await bio.login('01');
   assert.equal(signals[0].aborted, true); assert.equal(signals[1].aborted, false);
+});
+
+test('HW-001: legacy (user-handle) seals: dropped for password wallets, add-password only for password-less ones', async () => {
+  const f = F(); f.session.data[M.KEYS.PASSWORD] = 'p'; f.session.data[M.KEYS.UNLOCK] = 'u';
+  await M.enrollPasskey('cd'.repeat(32), 'aa', false);
+  assert.equal((await M.passkeyMeta()).legacy, false);
+  delete f.local.data[M.KEYS.PASSKEY].scheme; // simulate a seal written by an older build
+  assert.equal((await M.passkeyMeta()).legacy, true);
+  await assert.rejects(M.verifyPasskeySecret('cd'.repeat(32)), /upgraded/);
+  f.session.data = {};
+  await assert.rejects(M.unlockWithPasskey('cd'.repeat(32), async () => {}), /upgraded/);
+  assert.equal(await M.passkeyMeta(), null, 'legacy seal removed'); assert.equal(f.session.data[M.KEYS.PASSWORD], undefined);
+  // password-less legacy wallet: still unlockable once so the user can add a password
+  f.session.data[M.KEYS.PASSWORD] = 'p'; f.session.data[M.KEYS.UNLOCK] = 'u';
+  await M.enrollPasskey('cd'.repeat(32), 'aa', true); delete f.local.data[M.KEYS.PASSKEY].scheme; f.session.data = {};
+  await M.unlockWithPasskey('cd'.repeat(32), async () => {}); assert.equal(f.session.data[M.KEYS.UNLOCK], 'u');
+  await assert.rejects(M.verifyPasskeySecret('cd'.repeat(32)), /upgraded/);
+  await M.verifyPasskeySecret('cd'.repeat(32), { allowLegacy: true });
+  assert.equal(await M.dropLegacyPasskey(), false, 'never drops the only way into a password-less wallet');
 });
 
 test('isUserCancel treats dismissals as quiet, real failures as errors', () => {

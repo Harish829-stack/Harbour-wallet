@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 envval = $(shell ./scripts/envval.sh $(1))
 
-PG_TEST    ?= postgres://harbour:$(call envval,POSTGRES_PASSWORD)@localhost:5432/harbour_test?sslmode=disable
+PG_TEST    ?= postgres://harbour:$(call envval,POSTGRES_PASSWORD)@localhost:5432/harbour_test?sslmode=verify-full&sslrootcert=$(CURDIR)/deploy/postgres/certs/ca.crt
 REDIS_TEST ?= redis://:$(call envval,REDIS_PASSWORD)@localhost:6379/15
 COMPOSE := docker compose --env-file .env -f deploy/docker-compose.yml
 

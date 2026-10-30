@@ -184,7 +184,12 @@ func (n *Notifier) deliver(ctx context.Context, s store.PushSub, key string, m n
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	rk := "hb:push:" + s.DeviceID + ":" + key
+	// HW-2026-020: keyed tags, so Redis does not hold a readable (device, tx) record.
+	dev, k := s.DeviceID, key
+	if n.LC != nil {
+		dev, k = n.LC.DeviceTag(s.DeviceID), n.LC.KeyTag(key)
+	}
+	rk := "hb:push:" + dev + ":" + k
 	first, err := n.Redis.SetNX(ctx, rk, 1, ttl).Result()
 	if err != nil || !first {
 		return err

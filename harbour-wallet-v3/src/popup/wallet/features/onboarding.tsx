@@ -49,6 +49,7 @@ export const AddWalletOnboardingScreen: React.FC<Ctx> = (c) => {
 export const BackupVerifyScreen: React.FC<Ctx> = (c) => (
   <Screen title="Back up your secret phrase" onBack={c.nav.pop}>
     <div className="hb-design" style={{ paddingTop: 8 }}>
+      {c.params?.reason === 'receive' && <div role="alert" data-testid="backup-gate" style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', color: 'var(--hb-warn-ink)', borderRadius: 12, padding: '10px 12px', marginBottom: 12, fontSize: 13 }}>Back up your secret phrase before you receive or buy crypto. Without it, funds can be lost for good if this device fails.</div>}
       <BackupFlow bg={c.bg} walletId={c.params?.walletId} granted={c.params?.granted === true}
         onDone={() => { c.refresh?.(); c.nav.pop(); }} onCancel={c.nav.pop}/>
     </div>

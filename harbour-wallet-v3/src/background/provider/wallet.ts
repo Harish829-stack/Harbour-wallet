@@ -24,7 +24,7 @@ export async function readAccountOf(vault: VaultService, walletId: string, index
   return { index, derivationIndex: a.derivationIndex, name: a.name || `Account ${index + 1}`, evm: evmOf(a.addresses), solana: a.addresses?.solana, multi: multiOf(a.addresses) };
 }
 
-export interface ConnKeys { evmPrivateKey(): `0x${string}`; solanaKey(): { key: any; address: string }; chainKey(chain: string): { key: any; address: string }; dispose(): void }
+export interface ConnKeys { evmPrivateKey(): Uint8Array; solanaKey(): { key: any; address: string }; chainKey(chain: string): { key: any; address: string }; dispose(): void }
 export interface ConnRef { walletId: string; accountIndex: number; evmAddress?: string; solanaAddress?: string; others?: Record<string, { address: string; publicKey: string }> }
 export async function openConnectionKeys(core: any, vault: VaultService, wallet: WalletService, conn: ConnRef): Promise<ConnKeys> {
   const passwordKey = await session.get<string>(KEYS.PASSWORD);
@@ -41,10 +41,10 @@ export async function openConnectionKeys(core: any, vault: VaultService, wallet:
   const ks = await local.get<any>(conn.walletId); if (!ks) throw new ProviderError(ERR.INTERNAL, 'Wallet keystore not found.');
   const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));
   const hd = sk.wallet(new TextEncoder().encode(passwordKey));
-  const owned: any[] = [];
+  const owned: any[] = []; const secrets: Uint8Array[] = [];
   const keyFor = (coin: any) => (derivationIndex === 0 ? hd.getKeyForCoin(coin) : hd.getKey(coin, wallet.accountPath(coin, derivationIndex)));
   return {
-    evmPrivateKey() { const pk = keyFor(core.CoinType.ethereum); owned.push(pk); return core.HexCoding.encode(pk.data()) as `0x${string}`; },
+    evmPrivateKey() { const pk = keyFor(core.CoinType.ethereum); owned.push(pk); const b = new Uint8Array(pk.data()); secrets.push(b); return b; },
     solanaKey() {
       const coin = core.CoinType.solana; const want = conn.solanaAddress ?? acct.addresses?.solana;
       const candidates: any[] = [keyFor(coin)];
@@ -60,6 +60,6 @@ export async function openConnectionKeys(core: any, vault: VaultService, wallet:
       if (want && address !== want) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.');
       return { key, address };
     },
-    dispose() { for (const k of owned) { try { k.delete(); } catch { /* freed */ } } try { hd.delete(); } catch { /* */ } try { sk.delete(); } catch { /* */ } },
+    dispose() { for (const b of secrets) b.fill(0); for (const k of owned) { try { k.delete(); } catch { /* freed */ } } try { hd.delete(); } catch { /* */ } try { sk.delete(); } catch { /* */ } },
   };
 }

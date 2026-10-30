@@ -1,6 +1,7 @@
 {
   "client": {
-    "allowed_origins": ["chrome-extension://*"]
+    "allowed_origins": ["chrome-extension://*"],
+    "token": { "audience": "harbour-realtime" }
   },
   "channel": {
     "namespaces": [

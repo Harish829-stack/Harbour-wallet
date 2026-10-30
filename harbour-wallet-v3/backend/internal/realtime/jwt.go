@@ -32,12 +32,16 @@ func SignHS256(secret []byte, claims map[string]any) string {
 	return unsigned + "." + b64.EncodeToString(m.Sum(nil))
 }
 
+// Audience is the "aud" claim of every realtime token (HW-2026-017). Centrifugo is configured with the same value
+// (deploy/centrifugo/config.json client.token.audience), so a JWT signed with this secret for another purpose is refused.
+const Audience = "harbour-realtime"
+
 // ConnectionToken is a short-lived Centrifugo connection JWT for a device.
 func ConnectionToken(secret []byte, deviceID string, now time.Time, ttl time.Duration) string {
-	return SignHS256(secret, map[string]any{"sub": deviceID, "exp": now.Add(ttl).Unix(), "iat": now.Unix()})
+	return SignHS256(secret, map[string]any{"sub": deviceID, "aud": Audience, "exp": now.Add(ttl).Unix(), "iat": now.Unix()})
 }
 
 // SubscriptionToken lets the device subscribe to one channel.
 func SubscriptionToken(secret []byte, deviceID, channel string, now time.Time, ttl time.Duration) string {
-	return SignHS256(secret, map[string]any{"sub": deviceID, "channel": channel, "exp": now.Add(ttl).Unix(), "iat": now.Unix()})
+	return SignHS256(secret, map[string]any{"sub": deviceID, "aud": Audience, "channel": channel, "exp": now.Add(ttl).Unix(), "iat": now.Unix()})
 }

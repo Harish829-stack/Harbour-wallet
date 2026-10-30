@@ -122,7 +122,7 @@ function WalletApp() {
     if (!passkey.credentialId || bioBusy) return;
     if (popup) { await openInTab('?biometrics=1'); window.close(); return; }
     setBioErr(''); setBioBusy(true);
-    const r = await biometricUnlock(bg, passkey.credentialId);
+    const r = await biometricUnlock(bg, passkey.credentialId, !!passkey.legacy);
     setBioBusy(false);
     if (r.ok) setScreen('home'); else if (!r.cancelled) setBioErr(r.error);
   };

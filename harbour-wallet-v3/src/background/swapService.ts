@@ -4,7 +4,7 @@ import { checkToken } from '../kit/clients/securityClient';
 // chunk actions: FetchSwapQuote -> (StageSwapApproval/ExecuteSwapApproval) -> StageSwapTransaction ->
 // ExecuteSwap/BroadcastSwapTransaction -> GetSwapSettlementStatus -> RecordSwapTransaction.
 import { createPublicClient, http, defineChain, erc20Abi, maxUint256, isAddress, encodeFunctionData } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { evmAccountFromBytes, signHash } from '../core/provider/evmAccount';
 import { local } from '../core/storage';
 import { rpcUrl, solanaRpcUrl, protectedRpcUrl } from '../core/rpc';
 import { openActiveKeys } from './keys';
@@ -27,7 +27,7 @@ import { relayQuote, relayTransactions, relayStatus, relayTargets } from '../cor
 import { thorQuote, checkThorQuote, verifyThorInbound, thorRouterCall, thorStatus } from '../core/swap/thorchain';
 import { utxoFamily } from '../core/chains/send/utxo';
 import { chainById } from '../core/chains/index';
-import { sign as signDigestRaw, serializeSignature } from 'viem/accounts';
+import { serializeSignature } from 'viem/accounts';
 import { sendGasless, bundlerUrl, GASLESS_FLAG, type Call } from '../core/swap/gasless';
 import { isContractCode } from '../core/evmCode';
 /** Refuse a third-party-built Solana transaction unless every instruction is understood and a dry run succeeds without draining more SOL than the sale. */
@@ -181,7 +181,7 @@ async function gaslessActive(chainId: number): Promise<boolean> {
   return !!bundlerUrl(chainId) && (await getSettings()).gasless && (await gaslessFlag());
 }
 /** Run calls as one sponsored user operation; null when gasless is unavailable (caller falls back to normal transactions). */
-async function tryGasless(chainId: number, client: any, privateKey: `0x${string}`, sender: string, calls: Call[]): Promise<`0x${string}` | null> {
+async function tryGasless(chainId: number, client: any, privateKey: Uint8Array, sender: string, calls: Call[]): Promise<`0x${string}` | null> {
   const url = bundlerUrl(chainId); if (!url) return null;
   let id = 0;
   const bundler = async (method: string, params: unknown[]) => {
@@ -192,7 +192,7 @@ async function tryGasless(chainId: number, client: any, privateKey: `0x${string}
     const r = await sendGasless({
       chainId, sender: sender as `0x${string}`, bundler,
       getCode: (a) => client.getCode({ address: a }), call: async (to, data) => (await client.call({ to, data })).data ?? '0x', txCount: (a) => client.getTransactionCount({ address: a }),
-      signDigest: async (hash) => { const sig = await signDigestRaw({ hash, privateKey }); return { r: sig.r, s: sig.s, yParity: Number(sig.yParity ?? (sig.v === 28n ? 1 : 0)), serialized: serializeSignature(sig) }; },
+      signDigest: async (hash) => { const sig = signHash(hash, privateKey); return { r: sig.r, s: sig.s, yParity: Number(sig.yParity ?? (sig.v === 28n ? 1 : 0)), serialized: serializeSignature(sig) }; },
     }, calls);
     return r.txHash;
   } catch (e: any) {
@@ -267,7 +267,7 @@ export async function approve(deps: SwapDeps, p: { route: SwapRoute; stepIndex: 
     // gasless swaps batch the approval into the sponsored user operation (approve + swap in one op)
     if (await gaslessActive(d.chainId!)) { keys.dispose(); return { ok: true as const, skipped: true, deferred: true }; }
     try {
-      const account = privateKeyToAccount(keys.evmPrivateKey());
+      const account = evmAccountFromBytes(keys.evmPrivateKey());
       const { chain, client } = evmClient(d.chainId!);
       const spender = a.spender as `0x${string}`; const token = a.tokenAddress as `0x${string}`;
       const need = BigInt(a.minAmount);
@@ -340,7 +340,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const raw: any = step.raw;
         const fresh = await relayQuote({ ...raw.request, from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress: address, toAddress: ownTo });
         const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
-        const account = privateKeyToAccount(keys.evmPrivateKey());
+        const account = evmAccountFromBytes(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
         const { chain, client } = evmClient(d.chainId!);
         let last: `0x${string}` | undefined;
@@ -389,7 +389,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
           hash = await utxoFamily.broadcast(env, chain, built);
         } else if (d.kind === 'evm') {
           const call = thorRouterCall(fresh, step);
-          const account = privateKeyToAccount(keys.evmPrivateKey());
+          const account = evmAccountFromBytes(keys.evmPrivateKey());
           if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
           const { chain, client } = evmClient(d.chainId!);
           if (step.from.asset.address !== 'native') {
@@ -423,7 +423,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const refreshed = await lifiStepTransaction(step.raw);
         const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: domainById(step.toDomainId)?.kind });
         if (bad) throw bad;
-        const account = privateKeyToAccount(keys.evmPrivateKey());
+        const account = evmAccountFromBytes(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
         const { chain, client } = evmClient(d.chainId!);
         const tx = refreshed.transactionRequest;

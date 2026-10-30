@@ -20,16 +20,17 @@ export function useBiometricAvailability(): { available: boolean; name: string }
   return s;
 }
 
-export interface PasskeyStatus { enabled: boolean; credentialId: string | null; isPasswordGenerated: boolean }
+export interface PasskeyStatus { enabled: boolean; credentialId: string | null; isPasswordGenerated: boolean; legacy?: boolean }
 export async function loadPasskeyStatus(bg: Bg): Promise<PasskeyStatus> {
-  try { const r = await bg({ type: 'passkeyStatus' }); if (r?.ok) return { enabled: !!r.enabled, credentialId: r.credentialId ?? null, isPasswordGenerated: !!r.isPasswordGenerated }; } catch { /* fall through */ }
+  try { const r = await bg({ type: 'passkeyStatus' }); if (r?.ok) return { enabled: !!r.enabled, credentialId: r.credentialId ?? null, isPasswordGenerated: !!r.isPasswordGenerated, legacy: !!r.legacy }; } catch { /* fall through */ }
   return { enabled: false, credentialId: null, isPasswordGenerated: false };
 }
 
 // Authenticator -> secret -> background unlock. Resolves { ok:false, cancelled:true } when the user dismisses the prompt.
-export async function biometricUnlock(bg: Bg, credentialId: string): Promise<{ ok: true } | { ok: false; error: string; cancelled?: boolean }> {
+// HW-2026-001: `legacy` (pre-PRF seal) is only honoured by the background for password-less wallets, so they can add a password.
+export async function biometricUnlock(bg: Bg, credentialId: string, legacy = false): Promise<{ ok: true } | { ok: false; error: string; cancelled?: boolean }> {
   try {
-    const { secret } = await new Biometrics().login(credentialId);
+    const b = new Biometrics(); const { secret } = legacy ? await b.legacyLogin(credentialId) : await b.login(credentialId);
     const r = await bg({ type: 'passkeyUnlock', secret });
     return r?.ok ? { ok: true } : { ok: false, error: r?.error || 'Biometric unlock failed' };
   } catch (e: any) {
@@ -45,8 +46,8 @@ export async function registerBiometrics(onStage: (s: EnrollStage) => void): Pro
   onStage('register');
   const made = await b.create();
   onStage('verify');
-  await b.verify({ credential: made.credential, secret: made.secret });
-  return { secret: made.secret, credentialId: made.credentialId };
+  const { secret } = await b.verify({ credential: made.credential });
+  return { secret, credentialId: made.credentialId };
 }
 
 export const BiometricEnroll: React.FC<{ bg: Bg; name: string; onDone: () => void; onBack?: () => void }> = ({ bg, name, onDone, onBack }) => {

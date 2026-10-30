@@ -1,10 +1,14 @@
 // Release candidate: production build -> deterministic zip -> SHA-256 -> Ed25519 signature with the release key.
-//   node scripts/release.mjs            (key: ../harbour-release-key.json, created on first run; keep it OFF the repo and backed up)
+// HW-2026-003 (CCSS K-10): the key comes from HB_RELEASE_KEY_PEM (a CI secret or a KMS/HSM-backed secret store, injected only into
+// the protected release job). A key FILE is accepted only with --key-file (offline signing), must be 0600 and outside the repo, and
+// is never created implicitly (`--init-key` creates one). Two different approvers are required (HB_RELEASE_APPROVERS="alice,bob",
+// set by the CI environment's required reviewers) and are recorded in release.json.
+//   HB_RELEASE_KEY_PEM=... HB_RELEASE_APPROVERS=a,b node scripts/release.mjs
 // Outputs releases/harbour-<version>.zip, .zip.sha256, .zip.sig and harbour-<version>.release.json (per-file hashes, commit, signer).
 // Verify anywhere with: node scripts/verify-release.mjs releases/harbour-<version>.zip
 import { execSync } from 'node:child_process';
-import { createHash, createPrivateKey, generateKeyPairSync, sign } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { zipDir } from './lib-zip.mjs';
@@ -23,9 +27,22 @@ if (!info || info.local || !String(info.api).startsWith('https://') || (manifest
   console.error(`release refused: dist/ was built for ${info?.api ?? 'an unknown API'}. Set VITE_HB_API_URL=https://... in .env.production and rebuild.`);
   process.exit(1);
 }
+const approvers = [...new Set((process.env.HB_RELEASE_APPROVERS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))];
+if (approvers.length < 2) { console.error('release refused: two different approvers are required (HB_RELEASE_APPROVERS="name1,name2")'); process.exit(1); }
+const pubOf = (pk) => createPublicKey(pk).export({ type: 'spki', format: 'der' }).subarray(12).toString('base64');
 let key;
-if (existsSync(keyFile)) key = JSON.parse(readFileSync(keyFile, 'utf8'));
-else {
+if (process.env.HB_RELEASE_KEY_PEM) {
+  const priv = process.env.HB_RELEASE_KEY_PEM.replace(/\\n/g, '\n');
+  key = { pub: pubOf(createPrivateKey(priv)), priv };
+} else if (process.argv.includes('--key-file') && existsSync(keyFile)) {
+  const st = statSync(keyFile);
+  if ((st.mode & 0o077) !== 0) { console.error(`release refused: ${keyFile} must be readable by its owner only (chmod 600)`); process.exit(1); }
+  if (path.resolve(keyFile).startsWith(path.resolve(root) + path.sep)) { console.error('release refused: the key file must live outside the repository'); process.exit(1); }
+  key = JSON.parse(readFileSync(keyFile, 'utf8'));
+} else if (!process.argv.includes('--init-key')) {
+  console.error('release refused: no signing key. Set HB_RELEASE_KEY_PEM (CI secret / KMS), or pass --key-file for offline signing.'); process.exit(1);
+} else {
+  if (existsSync(keyFile)) { console.error(`release refused: ${keyFile} already exists`); process.exit(1); }
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   key = { pub: publicKey.export({ type: 'spki', format: 'der' }).subarray(12).toString('base64'), priv: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
   writeFileSync(keyFile, JSON.stringify(key, null, 2), { mode: 0o600 }); console.log(`created release signing key ${keyFile} (back it up; never commit it)`);
@@ -44,7 +61,7 @@ writeFileSync(path.join(out, name), zip);
 writeFileSync(path.join(out, `${name}.sha256`), `${digest}  ${name}\n`);
 writeFileSync(path.join(out, `${name}.sig`), `${signature}\n`);
 writeFileSync(path.join(out, `harbour-${version}.release.json`), JSON.stringify({
-  name: manifest.name, version, zip: name, sha256: digest, signature, signer: key.pub, algorithm: 'Ed25519 over the zip bytes', commit, node: process.version,
+  name: manifest.name, version, zip: name, sha256: digest, signature, signer: key.pub, algorithm: 'Ed25519 over the zip bytes', commit, node: process.version, approvers,
   files: files.map((f) => ({ path: f, sha256: sha(readFileSync(path.join(dist, f))) })),
 }, null, 2) + '\n');
 console.log(`\n${name}\nsha256 ${digest}\nsigner ${key.pub}\nfiles  ${files.length}`);

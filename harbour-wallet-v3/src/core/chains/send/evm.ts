@@ -1,7 +1,7 @@
 // EVM family: native + ERC-20 transfers, EIP-1559 (type 2) with legacy fallback, nonce from the pending pool.
 // All JSON-RPC calls go through the injected fetch (viem is used only for encoding/signing), so everything is mockable.
 // TW evidence: edit-fee-eip1559.{slow,default,fast}, send.low-gas-warning, send.confirmation.risk.smart-contract, send-tx.nonce-warning.
-import { privateKeyToAccount } from 'viem/accounts';
+import { evmAccountFromBytes } from '../../provider/evmAccount';
 import { encodeFunctionData, keccak256, getAddress, isAddress, serializeTransaction, type Hex } from 'viem';
 import type { ChainInfo } from '../types';
 import type { BuiltTx, FeeTierId, SendEnv, SendFamily, SendParams, SendQuote, TxStatus } from './types';
@@ -90,7 +90,7 @@ export function evmSendCall(p: SendParams, q: SendQuote, tier: FeeTierId): { to:
   return isToken ? { to: p.asset.contract!, value: 0n, data: evmTransferData(to, amount), gas } : { to, value: amount, gas };
 }
 export async function signEvmTx(chain: ChainInfo, key: Uint8Array, from: string, c: Ctx, tier: FeeTierId, tx: { to: string; value: bigint; data?: Hex; gas: bigint }): Promise<BuiltTx> {
-  const account = privateKeyToAccount(('0x' + bytesToHex(key)) as Hex);
+  const account = evmAccountFromBytes(key);
   if (account.address.toLowerCase() !== from.toLowerCase()) throw new Error('Signing key does not match the account address');
   const t = evmTxRequest(chain, c, tier, tx);
   const raw = await account.signTransaction(t);
@@ -137,7 +137,7 @@ export const iotexFamily: SendFamily = {
   async quote(env, p) { return evmFamily.quote(env, toEvmView(env, p)); },
   async build(env, p, key, q, tier) {
     const view = toEvmView(env, p);
-    const a = privateKeyToAccount(('0x' + bytesToHex(key)) as Hex);
+    const a = evmAccountFromBytes(key);
     return evmFamily.build(env, { ...view, from: a.address }, key, q, tier);
   },
 };

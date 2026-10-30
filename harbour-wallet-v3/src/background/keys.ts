@@ -7,7 +7,8 @@ export interface ActiveKeys {
   walletId: string;
   derivationIndex: number;
   addresses: Record<string, string>;
-  evmPrivateKey(): `0x${string}`;
+  /** EVM private key bytes (HW-2026-009: never a hex string). Zeroed by dispose(). */
+  evmPrivateKey(): Uint8Array;
   solanaKey(): { key: any; address: string };
   /** Raw private key bytes (a copy; the caller must zero it) of the active account for a registry chain, verified against `address`. */
   privateKeyFor(chain: { ct: string; kind: string }, address: string): Uint8Array;
@@ -33,14 +34,14 @@ export async function openActiveKeys(core: any, vault: VaultService, wallet: Wal
   const isPrivateKeyWallet = (w.type ?? 'mnemonic') === 'privateKey';
   const pwBytes = new TextEncoder().encode(passwordKey);
   const hd = isPrivateKeyWallet ? null : sk.wallet(pwBytes);
-  const owned: any[] = [];
+  const owned: any[] = []; const secrets: Uint8Array[] = [];
   const keyFor = (coin: any) => isPrivateKeyWallet ? sk.privateKey(coin, pwBytes) : derivationIndex === 0 ? hd.getKeyForCoin(coin) : hd.getKey(coin, wallet.accountPath(coin, derivationIndex));
   return {
     walletId, derivationIndex, addresses,
     evmPrivateKey() {
       if (isPrivateKeyWallet && !addresses.ethereum) throw new Error('This wallet has no EVM account');
       const pk = keyFor(core.CoinType.ethereum); owned.push(pk);
-      return core.HexCoding.encode(pk.data()) as `0x${string}`;
+      const bytes = new Uint8Array(pk.data()); secrets.push(bytes); return bytes;
     },
     solanaKey() {
       const coin = core.CoinType.solana;
@@ -69,6 +70,6 @@ export async function openActiveKeys(core: any, vault: VaultService, wallet: Wal
       }
       throw new Error('The signing key does not match the account address');
     },
-    dispose() { for (const k of owned) { try { k.delete(); } catch { /* already freed */ } } try { hd?.delete(); } catch { /* */ } try { sk.delete(); } catch { /* */ } },
+    dispose() { for (const b of secrets) b.fill(0); for (const k of owned) { try { k.delete(); } catch { /* already freed */ } } try { hd?.delete(); } catch { /* */ } try { sk.delete(); } catch { /* */ } },
   };
 }

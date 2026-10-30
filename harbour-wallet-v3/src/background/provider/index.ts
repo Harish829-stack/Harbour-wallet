@@ -23,6 +23,7 @@ import { ProviderService, type DeliverTarget } from './service';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
 import { loadSettings } from '../settingsService';
+import { siteRisk as phishingRisk } from '../../core/provider/phishing';
 import { WalletConnectBridge, WC_TAB, SESSIONS_KEY } from '../walletconnect/bridge';
 import { createKit, readProjectId } from '../walletconnect/kit';
 
@@ -77,6 +78,7 @@ export function getProvider(): ProviderService {
     vaultStatus: async () => { await ensureCtx(); const v = ctxCache!.vault; return { hasVault: await v.exists(), unlocked: await v.isUnlocked() }; },
     openApproval: () => approvalWindow.open(), closeApprovalIfIdle: () => approvalWindow.closeIfIdle(),
     deliver, emit, wc: wc.host, multi: multiBackend,
+    siteRisk: async (origin) => (await phishingRisk(origin, kvSession)).level,
     ethSignEnabled: async () => (await loadSettings()).developerSettings.isEthSignEnabled === true,
     probeChainId: async (url) => { const r = await probeRpcChainId(url, fetch, { fromSite: true }); if (!r.ok) throw new Error(r.error); return r.chainId; },
     saveCustomNetwork: async (n) => {

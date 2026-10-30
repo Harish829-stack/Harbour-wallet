@@ -17,6 +17,8 @@ const out = await build({
       export * from './core/provider/solanaTx'; export * from './core/provider/phishing'; export * from './core/provider/origin'; export * from './core/provider/base58'; export * from './core/provider/evmSign';
       export { ProviderService, permission } from './background/provider/service'; export * from './background/provider/fees'; export { ApprovalWindow } from './background/provider/approvalWindow';
       export { makeRpc } from './background/provider/rpc';
+      export { gateRoute, FUNDING_ROUTES } from './popup/wallet/backupGate';
+      export * from './core/provider/evmAccount';
       export { isInternalWalletSender } from './background/accessPolicy';`,
     resolveDir: src, sourcefile: 'entry.ts', loader: 'ts',
   },
@@ -67,6 +69,8 @@ function setup(over = {}) {
   return { svc: new M.ProviderService(deps), perms, pending, log, clock, state };
 }
 const pendingOf = async (ctx) => (await ctx.pending.list())[0];
+/** Network switches always ask (HW-2026-005): send the request and approve the prompt it opens. */
+async function switchTo(ctx, s, hex) { const r = await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: hex }])); if (r.done) return r; const p = await pendingOf(ctx); return { done: true, resolved: await ctx.svc.resolve(p.id, { approve: true }) }; }
 async function connect(ctx, s = sender(), account = 0) {
   const r = await ctx.svc.handle(s, req('eth_requestAccounts'));
   assert.equal(r.done, false); const p = await pendingOf(ctx);
@@ -281,7 +285,7 @@ test('wallet_requestPermissions / getPermissions / revokePermissions (EIP-2255 s
 test('read RPC is proxied to the origin chain; params must be an array', async () => {
   const ctx = setup(); const s = sender();
   assert.deepEqual((await ctx.svc.handle(s, req('eth_blockNumber'))).outcome, { result: '0x10' }); assert.equal(ctx.log.rpc[0][0], 1);
-  await connect(ctx, s); await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }]));
+  await connect(ctx, s); await switchTo(ctx, s, '0x89');
   await ctx.svc.handle(s, req('eth_blockNumber')); assert.equal(ctx.log.rpc.at(-1)[0], 137);
   assert.equal((await ctx.svc.handle(s, req('eth_call', { to: ADDR0 }))).outcome.error.code, -32602);
 });
@@ -338,14 +342,16 @@ test('a signing failure reaches the dApp as a -32603 error without leaking inter
 });
 
 // ------------------------------------------------------------------ service: chains, assets
-test('wallet_switchEthereumChain: 4902 for unknown chains; a connected site switches silently (no approval), an unconnected one gets 4100', async () => {
+test('wallet_switchEthereumChain: 4902 for unknown chains; the current chain is re-announced silently; another chain needs approval (HW-2026-005); an unconnected site gets 4100', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.events.length = 0;
   assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x38' }]))).outcome.error.code, 4902);
   assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome, { result: null });
   assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x1']);   // current chain is re-announced, like Trust Wallet
   ctx.log.events.length = 0;
-  assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }]))).outcome, { result: null });
-  assert.equal(await pendingOf(ctx), undefined);
+  const sw = await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x89' }]));
+  assert.equal(sw.done, false, 'a switch to another network waits for approval');
+  assert.equal((await ctx.perms.get(s.origin)).chainId, 1, 'nothing changes before approval');
+  const p = await pendingOf(ctx); assert.equal(p.kind, 'switchChain'); await ctx.svc.resolve(p.id, { approve: true });
   assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
   assert.equal((await ctx.perms.get(s.origin)).chainId, 137);
   const c2 = setup(); const un = await c2.svc.handle(sender('https://new.example'), req('wallet_switchEthereumChain', [{ chainId: '0x89' }])); assert.equal(un.outcome.error.code, 4100);
@@ -360,10 +366,10 @@ test('wallet_addEthereumChain: validates, checks the RPC chain id, saves, then s
   assert.equal(ctx2.log.saved[0].chainId, 0x2105a); assert.equal(ctx2.log.saved[0].rpcUrl, 'https://rpc.mychain.example'); assert.equal(ctx2.log.delivered.at(-1).outcome.result, null);
   const ctx3 = setup(); await connect(ctx3, s);
   ctx3.log.events.length = 0;
-  assert.deepEqual((await ctx3.svc.handle(s, req('wallet_addEthereumChain', chain({ chainId: '0x89' })))).outcome, { result: null });
-  assert.equal(await pendingOf(ctx3), undefined);
+  assert.equal((await ctx3.svc.handle(s, req('wallet_addEthereumChain', chain({ chainId: '0x89' })))).done, false);
+  const sp = await pendingOf(ctx3); assert.equal(sp.kind, 'switchChain'); await ctx3.svc.resolve(sp.id, { approve: true });
   assert.equal(ctx3.log.saved.length, 0);
-  assert.equal((await ctx3.perms.get(s.origin)).chainId, 137);   // a chain the wallet already has is a switch (Trust Wallet WalletAddEthereumChain)
+  assert.equal((await ctx3.perms.get(s.origin)).chainId, 137);   // a chain the wallet already has is a switch, and a switch asks (HW-2026-005)
   assert.deepEqual(ctx3.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
 });
 test('ChainList repeat add uses the saved chain ID, never its new label or RPC', async () => {
@@ -372,9 +378,8 @@ test('ChainList repeat add uses the saved chain ID, never its new label or RPC',
   const s = sender('https://chainlist.org'); await connect(ctx, s);
   const add = req('wallet_addEthereumChain', [{ chainId: '0x14a34', chainName: 'Base Sepolia Testnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://lb.routeme.sh/rpc/evm/84532'], blockExplorerUrls: ['https://sepolia.basescan.org'] }]);
   ctx.log.events.length = 0;
-  assert.deepEqual((await ctx.svc.handle(s, add)).outcome, { result: null });
-  assert.equal(await pendingOf(ctx), undefined);
-  assert.equal(ctx.log.opened, 1, 'only the initial connect approval opened');
+  assert.equal((await ctx.svc.handle(s, add)).done, false);
+  const ap = await pendingOf(ctx); assert.equal(ap.kind, 'switchChain', 'a known chain is a switch prompt, never a new network'); await ctx.svc.resolve(ap.id, { approve: true });
   assert.deepEqual(ctx.log.saved, []);
   assert.equal((await ctx.perms.get(s.origin)).chainId, 84532);
   assert.deepEqual(ctx.log.events, [[s.origin, 'evm', 'chainChanged', '0x14a34'], [s.origin, 'evm', 'networkChanged', '84532']]);
@@ -537,7 +542,9 @@ test('locked vault hides grants from initial state and local account methods, an
 });
 
 // ------------------------------------------------------------------ signing known-answer vectors
-const PK1 = '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318';
+const PK1_HEX = '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318';
+const kb = (h) => Uint8Array.from(Buffer.from(h.slice(2), 'hex')); // HW-009: signers take key bytes
+const PK1 = kb(PK1_HEX);
 test('personal_sign vector (web3.js docs): "Some data"', async () => {
   const hex = '0x' + Buffer.from('Some data').toString('hex');
   assert.equal(M.personalMessageHash(hex), '0x1da44b586eb0729ff70a73c326926f6ed5a25f5b056e7f47fbc6e58d86871655');
@@ -555,7 +562,7 @@ test('EIP-712 "Mail" vector from the specification (digest + signature)', async 
   const cow = '0xc85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4';
   const { privateKeyToAccount } = await import('viem/accounts'); assert.equal(privateKeyToAccount(cow).address, '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826');
   assert.equal(M.typedDataDigest(MAIL), '0xbe609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2');
-  const sig = await M.evmSignTypedData(cow, MAIL);
+  const sig = await M.evmSignTypedData(kb(cow), MAIL);
   assert.equal(sig, '0x4355c47d63924e8a72e509b65029052eb6c299d53a04e167c5775fd466751c9d07299936d304c153f6443dfa05f40ff007d72911b6f72307f996231605b915621c');
 });
 test('EIP-712 v4 with arrays and nested structs matches an independent encoder', async () => {
@@ -702,7 +709,7 @@ test('v3 build policy: only Harbour-served or user-approved EVM networks sign; u
   assert.equal((await ctx.svc.handle(s, req('eth_chainId'))).outcome.result, '0x1');                    // default chain is the first network the backend serves
   await connect(ctx, s);
   assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1' }]))).outcome, { result: null });
-  assert.deepEqual((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]))).outcome, { result: null });
+  assert.equal((await switchTo(ctx, s, '0x14a34')).resolved.ok, true);
   assert.equal((await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0x1869f' }]))).outcome.error.code, 4902);
   assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x1869f' }]))).outcome.error.code, 4902);
   const typed = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'a', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 99999 }, message: { a: 1 } };
@@ -717,4 +724,71 @@ test('a dApp transaction is never sent without the fee the user saw', async () =
   await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }])); const r = await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true });
   assert.equal(r.ok, false); assert.match(ctx.log.delivered.at(-1).outcome.error.message, /network fee could not be shown/);
   assert.equal(ctx.log.signed.filter((x) => x[0] === 'tx').length, 0);
+});
+
+// ------------------------------------------------------------------ audit fixes (HW-2026-018, -019, -006, -005)
+test('HW-2026-018: siteRisk handles a ScamSniffer-sized list (no call-stack overflow) and still flags listed hosts', async () => {
+  M.resetPhishingCache();
+  const big = Array.from({ length: 400_000 }, (_, i) => `scam${i}.example`);
+  const kv = new MemKV(); const sets = [];
+  const kvSpy = { get: (k) => kv.get(k), set: (k, v) => { sets.push(JSON.stringify(v).length); return kv.set(k, v); }, remove: (k) => kv.remove(k) };
+  const f = async (url) => ({ ok: true, json: async () => (String(url).includes('MetaMask') ? { blacklist: ['evil.example'], whitelist: [] } : big) });
+  assert.deepEqual(await M.siteRisk('https://evil.example', kvSpy, f), { level: 'high', reason: 'blocklist' });
+  assert.deepEqual(await M.siteRisk('https://scam399999.example', kvSpy, f), { level: 'high', reason: 'blocklist' });
+  assert.deepEqual(await M.siteRisk('https://fine.example', kvSpy, f), { level: 'ok' });
+  assert.ok(sets.every((n) => n <= M.MAX_CACHE_CHARS + 100), 'never writes a cache larger than storage.session allows');
+  M.resetPhishingCache();
+  const onlyMetaMask = async (url) => (String(url).includes('MetaMask') ? { ok: true, json: async () => ({ blacklist: ['evil.example'], whitelist: [] }) } : { ok: false, json: async () => ({}) });
+  assert.equal((await M.siteRisk('https://evil.example', new MemKV(), onlyMetaMask)).level, 'high', 'MetaMask list alone decides when ScamSniffer is down');
+  M.resetPhishingCache();
+});
+test('HW-2026-019: makeRpc() resolves fetch at call time, so the Harbour signing hook installed later is used', async () => {
+  const rpc = M.makeRpc();   // created before the hook, like background/provider/index.ts at module load
+  const orig = globalThis.fetch; let hooked = 0;
+  globalThis.fetch = async (_u, init) => { hooked++; const b = JSON.parse(init.body); return new Response(JSON.stringify({ jsonrpc: '2.0', id: b.id, result: '0x5' }), { headers: { 'content-type': 'application/json' } }); };
+  try { assert.equal(await rpc(1, 'eth_blockNumber', []), '0x5'); assert.ok(hooked >= 1, 'the late-installed fetch wrapper handled the call'); }
+  finally { globalThis.fetch = orig; }
+});
+test('HW-2026-006: approvals for a phishing-listed origin are refused unless the user typed the site host', async () => {
+  const ctx = setup({ siteRisk: async () => 'high' }); const s = sender();
+  assert.equal((await ctx.svc.handle(s, req('eth_requestAccounts'))).done, false);
+  const p = await pendingOf(ctx);
+  const blocked = await ctx.svc.resolve(p.id, { approve: true, accountIndex: 0 });
+  assert.equal(blocked.ok, false); assert.match(blocked.error, /phishing/);
+  assert.equal((await ctx.svc.resolve(p.id, { approve: true, accountIndex: 0, riskOverride: 'wrong.example' })).ok, false);
+  const host = new URL(s.origin).host;
+  assert.equal((await ctx.svc.resolve(p.id, { approve: true, accountIndex: 0, riskOverride: host.toUpperCase() })).ok, true);
+  const ok = setup({ siteRisk: async () => 'unavailable' }); await connect(ok, s);   // an unavailable list never blocks on its own
+});
+test('HW-2026-005: a connected tx that names another known chain is flagged as switched by the site', async () => {
+  const ctx = setup(); const s = sender(); await connect(ctx, s);
+  const r = await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1', chainId: '0x89' }]));
+  assert.equal(r.done, false); const p = await pendingOf(ctx); assert.equal(p.params.switchedFrom, 1); assert.equal(p.params.chainId, 137);
+});
+
+// HW-2026-004: funding routes are redirected to the backup flow until the phrase is backed up.
+test('HW-004: receive/buy/fund routes gated on backupRequired', async () => {
+  const { gateRoute, FUNDING_ROUTES } = M;
+  for (const name of FUNDING_ROUTES) assert.equal(gateRoute({ name }, true).name, 'backup');
+  assert.equal(gateRoute({ name: 'receive' }, true).params.reason, 'receive');
+  assert.equal(gateRoute({ name: 'receive', params: { x: 1 } }, false).name, 'receive');
+  assert.equal(gateRoute({ name: 'send' }, true).name, 'send');
+});
+
+// HW-2026-009: byte-key EVM signer must match viem's string-key signer exactly.
+test('HW-009: evmAccountFromBytes signs identically to privateKeyToAccount', async () => {
+  const { privateKeyToAccount } = await import('viem/accounts');
+  const hex = '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318';
+  const bytes = Uint8Array.from(Buffer.from(hex.slice(2), 'hex'));
+  const a = privateKeyToAccount(hex), b = M.evmAccountFromBytes(bytes);
+  assert.equal(b.address, a.address);
+  assert.equal(await b.signMessage({ message: 'hello' }), await a.signMessage({ message: 'hello' }));
+  const td = { domain: { name: 'T', chainId: 1 }, types: { M: [{ name: 'x', type: 'uint256' }] }, primaryType: 'M', message: { x: 1n } };
+  assert.equal(await b.signTypedData(td), await a.signTypedData(td));
+  const tx = { type: 'eip1559', chainId: 1, nonce: 3, to: a.address, value: 1n, gas: 21000n, maxFeePerGas: 2n, maxPriorityFeePerGas: 1n };
+  assert.equal(await b.signTransaction(tx), await a.signTransaction(tx));
+  const ltx = { type: 'legacy', chainId: 56, nonce: 0, to: a.address, value: 5n, gas: 21000n, gasPrice: 3n };
+  assert.equal(await b.signTransaction(ltx), await a.signTransaction(ltx));
+  assert.equal(await M.evmSignMessage(bytes, '0x68656c6c6f', 'personal'), await a.signMessage({ message: 'hello' }));
+  M.zero(bytes); assert.ok(bytes.every((x) => x === 0));
 });

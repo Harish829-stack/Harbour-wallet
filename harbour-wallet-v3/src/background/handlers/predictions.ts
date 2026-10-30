@@ -2,7 +2,8 @@
 // Read: markets, market detail with order books, portfolio (positions + activity). Trade (EOA, Polygon): wrap USDC.e -> pUSD, approve
 // the exchange, sign a V2 order, post it with L2 headers. API creds are derived with a wallet signature and stored encrypted.
 import { encodeFunctionData, decodeFunctionResult, erc20Abi, maxUint256, parseAbi } from 'viem';
-import { sign, serializeSignature } from 'viem/accounts';
+import { signHash } from '../../core/provider/evmAccount';
+import { serializeSignature } from 'viem/accounts';
 import type { Handler, HandlerCtx, HandlerMap } from './types';
 import { local, session, KEYS } from '../../core/storage';
 import { encrypt, decrypt } from '../../core/passworder';
@@ -48,7 +49,7 @@ async function creds(ctx: HandlerCtx, scope: string, user: string): Promise<PM.C
   const keys = await openActiveKeys(ctx.core, ctx.vault, ctx.wallet);
   try {
     const pk = keys.evmPrivateKey();
-    const c = await PM.apiCreds(user, async (d) => serializeSignature(await sign({ hash: d, privateKey: pk })));
+    const c = await PM.apiCreds(user, async (d) => serializeSignature(signHash(d, pk)));
     all[scope] = await encrypt(pw, c); await local.set(CREDS_KEY, all);
     return c;
   } finally { keys.dispose(); }
@@ -117,7 +118,7 @@ const predictionOrder: Handler = async (msg, ctx) => {
       const pk = keys.evmPrivateKey();
       if (plan.length) await runPlan(polygon(), pk, plan);
       const c = await creds(ctx, scope, user);
-      const sig = serializeSignature(await sign({ hash: PM.orderDigest(order, b.negRisk), privateKey: pk }));
+      const sig = serializeSignature(signHash(PM.orderDigest(order, b.negRisk), pk));
       const r = await PM.postOrder(c, user, PM.orderBody(order, sig, c.apiKey, orderType));
       return { ok: true, orderId: r?.orderID ?? r?.orderId, status: r?.status };
     } finally { keys.dispose(); }

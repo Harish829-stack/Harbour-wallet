@@ -37,10 +37,11 @@ test('changing the auto-lock timer persists it and arms the real alarm', async (
   assert.equal(F().alarms[S.LOCK_ALARM].delayInMinutes, 5);
   assert.equal((await S.loadSettings()).lockTimeInMinutes, 5); // survives a reload
 });
-test('"Never" (0) clears the alarm instead of creating one', async () => {
+test('HW-011: "Never" (0) is rejected; the alarm stays armed', async () => {
   await S.saveSettings({ lockTimeInMinutes: 15 }); assert.ok(F().alarms[S.LOCK_ALARM]);
-  await S.saveSettings({ lockTimeInMinutes: 0 });
-  assert.equal(F().alarms[S.LOCK_ALARM], undefined);
+  const r = await S.saveSettings({ lockTimeInMinutes: 0 });
+  assert.equal(r.settings.lockTimeInMinutes, 15);
+  assert.equal(F().alarms[S.LOCK_ALARM].delayInMinutes, 15);
 });
 test('an invalid timer value is ignored and does not touch the alarm', async () => {
   await S.saveSettings({ lockTimeInMinutes: 30 }); F().calls.length = 0;

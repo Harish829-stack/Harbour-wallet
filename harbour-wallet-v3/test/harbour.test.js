@@ -8,7 +8,7 @@ import { webcrypto } from 'node:crypto';
 import { keccak_256 } from '@noble/hashes/sha3';
 const txHash = (raw) => '0x' + Buffer.from(keccak_256(Buffer.from(raw.slice(2), 'hex'))).toString('hex');
 
-const out = await build({ stdin: { contents: `export * from './device'; export * from './client'; export * from './fetchHook'; export * from './data'; export * from './config';`, resolveDir: fileURLToPath(new URL('../src/core/harbour/', import.meta.url)), sourcefile: 'entry.ts', loader: 'ts' },
+const out = await build({ stdin: { contents: `export * from './device'; export * from './client'; export * from './fetchHook'; export * from './data'; export * from './config'; export * as __schema from './schema';`, resolveDir: fileURLToPath(new URL('../src/core/harbour/', import.meta.url)), sourcefile: 'entry.ts', loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', define: { 'import.meta.env': JSON.stringify({ VITE_HB_API_URL: 'https://api.test' }) } });
 const H = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -100,4 +100,18 @@ test('only device_unknown re-registers; a revoked device keeps its key', async (
 test('a server-chosen proof-of-work difficulty above the cap is refused', async () => {
   let mem; H.setDeviceStorage({ load: async () => mem, save: async (v) => { mem = v; }, forget: async () => { mem = undefined; } });
   await assert.rejects(H.deviceIdentity('https://api.test', async () => json({ challenge: 'c', difficulty: 40 })), /could not set up/);
+});
+
+// HW-2026-014: API responses are shape-checked and must only describe the requested addresses.
+test('HW-014: schema guards reject malformed or foreign-address responses', async () => {
+  const S = H.__schema; const refs = [{ chain: 'sepolia', address: '0xAbC0000000000000000000000000000000000001' }];
+  const asset = { chain: 'sepolia', asset_ref: 'native', kind: 'native', symbol: 'ETH', name: 'Ether', decimals: 18, logo_url: null, spam: false, verified: true };
+  const good = { value_usd: 1, addresses: [{ chain: 'sepolia', address: '0xabc0000000000000000000000000000000000001', synced: true, backfill_state: 'done', as_of_block: 1, value_usd: 1, assets: [{ ...asset, amount_raw: '1000', amount: '0.000000000000001', price: { usd: 1, flag: '' }, value_usd: 1 }] }] };
+  assert.equal(S.checkPortfolio(good, refs), good);
+  assert.throws(() => S.checkPortfolio({ ...good, addresses: [{ ...good.addresses[0], address: '0x' + '99'.repeat(20) }] }, refs), /not requested/);
+  assert.throws(() => S.checkPortfolio({ value_usd: 'x', addresses: [] }), /unexpected portfolio/);
+  assert.throws(() => S.checkPortfolio({ ...good, addresses: [{ ...good.addresses[0], assets: [{ ...good.addresses[0].assets[0], amount_raw: '-1' }] }] }), /portfolio asset/);
+  assert.throws(() => S.checkHistory({ items: [{ chain: 'sepolia', address: refs[0].address, tx_hash: '0x1', block_time: 't', direction: 'in', finality: 'final', transfers: [{ ...asset, amount_raw: '1', amount: '1', direction: 'sideways' }] }] }, refs), /history transfer/);
+  assert.throws(() => S.checkNfts({ nfts: [{ chain: 'sepolia', address: '0x' + '22'.repeat(20), contract: '0x1', token_id: '1', amount: '1', standard: 'erc721', name: null, collection: null, image_url: null, spam: false }] }, refs), /not requested/);
+  assert.throws(() => S.checkBroadcast({ tx_hash: '0x' + '11'.repeat(32), status: 'pending' }, '0x02ff'), /could not confirm/);
 });

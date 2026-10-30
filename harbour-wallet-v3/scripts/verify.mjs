@@ -18,6 +18,9 @@ run('tsc (gateway)', 'npx', ['tsc', '-p', 'gateway/tsconfig.json']);
 if (!process.argv.includes('--skip-tests')) run('unit tests', 'npm', ['test', '--silent']);
 for (const sc of ['prepare-wasm', 'build-inpage', 'build-content']) run(`prebuild ${sc}`, 'node', [`scripts/${sc}.mjs`]);
 run('production build', 'npx', ['vite', 'build', '--outDir', out, '--emptyOutDir']);
+// HW-2026-008 (CCSS K-01/K-02): dependency gate and lockfile integrity on every verify, not only when someone remembers.
+run('npm audit gate (high/critical, prod deps)', 'node', ['scripts/audit-gate.mjs']);
+run('lockfile matches package.json', 'npm', ['ls', '--omit=dev', '--all', '--silent']);
 
 // Leak scan: no secret from the key file, and no obvious key shapes, may appear in the built extension.
 const secrets = [];

@@ -113,7 +113,7 @@ test('a biometrics-only wallet can add a password: everything re-keyed, biometri
   await v.lock(); await assert.rejects(v.setPassword(NEW, SECRET), /LOCKED/);
   await v.unlock(PASSWORD);
   F().local.data[KEYS.PASSKEY_VAULT] = await passworder.encrypt(SECRET, { passwordKey: F().session.data[KEYS.PASSWORD], unlockKey: F().session.data[KEYS.UNLOCK] });
-  F().local.data[KEYS.PASSKEY] = { credentialId: 'aa', isPasswordGenerated: true, createdAt: 1 };
+  F().local.data[KEYS.PASSKEY] = { credentialId: 'aa', isPasswordGenerated: true, createdAt: 1, scheme: 'prf-v1' };
   const oldPw = F().session.data[KEYS.PASSWORD], oldSalt = F().local.data[KEYS.PBKDF2].salt;
   await v.setPassword(NEW, SECRET);
   const d = F().local.data, newPw = F().session.data[KEYS.PASSWORD];
@@ -128,6 +128,16 @@ test('a biometrics-only wallet can add a password: everything re-keyed, biometri
   // The new password unlocks; the old one no longer does.
   await v.lock(); assert.deepEqual(await v.unlock(NEW), state);
   await v.lock(); await assert.rejects(v.unlock(PASSWORD), /Incorrect password/);
+});
+
+test('HW-001: adding a password to a LEGACY biometrics-only wallet drops the user-handle seal instead of re-sealing it', async () => {
+  seedV1(); const v = new VaultService(core, ARGON); await v.unlock(PASSWORD);
+  const SECRET = 'ab'.repeat(32);
+  F().local.data[KEYS.PASSKEY_VAULT] = await passworder.encrypt(SECRET, { passwordKey: F().session.data[KEYS.PASSWORD], unlockKey: F().session.data[KEYS.UNLOCK] });
+  F().local.data[KEYS.PASSKEY] = { credentialId: 'aa', isPasswordGenerated: true, createdAt: 1 }; // no scheme = legacy
+  await v.setPassword('brand new password 42', SECRET);
+  assert.equal(F().local.data[KEYS.PASSKEY], undefined); assert.equal(F().local.data[KEYS.PASSKEY_VAULT], undefined);
+  await v.lock(); await v.unlock('brand new password 42');
 });
 
 test('passworder refuses a human password and still reads the old envelope', async () => {

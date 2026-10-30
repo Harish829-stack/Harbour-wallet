@@ -2,3 +2,6 @@ bin/
 .env
 .hbdevice.json
 dump.rdb
+
+# HW-2026-007: local Postgres TLS keys (scripts/pg-certs.sh)
+deploy/postgres/certs/

@@ -417,7 +417,37 @@ func (c *Config) Upstreams(chainName string, getenv func(string) string) ([]Reso
 
 // LoadDotEnv sets variables from a .env file that are not already set.
 // Supports KEY=value, quotes, and trailing " # comments". Missing file is fine.
+// It then resolves <NAME>_FILE variables (LoadSecretFiles), so production can mount secrets instead of using .env.
 func LoadDotEnv(path string) error {
+	if err := loadDotEnv(path); err != nil {
+		return err
+	}
+	return LoadSecretFiles()
+}
+
+// LoadSecretFiles (HW-2026-002, CCSS G-06): for every NAME_FILE variable, reads the file (a Docker/Kubernetes secret, or a file a
+// secrets-manager agent such as Vault Agent or the AWS/GCP secret CSI driver writes) into NAME, unless NAME is already set.
+// Secrets then never have to live in .env or in the process's declared environment.
+func LoadSecretFiles() error {
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		name, ok := strings.CutSuffix(k, "_FILE")
+		if !ok || name == "" || v == "" {
+			continue
+		}
+		if _, set := os.LookupEnv(name); set && os.Getenv(name) != "" {
+			continue
+		}
+		b, err := os.ReadFile(v)
+		if err != nil {
+			return fmt.Errorf("config: %s: %w", k, err)
+		}
+		os.Setenv(name, strings.TrimSpace(string(b)))
+	}
+	return nil
+}
+
+func loadDotEnv(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -58,7 +58,7 @@ function once(f: typeof fetch, urls: string[], method: string, params: unknown[]
   })();
 }
 
-export function makeRpc(f: typeof fetch = fetch, timeoutMs = 12_000, now: () => number = Date.now): RpcCall {
+export function makeRpc(f: typeof fetch = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)) as typeof fetch, timeoutMs = 12_000, now: () => number = Date.now): RpcCall {
   const cache = new Map<string, Entry>(); const inflight = new Map<string, Promise<any>>();
   const run = async (chainId: number, method: string, params: unknown[]): Promise<any> => {
     const net = evmNetwork(chainId);

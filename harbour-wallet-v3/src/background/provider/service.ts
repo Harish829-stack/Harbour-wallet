@@ -53,6 +53,8 @@ export interface ServiceDeps {
   multi?: MultiBackend;
   /** Developer setting "Allow eth_sign requests" (off unless the user turned it on). Absent = off. */
   ethSignEnabled?: () => Promise<boolean>;
+  /** Phishing-list verdict for an origin (core/provider/phishing.ts). 'high' blocks approval unless the user typed the site's host (HW-2026-006). */
+  siteRisk?: (origin: string) => Promise<'ok' | 'high' | 'unavailable'>;
   now?: () => number; version?: string;
 }
 export interface TonMsg { address: string; friendly: string; amount: string; payload?: string; stateInit?: string; bounce: boolean }
@@ -72,7 +74,7 @@ export interface WcHost {
   reject(proposalId: number, code: number, message: string): Promise<void>;
 }
 export type HandleResult = { done: true; outcome: Outcome } | { done: false };
-export interface Decision { approve: boolean; accountIndex?: number; chainId?: number; gasLimit?: string; feeLevel?: 'safe' | 'average' | 'fast'; fee?: { maxFeePerGas?: string; maxPriorityFeePerGas?: string; gasPrice?: string }; allowanceLimit?: string }
+export interface Decision { approve: boolean; accountIndex?: number; chainId?: number; gasLimit?: string; feeLevel?: 'safe' | 'average' | 'fast'; fee?: { maxFeePerGas?: string; maxPriorityFeePerGas?: string; gasPrice?: string }; allowanceLimit?: string; riskOverride?: string }
 
 const hex = (n: number) => '0x' + n.toString(16);
 const ok = (result: unknown): HandleResult => ({ done: true, outcome: { result } });
@@ -155,23 +157,24 @@ export class ProviderService {
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           const dc = (n.typedData.domain as any)?.chainId;
           if (dc !== undefined && dc !== null && String(dc).length && !this.policy.isSigningEvmChain(dc)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = Number(dc); }
-          return this.queue(s, req, 'typed', n, (await this.d.perms.get(s.origin)) ?? evmConn);
+          let switchedFrom: number | undefined;
+          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = Number(dc); }
+          return this.queue(s, req, 'typed', { ...n, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
         case 'tx': {
           const tx = normalizeSendTx(req.params, me);
-          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); chainId = want; }
+          let switchedFrom: number | undefined;
+          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
           if (!this.policy.isSigningEvmChain(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-          return this.queue(s, req, 'tx', { tx, chainId }, (await this.d.perms.get(s.origin)) ?? evmConn);
+          return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, (await this.d.perms.get(s.origin)) ?? evmConn);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
           if (!this.d.networks.get(target) || !this.policy.isSigningEvmChain(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
-          // Trust Wallet (SwitchNetwork handler): a connected site is switched silently; only an unconnected site is prompted.
-          if (evmConn) { await this.applyChain(s.origin, target, target === chainId); return ok(null); }
-          if (target === chainId) return ok(null);
-          return this.queue(s, req, 'switchChain', { chainId: target }, evmConn);
+          // A site may re-announce its current network silently, but moving the wallet to another network always asks (HW-2026-005).
+          if (target === chainId) { await this.applyChain(s.origin, target, true); return ok(null); }
+          return this.queue(s, req, 'switchChain', { chainId: target, from: chainId }, evmConn);
         }
         case 'addChain': {
           // A network's identity is its chain ID. An already-saved chain is a
@@ -180,7 +183,10 @@ export class ProviderService {
           const candidate = Array.isArray(req.params) ? req.params[0] : null;
           const requestedId = parseChainIdHex(candidate?.chainId);
           // Trust Wallet (WalletAddEthereumChain): a chain the wallet already has is handled as wallet_switchEthereumChain.
-          if (this.d.networks.get(requestedId)) { if (evmConn && requestedId != null) await this.applyChain(s.origin, requestedId, requestedId === chainId); return ok(null); }
+          if (this.d.networks.get(requestedId)) {
+            if (requestedId == null || requestedId === chainId) { if (requestedId != null) await this.applyChain(s.origin, requestedId, true); return ok(null); }
+            return this.queue(s, req, 'switchChain', { chainId: requestedId, from: chainId }, evmConn);   // known chain: same prompt as a switch (HW-2026-005)
+          }
           if (!this.policy.siteAddChain) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'Harbour does not support adding this network.');
           const a = normalizeAddChain(req.params);
           // chainlist sends several RPCs and the first is often rate-limited: keep every usable https one and try them in order on approval.
@@ -345,6 +351,11 @@ export class ProviderService {
       await this.d.closeApprovalIfIdle().catch(() => {}); return { ok: true };
     }
     const st = await this.d.vaultStatus(); if (!st.unlocked) return { ok: false, locked: true, error: 'LOCKED' };
+    // Sites on a phishing list are blocked: approving needs the deliberate override (the user typed the site's host), checked here and not only in the UI.
+    if (this.d.siteRisk && (await this.d.siteRisk(peek.origin).catch(() => 'unavailable' as const)) === 'high') {
+      let host = ''; try { host = new URL(peek.origin).host.toLowerCase(); } catch { /* opaque origin */ }
+      if (!host || String(decision.riskOverride ?? '').trim().toLowerCase() !== host) return { ok: false, error: 'This site is on a phishing list. Harbour blocked the request.' };
+    }
     const p = await this.d.pending.claim(id); if (!p) return { ok: false, error: 'This request is no longer pending or is already executing.' };
     let outcome: Outcome; let message: string | undefined;
     try { outcome = { result: await this.execute(p, decision) }; }

@@ -9,9 +9,12 @@
 //   [certain] 170-entry base-currency table with `rating` (popular = rating>0) (useSelectedBaseCurrency chunk)
 // Deliberate Harbour deviations are marked `DEVIATION` below and listed in the spec.
 
-export const AUTO_LOCK_OPTIONS = [1, 5, 10, 15, 30, 60, 0] as const; // minutes; 0 = never
+// DEVIATION (HW-2026-011, CCSS B-06): TW offers 0 = "Never". Harbour always auto-locks, capped at 4 hours; a stored 0
+// (or any value not in the list) is normalised to the default by sanitizeLockTime.
+export const AUTO_LOCK_OPTIONS = [1, 5, 10, 15, 30, 60, 240] as const; // minutes
+export const MAX_LOCK_MINUTES = 240;
 export const DEFAULT_LOCK_MINUTES = 10;
-export const isAutoLockEnabled = (m: number) => m !== 0;
+export const isAutoLockEnabled = (m: number) => m > 0;
 export const sanitizeLockTime = (m: unknown): number =>
   typeof m === 'number' && (AUTO_LOCK_OPTIONS as readonly number[]).includes(m) ? m : DEFAULT_LOCK_MINUTES;
 

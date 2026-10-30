@@ -1,0 +1,7 @@
+# HW-2026-002 / HW-2026-008: secret scanning. Run locally:  gitleaks git -v   (or as a pre-commit hook, see scripts/pre-commit)
+title = "harbour"
+[extend]
+useDefault = true
+[allowlist]
+description = "test vectors and examples"
+paths = ['''test/fixtures/''', '''\.env\.example$''', '''audit/''']

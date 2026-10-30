@@ -125,9 +125,14 @@ export class VaultService {
     const neu = deriveV2(newPassword, salt, this.argon2);
     const updates = await this.rekeyAll(state, { unlockKey, passwordKey }, neu);
     updates[KEYS.PBKDF2] = v2Record(this.core.HexCoding.encode(salt), this.argon2);
-    updates[KEYS.PASSKEY_VAULT] = await passworder.encrypt(passkeySecret, { passwordKey: neu.passwordKey, unlockKey: neu.unlockKey });
-    updates[KEYS.PASSKEY] = { ...meta, isPasswordGenerated: false };
+    // HW-2026-001: a legacy (user-handle) seal is never re-sealed; it is dropped and the user re-enrols with PRF.
+    const legacy = meta.scheme !== 'prf-v1';
+    if (!legacy) {
+      updates[KEYS.PASSKEY_VAULT] = await passworder.encrypt(passkeySecret, { passwordKey: neu.passwordKey, unlockKey: neu.unlockKey });
+      updates[KEYS.PASSKEY] = { ...meta, isPasswordGenerated: false };
+    }
     await local.setMany(updates);
+    if (legacy) { await local.remove(KEYS.PASSKEY); await local.remove(KEYS.PASSKEY_VAULT); }
     await session.set(KEYS.PASSWORD, neu.passwordKey);
     await session.set(KEYS.UNLOCK, neu.unlockKey);
     await this.reset();

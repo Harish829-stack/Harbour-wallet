@@ -58,6 +58,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	}
 	if int(n) > s.cfg.API.ChallengesPerHour {
 		w.Header().Set("Retry-After", "3600")
+		s.secEvent(r, "register_rate_limited", "")
 		writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many attempts. Please try again later.", true)
 		return
 	}
@@ -144,6 +145,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	diff, _ := strconv.Atoi(diffStr)
 	if !devicesig.CheckPow(req.Challenge, req.PublicKey, req.PowCounter, diff) {
+		s.secEvent(r, "register_bad_proof", "")
 		writeErr(w, http.StatusBadRequest, "bad_pow", "Device check failed. Please try again.", true)
 		return
 	}
@@ -224,15 +226,18 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "This device needs to sign in again.", false)
 		}
 		if !uuidRe(dev) || !devicesig.ValidNonce(nonce) || sig == "" {
+			s.secEvent(r, "auth_malformed", "")
 			unauth()
 			return
 		}
 		ts, err := strconv.ParseInt(date, 10, 64)
 		if err != nil {
+			s.secEvent(r, "auth_malformed", dev)
 			unauth()
 			return
 		}
 		if skew := s.opt.Now().Sub(time.Unix(ts, 0)); skew > s.cfg.API.ClockSkew || -skew > s.cfg.API.ClockSkew {
+			s.secEvent(r, "auth_clock_skew", dev)
 			writeErr(w, http.StatusUnauthorized, "clock_skew", "Your computer's clock looks wrong. Please check the date and time.", false)
 			return
 		}
@@ -245,6 +250,7 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		cd, err := s.lookupDevice(ctx, dev)
 		if errors.Is(err, store.ErrNotFound) {
 			// The only case where the client registers a new key (e.g. the database was reset).
+			s.secEvent(r, "auth_device_unknown", dev)
 			writeErr(w, http.StatusUnauthorized, "device_unknown", "This device needs to sign in again.", false)
 			return
 		} else if err != nil {
@@ -253,21 +259,24 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		}
 		if cd.revoked {
 			// Distinct from device_unknown so clients do not silently re-register around a revocation.
+			s.secEvent(r, "auth_device_revoked", dev)
 			writeErr(w, http.StatusUnauthorized, "device_revoked", "This device can no longer use Harbour's servers.", false)
 			return
 		}
 		canon := devicesig.Canonical(r.Method, r.URL.RequestURI(), date, nonce, dev, body)
 		if !devicesig.Verify(cd.pub, canon, sig) {
+			s.secEvent(r, "auth_bad_signature", dev)
 			unauth()
 			return
 		}
 		// Replay protection: a nonce is accepted once within the skew window.
-		ok, err := s.opt.Redis.SetNX(ctx, "hb:nonce:"+dev+":"+nonce, 1, 2*s.cfg.API.ClockSkew).Result()
+		ok, err := s.opt.Redis.SetNX(ctx, "hb:nonce:"+s.devTag(dev)+":"+nonce, 1, 2*s.cfg.API.ClockSkew).Result()
 		if err != nil {
 			s.internalErr(w, r, err)
 			return
 		}
 		if !ok {
+			s.secEvent(r, "auth_replay", dev)
 			unauth()
 			return
 		}
@@ -307,13 +316,14 @@ func (s *Server) dailyCounter(ctx context.Context, key string, n int64, limit in
 func (s *Server) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		d := deviceFrom(r.Context())
-		ok, err := s.counter(r.Context(), "hb:rl:"+d.ID, 1, s.tier(d.Tier).RequestsPerMinute)
+		ok, err := s.counter(r.Context(), "hb:rl:"+s.devTag(d.ID), 1, s.tier(d.Tier).RequestsPerMinute)
 		if err != nil {
 			s.internalErr(w, r, err)
 			return
 		}
 		if !ok {
 			w.Header().Set("Retry-After", "60")
+			s.secEvent(r, "rate_limited", d.ID)
 			writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many requests. Please wait a moment.", true)
 			return
 		}
@@ -344,21 +354,56 @@ func (c *captureWriter) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
-// idempotency replays the stored response for a repeated Idempotency-Key. keepBody=false stores only the status (the
-// replay body is {"replayed":true}): used where the body would sit in Redis linking this device to its addresses.
-func (s *Server) idempotency(next http.Handler) http.Handler { return s.idempotencyWith(true)(next) }
+// idempotency replays the stored response for a repeated Idempotency-Key. The stored body passes through `scrub`:
+//   - idempotencyNoBody stores only the status (replay body {"replayed":true}): the body would link this device to its addresses.
+//   - idempotencyBroadcast (HW-2026-020) keeps tx_hash/status (the client verifies tx_hash == hash(raw) on replay) but drops the
+//     realtime channel and its token, which must never sit in Redis next to the device.
+//
+// Redis keys use LinkCrypto tags, not the raw device id or Idempotency-Key.
+func (s *Server) idempotency(next http.Handler) http.Handler {
+	return s.idempotencyHandler(next, func(b []byte) []byte { return b })
+}
 
 func (s *Server) idempotencyNoBody(next http.Handler) http.Handler {
-	return s.idempotencyWith(false)(next)
+	return s.idempotencyHandler(next, func([]byte) []byte { return []byte(`{"replayed":true}`) })
 }
 
-func (s *Server) idempotencyWith(keepBody bool) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return s.idempotencyHandler(next, keepBody)
+func (s *Server) idempotencyBroadcast(next http.Handler) http.Handler {
+	return s.idempotencyHandler(next, scrubBroadcast)
+}
+
+// scrubBroadcast keeps only the fields a replay needs.
+func scrubBroadcast(b []byte) []byte {
+	var m map[string]any
+	if json.Unmarshal(b, &m) != nil {
+		return []byte(`{"replayed":true}`)
 	}
+	out := map[string]any{"replayed": true}
+	for _, k := range []string{"tx_hash", "status", "error"} {
+		if v, ok := m[k]; ok {
+			out[k] = v
+		}
+	}
+	r, _ := json.Marshal(out)
+	return r
 }
 
-func (s *Server) idempotencyHandler(next http.Handler, keepBody bool) http.Handler {
+// devTag is the device's identifier in Redis keys (HW-2026-020): a keyed tag, not the raw id.
+func (s *Server) devTag(deviceID string) string {
+	if s.opt.LinkCrypto == nil {
+		return deviceID
+	}
+	return s.opt.LinkCrypto.DeviceTag(deviceID)
+}
+
+func (s *Server) idemRedisKey(deviceID, key string) string {
+	if s.opt.LinkCrypto == nil {
+		return "hb:idem:" + deviceID + ":" + key
+	}
+	return "hb:idem:" + s.opt.LinkCrypto.DeviceTag(deviceID) + ":" + s.opt.LinkCrypto.KeyTag(key)
+}
+
+func (s *Server) idempotencyHandler(next http.Handler, scrub func([]byte) []byte) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("Idempotency-Key")
 		if key == "" {
@@ -374,7 +419,7 @@ func (s *Server) idempotencyHandler(next http.Handler, keepBody bool) http.Handl
 		r.Body = io.NopCloser(bytes.NewReader(body))
 		h := sha256.Sum256(append([]byte(r.Method+" "+r.URL.Path+"\n"), body...))
 		reqHash := hex.EncodeToString(h[:])
-		rk := "hb:idem:" + deviceFrom(ctx).ID + ":" + key
+		rk := s.idemRedisKey(deviceFrom(ctx).ID, key)
 		ttl := s.cfg.API.IdempotencyTTL
 		ok, err := s.opt.Redis.SetNX(ctx, rk, "pending", ttl).Result()
 		if err != nil {
@@ -412,11 +457,27 @@ func (s *Server) idempotencyHandler(next http.Handler, keepBody bool) http.Handl
 			s.opt.Redis.Del(context.WithoutCancel(ctx), rk) // allow retry
 			return
 		}
-		respBody := cw.buf.Bytes()
-		if !keepBody {
-			respBody = []byte(`{"replayed":true}`)
-		}
+		respBody := scrub(cw.buf.Bytes())
 		b, _ := json.Marshal(idemRecord{Status: cw.status, Body: respBody, ReqHash: reqHash})
 		s.opt.Redis.Set(context.WithoutCancel(ctx), rk, b, ttl)
 	})
+}
+
+// secEvent (HW-2026-013, CCSS L-01 / ASVS V7.2) writes one structured "security_event" line for authentication and
+// abuse signals, for alerting (for example many auth_bad_signature or auth_replay per minute). It never logs signatures,
+// bodies or raw IPs: the device and the client network are keyed tags (LinkCrypto), stable enough to correlate.
+func (s *Server) secEvent(r *http.Request, event, deviceID string) {
+	if s.opt.Log == nil {
+		return
+	}
+	dev, client := "", clientIP(r)
+	if s.opt.LinkCrypto != nil {
+		client = s.opt.LinkCrypto.KeyTag("ip:" + client)
+		if deviceID != "" && uuidRe(deviceID) {
+			dev = s.opt.LinkCrypto.DeviceTag(deviceID)
+		}
+	} else {
+		client = ""
+	}
+	s.opt.Log.Warn("security_event", "event", event, "route", routePattern(r), "method", r.Method, "device_tag", dev, "client_tag", client)
 }

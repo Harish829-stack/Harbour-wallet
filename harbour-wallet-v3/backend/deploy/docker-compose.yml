@@ -16,10 +16,15 @@ services:
       POSTGRES_USER: harbour
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/setup.sh}
       POSTGRES_DB: harbour
+    # HW-2026-007: TLS on. The key is copied with postgres ownership and 0600 (Postgres refuses group/world-readable keys,
+    # which bind mounts from macOS/Windows often are). Certificates: scripts/pg-certs.sh (run by scripts/setup.sh).
+    entrypoint: ["bash", "-c", "install -o postgres -g postgres -m 600 /certs/server.key /var/lib/postgresql/server.key && install -o postgres -g postgres -m 644 /certs/server.crt /var/lib/postgresql/server.crt && exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key -c ssl_min_protocol_version=TLSv1.2"]
     ports: ["127.0.0.1:5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
+      - ./postgres/certs/server.crt:/certs/server.crt:ro
+      - ./postgres/certs/server.key:/certs/server.key:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U harbour"]
       interval: 3s
@@ -72,8 +77,9 @@ services:
   migrate:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/migrate", "-maintain"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
-      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour:${POSTGRES_PASSWORD}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       POSTGRES_APP_USER: harbour_svc
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?run scripts/setup.sh}
       # One login per service (each a member of harbour_app) so a leaked credential is one service's, and can be rotated on its own.
@@ -103,10 +109,11 @@ services:
   api:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/api", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
       API_ADDR: ":8080"
-      POSTGRES_URL: postgres://harbour_api:${PG_PW_API}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_api:${PG_PW_API}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       RPC_GATEWAY_URL: http://rpc-gateway:8081
       NATS_URL: nats://api:${NATS_PW_API}@nats:4222
@@ -142,10 +149,11 @@ services:
   indexer:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/indexer", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
       INDEXER_ADDR: ":8083"
-      POSTGRES_URL: postgres://harbour_indexer:${PG_PW_INDEXER}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_indexer:${PG_PW_INDEXER}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       RPC_GATEWAY_URL: http://rpc-gateway:8081
       NATS_URL: nats://indexer:${NATS_PW_INDEXER}@nats:4222
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN}
@@ -163,10 +171,11 @@ services:
   webhook-ingest:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/webhook-ingest", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
       WEBHOOK_ADDR: ":8082"
-      POSTGRES_URL: postgres://harbour_webhook:${PG_PW_WEBHOOK}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_webhook:${PG_PW_WEBHOOK}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       NATS_URL: nats://webhook:${NATS_PW_WEBHOOK}@nats:4222
       ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY}
       ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}        # the source adapter is built to verify deliveries
@@ -180,9 +189,10 @@ services:
   price-poller:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/price-poller", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
-      POSTGRES_URL: postgres://harbour_prices:${PG_PW_PRICES}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_prices:${PG_PW_PRICES}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       NATS_URL: nats://prices:${NATS_PW_PRICES}@nats:4222
       COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
@@ -196,9 +206,10 @@ services:
   tx-tracker:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/tx-tracker", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
-      POSTGRES_URL: postgres://harbour_txtrack:${PG_PW_TXTRACK}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_txtrack:${PG_PW_TXTRACK}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       RPC_GATEWAY_URL: http://rpc-gateway:8081
       NATS_URL: nats://txtrack:${NATS_PW_TXTRACK}@nats:4222
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN}
@@ -222,9 +233,10 @@ services:
   notifier:
     build: {context: .., dockerfile: Dockerfile}
     command: ["/app/bin/notifier", "-config", "/app/config"]
+    volumes: ["./postgres/certs/ca.crt:/certs/ca.crt:ro"]
     environment:
       <<: *common
-      POSTGRES_URL: postgres://harbour_notifier:${PG_PW_NOTIFIER}@postgres:5432/harbour?sslmode=disable
+      POSTGRES_URL: postgres://harbour_notifier:${PG_PW_NOTIFIER}@postgres:5432/harbour?sslmode=verify-full&sslrootcert=/certs/ca.crt
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       NATS_URL: nats://notifier:${NATS_PW_NOTIFIER}@nats:4222
       ADDRESS_LINK_ENCRYPTION_KEY: ${ADDRESS_LINK_ENCRYPTION_KEY}

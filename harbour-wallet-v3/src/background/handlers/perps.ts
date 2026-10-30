@@ -2,6 +2,7 @@
 // The main EVM key signs only user actions (approve agent / builder fee, withdraw) and the Arbitrum USDC deposit; trading is signed
 // by a per-account agent key generated here, stored encrypted with the wallet password, never shown to the UI. Agents cannot withdraw.
 import { encodeFunctionData, decodeFunctionResult, erc20Abi } from 'viem';
+import { signHash } from '../../core/provider/evmAccount';
 import { sign, privateKeyToAddress } from 'viem/accounts';
 import type { Handler, HandlerCtx, HandlerMap } from './types';
 import { local, session, KEYS } from '../../core/storage';
@@ -47,7 +48,7 @@ async function agentKey(scope: string): Promise<{ rec: AgentRec; pk: `0x${string
 }
 async function mainSign(ctx: HandlerCtx, digest: `0x${string}`) {
   const keys = await openActiveKeys(ctx.core, ctx.vault, ctx.wallet);
-  try { return toSig(await sign({ hash: digest, privateKey: keys.evmPrivateKey() })); } finally { keys.dispose(); }
+  try { return toSig(signHash(digest, keys.evmPrivateKey())); } finally { keys.dispose(); }
 }
 async function userSigned(ctx: HandlerCtx, type: 'approveAgent' | 'approveBuilderFee' | 'withdraw3', fields: Record<string, string | number>) {
   const action = userAction(type, fields);

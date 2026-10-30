@@ -204,10 +204,12 @@ const SECURITY_HEADERS: Record<string, string> = {
   'content-security-policy': "default-src 'none'; frame-ancestors 'none'", 'cross-origin-resource-policy': 'same-site',
   'strict-transport-security': 'max-age=63072000; includeSubDomains', 'permissions-policy': 'interest-cohort=()',
 };
-/** Origins allowed to call the gateway: ALLOWED_ORIGINS (comma-separated, exact match) or, when unset, any Harbour-style extension origin. Requests with no Origin (non-browser) are rate limited instead. */
+/** Origins allowed to call the gateway: ALLOWED_ORIGINS (comma-separated, exact chrome-extension://<id> match). HW-2026-012: fails
+ *  closed. Unset or empty means NO browser origin is allowed (any extension id used to pass). Requests with no Origin (non-browser)
+ *  are rate limited instead. */
 export function originAllowed(origin: string, env: Pick<Env, 'ALLOWED_ORIGINS'>): boolean {
   const list = (env.ALLOWED_ORIGINS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-  return list.length ? list.includes(origin) : /^chrome-extension:\/\/[a-p]{32}$/.test(origin);
+  return list.length > 0 && list.includes(origin);
 }
 function secure(res: Response, origin: string | null): Response {
   const h = new Headers(res.headers);

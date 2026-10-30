@@ -34,6 +34,18 @@ func main() {
 		die(log, "migrate", err)
 	}
 	log.Info("migrations", "applied", applied)
+	// HW-2026-017: migration 0008 skips the harbour_app role setup (with only a NOTICE) when the migration user lacks
+	// CREATEROLE. Services would then run without the least-privilege role, so fail loudly instead of continuing.
+	var hasRole bool
+	if err := st.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'harbour_app')`).Scan(&hasRole); err != nil {
+		die(log, "role check", err)
+	}
+	if !hasRole {
+		if os.Getenv("HB_ALLOW_MISSING_APP_ROLE") != "1" {
+			die(log, "role check", fmt.Errorf("role harbour_app is missing: run migrations as a user with CREATEROLE (or create the role), then re-run; HB_ALLOW_MISSING_APP_ROLE=1 skips this check"))
+		}
+		log.Warn("role harbour_app is missing; services will not get least-privilege grants")
+	}
 	// The services connect as this user (a member of harbour_app), never as the owner that runs migrations.
 	if u, p := os.Getenv("POSTGRES_APP_USER"), os.Getenv("POSTGRES_APP_PASSWORD"); u != "" || p != "" {
 		if err := st.EnsureAppLogin(ctx, u, p); err != nil {

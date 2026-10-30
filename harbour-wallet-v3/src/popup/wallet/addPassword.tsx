@@ -21,7 +21,7 @@ export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string;
     try {
       const st = await loadPasskeyStatus(bg);
       if (!st.enabled || !st.credentialId) throw new Error('Biometrics are not set up on this wallet.');
-      const { secret } = await new Biometrics().login(st.credentialId);
+      const b = new Biometrics(); const { secret } = st.legacy ? await b.legacyLogin(st.credentialId) : await b.login(st.credentialId);
       const password = pw.take(); confirm.clear(); setMeta(EMPTY);
       const r = await bg({ type: 'passkeyAddPassword', password, secret });
       if (!r?.ok) throw new Error(r?.error === 'LOCKED' ? 'Unlock Harbour first.' : r?.error === 'INVALID_WALLET_INPUT' ? 'Choose a valid password and try again.' : r?.error || 'Could not add a password.');
