@@ -94,7 +94,7 @@ export function Onboarding() {
   const pwField = useSecretField(); const confirmField = useSecretField();
   const [pwMeta, setPwMeta] = useState<{ policy: { valid: boolean; error?: string }; strength: PasswordStrength; confirmFilled: boolean; match: boolean }>({ policy: { valid: false }, strength: EMPTY_STRENGTH, confirmFilled: false, match: false });
   const firstMode = useRef<boolean | null>(null); // add-wallet vs first-run, fixed for the session (status.mode flips once a wallet exists)
-  const [bioStage, setBioStage] = useState<EnrollStage>('idle');
+  const [bioStage, setBioStage] = useState<EnrollStage>('idle'); const [useBio, setUseBio] = useState(true);
   const bio = useBiometricAvailability();
   const [name, setName] = useState('');
   const secretField = useSecretField<HTMLTextAreaElement>();
@@ -171,20 +171,11 @@ export function Onboarding() {
   const start = (next: Flow) => {
     setFlow(next); resetPasswordFields();
     if (additional) { go(next === 'create' ? 'welcome' : next === 'qr' ? 'qr-mobile' : 'sources'); if (next === 'create') void createAdditional(); return; }
-    go('authentication');
+    go('password');
   };
   const nextAfterAuth = (f: Flow) => go(f === 'qr' ? 'qr-mobile' : 'sources');
-  // Biometrics-only: the worker generates the wallet password and the passkey seals it; the UI never sees a password.
-  async function runBiometricSetup() {
-    if (busy || bioStage !== 'idle') return; setError('');
-    try {
-      const passkey = await registerBiometrics(setBioStage); setBioStage('idle');
-      if (flow === 'create') await createFirstWallet({ generatedPassword: true, passkey });
-      else await secureVault({ generatedPassword: true, passkey });
-    } catch (cause) { setBioStage('idle'); if (!isUserCancel(cause)) setError(cause instanceof Error ? cause.message : 'Biometrics failed'); }
-  }
   const complete = () => { resetPasswordFields(); clearSecret(); setCode(''); setQrStageId(''); setSolana([]); setPendingId(''); setStep('completed'); };
-  async function createFirstWallet(auth: { password: string } | { generatedPassword: true; passkey: { secret: string; credentialId: string } }) {
+  async function createFirstWallet(auth: { password: string; passkey?: { secret: string; credentialId: string } }) {
     setBusy(true); setError('');
     try {
       const result = await bg({ type: 'createWallet', ...auth, name: name || 'Main wallet 1', newlyGenerated: true });
@@ -194,7 +185,7 @@ export function Onboarding() {
     finally { setBusy(false); }
   }
   // Import / QR flows: the worker creates the (empty) vault now, so the password is not held here until the import finishes.
-  async function secureVault(auth: { password: string } | { generatedPassword: true; passkey: { secret: string; credentialId: string } }) {
+  async function secureVault(auth: { password: string; passkey?: { secret: string; credentialId: string } }) {
     setBusy(true); setError('');
     try {
       const r = await bg({ type: 'onboardingSecure', ...auth });
@@ -209,10 +200,19 @@ export function Onboarding() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create wallet'); setStep('welcome'); }
     finally { setBusy(false); }
   }
+  // The wallet always gets the password the user chose; biometrics are an optional addition sealed on top of it, so either one unlocks.
   async function submitPassword(event: React.FormEvent) {
-    event.preventDefault(); if (busy || !pwMeta.policy.valid || !pwMeta.match) return;
+    event.preventDefault(); if (busy || bioStage !== 'idle' || !pwMeta.policy.valid || !pwMeta.match) return;
+    let passkey: { secret: string; credentialId: string } | undefined;
+    if (bio.available && useBio) {
+      setError('');
+      try { passkey = await registerBiometrics(setBioStage); }
+      catch (cause) { setError(isUserCancel(cause) ? `${bio.name} setup was cancelled. Try again, or turn it off to continue with your password only.` : cause instanceof Error ? cause.message : 'Biometrics failed'); return; }
+      finally { setBioStage('idle'); }
+    }
     const password = pwField.take(); resetPasswordFields(); // read once and cleared; it goes straight to the worker
-    if (flow === 'create') await createFirstWallet({ password }); else await secureVault({ password });
+    const auth = passkey ? { password, passkey } : { password };
+    if (flow === 'create') await createFirstWallet(auth); else await secureVault(auth);
   }
   async function finishImport(id: string, variant: 'default' | 'phantom') {
     const r = await bg({ type: 'importComplete', pendingId: id, name: name.trim(), solanaVariant: variant });
@@ -268,14 +268,14 @@ export function Onboarding() {
   }
   const back = () => {
     if (busy) return;
-    if (step === 'password' || step === 'biometrics') { resetPasswordFields(); go('authentication'); }
+    if (step === 'password' || step === 'biometrics') { resetPasswordFields(); setTerms(false); go('welcome'); }
     else if (step === 'secret') { clearSecret(); setNetwork(null); go(source === 'trust' ? 'trust-method' : 'sources'); }
     else if (step === 'solana') { if (pendingId) void bg({ type: 'importCancel', pendingId }); setPendingId(''); go('secret'); }
     else if (step === 'qr-scan') go('qr-mobile');
     else if (step === 'qr-code') { setQrStageId(''); setCode(''); go('qr-scan'); }
     else if (step === 'trust-method' || step === 'ledger') go('sources');
-    else if (step === 'qr-mobile') go(additional ? 'welcome' : 'authentication');
-    else if (step === 'sources') go(additional ? 'welcome' : 'authentication');
+    else if (step === 'qr-mobile') go(additional ? 'welcome' : 'password');
+    else if (step === 'sources') go(additional ? 'welcome' : 'password');
     else { setTerms(false); go('welcome'); }
   };
 
@@ -330,7 +330,6 @@ export function Onboarding() {
   const labels = addMode && flow === 'create' ? ['Create a new wallet'] : addMode ? ['Choose a source', 'Import your wallet'] : flow === 'create' ? ['Secure your wallet', 'Ready to explore'] : flow === 'qr' ? ['Secure your wallet', 'Connect to mobile', 'Scan the code', 'Enter the code'] : ['Secure your wallet', 'Choose a source', 'Import your wallet'];
   const stepNo = flow === 'qr' && step === 'qr-code' && !addMode ? 4 : active;
   const lede: Partial<Record<Step, string>> = {
-    authentication: 'Choose how you will unlock Harbour on this device.',
     password: 'This password unlocks Harbour on this device only. Harbour cannot recover it, so keep it somewhere safe.',
     sources: 'Where is the wallet you want to bring over?',
     'trust-method': 'Pick the quickest way to move your Trust Wallet over.',
@@ -340,22 +339,14 @@ export function Onboarding() {
     onBack={step !== 'completed' ? back : undefined} busy={busy} note={step === 'completed' ? 'Back up your secret phrase from Settings any time. It is the only way to recover this wallet.' : undefined}>
       {step === 'completed' && <Confetti/>}
       {lede[step] && <p className="fx-lede">{lede[step]}</p>}
-      {step === 'authentication' && <div className="ob-choices">
-        {bio.available && <Choice icon="finger" recommended desc="Unlock with your device passkey. Fast and phishing-resistant." testid="onboarding-biometrics" onClick={() => go('biometrics')}>{bio.name}</Choice>}
-        <Choice icon="lock" desc="Create a password to unlock Harbour on this device." onClick={() => { resetPasswordFields(); go('password'); }}>Password</Choice>
-      </div>}
-      {step === 'biometrics' && <div className="ob-password-form">
-        <div className="fx-callout"><Fingerprint size={18}/><span><b>A secure and simple way to unlock your wallet with {bio.name}.</b> Your device creates a passkey; Harbour never sees your fingerprint or face.</span></div>
-        {bioStage !== 'idle' && <p className="ob-muted" data-testid="biometric-stage" role="status">{bioStage === 'register' ? 'Registering biometrics...' : 'Verifying biometrics...'}</p>}
-        {error && <div className="ob-error" role="alert">{error}</div>}
-        <button className="ob-primary ob-half" data-testid="onboarding-set-biometrics" disabled={busy || bioStage !== 'idle'} onClick={runBiometricSetup}>{busy ? 'Creating wallet...' : `Set up ${bio.name}`}</button>
-      </div>}
       {step === 'password' && <form className="ob-password-form" onSubmit={submitPassword}>
         <PasswordField label="Password" inputRef={pwField.ref} onInput={onPasswordInput} placeholder="Min 8 characters" error={pwMeta.policy.error} autoFocus disabled={busy}/>
         <PasswordMeter strength={pwMeta.strength}/>
         <PasswordField label="Confirm password" inputRef={confirmField.ref} onInput={onPasswordInput} placeholder="Password" error={confirmationError} disabled={busy}/>
+        {bio.available && <label className="ob-terms" style={{ alignItems: 'center' }}><input type="checkbox" data-testid="onboarding-use-biometrics" checked={useBio} disabled={busy || bioStage !== 'idle'} onChange={(e) => { setUseBio(e.target.checked); setError(''); }}/><span>Also unlock with {bio.name}. Your password always works too.</span></label>}
+        {bioStage !== 'idle' && <p className="ob-muted" data-testid="biometric-stage" role="status">{bioStage === 'register' ? 'Registering biometrics...' : 'Verifying biometrics...'}</p>}
         {error && <div className="ob-error" role="alert">{error}</div>}
-        <button className="ob-primary ob-half" disabled={!pwMeta.policy.valid || !pwMeta.match || busy}>{busy ? 'Creating wallet...' : 'Continue'}</button>
+        <button className="ob-primary ob-half" disabled={!pwMeta.policy.valid || !pwMeta.match || busy || bioStage !== 'idle'}>{busy ? 'Creating wallet...' : 'Continue'}</button>
       </form>}
       {step === 'sources' && <div className="ob-choices"><Choice icon="phone" desc="Move wallets over from the Trust Wallet mobile app." testid="onboarding-select-import-method-trust-wallet" onClick={() => { setSource('trust'); go('trust-method'); }}>Trust Wallet Mobile</Choice><Choice icon="key" desc="Use a secret phrase or private key from any wallet." onClick={() => { setSource('other'); go('secret'); }}>Other mobile wallet or extension</Choice><p className="ob-muted ob-hardware">Hardware wallets</p><Choice icon="usb" desc="Keep keys on your Ledger and sign over USB." testid="onboarding-import-ledger" onClick={() => { setFlow('ledger'); go('ledger'); }}>Connect your Ledger</Choice></div>}
       {step === 'trust-method' && <div className="ob-choices"><Choice icon="qr" recommended desc="Scan a code with your phone. No typing required." onClick={() => { setFlow('qr'); go('qr-mobile'); }}>Import with QR Code from mobile</Choice><Choice icon="key" desc="Type or paste your 12 to 24 word phrase, or a private key." onClick={() => { setFlow('import'); go('secret'); }}>Import with Secret Phrase or Private Key</Choice></div>}

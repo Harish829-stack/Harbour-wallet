@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TokenApprovalsPanel } from './features/provider';
 import { T } from '../theme';
 import { bg } from '../api';
+import { isPopupContext, loadPasskeyStatus, openInTab } from '../biometricsUi';
 import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion } from './ui';
 import { SCREENS, type Nav } from './screens';
 import { SwapTab } from './swap/SwapTab';
@@ -87,6 +88,10 @@ export const Wallet: React.FC<{
   const hide = settings.privacy.hideBalancesOnDashboard;
   const setHide = (v: boolean) => { void updateSettings(bg, { privacy: { hideBalancesOnDashboard: v } }); };
   const layout = settings.layout.tokenCellLayout;
+  // A wallet that unlocks only with biometrics (no password) is nudged to add one, so it can always be unlocked.
+  const [needsPassword, setNeedsPassword] = useState(false);
+  useEffect(() => { void loadPasskeyStatus(bg).then((p) => setNeedsPassword(p.enabled && p.isPasswordGenerated)); }, []);
+  const addPassword = async () => { if (await isPopupContext()) { await openInTab('?addpw=1'); window.close(); } else nav.push('settingsAddPassword'); };
   // Real settings: pull the persisted state once, and tell the background about user activity (auto-lock timer).
   useEffect(() => {
     void refreshSettings(bg);
@@ -146,6 +151,11 @@ export const Wallet: React.FC<{
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className={tabDir} key={tab}>
         {tab === 'home' && <>
+          {needsPassword && (
+            <div className="hb-tap" role="button" tabIndex={0} data-testid="add-password-banner" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void addPassword(); } }} onClick={() => { void addPassword(); }} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <Ic d={ICON.lock} size={18}/><div style={{ flex: 1, fontSize: 13, color: 'var(--hb-warn-ink)' }}>Add a password so you can always unlock</div><span style={{ color: 'var(--hb-warn-ink)' }}><Ic d={ICON.chevron} size={16} /></span>
+            </div>
+          )}
           {backupRequired && (
             <div className="hb-tap" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav.push('backup'); } }} onClick={() => nav.push('backup')} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               <Ic d={ICON.shield} size={18}/><div style={{ flex: 1, fontSize: 13, color: 'var(--hb-warn-ink)' }}>Back up your secret phrase</div><span style={{ color: 'var(--hb-warn-ink)' }}><Ic d={ICON.chevron} size={16} /></span>

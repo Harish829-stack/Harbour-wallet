@@ -3,8 +3,6 @@ import { validatePassword } from '../../core/passwordPolicy';
 import { armLockTimer, clearLockTimer } from '../settingsService';
 import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey } from '../../core/passkeyService';
 // Dumb-UI rule: no handler here returns a recovery phrase, private key or password (see handlers/secrets.ts, core/uiSafe.ts).
-// A biometrics-only wallet gets a random password generated here, never in the UI.
-const generatePassword = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
 import { readQrStage, clearQrStage } from '../qrStage';
 import { verifyPasskeySecret } from '../../core/passkeyService';
@@ -30,10 +28,9 @@ export const handlers: HandlerMap = {
     const { vault, wallet } = ctx as any;
  {
       const newlyGenerated = msg.newlyGenerated === true;
-      const generated = msg.generatedPassword === true; // biometrics-only: the worker picks the password, the passkey seals it
+      if (msg.generatedPassword === true) return { ok: false, error: 'INVALID_WALLET_INPUT' }; // a wallet always has a password the user chose; biometrics are added on top
       const passkey = msg.passkey && typeof msg.passkey === 'object' ? { secret: String(msg.passkey.secret ?? ''), credentialId: String(msg.passkey.credentialId ?? '') } : null;
-      const password: unknown = generated ? generatePassword() : msg.password;
-      if (generated && !passkey) return { ok: false, error: 'INVALID_WALLET_INPUT' }; // a password nobody knows needs biometrics to unlock
+      const password: unknown = msg.password;
       if (typeof password !== 'string' || !validatePassword(password).valid ||
           (!newlyGenerated && (typeof msg.mnemonic !== 'string' || !wallet.isValidMnemonic(msg.mnemonic)))) {
         return { ok: false, error: 'INVALID_WALLET_INPUT' };
@@ -45,7 +42,7 @@ export const handlers: HandlerMap = {
         await removePasskey(); // a brand-new vault must never inherit an old biometric seal
         await vault.create(password, { wallets: {}, createdAt: Date.now() });
         if (passkey) {
-          try { await enrollPasskey(passkey.secret, passkey.credentialId, generated); }
+          try { await enrollPasskey(passkey.secret, passkey.credentialId, false); }
           catch (e) { await dropVaultKeys(); throw e; } // never leave a vault behind that nobody can unlock
         }
         const mnemonic = newlyGenerated ? await wallet.generateMnemonic() : msg.mnemonic;
@@ -87,7 +84,7 @@ export const handlers: HandlerMap = {
       // Wallet must be unlocked: the unlock material being sealed is the live session's.
       try {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
-        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), msg.isPasswordGenerated === true);
+        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), false);
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
@@ -102,6 +99,23 @@ export const handlers: HandlerMap = {
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
+  },
+  // Biometrics-only wallet -> wallet with a password too (industry standard: biometrics unlock, the password is always the fallback).
+  // The biometric prompt (run by the UI in a tab) supplies `secret`, which both proves the user and re-seals the biometric blob.
+  passkeyAddPassword: async (msg, ctx) => {
+    const { vault } = ctx as any;
+    try {
+      if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
+      const m = await passkeyMeta();
+      if (!m) return { ok: false, error: 'BIOMETRICS_NOT_SET_UP' };
+      if (!m.isPasswordGenerated) return { ok: false, error: 'This wallet already has a password.' };
+      const password: unknown = msg.password;
+      if (typeof password !== 'string' || !validatePassword(password).valid) return { ok: false, error: 'INVALID_WALLET_INPUT' };
+      const secret = String(msg.secret ?? '');
+      await verifyPasskeySecret(secret);
+      await vault.setPassword(password, secret);
+      return { ok: true };
+    } catch (e: any) { return { ok: false, error: e?.message || 'Could not add a password' }; }
   },
   passkeyDisable: async (msg, ctx) => {
     const { vault } = ctx as any;

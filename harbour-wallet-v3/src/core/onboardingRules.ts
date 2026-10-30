@@ -27,7 +27,7 @@ export function createIdleGuard(o: IdleGuardOptions) {
 export type OnboardingMode = 'first-wallet' | 'locked' | 'interrupted' | 'blocked' | 'additional-wallet';
 export interface VaultSnapshot { hasVault: boolean; unlocked: boolean; walletCount: number }
 /**
- *  no vault                          -> first-wallet (terms + authentication)
+ *  no vault                          -> first-wallet (terms + password, with optional biometrics)
  *  vault, locked                     -> locked (unlock first; every wallet handler needs an unlocked vault, TW IsUnlocked)
  *  vault, unlocked, no wallet        -> interrupted (a previous setup stopped after the password; resume or start over)
  *  vault, unlocked, limit reached    -> blocked (BLOCKED_MAX_WALLETS)
@@ -45,7 +45,7 @@ export function onboardingMode(s: VaultSnapshot): OnboardingMode {
 export type OnboardingStep = 'welcome' | 'authentication' | 'biometrics' | 'password' | 'sources' | 'trust-method' | 'instructions' | 'secret' | 'network' | 'solana' | 'qr-mobile' | 'qr-scan' | 'qr-code' | 'ledger' | 'passkey' | 'boundary' | 'completed';
 export type OnboardingFlow = 'create' | 'import' | 'qr' | 'ledger' | 'passkey';
 const RESTORABLE: Record<'first-wallet' | 'additional-wallet' | 'interrupted', OnboardingStep[]> = {
-  'first-wallet': ['welcome', 'authentication'],
+  'first-wallet': ['welcome'],
   'additional-wallet': ['welcome', 'sources', 'trust-method', 'secret', 'qr-mobile', 'ledger'],
   interrupted: ['welcome', 'sources', 'trust-method', 'secret', 'qr-mobile', 'ledger'],
 };
@@ -61,7 +61,7 @@ export function restoreStep(raw: string | null | undefined, mode: OnboardingMode
     const okFlow: OnboardingFlow[] = ['create', 'import', 'qr', 'ledger', 'passkey'];
     if (!okFlow.includes(v.flow) || (v.source !== 'trust' && v.source !== 'other')) return null;
     const allowed = RESTORABLE[mode];
-    // A first-wallet user mid-way through the password step must start the authentication choice again.
+    // A first-wallet user mid-way through the password step starts again from the welcome page (passwords are never stored).
     const step = allowed.includes(v.step) ? v.step : FALLBACK[mode];
     return { step, flow: v.flow, source: v.source };
   } catch { return null; }

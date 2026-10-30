@@ -21,3 +21,10 @@ test('chain order: preferred, then funded, then the rest, stable', () => {
   assert.deepEqual(A.orderChains(['a', 'b', 'c', 'd', 'e'], 'd', new Set(['c', 'b'])), ['d', 'b', 'c', 'a', 'e']);
   assert.deepEqual(A.orderChains(['a', 'b'], null, new Set()), ['a', 'b']);
 });
+
+test('activity shows one network: a pick counts only while it is still selectable', () => {
+  assert.equal(A.resolveActivityChain(['base', 'sepolia'], 'sepolia'), 'sepolia');
+  assert.equal(A.resolveActivityChain(['base'], 'sepolia'), null, 'a stale pick falls back to "choose a network"');
+  assert.equal(A.resolveActivityChain(['base'], null), null);
+  assert.equal(A.resolveActivityChain([], undefined), null);
+});

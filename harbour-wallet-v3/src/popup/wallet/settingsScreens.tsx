@@ -8,6 +8,7 @@ import { AUTO_LOCK_OPTIONS, autoLockLabel, SUPPORTED_LOCALES, localeLabel, COLOR
 import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
 import { ADDRESS_BOOK_COINS, ADDRESS_BOOK_COIN_LABEL, MAX_NAME_LENGTH, type AddressBookEntry, type AddressBookCoin } from '../../core/addressBook';
 import { TokenCell } from './tokenCell';
+import { AddPassword } from './addPassword';
 import { BiometricEnroll, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from '../biometricsUi';
 import type { Ctx } from './screens';
 
@@ -129,12 +130,15 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
     // The OS biometric sheet closes a popup, so enrolment runs in a full tab (same as TW).
     if (await isPopupContext()) { await openInTab('?enroll=1'); window.close(); } else c.nav.push('settingsBiometrics');
   };
+  // Like enrolment, the OS biometric sheet closes a popup, so adding the password runs in a full tab.
+  const addPassword = async () => { if (await isPopupContext()) { await openInTab('?addpw=1'); window.close(); } else c.nav.push('settingsAddPassword'); };
   return (
     <Screen title="Security" onBack={c.nav.pop}>
       <Group>
         <NavRow first icon="lock" label="Auto-lock timer" value={autoLockLabel(settings.lockTimeInMinutes)} onClick={() => c.nav.push('settingsAutoLock')} testid="security-auto-lock" />
         <NavRow icon="wallet" label="Move assets between wallets" onClick={() => c.nav.push('migrationSelectSource')} testid="security-migration" />
         <NavRow icon="shield" label="Token approvals" onClick={() => c.nav.push('tokenApprovals')} testid="security-approvals" />
+        {pk?.enabled && pk.isPasswordGenerated && <NavRow icon="lock" label="Add a password" value="Recommended" onClick={() => { void addPassword(); }} testid="security-add-password" />}
         {bio.available && pk && <SwitchRow icon="shield" label={`Unlock with ${bio.name}`} sub={pk.enabled ? 'On. Your password still works as a fallback.' : 'Use your device biometrics instead of typing your password.'} on={pk.enabled} onToggle={toggle} testid="security-biometrics" />}
       </Group>
       <ErrorLine msg={err} />
@@ -143,6 +147,11 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
         : `Harbour locks itself after ${autoLockLabel(settings.lockTimeInMinutes)} without activity and asks to unlock again.`}</Note>
     </Screen>
   );
+};
+
+export const AddPasswordScreen: React.FC<Ctx> = (c) => {
+  const bio = useBiometricAvailability();
+  return <Screen title="Add a password" onBack={c.nav.pop}><AddPassword bg={c.bg} name={bio.name} onDone={c.nav.pop} /></Screen>;
 };
 
 export const BiometricsEnrollScreen: React.FC<Ctx> = (c) => {
@@ -329,7 +338,7 @@ export const AboutScreen: React.FC<Ctx> = (c) => {
 };
 
 export const SETTINGS_SCREENS: Record<string, React.FC<Ctx>> = {
-  settings: SettingsScreen, settingsSecurity: SecurityScreen, settingsBiometrics: BiometricsEnrollScreen, settingsAutoLock: AutoLockScreen, settingsColorMode: ColorModeScreen,
+  settings: SettingsScreen, settingsSecurity: SecurityScreen, settingsBiometrics: BiometricsEnrollScreen, settingsAddPassword: AddPasswordScreen, settingsAutoLock: AutoLockScreen, settingsColorMode: ColorModeScreen,
   settingsLanguage: LanguageScreen, settingsCurrency: CurrencyScreen, settingsPrefs: PreferencesScreen,
   settingsAddressBook: AddressBookScreen, settingsAddressBookEdit: AddressBookEditScreen, about: AboutScreen,
 };

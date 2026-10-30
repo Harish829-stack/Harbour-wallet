@@ -17,7 +17,6 @@ import { onboardingMode } from '../../core/onboardingRules';
 import { decryptStoredKeys } from '../../core/qrImport';
 import { consumeReauth } from '../reauth';
 
-const generatePassword = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
 
 const PENDING_TTL_MS = 10 * 60_000;
 type PendingMnemonic = { kind: 'mnemonic'; mnemonic: string; at: number };
@@ -123,14 +122,13 @@ export const handlers: HandlerMap = {
   },
 
   // Import / QR flows: create the (empty) vault as soon as the password is chosen (TW order: SavePassword, then import), so the
-  // UI can drop the password immediately instead of holding it until the import completes. `generatedPassword` (biometrics only)
-  // makes the worker pick a random password that the passkey seals; the UI never sees it. Choosing again replaces an empty vault.
+  // UI can drop the password immediately instead of holding it until the import completes. The password is always the user's own;
+  // biometrics (`passkey`) are an optional addition sealed on top of it. Choosing again replaces an empty vault.
   async onboardingSecure(m, ctx) {
     if (busy) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
-    const generated = m.generatedPassword === true;
+    if (m.generatedPassword === true) return { ok: false, error: 'INVALID_WALLET_INPUT' };
     const passkey = m.passkey && typeof m.passkey === 'object' ? { secret: String(m.passkey.secret ?? ''), credentialId: String(m.passkey.credentialId ?? '') } : null;
-    if (generated && !passkey) return { ok: false, error: 'INVALID_WALLET_INPUT' };
-    const password: unknown = generated ? generatePassword() : m.password;
+    const password: unknown = m.password;
     if (typeof password !== 'string' || !validatePassword(password).valid) return { ok: false, error: 'INVALID_WALLET_INPUT' };
     busy = true;
     try {
@@ -141,7 +139,7 @@ export const handlers: HandlerMap = {
         await dropVaultKeys(); pending.clear();
       }
       const v = await ensureVault(ctx, password); if (v.error) return { ok: false, error: v.error };
-      if (passkey) { try { await enrollPasskey(passkey.secret, passkey.credentialId, generated); } catch (e: any) { await dropVaultKeys(); return { ok: false, error: e?.message || 'Could not save biometrics' }; } }
+      if (passkey) { try { await enrollPasskey(passkey.secret, passkey.credentialId, false); } catch (e: any) { await dropVaultKeys(); return { ok: false, error: e?.message || 'Could not save biometrics' }; } }
       await armLockTimer().catch(() => {});
       return { ok: true };
     } catch (e: any) { await dropVaultKeys().catch(() => {}); return { ok: false, error: e?.message || 'Could not secure the wallet' }; }

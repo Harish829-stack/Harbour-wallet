@@ -67,11 +67,10 @@ export class VaultService {
     return state;
   }
 
-  // v1 -> v2. Re-encrypts every blob that depends on the password (vault, keystores, perps agent keys, prediction credentials)
-  // under the Argon2id-derived keys, checks each result, then commits everything in a single storage write.
-  private async migrateToV2(password: string, state: any, old: { unlockKey: string; passwordKey: string }): Promise<{ unlockKey: string; passwordKey: string }> {
-    const salt = this.pw.generateSalt(32);
-    const neu = deriveV2(password, salt, this.argon2);
+  // Re-encrypts every blob that depends on the password (vault, keystores, perps agent keys, prediction credentials) under the `neu` keys and
+  // checks each result. Nothing is written here: the caller commits the returned updates in a single storage write, so a failure at any
+  // point leaves the old, working data untouched.
+  private async rekeyAll(state: any, old: { unlockKey: string; passwordKey: string }, neu: { unlockKey: string; passwordKey: string }): Promise<Record<string, unknown>> {
     const updates: Record<string, unknown> = {};
     const vaultId = (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
     const ids = new Set<string>([...Object.keys(state?.wallets ?? {}), ...(vaultId ? ((await local.get<string[]>(KEYS.wallets(vaultId))) ?? []) : [])]);
@@ -94,6 +93,14 @@ export class VaultService {
     const vaultBlob = await passworder.encrypt(neu.unlockKey, state);
     if (JSON.stringify(await passworder.decrypt(neu.unlockKey, vaultBlob)) !== JSON.stringify(state)) throw new Error('VAULT_REKEY_MISMATCH');
     updates[KEYS.VAULT] = vaultBlob;
+    return updates;
+  }
+
+  // v1 -> v2: everything is re-keyed under the Argon2id-derived keys.
+  private async migrateToV2(password: string, state: any, old: { unlockKey: string; passwordKey: string }): Promise<{ unlockKey: string; passwordKey: string }> {
+    const salt = this.pw.generateSalt(32);
+    const neu = deriveV2(password, salt, this.argon2);
+    const updates = await this.rekeyAll(state, old, neu);
     updates[KEYS.PBKDF2] = v2Record(this.core.HexCoding.encode(salt), this.argon2);
     await local.setMany(updates);
     // The biometric blob holds the OLD keys; it cannot be re-sealed without the authenticator, so it is cleared and the user
@@ -101,6 +108,30 @@ export class VaultService {
     await local.remove(KEYS.PASSKEY); await local.remove(KEYS.PASSKEY_VAULT);
     return neu;
   }
+
+  /**
+   * Gives a biometrics-only wallet (its password was generated and thrown away) a password the user chose, so that biometrics are a
+   * convenience and not the only way in. The wallet must be unlocked; `passkeySecret` (already verified by the caller against the live
+   * session) re-seals the biometric blob under the new keys in the SAME storage write, so biometrics keep working and a failure
+   * anywhere leaves the old password-less wallet exactly as it was.
+   */
+  setPassword(newPassword: string, passkeySecret: string): Promise<void> { return this.serial(async () => {
+    const unlockKey = await session.get<string>(KEYS.UNLOCK); const passwordKey = await session.get<string>(KEYS.PASSWORD);
+    if (!unlockKey || !passwordKey) throw new Error('LOCKED');
+    const meta = await local.get<Record<string, unknown>>(KEYS.PASSKEY);
+    if (!meta) throw new Error('BIOMETRICS_NOT_SET_UP');
+    const state = await this.getState();
+    const salt = this.pw.generateSalt(32);
+    const neu = deriveV2(newPassword, salt, this.argon2);
+    const updates = await this.rekeyAll(state, { unlockKey, passwordKey }, neu);
+    updates[KEYS.PBKDF2] = v2Record(this.core.HexCoding.encode(salt), this.argon2);
+    updates[KEYS.PASSKEY_VAULT] = await passworder.encrypt(passkeySecret, { passwordKey: neu.passwordKey, unlockKey: neu.unlockKey });
+    updates[KEYS.PASSKEY] = { ...meta, isPasswordGenerated: false };
+    await local.setMany(updates);
+    await session.set(KEYS.PASSWORD, neu.passwordKey);
+    await session.set(KEYS.UNLOCK, neu.unlockKey);
+    await this.reset();
+  }); }
   // Re-authentication for sensitive actions (reveal phrase): verifies the password against the stored vault WITHOUT touching the
   // session, with the same throttling as the lock screen.
   private async checkPasswordInner(password: string): Promise<void> {

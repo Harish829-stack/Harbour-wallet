@@ -14,6 +14,7 @@ import { Wallet } from './wallet/Wallet';
 import { injectStyles } from './wallet/ui';
 import './design/system.css';
 import { Brand } from './design/components';
+import { AddPassword } from './wallet/addPassword';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
 import { useSecretField } from './secureField';
 injectStyles(); // shared motion/keyframe CSS for lock, unlock and setup screens too
@@ -165,6 +166,7 @@ function WalletApp() {
   if (screen === 'home' && params.get('reauth') === 'add') return <FlowFrame heading={<>Verify<br/>it’s you</>} title="Add a wallet" art="backup"><AddWalletReauth bg={bg} then={params.get('then') === 'create' ? 'create' : 'import'}/></FlowFrame>;
   // Opened in a full tab from the reveal gate so the OS biometric sheet can appear.
   if (screen === 'home' && params.get('reveal')) return <FlowFrame heading={<>Back up your<br/>secret phrase</>} title="Back up your Secret Phrase" art="backup"><BackupFlow bg={bg} walletId={params.get('wallet') || undefined} autoBiometric onDone={() => window.close()} onCancel={() => window.close()}/></FlowFrame>;
+  if (screen === 'home' && params.get('addpw')) return <FlowFrame heading="Add a password" title="Add a password" art="biometrics"><AddPassword bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.close(); window.location.reload(); }} /></FlowFrame>;
   if (screen === 'home' && params.get('enroll')) return <FlowFrame heading="Secure your wallet" title="Set up biometrics" art="biometrics"><BiometricEnroll bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.location.reload(); }} /></FlowFrame>;
 
   // Authenticated 4-tab wallet UI (Home/Trending/Swap/Earn) — parity with live TW capture.

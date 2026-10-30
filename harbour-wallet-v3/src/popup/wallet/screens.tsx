@@ -12,7 +12,8 @@ import { useChart, PriceChart, useHistory, HistoryList, HistoryRow, useInfo, Abo
 import { CHART_RANGES, type ChartRange } from '../../core/marketData';
 import type { HistoryItem } from '../../core/txHistory';
 import { activitySupported } from '../../core/activity/index';
-import { mergeActivity, activityNetworks, orderChains } from '../../core/activityFeed';
+import { mergeActivity, resolveActivityChain } from '../../core/activityFeed';
+import { NetworkPicker, type PickNetwork } from './pickers';
 import { chainById, chainCategory, networkSubtitle, NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
@@ -103,86 +104,71 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
 const TokenHistory: React.FC<{ c: Ctx; assetId: string; address: string; color?: string }> = ({ c, assetId, address, color }) => <HistoryList s={useHistory(c.bg, assetId, address)} color={color} />;
 const TokenAbout: React.FC<{ c: Ctx; assetId: string; sym: string; name: string }> = ({ c, assetId, sym, name }) => <AboutPanel s={useInfo(c.bg, assetId, true)} sym={sym} name={name} />;
 
-// ---------- Activity (real: history of every network the active account holds, with a per-network filter) ----------
-// Every visible network whose public history source is wired (core/txHistory.historySupported) is fetched with bounded concurrency and
-// streamed into one feed. Networks are queried in priority order (the filtered network, then funded ones) so a cap can never starve them.
-const ACTIVITY_MAX_CHAINS = 150;      // upper bound on networks queried per open (registry + testnets is well below this today)
-const ACTIVITY_CONCURRENCY = 8;
-const ACTIVITY_ALL_LIMIT = 100;       // rows shown in the "All networks" feed; a single network shows everything it returned
+// ---------- Activity (real: history of ONE chosen network) ----------
+// History is shown for a single network, picked by the user (it starts on the network chosen on Home). With no network chosen the screen
+// asks for one via a search button instead of querying every chain: one request per open instead of one per network, and a feed that
+// is never a confusing mix of chains. The background still filters rows (native coin, own swaps, added tokens / NFTs only).
 type ChainResult = { items: HistoryItem[]; failed: boolean };
-const names = (list: string[]) => list.length <= 3 ? list.join(', ').replace(/, ([^,]*)$/, list.length > 1 ? ' and $1' : ', $1') : `${list.slice(0, 3).join(', ')} and ${list.length - 3} more`;
 export const ActivityScreen: React.FC<Ctx> = (c) => {
   const cRef = useRef(c); cRef.current = c;
   const hidden = c.hiddenAssets ?? [];
   const tokenItems = useTokenItems().items;
-  // A network is in scope when it is not hidden, or when one of its tokens is still shown (hiding a coin must not hide that token's transfers).
+  // A network is selectable when it is not hidden, or when one of its tokens is still shown (hiding a coin must not hide that token's transfers).
   const visibleTokenNets = new Set(tokenItems.filter((i) => !hidden.includes(i.token.id)).map((i) => i.token.networkId));
-  const funded = new Set(allAssets().filter((a) => { const b = c.balances?.[a.id]; return b?.ok !== false && Number(b?.formatted) > 0; }).map((a) => a.id));
   const eligible = allAssets().filter((a) => a.native && (!hidden.includes(a.id) || visibleTokenNets.has(a.id)) && activitySupported(a.id) && !!assetAddr(c, a)).map((a) => a.id);
-  const ids = orderChains(eligible, c.networkFilter, funded).slice(0, ACTIVITY_MAX_CHAINS);
-  const scope = [...ids].sort().map((id) => `${id}@${assetAddr(c, assetOf(id)!)}`).join('|');   // account / visibility / network set only; fetch ORDER (balances, filter) must not retrigger a reload
-  const idsRef = useRef(ids); idsRef.current = ids;
+  const [picked, setPicked] = useState<string | null>(c.networkFilter ?? null);
+  const [picking, setPicking] = useState(false);
+  const sel = resolveActivityChain(eligible, picked);                       // a stale pick (account / visibility change) falls back to "none chosen"
+  const address = sel ? assetAddr(c, assetOf(sel)!) : '';
+  const nameOf = (id: string) => assetOf(id)?.name ?? id;
 
-  const [results, setResults] = useState<Record<string, ChainResult>>({});
-  const [remaining, setRemaining] = useState(ids.length);
+  const [result, setResult] = useState<ChainResult | null>(null);
   const gen = useRef(0);
-  const [picked, setPicked] = useState<string | null>(c.networkFilter && ids.includes(c.networkFilter) ? c.networkFilter : null);
-
-  // Fetches `targets` with a small worker pool; a result is applied only if the scope has not changed since it was requested.
-  const load = (targets: string[], g: number) => {
-    let next = 0;
-    const worker = async () => { while (next < targets.length) {
-      const id = targets[next++]; const cur = cRef.current; const a = assetOf(id); const address = a ? assetAddr(cur, a) : '';
+  const load = (id: string, addr: string, g: number) => {
+    void (async () => {
       let res: ChainResult;
-      try { const r = address ? await cur.bg({ type: 'txHistory', assetId: id, address }) : null; res = r?.ok ? { items: r.items as HistoryItem[], failed: false } : { items: [], failed: true }; }
+      try { const r = await cRef.current.bg({ type: 'txHistory', assetId: id, address: addr }); res = r?.ok ? { items: r.items as HistoryItem[], failed: false } : { items: [], failed: true }; }
       catch { res = { items: [], failed: true }; }
-      if (gen.current !== g) return;
-      setResults((p) => ({ ...p, [id]: res })); setRemaining((n) => Math.max(0, n - 1));
-    } };
-    void Promise.all(Array.from({ length: Math.min(ACTIVITY_CONCURRENCY, targets.length) }, worker));
+      if (gen.current === g) setResult(res);                                // ignore an answer for a network the user already left
+    })();
   };
+  const scope = sel ? `${sel}@${address}` : '';
   useEffect(() => {
-    const g = ++gen.current; setResults({}); setRemaining(idsRef.current.length); load(idsRef.current, g);
+    const g = ++gen.current; setResult(null);
+    if (sel) load(sel, address, g);
     return () => { gen.current++; }; // eslint-disable-line react-hooks/exhaustive-deps -- gen is a request counter, not a DOM ref
-  }, [scope]);
+  }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
   // A transaction status pushed by the backend: reload in place (rows stay on screen while the new ones arrive).
   const txTick = useWorkerState((s) => s.live?.txTick ?? 0);
-  useEffect(() => { if (txTick) load(idsRef.current, gen.current); }, [txTick]);
-  const failedIds = ids.filter((id) => results[id]?.failed);
-  const retry = (only?: string[]) => {
-    const targets = (only ?? failedIds).filter((id) => results[id]?.failed); if (!targets.length) return;
-    setResults((p) => { const n = { ...p }; for (const id of targets) delete n[id]; return n; }); setRemaining((n) => n + targets.length); load(targets, gen.current);
-  };
+  useEffect(() => { if (txTick && sel) load(sel, address, gen.current); }, [txTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const retry = () => { if (!sel) return; const g = ++gen.current; setResult(null); load(sel, address, g); };
 
-  const feed = useMemo(() => mergeActivity(ids.map((id) => results[id]?.items ?? [])), [results, scope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const loading = remaining > 0;
-  const sel = picked && ids.includes(picked) ? picked : null;                 // a stale pick (account / visibility change) falls back to All
-  const nameOf = (id: string) => assetOf(id)?.name ?? id;
-  const chips = activityNetworks(feed).map((n) => n.assetId); if (sel && !chips.includes(sel)) chips.push(sel);
-  const rows = sel ? feed.filter((x) => x.assetId === sel) : feed.slice(0, ACTIVITY_ALL_LIMIT);
-  const truncated = !sel && feed.length > ACTIVITY_ALL_LIMIT;
-  const selFailed = !!sel && !!results[sel]?.failed;
-  const pill = (on: boolean): React.CSSProperties => ({ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${on ? T.accent : T.border}`, background: on ? T.accentSoft : 'transparent', color: on ? T.accent : T.text, borderRadius: 999, padding: '6px 12px 6px 8px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' });
-  const banner = (msg: React.ReactNode, onRetry: () => void) => <div role="status" style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, marginBottom: 6 }}>{msg} <button type="button" onClick={onRetry} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Retry</button></div>;
+  const rows = useMemo(() => mergeActivity([result?.items ?? []]), [result]);
+  const items: PickNetwork[] = useMemo(() => eligible.map((id) => { const a = assetOf(id); const cat = chainCategory(id); return { key: id, id, name: a?.name ?? id, sym: a?.sym, testnet: cat === 'testnet', custom: cat === 'custom' }; }), [eligible.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   const skeleton = [0, 1, 2, 3].map((i) => <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', alignItems: 'center' }}><Skeleton w={40} h={40} r={999} /><div style={{ flex: 1 }}><Skeleton w={120} h={12} /><div style={{ height: 6 }} /><Skeleton w={80} h={10} /></div></div>);
+  const retryBtn = <div><button type="button" className="hb-tap" onClick={retry} style={{ marginTop: 12, border: `1px solid ${T.border}`, background: T.surface, borderRadius: 999, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', color: T.text }}>Retry</button></div>;
 
-  return <Screen title="Activity" onBack={c.nav.pop}>
-    {chips.length > 0 && <div role="tablist" aria-label="Filter by network" className="scrollbar-hide" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10 }}>
-      <button type="button" role="tab" aria-selected={!sel} onClick={() => setPicked(null)} style={{ ...pill(!sel), padding: '6px 14px' }}>All networks</button>
-      {chips.map((id) => <button key={id} type="button" role="tab" aria-selected={sel === id} onClick={() => setPicked(id)} style={pill(sel === id)}><Coin sym={assetOf(id)?.sym ?? ''} assetId={id} size={22} color={assetOf(id)?.color} />{nameOf(id)}</button>)}
-    </div>}
-    {loading && ids.length > 1 && rows.length > 0 && <div style={{ color: T.sub, fontSize: 12, padding: '0 2px 6px' }}>Loading {remaining} more network{remaining === 1 ? '' : 's'}…</div>}
-    {!loading && !sel && failedIds.length > 0 && banner(<>Couldn't load history for {names(failedIds.map(nameOf))}.</>, () => retry())}
-    {rows.length > 0 ? <>
-      {selFailed && !loading && banner(<>Couldn't load all history for {nameOf(sel!)}.</>, () => retry([sel!]))}
-      {rows.map((x) => <HistoryRow key={`${x.assetId}:${x.id}`} x={x} color={assetOf(x.assetId)?.color} network={sel ? undefined : nameOf(x.assetId)} />)}
-      {truncated && <div style={{ color: T.sub, fontSize: 12.5, textAlign: 'center', padding: '14px 8px' }}>Showing the latest {ACTIVITY_ALL_LIMIT} transactions. Pick a network to see more.</div>}
-    </>
-      : loading && (!sel || !results[sel]) ? skeleton
-      : selFailed ? <div style={{ textAlign: 'center', padding: '28px 12px', color: T.sub, fontSize: 14 }}>Couldn't load history for {nameOf(sel!)} right now.<div><button type="button" className="hb-tap" onClick={() => retry([sel!])} style={{ marginTop: 12, border: `1px solid ${T.border}`, background: T.surface, borderRadius: 999, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', color: T.text }}>Retry</button></div></div>
-      : ids.length > 0 && failedIds.length === ids.length ? <div style={{ textAlign: 'center', padding: '28px 12px', color: T.sub, fontSize: 14 }}>Couldn't load your activity right now.<div><button type="button" className="hb-tap" onClick={() => retry()} style={{ marginTop: 12, border: `1px solid ${T.border}`, background: T.surface, borderRadius: 999, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', color: T.text }}>Retry</button></div></div>
-      : sel ? <Empty title={`No transactions on ${nameOf(sel)}`} sub="Activity on this network will appear here." icon="history" />
-      : <Empty title="No transactions yet" sub="Your activity will appear here." icon="history" />}
+  return <Screen title="Activity" onBack={c.nav.pop} right={sel ? <IconBtn icon="search" title="Change network" onClick={() => setPicking(true)} /> : undefined}>
+    {!sel ? <div data-testid="activity-choose" style={{ textAlign: 'center', padding: '56px 20px 44px', color: T.sub, maxWidth: 340, margin: '0 auto' }}>
+      <button type="button" className="hb-tap" aria-label="Search networks" data-testid="activity-pick-network" onClick={() => setPicking(true)}
+        style={{ width: 76, height: 76, borderRadius: 24, border: '1px solid var(--hb-glyph-line)', background: 'var(--hb-glyph-bg)', color: T.accent, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, cursor: 'pointer' }}><Ic d={ICON.search} size={30} /></button>
+      <div style={{ fontWeight: 700, fontSize: 17, lineHeight: 1.3, color: T.text, marginBottom: 8 }}>Choose a network</div>
+      <div style={{ fontSize: 13, lineHeight: 1.55 }}>Select the network whose transaction history you want to see.</div>
+    </div> : <>
+      <button type="button" className="hb-tap" aria-haspopup="dialog" onClick={() => setPicking(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${T.accent}`, background: T.accentSoft, color: T.accent, borderRadius: 999, padding: '6px 12px 6px 8px', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>
+        <Coin sym={assetOf(sel)?.sym ?? ''} assetId={sel} size={22} color={assetOf(sel)?.color} />{nameOf(sel)}
+      </button>
+      {rows.length > 0 ? <>
+        {result?.failed && <div role="status" style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, marginBottom: 6 }}>Couldn't load all history for {nameOf(sel)}. <button type="button" onClick={retry} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Retry</button></div>}
+        {rows.map((x) => <HistoryRow key={`${x.assetId}:${x.id}`} x={x} color={assetOf(x.assetId)?.color} />)}
+      </>
+        : !result ? skeleton
+        : result.failed ? <div style={{ textAlign: 'center', padding: '28px 12px', color: T.sub, fontSize: 14 }}>Couldn't load history for {nameOf(sel)} right now.{retryBtn}</div>
+        : <Empty title={`No transactions on ${nameOf(sel)}`} sub="Activity on this network will appear here." icon="history" />}
+    </>}
+    {picking && <Sheet title="Select network" onClose={() => setPicking(false)}>
+      <NetworkPicker items={items} selectedId={sel ?? undefined} autoFocus onPick={(n) => { setPicked(n.id); setPicking(false); }} />
+    </Sheet>}
   </Screen>;
 };
 

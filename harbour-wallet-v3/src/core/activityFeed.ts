@@ -27,3 +27,8 @@ export function orderChains(ids: ReadonlyArray<string>, preferred: string | null
   const w = (id: string) => (id === preferred ? 0 : funded.has(id) ? 1 : 2);
   return ids.map((id, i) => ({ id, i })).sort((a, b) => w(a.id) - w(b.id) || a.i - b.i).map((x) => x.id);
 }
+
+/** The network whose history is shown: the user's pick, only if it is still selectable (account / visibility changes can invalidate it); otherwise none. */
+export function resolveActivityChain(eligible: ReadonlyArray<string>, picked: string | null | undefined): string | null {
+  return picked && eligible.includes(picked) ? picked : null;
+}

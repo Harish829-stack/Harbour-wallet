@@ -105,6 +105,31 @@ test('a failed upgrade changes nothing and the wallet still unlocks on v1', asyn
   assert.equal(F().local.data[KEYS.PBKDF2].v, undefined);
 });
 
+test('a biometrics-only wallet can add a password: everything re-keyed, biometrics re-sealed, both unlock afterwards', async () => {
+  const { state, id1, id2 } = seedV1();
+  const v = new VaultService(core, ARGON);
+  await v.unlock(PASSWORD); // upgrades to v2 and opens the session
+  const SECRET = 'ab'.repeat(32), NEW = 'brand new password 42';
+  await v.lock(); await assert.rejects(v.setPassword(NEW, SECRET), /LOCKED/);
+  await v.unlock(PASSWORD);
+  F().local.data[KEYS.PASSKEY_VAULT] = await passworder.encrypt(SECRET, { passwordKey: F().session.data[KEYS.PASSWORD], unlockKey: F().session.data[KEYS.UNLOCK] });
+  F().local.data[KEYS.PASSKEY] = { credentialId: 'aa', isPasswordGenerated: true, createdAt: 1 };
+  const oldPw = F().session.data[KEYS.PASSWORD], oldSalt = F().local.data[KEYS.PBKDF2].salt;
+  await v.setPassword(NEW, SECRET);
+  const d = F().local.data, newPw = F().session.data[KEYS.PASSWORD];
+  assert.notEqual(newPw, oldPw); assert.notEqual(d[KEYS.PBKDF2].salt, oldSalt);
+  const open = (ks) => core.StoredKey.importJSON(te.encode(JSON.stringify(ks)));
+  assert.equal(open(d[id1]).decryptMnemonic(pwBytes(newPw)), MNEMONIC); assert.throws(() => open(d[id1]).decryptMnemonic(pwBytes(oldPw)));
+  assert.deepEqual([...open(d[id2]).decryptPrivateKey(pwBytes(newPw))], [...PK]);
+  assert.deepEqual(await passworder.decrypt(newPw, d[KEYS.PERPS_AGENTS].s1.enc), { pk: '0x01' });
+  // Biometrics were re-sealed under the new keys and the wallet is no longer "password-less".
+  assert.deepEqual(await passworder.decrypt(SECRET, d[KEYS.PASSKEY_VAULT]), { passwordKey: newPw, unlockKey: F().session.data[KEYS.UNLOCK] });
+  assert.equal(d[KEYS.PASSKEY].isPasswordGenerated, false);
+  // The new password unlocks; the old one no longer does.
+  await v.lock(); assert.deepEqual(await v.unlock(NEW), state);
+  await v.lock(); await assert.rejects(v.unlock(PASSWORD), /Incorrect password/);
+});
+
 test('passworder refuses a human password and still reads the old envelope', async () => {
   await assert.rejects(passworder.encrypt('hunter2', {}), /high-entropy/);
   const secret = 'a'.repeat(64);

@@ -10,6 +10,7 @@ import { ErrorLine, Group, NavRow, Note, SectionLabel, SwitchRow } from '../sett
 import { refreshSettings } from '../../settingsStore';
 import { Biometrics, isUserCancel } from '../../../core/passkey';
 import { useSecretField } from '../../secureField';
+import { biometricUnlock, loadPasskeyStatus, useBiometricAvailability, type PasskeyStatus } from '../../biometricsUi';
 
 const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, margin: '6px 0 12px' };
 const mono: React.CSSProperties = { fontFamily: 'monospace', fontSize: 12, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', margin: '6px 0' };
@@ -47,6 +48,9 @@ export function ProviderSurface() {
   const [items, setItems] = useState<any[] | null>(null); const [id, setId] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('id') ?? '');
   const [view, setView] = useState<any>(null); const [locked, setLocked] = useState(false); const [hasVault, setHasVault] = useState(true);
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const pw = useSecretField(); const [pwFilled, setPwFilled] = useState(false); const [gone, setGone] = useState(false);
+  // Locked wallet: password OR biometrics (when set up) unlock it, whichever the user prefers.
+  const [pk, setPk] = useState<PasskeyStatus | null>(null); const [bioBusy, setBioBusy] = useState(false); const bioInfo = useBiometricAvailability();
+  useEffect(() => { if (locked) void loadPasskeyStatus(bg).then(setPk); }, [locked]);
   useEffect(() => { void refreshSettings(bg); }, []);
   useEffect(() => {
     let dead = false;
@@ -82,12 +86,19 @@ export function ProviderSurface() {
     try { const r = await bg({ type: 'unlock', password }); if (r.ok) setLocked(false); else setError(r.error || 'Could not unlock.'); }
     catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
+  const unlockBio = async () => {
+    if (!pk?.credentialId || bioBusy || busy) return; setBioBusy(true); setError('');
+    const r = await biometricUnlock(bg, pk.credentialId); setBioBusy(false);
+    if (r.ok) setLocked(false); else if (!r.cancelled) setError(r.error);
+  };
   return <div className="hb-root" style={{ background: T.bg, color: T.text, fontFamily: 'Inter, system-ui, sans-serif', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
     <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 18, borderBottom: `1px solid ${T.border}` }}><Ic d="shield"/><strong>Harbour</strong><span style={{ marginLeft: 'auto', color: T.sub, fontSize: 12 }}>Site request</span></header>
     <main style={{ padding: '12px 20px 24px', flex: 1 }}>
       {!hasVault ? <><Empty title="Set up your wallet" sub="Create or import a Harbour wallet before connecting a site." icon="wallet"/><Btn onClick={() => { window.location.hash = '/onboarding'; }}>Set up wallet</Btn></> : locked ? <>
         <h2>Unlock to continue</h2><Note>Review the site request after unlocking. Unlocking does not approve it.</Note>
-        <div><label htmlFor="provider-password">Wallet password</label><input id="provider-password" autoFocus type="password" autoComplete="current-password" ref={pw.ref} onInput={(e) => setPwFilled(!!e.currentTarget.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pwFilled && !busy) void unlock(); }} spellCheck={false} style={field}/><Btn disabled={!pwFilled || busy} onClick={() => { void unlock(); }}>{busy ? 'Unlocking…' : 'Unlock'}</Btn></div>
+        {pk?.enabled && <div><Btn disabled={bioBusy || busy} onClick={() => { void unlockBio(); }}><span data-testid="provider-unlock-biometrics">{bioBusy ? `Waiting for ${bioInfo.name}…` : `Unlock with ${bioInfo.name}`}</span></Btn></div>}
+        {pk?.enabled && pk.isPasswordGenerated && <Note>This wallet has no password yet. After unlocking, add one in Settings, under Security, so you can always unlock without biometrics.</Note>}
+        {!(pk?.enabled && pk.isPasswordGenerated) && <div>{pk?.enabled && <div style={{ color: T.sub, fontSize: 12, margin: '14px 0 2px', textAlign: 'center' }}>or use your password</div>}<label htmlFor="provider-password">Wallet password</label><input id="provider-password" autoFocus={!pk?.enabled} type="password" autoComplete="current-password" ref={pw.ref} onInput={(e) => setPwFilled(!!e.currentTarget.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pwFilled && !busy) void unlock(); }} spellCheck={false} style={field}/><Btn variant={pk?.enabled ? 'ghost' : undefined} disabled={!pwFilled || busy} onClick={() => { void unlock(); }}>{busy ? 'Unlocking…' : 'Unlock'}</Btn></div>}
         {id && <Btn variant="ghost" disabled={busy || items?.find((x) => x.id === id)?.stage === 'executing'} style={{ marginTop: 10 }} onClick={() => { void resolve({ approve: false }); }}>Reject request</Btn>}
       </> : items === null ? <Spinner/> : !id || (!items.some((x) => x.id === id) && !busy) || gone ? <>
         <Empty title={gone ? 'Request finished' : 'No pending requests'} sub="Requests expire when the site disconnects, you reject them, or their time limit passes." icon="check"/>
