@@ -58,7 +58,19 @@ export const invalidatePortfolio = (): void => { pfCache = null; };
 export function portfolio(evmAddress: string): Promise<Portfolio> {
   const refs = refsFor(evmAddress); const k = refs.map(key).join(',');
   if (pfCache && pfCache.k === k && Date.now() - pfCache.at < PF_TTL) return pfCache.p;
-  const p = withTracking(refs, async () => { await ensureTracked(refs); return getPortfolio(refs); });
+  // Ask only for networks the backend accepted: with a smaller ENABLED_CHAINS one unknown network would 400 the whole request.
+  const load = async (): Promise<Portfolio> => {
+    await ensureTracked(refs);
+    const use = refs.filter((r) => tracked.has(key(r)));
+    return use.length ? getPortfolio(use) : { value_usd: 0, addresses: [] };
+  };
+  const p = withTracking(refs, async () => {
+    try { return await load(); } catch (e) {
+      // The backend's network list changed since we last tracked: forget what we knew and re-check once.
+      if (e instanceof HarbourApiError && e.code === 'bad_address') { for (const r of refs) tracked.delete(key(r)); return load(); }
+      throw e;
+    }
+  });
   pfCache = { k, at: Date.now(), p }; p.catch(() => { if (pfCache?.p === p) pfCache = null; });
   return p;
 }
