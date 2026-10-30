@@ -6,6 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 dir=deploy/postgres/certs
+# Docker creates empty DIRECTORIES for missing bind-mount sources if `make up` ran before this script: remove those.
+for f in server.crt server.key ca.crt; do if [[ -d "$dir/$f" ]]; then rmdir "$dir/$f"; fi; done
 [[ "${1:-}" == "--force" ]] && rm -f "$dir"/*.crt "$dir"/*.key "$dir"/*.srl "$dir"/*.csr
 if [[ -f "$dir/server.crt" && -f "$dir/ca.crt" ]]; then echo "postgres TLS certificates already present in $dir"; exit 0; fi
 mkdir -p "$dir"; chmod 700 "$dir"
