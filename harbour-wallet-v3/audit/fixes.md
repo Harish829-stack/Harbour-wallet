@@ -4,6 +4,8 @@ Branch `harbour-v3`, baseline commit `6692a88`; one commit per finding after it 
 
 ## Verification
 
+2026-11-02 H-05 follow-up to `0a9d9f8`: the Postgres server now rewrites `host` rules to `hostssl` for both existing and fresh volumes. `go test ./deploy/postgres/initdb` passed in `golang:1.26.10-alpine` (the rule is idempotent and leaves existing `hostssl` rules intact). An isolated fresh Postgres initialization produced only `hostssl` TCP rules. The live Compose database accepted a TLS 1.3 session and rejected `sslmode=disable` with `no pg_hba.conf entry ... no encryption`; API `/healthz` returned 200 after restart. This does not verify production edge TLS or internal service transport (J-01/J-05).
+
 | Check | Result |
 | --- | --- |
 | Extension `tsc --noEmit`, gateway `tsc` | clean |

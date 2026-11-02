@@ -106,7 +106,7 @@ No Critical findings: no path was found that sends seeds or keys off the device,
 - Evidence: `backend/deploy/docker-compose.yml:76,109,148,169,185,201,227`.
 - Recommendation: Use `sslmode=verify-full` with a pinned CA in every non-local environment, and fail startup otherwise.
 - Owner / due date:
-- Status: Fixed in code (fb9c7e9, 296961d): verify-full in Compose, services refuse plaintext non-loopback DBs, clear error if certs are missing. Local certs were generated on 2026-10-30 and backend/.env updated; still to do: `chmod 644` on ca.crt/server.crt, `make up`, confirm all services connect.
+- Status: Fixed in code (fb9c7e9, 296961d, plus 2026-11-02 follow-up): verify-full in Compose, services refuse plaintext non-loopback DBs, and server pg_hba.conf allows TCP only with TLS on fresh and existing volumes. Local TLS 1.3 succeeds and plaintext fails; the API remains healthy. Production deployment still needs independent verification.
 
 ### HW-2026-008: Supply-chain hardening gaps in the extension build
 - Control ID(s): K-01, K-02, K-05, K-07, K-08, K-09
