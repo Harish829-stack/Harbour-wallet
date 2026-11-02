@@ -135,7 +135,7 @@ export const Wallet: React.FC<{
 
   return (
     <div className="hb-root hb-enter" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 'calc(100dvh - var(--hb-banner-h, 0px))', minHeight: 'calc(100dvh - var(--hb-banner-h, 0px))', maxHeight: 'calc(100dvh - var(--hb-banner-h, 0px))' }}>
-      <div className={stack.length ? 'hb-home under' : 'hb-home'} aria-hidden={stack.length ? true : undefined}>
+      <div className={stack.length ? 'hb-home under' : 'hb-home'} {...(stack.length ? { inert: '' } : {}) as any}>
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 8px' }}>
         <button className="hb-tap" onClick={() => nav.push('walletSelector')} aria-label="Select wallet" style={{ flex: 1, minWidth: 0, lineHeight: 1.1, cursor: 'pointer', background: 'none', border: 0, padding: 0, textAlign: 'left', color: T.text }}>
