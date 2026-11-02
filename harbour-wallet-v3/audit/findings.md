@@ -106,7 +106,7 @@ No Critical findings: no path was found that sends seeds or keys off the device,
 - Evidence: `backend/deploy/docker-compose.yml:76,109,148,169,185,201,227`.
 - Recommendation: Use `sslmode=verify-full` with a pinned CA in every non-local environment, and fail startup otherwise.
 - Owner / due date:
-- Status: Fixed in code (verify-full in Compose, services refuse plaintext non-loopback DBs). Still to do by hand: run backend/scripts/setup.sh (creates certs, updates .env), then recreate the stack.
+- Status: Fixed in code (fb9c7e9, 296961d): verify-full in Compose, services refuse plaintext non-loopback DBs, clear error if certs are missing. Local certs were generated on 2026-10-30 and backend/.env updated; still to do: `chmod 644` on ca.crt/server.crt, `make up`, confirm all services connect.
 
 ### HW-2026-008: Supply-chain hardening gaps in the extension build
 - Control ID(s): K-01, K-02, K-05, K-07, K-08, K-09
@@ -164,7 +164,7 @@ No Critical findings: no path was found that sends seeds or keys off the device,
 - Severity: **Low**
 - Evidence: `src/core/harbour/device.ts:147-154`; no consistency or proof checks found in `src/kit/` or `backend/internal/gateway/`.
 - Recommendation: Add runtime schema validation (zod/valibot) for API responses. For pre-send balance and nonce, cross-check a second provider or use `eth_getProof`.
-- Status: Fixed in code (HW-014 commit): schema guards on portfolio/history/NFT/address/broadcast responses, answers pinned to requested addresses, broadcast hash checked. Not done: second-provider cross-check for nonce/balance.
+- Status: Fixed in code (35a1ceb): schema guards on portfolio/history/NFT/address/broadcast responses, answers pinned to requested addresses, broadcast hash checked. Not done: second-provider cross-check for nonce/balance.
 
 ### HW-2026-015: Inter-service traffic is plaintext HTTP
 - Control ID(s): J-05

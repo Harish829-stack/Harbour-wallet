@@ -1,5 +1,9 @@
 # Trust Wallet extension parity — governing implementation plan
 
+> Historical governing plan for the v2/research-led implementation sequence.
+> The active v3 status is [`V3-STATUS.md`](V3-STATUS.md); do not use the v2
+> “next active feature” rows below as the current branch status.
+
 Updated: 2026-10-15. Target baseline: supplied v26.41.0 artifact. Rebaseline if
 the user supplies a different version; never combine releases without comparison.
 

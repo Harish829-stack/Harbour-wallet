@@ -1,6 +1,6 @@
 # Harbour Wallet: fix report (2026-10-30)
 
-Baseline commit `6692a88`; one commit per finding after it (`git log --oneline 6692a88..`). Statuses are also in `findings.md`.
+Branch `harbour-v3`, baseline commit `6692a88`; one commit per finding after it (`git log --oneline 6692a88..`). Statuses are also in `findings.md`.
 
 ## Verification
 
@@ -16,7 +16,7 @@ New tests: phishing large list + cache cap, lazy fetch, phishing block override,
 
 ## What you need to do by hand
 
-1. **Postgres TLS (HW-007).** Run `backend/scripts/setup.sh` (creates `deploy/postgres/certs`, rewrites `POSTGRES_URL` in `.env` to `verify-full`), then `make down && make up`. In production use the provider CA (for example the RDS bundle) with `sslmode=verify-full`.
+1. **Postgres TLS (HW-007).** Done on 2026-10-30: certificates created in `backend/deploy/postgres/certs` and `POSTGRES_URL` in `.env` set to `verify-full`. Remaining: `chmod 644 deploy/postgres/certs/ca.crt deploy/postgres/certs/server.crt`, then `make up`, and check every service connects. On a fresh machine run `backend/scripts/setup.sh` BEFORE `make up` (otherwise Docker creates empty folders for the missing cert files). In production use the provider CA (for example the RDS bundle) with `sslmode=verify-full`.
 2. **Rotate secrets (HW-002).** Rotate every provider key and server secret in `backend/.env`, plus the Postgres and Redis dev passwords shared during the audit. Load production secrets with `NAME_FILE` mounts from a secrets manager. Install the hook: `ln -s ../../scripts/pre-commit .git/hooks/pre-commit` and `brew install gitleaks`.
 3. **Release key (HW-003).** Put the Ed25519 PEM into the CI `release` environment secret `HB_RELEASE_KEY_PEM`, add two required reviewers, and set `HB_RELEASE_APPROVERS`. Then securely delete `../harbour-release-key.json`. Offline signing: `node scripts/release.mjs --key-file` with a 0600 file outside the repo.
 4. **CI and repository (HW-008).** Copy `ci/extension.yml` (and `backend/ci/backend.yml`) to `.github/workflows/`. Turn on branch protection (required checks, 1 review, no force push), and 2FA/hardware keys on the Chrome Web Store and GitHub accounts.

@@ -2,7 +2,7 @@
 
 ## Post-remediation update (2026-10-30)
 
-Everything below the "Original audit" heading is the state at audit time and is kept as the record. Fixes were made on branch `harbour-v3`, from baseline `6692a88` (`git log --oneline 6692a88..`). 19 commits, mostly one per finding; per-finding status is in `findings.md`, the hand steps are in `fixes.md`.
+Everything below the "Original audit" heading is the state at audit time and is kept as the record. Fixes were made on branch `harbour-v3`, from baseline `6692a88` (`git log --oneline 6692a88..`). 23 commits (19 fixes and docs, then 3 for the Postgres certificate setup), mostly one per finding; per-finding status is in `findings.md`, the hand steps are in `fixes.md`.
 
 | Outcome | Findings |
 | --- | --- |
@@ -15,7 +15,7 @@ Residual notes: HW-009 keeps the new recovery phrase as a JS string at creation 
 
 Verification: extension `tsc` and ESLint clean; 493 unit tests pass, 1 fails (`chains.test.js` reads an evidence file outside the repo, unrelated); backend `gofmt`, `go vet` and `go test ./...` pass (Go 1.26.10 container); integration tests pass against the local stack, and `TestDeviceFlow` again runs the quota, forged-key, stale-clock and replay checks.
 
-Sign-off effect (code side, not re-scored control by control): the code causes of the L1 failures D-01 (backup gate), G-06 (secret file mounts) and H-05 (Postgres TLS) and the open High HW-2026-001 are fixed. L1 stays unconfirmed until the hand steps are done (TLS setup run, secrets rotated, release key moved, CI and branch protection on) and the controls are re-checked. L2 and L3 still need the external work: pen test, ASVS L2 review, bug bounty, IR drill, Ledger clear-signing check, independent audit. Delete `audit/flows.mitm` (contains tokens).
+Sign-off effect (code side, not re-scored control by control): the code causes of the L1 failures D-01 (backup gate), G-06 (secret file mounts) and H-05 (Postgres TLS) and the open High HW-2026-001 are fixed. The first `make up` after the change failed because the certificates did not exist yet (Docker created empty folders in their place); the certificates were then generated and the script and Compose file now guard against this. L1 stays unconfirmed until the hand steps are done (TLS setup run, secrets rotated, release key moved, CI and branch protection on) and the controls are re-checked. L2 and L3 still need the external work: pen test, ASVS L2 review, bug bounty, IR drill, Ledger clear-signing check, independent audit. Delete `audit/flows.mitm` (contains tokens).
 
 ---
 

@@ -1,4 +1,8 @@
-# Harbour Wallet — Feature Matrix (2026-10-19, after cleanup)
+# Harbour Wallet — Feature Matrix (historical v2 snapshot, 2026-10-19)
+>
+> This matrix is retained as a v2 implementation snapshot. It is not the
+> current v3 status; use [`V3-STATUS.md`](V3-STATUS.md) and the v3 audit files.
+
 Gate: `tsc` clean · `npm test` 349/349 · `vite build` OK. Evidence: code inspection + mocked tests. **Nothing is live-network-verified and no Chrome visual QA has been done since onboarding.** Per-area detail: `evidences/re-evidence/NN-*/STATUS.md`.
 
 ## 1. Implemented (code complete, mock-tested)

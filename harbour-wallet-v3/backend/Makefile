@@ -28,6 +28,7 @@ lint:             ## golangci-lint (depguard) + provider-name check
 	./scripts/check-provider-names.sh
 
 up:               ## start Postgres, Redis, NATS, Centrifugo, migrate, rpc-gateway, api
+	./scripts/pg-certs.sh
 	$(COMPOSE) up -d --build
 
 down:

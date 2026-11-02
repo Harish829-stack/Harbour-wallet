@@ -1,5 +1,9 @@
 # Trust Wallet RE — Feature Coverage Tracker (chronological)
 
+> Historical research tracker. This document measures reverse-engineering
+> coverage of Trust Wallet v26.41.0, not Harbour-v3 implementation status. For
+> the current implementation and release state, see [`V3-STATUS.md`](V3-STATUS.md).
+
 > Companion to `docs/re/trust-wallet-RE.md` (evidence base + specs) and `docs/project/AGENTS.md` (method).
 > Tracks **documentation progress**, not building.
 >
