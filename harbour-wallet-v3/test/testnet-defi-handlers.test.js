@@ -22,7 +22,7 @@ const ACCOUNT = '0x1111111111111111111111111111111111111111';
 const TOKEN = '0x2222222222222222222222222222222222222222';
 const ATOKEN = '0x3333333333333333333333333333333333333333';
 function reset() {
-  const state = { network: 'sepolia', chainId: 11155111, enabled: true, locked: false, info: { walletId: 'wallet-one', derivationIndex: 0, walletType: 'mnemonic', addresses: { ethereum: ACCOUNT } }, signed: [], sent: [], buffers: [], disposed: 0, receiptStatus: 'success' };
+  const state = { network: 'base-sepolia', chainId: 84532, enabled: true, locked: false, info: { walletId: 'wallet-one', derivationIndex: 0, walletType: 'mnemonic', addresses: { ethereum: ACCOUNT } }, signed: [], sent: [], buffers: [], disposed: 0, receiptStatus: 'success' };
   state.client = {
     getChainId: async () => state.chainId,
     getCode: async () => '0x1234',
@@ -47,27 +47,33 @@ function reset() {
       return { status: state.receiptStatus };
     },
   };
+  // AaveKit is offline by default, so Earn uses the on-chain builder; tests that need AaveKit set state.kit.
+  globalThis.fetch = async (url, init) => {
+    if (!state.kit) throw new TypeError('Failed to fetch');
+    const { query } = JSON.parse(init.body);
+    return new Response(JSON.stringify({ data: state.kit(query) }), { status: 200 });
+  };
   globalThis.__defi = state; return state;
 }
-const prepare = () => handlers.defiPrepare({ request: { networkId: 'sepolia', action: 'supply', token: TOKEN, amount: '1' } }, {});
-const submit = (id, extra = {}) => handlers.defiSubmit({ networkId: 'sepolia', kind: 'earn', id, ...extra }, {});
+const prepare = () => handlers.defiPrepare({ request: { networkId: 'base-sepolia', action: 'supply', token: TOKEN, amount: '1' } }, {});
+const submit = (id, extra = {}) => handlers.defiSubmit({ networkId: 'base-sepolia', kind: 'earn', id, ...extra }, {});
 
 test('worker blocks unsupported network, RPC mismatch, disabled features and unsupported wallet types', async () => {
   const s = reset(); s.network = 'ethereum'; await assert.rejects(prepare(), /network changed/);
-  s.network = 'sepolia'; s.chainId = 1; await assert.rejects(prepare(), /different network/);
-  s.chainId = 11155111; s.enabled = false; await assert.rejects(prepare(), /disabled/);
+  s.network = 'base-sepolia'; s.chainId = 1; await assert.rejects(prepare(), /different network/);
+  s.chainId = 84532; s.enabled = false; await assert.rejects(prepare(), /disabled/);
   s.enabled = true; s.info.walletType = 'ledger'; await assert.rejects(prepare(), /software wallets/);
 });
 test('worker rejects rounded/invalid input amounts rather than silently changing them', async () => {
   reset();
-  for (const amount of ['0', '-1', '1.0000001', '1e6', 'NaN']) await assert.rejects(handlers.defiPrepare({ request: { networkId: 'sepolia', action: 'supply', token: TOKEN, amount } }, {}), /amount|precision/);
+  for (const amount of ['0', '-1', '1.0000001', '1e6', 'NaN']) await assert.rejects(handlers.defiPrepare({ request: { networkId: 'base-sepolia', action: 'supply', token: TOKEN, amount } }, {}), /amount|precision/);
 });
 test('worker submits only its reviewed calldata and rejects replay', async () => {
   const s = reset(); const { review } = await prepare();
   assert.equal(s.signed.length, 0, 'preparation never signs');
   const result = await submit(review.id, { calls: [{ to: ACCOUNT, value: '999999', data: '0xbad' }] });
   assert.equal(result.ok, true); assert.equal(result.hashes.length, 2);
-  assert.notEqual(s.signed[0].to, ACCOUNT); assert.equal(s.signed[0].chainId, 11155111);
+  assert.notEqual(s.signed[0].to, ACCOUNT); assert.equal(s.signed[0].chainId, 84532);
   assert.equal(s.signed[0].nonce, 0); assert.equal(s.signed[1].nonce, 1);
   assert.equal(s.disposed, 2);
   await assert.rejects(submit(review.id), /expired/);
@@ -76,7 +82,7 @@ test('changing accounts or selected networks invalidates a pending review', asyn
   const s = reset(); const { review } = await prepare();
   s.info = { ...s.info, derivationIndex: 1 };
   await assert.rejects(submit(review.id), /account changed/); assert.equal(s.sent.length, 0);
-  s.info = { ...s.info, derivationIndex: 0 }; s.network = 'base-sepolia';
+  s.info = { ...s.info, derivationIndex: 0 }; s.network = 'sepolia';
   await assert.rejects(submit(review.id), /network changed/); assert.equal(s.sent.length, 0);
 });
 test('locked wallets never sign and reverted approvals stop the remaining calls', async () => {
@@ -90,4 +96,20 @@ test('simulation failure does not fall back to a guessed gas limit and submit an
   const s = reset(); const { review } = await prepare();
   s.client.estimateGas = async () => { throw Error('Simulation reverted'); };
   const result = await submit(review.id); assert.equal(result.ok, false); assert.equal(s.sent.length, 0);
+});
+
+test('AaveKit plans are verified: a tampered beneficiary is refused, not silently rebuilt on-chain', async () => {
+  const s = reset();
+  const POOL = '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27';
+  const word = (hex) => hex.toLowerCase().replace(/^0x/, '').padStart(64, '0');
+  const supply = (onBehalf) => `0x617ba037${word(TOKEN)}${word('0xf4240')}${word(onBehalf)}${word('0x0')}`; // supply(asset, 1e6, onBehalfOf, 0)
+  let beneficiary = ACCOUNT;
+  s.kit = (query) => query.includes('markets')
+    ? { markets: [{ address: POOL, chain: { chainId: 84532 }, reserves: [{ underlyingToken: { address: TOKEN, symbol: 'TEST', decimals: 6 }, aToken: { address: ATOKEN }, acceptsNative: null, isFrozen: false, isPaused: false, supplyInfo: { apy: { formatted: '1.5' }, supplyCapReached: false, supplyCap: { amount: { raw: '0' } }, total: { value: '0' } } }] }] }
+    : { value: { __typename: 'TransactionRequest', to: POOL, from: ACCOUNT, data: supply(beneficiary), value: '0', chainId: 84532, operation: 'SUPPLY' } };
+  const { review } = await prepare();
+  assert.equal(review.apy, 1.5, 'AaveKit plan used');
+  assert.deepEqual(review.steps, ['Supply to Aave V3']);
+  beneficiary = '0x9999999999999999999999999999999999999999';
+  await assert.rejects(prepare(), /unexpected transaction/);
 });
