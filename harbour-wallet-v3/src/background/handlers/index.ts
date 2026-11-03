@@ -22,9 +22,10 @@ import { handlers as testnetDefi } from './testnetDefi';
 
 // Value-moving third-party features are registered only when core/harbour/policy.ts enables them (each is a flag in that file).
 const on = (f: Parameters<typeof featureEnabled>[0], m: HandlerMap): HandlerMap => (featureEnabled(f) ? m : {});
-// Keep legacy earn handlers available on mainnet/custom networks. The separate
-// `defi*` messages are selected by the Sepolia-only UI and never replace them.
-const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...testnetDefi, ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
+// Testnet Uniswap Swap / Aave Earn (`defi*` messages) sit beside the legacy swap/earn handlers and are
+// registered only when at least one of those features is on; each handler re-checks its own feature.
+const testnetDefiOn = featureEnabled('swap') || featureEnabled('earn') ? testnetDefi : {};
+const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...testnetDefiOn, ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
 export const allExtraHandlers = (): HandlerMap => ALL;
 export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
   const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;
