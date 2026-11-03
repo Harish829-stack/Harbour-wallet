@@ -415,3 +415,15 @@ widths (123 captures plus 6 picker captures), final geometry results, and inspec
 scope. The fixtures use mock transport and no wallet secrets. Build/typecheck and
 diff checks passed. These captures do not certify live services, transactions,
 light mode, or every state/interaction; see the evidence README.
+
+### 2026-11-03 — v3 consistency, dropdown, transition and focus corrections
+
+Rendered with the mock-transport fixtures (about 90 screens at 380×600, dark and
+spot-checked light) after each change. Gutters, section labels, notes, cards,
+search fields and tab-page titles were unified; primary actions moved into the
+pinned footer on Send, Confirm, Receive, contact, network, wallet, account,
+Ledger and migration screens. Swap/Earn selectors became anchored dropdowns.
+Pushed Networks/Search/Settings screens no longer jerk or stall mid-slide
+(frame captures checked). Every focusable input on renderable screens was
+scanned: none draws an inner focus rectangle. Not covered: an unlocked live
+extension, and screens the mock cannot render; no parity row is promoted.

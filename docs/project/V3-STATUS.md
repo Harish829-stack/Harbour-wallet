@@ -20,7 +20,7 @@ claims are not current for v3.
 ## Verified local state
 
 - Branch: `harbour-v3` in the `REA` repository root, tracking
-  `origin/harbour-v3` (local commits from 2026-11-03 not yet pushed).
+  `origin/harbour-v3`; the 2026-11-03 work is pushed (HEAD `d63e439`).
   `harbour-wallet-v3/` also contains a stray local-only `.git` with no remote;
   commit from the repository root.
 - TypeScript: `npm exec tsc -- --noEmit` passes.
@@ -51,6 +51,26 @@ claims are not current for v3.
   to Aave's API (relates to the V3-10 privacy opt-in).
 - Details: `harbour-wallet-v3/src/integrations/testnet-defi/README.md` and the
   developer guide's "Testnet Swap and Earn" section.
+
+## Wallet UI pass (2026-11-03)
+
+Committed in `d63e439` (wallet popup only; no handler, provider or signing logic
+changed). Details: `docs/re/DESIGN-SYSTEM.md` and `docs/re/UI-PARITY.md`.
+
+- Shared layout: 16px gutters matching the header, one section-label, note and
+  card style, primary actions pinned in the screen footer on form and
+  confirmation screens, one sticky `SearchBox`, one tab-page title row.
+- Swap/Earn testnet selectors are anchored dropdowns, not bottom sheets.
+- Focus: inputs get a border + soft ring; borderless inputs inside a framed box
+  (search, amount, address rows) pass the glow to the box edge.
+- Navigation: no backdrop blur on headers, `overflow: clip` on stack layers,
+  deferred autofocus and progressive long lists so pushed screens slide cleanly.
+- Verified: `tsc`, eslint on changed files, mock-transport renders of ~90
+  screens at 380×600 and frame captures of the Networks/Search/Settings pushes.
+  Not verified: a live, unlocked extension in Chrome, and ~15 screens the mock
+  cannot render (Buy/Sell, staking amount, Perps, Predictions market, NFT item).
+  Full `npm test` in a Linux copy: 509 results, 506 passed; the 3 failures need
+  files that copy did not include (evidence JSON, gateway sources), not UI code.
 
 ## Remaining implementation scope
 

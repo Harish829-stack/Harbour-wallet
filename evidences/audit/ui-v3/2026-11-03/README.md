@@ -10,3 +10,8 @@ Actual production components rendered with an isolated mock transport: 41 screen
 Production build and TypeScript validation passed. Representative settings, security, preferences, contact editor, network form, migration, WalletConnect, Home, Earn and token-picker captures were visually inspected. Screenshots of other routes are available for further review; not every state or interaction has been exercised. Dark mode is used for the fixtures, matching the supplied screenshots.
 
 Reproduce from `harbour-wallet-v3`: `node audit/ui-layout/run.mjs`. The harness needs the existing `tools/toolchain` Playwright install and permission to open a localhost listener and isolated browser. Optionally set `HB_LAYOUT_SCREENS` to a comma-separated subset. It bundles into a temporary directory and is excluded from production entry points.
+
+Note: these captures were taken before the later 2026-11-03 consistency,
+dropdown, transition and focus pass (see `docs/re/UI-PARITY.md`). The harness
+now expects the anchored dropdown (`listbox` / `option` roles) instead of the
+earlier picker dialog; re-run it to refresh the screenshots.

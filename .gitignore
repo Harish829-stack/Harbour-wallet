@@ -74,3 +74,6 @@ docs/deployment/
 *.har
 *.3novlog
 harbour-wallet-v3/Claude outputs/
+
+# local scratch from tooling sessions
+_to_delete/

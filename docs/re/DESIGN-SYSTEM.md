@@ -55,3 +55,20 @@ Testnet asset selectors use contained sheets, contracts expand on demand, and
 reserve figures use readable display formatting without changing raw amounts.
 See `harbour-wallet-v3/src/popup/wallet/layout.css` and the v3 layout audit in
 `evidences/audit/ui-v3/2026-11-03/`.
+
+## 2026-11-03 — v3 final UI state (supersedes the two entries above where they differ)
+
+- Gutters are 16px (header and body), with 12px top clearance; the earlier 20px
+  body gutter is gone.
+- Swap/Earn testnet selectors (`ChoiceSelect` in `defi/TestnetDefiTab.tsx`) are
+  anchored dropdowns with a 120 ms fade that flip upward near the bottom edge;
+  they no longer open contained sheets.
+- Shared primitives in `wallet/ui.tsx`: `SectionLabel`, `Note`, `cardStyle`,
+  `PageTitle`, `Empty` (optional action), `useAfterEnter`; `SearchBox` lives in
+  `wallet/pickers.tsx` and is the only search field (Send/Receive re-export it).
+- Focus: `:where()`-weighted input ring so component rules win; the search box
+  and any borderless input inside a framed box show the glow on the box edge.
+- Motion: no header backdrop blur, `overflow: clip` on stack layers and Home,
+  autofocus after the push finishes, long lists render progressively; the
+  balance card no longer re-animates on tab return; empty-state glyphs are
+  upright with a short entrance.
