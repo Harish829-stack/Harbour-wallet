@@ -121,13 +121,14 @@ test('SDK slippage rounds down precisely for large integer amounts', () => {
 test('Uniswap API swap: proxy target, exact approval, wrong spender or target refused', async () => {
   const PROXY = M.SEPOLIA.apiRouter; const MAX = (1n << 256n) - 1n;
   const approveData = (spender, amt) => encodeFunctionData({ abi: M.tokenAbi, functionName: 'approve', args: [spender, amt] });
-  const run = async ({ spender = PROXY, swapTo = PROXY, cancel = null } = {}) => {
+  const run = async ({ spender = PROXY, swapTo = PROXY, cancel = null, minimum = '995', swapValue = '0x00', status = 200, error = null } = {}) => {
     const real = globalThis.fetch;
     globalThis.fetch = async (url, init) => {
-      const path = String(url).split('/uniswap/v1/')[1]; const json = (body) => ({ ok: true, status: 200, json: async () => body });
-      if (path === 'quote') return json({ routing: 'CLASSIC', quote: { output: { amount: '1000', minimumAmount: '995' } } });
+      const path = String(url).split('/uniswap/v1/')[1]; const json = (body) => ({ ok: status === 200, status, json: async () => body });
+      if (error) return json(error);
+      if (path === 'quote') return json({ routing: 'CLASSIC', quote: { output: { amount: '1000', minimumAmount: minimum } } });
       if (path === 'check_approval') return json({ approval: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(spender, MAX) }, cancel });
-      if (path === 'swap') return json({ swap: { to: swapTo, from: OWNER, chainId: 11155111, value: '0x00', data: '0x2894adf900' } });
+      if (path === 'swap') return json({ swap: { to: swapTo, from: OWNER, chainId: 11155111, value: swapValue, data: '0x2894adf900' } });
       throw new Error(`unexpected ${path} ${init?.method}`);
     };
     try { return await M.prepareSwap(fakeClient(), OWNER, TOKEN, OUTPUT, 1_000_000n, 50, 123456); } finally { globalThis.fetch = real; }
@@ -142,6 +143,13 @@ test('Uniswap API swap: proxy target, exact approval, wrong spender or target re
   const reset = await run({ cancel: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(PROXY, 0n) } });
   assert.equal(reset.calls.length, 3); assert.equal(decodeFunctionData({ abi: M.tokenAbi, data: reset.calls[0].data }).args[1], 0n);
   await assert.rejects(run({ cancel: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(PROXY, 5n) } }), /invalid approval reset/);
+  // The displayed minimum must honour the user's slippage and the swap must not carry ETH for a token input.
+  await assert.rejects(run({ minimum: '900' }), /slippage tolerance/);
+  await assert.rejects(run({ minimum: '1001' }), /slippage tolerance/);
+  await assert.rejects(run({ swapValue: '0x01' }), /unexpected ETH amount/);
+  // Raw upstream errors are never shown; gateway messages (already user-facing) are.
+  await assert.rejects(run({ status: 404, error: { errorCode: 'NO_ROUTE', detail: 'No quotes available 0xdead' } }), (e) => /No Uniswap route/.test(e.message) && !/0xdead/.test(e.message));
+  await assert.rejects(run({ status: 503, error: { error: { code: 'uniswap_not_configured', message: 'Uniswap Trading API is not configured.' } } }), /not configured/);
 });
 test('ETH wrapping uses the canonical contract and equal input/output without a swap quote', async () => {
   const built = await M.prepareWrap(fakeClient(), OWNER, 100n, 'wrap');

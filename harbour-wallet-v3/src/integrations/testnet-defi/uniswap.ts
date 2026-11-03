@@ -81,9 +81,14 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   const output = nativeOut ? { address: to, symbol: 'ETH', decimals: 18, balance: (await client.getBalance({ address: owner })).toString() } : await readToken(client, to, owner);
   if (amount > BigInt(input.balance)) throw new Error('Insufficient token balance.');
   const endpoint = async (path: string, body: unknown): Promise<any> => {
-    const response = await fetch(`${GATEWAY_URL}/uniswap/v1/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20_000);
+    let response: Response;
+    try { response = await fetch(`${GATEWAY_URL}/uniswap/v1/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: controller.signal }); }
+    catch { throw new Error('Uniswap is not responding. Check your connection and try again.'); }
+    finally { clearTimeout(timer); }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(typeof data?.error?.message === 'string' ? data.error.message : 'Uniswap could not prepare this swap. Try another amount or token pair.');
+    if (!response.ok) throw new Error(uniswapError(data));
     return data;
   };
   const slippageTolerance = slippageBps / 100;
@@ -93,6 +98,8 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   if (!quote || !['CLASSIC', 'WRAP', 'UNWRAP'].includes(quoteResponse.routing)) throw new Error('Uniswap returned a swap route Harbour cannot execute. Try another pair.');
   const expected = String(quote.output?.amount ?? ''); const minimum = String(quote.output?.minimumAmount ?? '');
   if (!/^\d+$/.test(expected) || !/^\d+$/.test(minimum) || BigInt(expected) <= 0n || BigInt(minimum) <= 0n) throw new Error('Uniswap returned an incomplete quote. Refresh and try again.');
+  // The review shows the API's minimum, so it must honour the user's slippage (and never exceed the expected output).
+  if (BigInt(minimum) > BigInt(expected) || BigInt(minimum) < minimumOutput(output, BigInt(expected), slippageBps)) throw new Error('Uniswap returned a quote outside your slippage tolerance. Refresh and try again.');
   const calls = [] as PreparedDefi['calls'];
   if (!nativeIn && quoteResponse.isTokenApprovalApplicable !== false) {
     const approvalResponse = await endpoint('check_approval', { walletAddress: owner, amount: amount.toString(), token: from, chainId: SEPOLIA.chainId, tokenOut: to, tokenOutChainId: SEPOLIA.chainId });
@@ -111,9 +118,23 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   const built = await endpoint('swap', { quote, deadline });
   const transaction = built?.swap ?? built?.swapTransaction;
   if (!transaction) throw new Error('Uniswap did not return transaction data. Refresh and review again.');
-  calls.push(validateApiTransaction(transaction, owner, 'Swap with Uniswap', SEPOLIA.apiRouter));
+  const swap = validateApiTransaction(transaction, owner, 'Swap with Uniswap', SEPOLIA.apiRouter);
+  // ETH input sends exactly the reviewed amount; token input sends no ETH. The proxy's calldata format is
+  // not public, so its recipient/minimum are enforced by the quote checks above and by simulation before signing.
+  if (swap.value !== (nativeIn ? amount : 0n)) throw new Error('Uniswap returned a swap with an unexpected ETH amount. Nothing was submitted.');
+  calls.push(swap);
   return { calls, review: { action: 'swap', symbol: input.symbol, decimals: input.decimals, amount: amount.toString(), outputSymbol: output.symbol, outputDecimals: output.decimals,
     expectedOutput: expected, minimumOutput: minimum } };
+}
+
+/** Maps gateway/Uniswap error bodies to user-facing text; raw upstream messages are not shown. */
+export function uniswapError(data: any): string {
+  // Gateway rejections ({ error: { code, message } }) are already written for users.
+  if (typeof data?.error?.code === 'string' && typeof data?.error?.message === 'string') return data.error.message;
+  const code = String(data?.errorCode ?? '');
+  if (/NO_ROUTE|QUOTE_ERROR|InsufficientLiquidity/i.test(code)) return 'No Uniswap route is available for this pair and amount. Try a smaller amount or another token.';
+  if (/RATE_LIMIT|429/i.test(code)) return 'Uniswap is busy right now. Wait a moment and try again.';
+  return 'Uniswap could not prepare this swap. Try another amount or token pair.';
 }
 
 /** Decodes an API approval and checks it targets the Uniswap proxy; returns the requested amount. */
