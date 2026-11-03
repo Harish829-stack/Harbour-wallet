@@ -11,7 +11,10 @@ export const SEPOLIA = Object.freeze({
   factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
   quoter: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
   router: '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E',
-  apiRouter: '0x7E4f6c5e954Da5c61B3423D81E2277431Ac043f3',
+  // Uniswap Trading API proxy used when Permit2 is disabled (the gateway sends x-permit2-disabled: true).
+  // It is both the approval spender and the swap target. Same address on every supported chain:
+  // https://developers.uniswap.org/docs/trading/swapping-api/concepts/no-permit2-workflow
+  apiRouter: '0x02E5be68D46DAc0B524905bfF209cf47EE6dB2a9',
   // Verified against SwapRouter02.WETH9() and the Uniswap Core SDK WETH9 registry.
   weth: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
 } as const);

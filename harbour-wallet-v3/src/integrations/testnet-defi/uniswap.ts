@@ -5,7 +5,6 @@ import { factoryAbi, liquidityAbi, tokenAbi, wethAbi } from './abis';
 import { readToken, sameAddress } from './rpc';
 import type { DefiClient } from './rpc';
 import type { DefiToken, PoolEdge, PreparedDefi, SwapCatalog } from './types';
-import { pathsFor } from './routing';
 import { GATEWAY_URL } from '../../kit/endpoints';
 
 // Standard V3 fee tiers, in hundredths of a basis point. Missing/disabled tiers return the zero address.
@@ -97,13 +96,16 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   const calls = [] as PreparedDefi['calls'];
   if (!nativeIn && quoteResponse.isTokenApprovalApplicable !== false) {
     const approvalResponse = await endpoint('check_approval', { walletAddress: owner, amount: amount.toString(), token: from, chainId: SEPOLIA.chainId, tokenOut: to, tokenOutChainId: SEPOLIA.chainId });
-    const approval = approvalResponse?.approval;
-    if (approval) {
-      const call = validateApiTransaction(approval, owner, 'Approve input token', from);
-      let decoded: ReturnType<typeof decodeFunctionData>;
-      try { decoded = decodeFunctionData({ abi: tokenAbi, data: call.data }); } catch { throw new Error('Uniswap returned an invalid token approval. Nothing was submitted.'); }
-      if (decoded.functionName !== 'approve' || !sameAddress(String(decoded.args?.[0] ?? ''), SEPOLIA.apiRouter)) throw new Error('Uniswap requested an unexpected approval target. Nothing was submitted.');
-      calls.push(call);
+    // Some tokens (USDT-style) need the old allowance reset to 0 first; the API returns that as `cancel`.
+    if (approvalResponse?.cancel) {
+      const spender = approvedSpender(validateApiTransaction(approvalResponse.cancel, owner, 'Reset token approval', from));
+      if (spender.amount !== 0n) throw new Error('Uniswap returned an invalid approval reset. Nothing was submitted.');
+      calls.push({ to: getAddress(from), value: 0n, label: 'Reset token approval', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [SEPOLIA.apiRouter, 0n] }) });
+    }
+    if (approvalResponse?.approval) {
+      approvedSpender(validateApiTransaction(approvalResponse.approval, owner, 'Approve input token', from));
+      // The API asks for an unlimited allowance. Harbour approves only this swap's exact input amount.
+      calls.push({ to: getAddress(from), value: 0n, label: 'Approve input token', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [SEPOLIA.apiRouter, amount] }) });
     }
   }
   const built = await endpoint('swap', { quote, deadline });
@@ -112,6 +114,14 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   calls.push(validateApiTransaction(transaction, owner, 'Swap with Uniswap', SEPOLIA.apiRouter));
   return { calls, review: { action: 'swap', symbol: input.symbol, decimals: input.decimals, amount: amount.toString(), outputSymbol: output.symbol, outputDecimals: output.decimals,
     expectedOutput: expected, minimumOutput: minimum } };
+}
+
+/** Decodes an API approval and checks it targets the Uniswap proxy; returns the requested amount. */
+function approvedSpender(call: { data: `0x${string}`; value: bigint }): { amount: bigint } {
+  let decoded: ReturnType<typeof decodeFunctionData>;
+  try { decoded = decodeFunctionData({ abi: tokenAbi, data: call.data }); } catch { throw new Error('Uniswap returned an invalid token approval. Nothing was submitted.'); }
+  if (decoded.functionName !== 'approve' || call.value !== 0n || !sameAddress(String(decoded.args?.[0] ?? ''), SEPOLIA.apiRouter)) throw new Error('Uniswap requested an unexpected approval target. Nothing was submitted.');
+  return { amount: BigInt(String(decoded.args?.[1] ?? '0')) };
 }
 
 function validateApiTransaction(value: any, owner: Address, label: string, expectedTo: Address | string) {

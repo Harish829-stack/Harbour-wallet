@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-import { decodeFunctionData, encodePacked, zeroAddress } from 'viem';
+import { decodeFunctionData, encodeFunctionData, encodePacked, zeroAddress } from 'viem';
 
 const out = await build({ stdin: { contents: `export * from './aave'; export * from './uniswap'; export * from './routing'; export * from './plans'; export * from './config'; export * from './abis'; export * from './rpc';`, resolveDir: fileURLToPath(new URL('../src/integrations/testnet-defi/', import.meta.url)), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
@@ -118,18 +118,30 @@ test('SDK slippage rounds down precisely for large integer amounts', () => {
   assert.equal(M.minimumOutput(token, raw, 50), raw * 9950n / 10000n);
   for (const slippage of [-1, 0, 501, 0.5, NaN]) assert.throws(() => M.minimumOutput(token, raw, slippage), /Slippage/);
 });
-test('SwapRouter02 encoding enforces recipient, minimum output and on-chain deadline', async () => {
-  const client = fakeClient({ multicall: async ({ contracts }) => contracts[0].functionName === 'getPool' ? contracts.map((_, i) => i === 0 ? EDGE.address : zeroAddress) : [100n] });
-  // Discover a direct route to the canonical base token.
-  const built = await M.prepareSwap(client, OWNER, TOKEN, M.SEPOLIA.weth, 1_000_000n, 50, 123456);
-  const call = built.calls.at(-1);
-  assert.equal(call.to, M.SEPOLIA.router);
-  const multicall = decodeFunctionData({ abi: M.routerAbi, data: call.data });
-  assert.equal(multicall.args[0], 123456n);
-  const swap = decodeFunctionData({ abi: M.routerAbi, data: multicall.args[1][0] });
-  assert.equal(swap.args[0].recipient, OWNER);
-  assert.equal(swap.args[0].amountOutMinimum, 99_500_000n);
-  assert.equal(swap.args[0].amountIn, 1_000_000n);
+test('Uniswap API swap: proxy target, exact approval, wrong spender or target refused', async () => {
+  const PROXY = M.SEPOLIA.apiRouter; const MAX = (1n << 256n) - 1n;
+  const approveData = (spender, amt) => encodeFunctionData({ abi: M.tokenAbi, functionName: 'approve', args: [spender, amt] });
+  const run = async ({ spender = PROXY, swapTo = PROXY, cancel = null } = {}) => {
+    const real = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      const path = String(url).split('/uniswap/v1/')[1]; const json = (body) => ({ ok: true, status: 200, json: async () => body });
+      if (path === 'quote') return json({ routing: 'CLASSIC', quote: { output: { amount: '1000', minimumAmount: '995' } } });
+      if (path === 'check_approval') return json({ approval: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(spender, MAX) }, cancel });
+      if (path === 'swap') return json({ swap: { to: swapTo, from: OWNER, chainId: 11155111, value: '0x00', data: '0x2894adf900' } });
+      throw new Error(`unexpected ${path} ${init?.method}`);
+    };
+    try { return await M.prepareSwap(fakeClient(), OWNER, TOKEN, OUTPUT, 1_000_000n, 50, 123456); } finally { globalThis.fetch = real; }
+  };
+  const built = await run();
+  assert.equal(built.calls.length, 2);
+  const approve = decodeFunctionData({ abi: M.tokenAbi, data: built.calls[0].data });
+  assert.equal(built.calls[0].to.toLowerCase(), TOKEN); assert.equal(approve.args[0], PROXY); assert.equal(approve.args[1], 1_000_000n, 'exact, not unlimited');
+  assert.equal(built.calls[1].to, PROXY);
+  await assert.rejects(run({ spender: OUTPUT }), /unexpected approval target/);
+  await assert.rejects(run({ swapTo: OUTPUT }), /invalid or unexpected transaction/);
+  const reset = await run({ cancel: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(PROXY, 0n) } });
+  assert.equal(reset.calls.length, 3); assert.equal(decodeFunctionData({ abi: M.tokenAbi, data: reset.calls[0].data }).args[1], 0n);
+  await assert.rejects(run({ cancel: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(PROXY, 5n) } }), /invalid approval reset/);
 });
 test('ETH wrapping uses the canonical contract and equal input/output without a swap quote', async () => {
   const built = await M.prepareWrap(fakeClient(), OWNER, 100n, 'wrap');
