@@ -61,8 +61,9 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
         {/* price */}
         <div style={{ textAlign: 'center', paddingTop: 10 }} className="hb-rise">
           <div data-testid="native-balance-primary" style={{ fontSize: 30, fontWeight: 800 }}>{!b ? '…' : b.ok === false ? 'Unavailable' : `${Number(b.formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${a.sym}`}</div>
-          <div style={{ color: change == null || change >= 0 ? T.sub : T.error, fontWeight: 600, fontSize: 14, marginTop: 2 }}>
-            {b?.usd != null ? `${usd(b.usd)}${change != null ? ` (${pct(change)})` : ''}` : 'Fiat value unavailable'}
+          <div style={{ color: T.sub, fontWeight: 600, fontSize: 14, marginTop: 2 }}>
+            {b?.usd != null ? usd(b.usd) : 'Fiat value unavailable'}
+            {change != null && <span style={{ color: up ? T.success : T.error, marginLeft: 6 }}>{up ? '▲' : '▼'} {pct(change)}</span>}
           </div>
         </div>
         {/* chart (real CoinGecko market chart) */}
