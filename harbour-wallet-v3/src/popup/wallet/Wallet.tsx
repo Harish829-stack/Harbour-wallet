@@ -57,14 +57,19 @@ function useStackLayers(stack: Entry[]) {
   return layers;
 }
 const sq = (bg2: string, color: string): React.CSSProperties => ({ width: 52, height: 52, borderRadius: 16, background: bg2, color, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' });
-const NetworkNotice: React.FC<{ kind: 'swap' | 'earn'; sepolia: boolean; onSwitch: () => void }> = ({ kind, sepolia, onSwitch }) => (
-  <div role="status" style={{ margin: '4px 0 12px', padding: '9px 11px', borderRadius: 12, background: T.accentSoft, color: T.accent, fontSize: 12, lineHeight: 1.45 }}>
-    {sepolia
-      ? `${kind === 'swap' ? 'Uniswap' : 'Aave'} testnet testing is available on ${kind === 'swap' ? 'Ethereum Sepolia' : 'Base Sepolia'}. Test tokens have no monetary value.`
-      : `${kind === 'swap' ? 'Swap' : 'Earn'} is using the production provider for this network. Switch to ${kind === 'swap' ? 'Ethereum Sepolia' : 'Base Sepolia'} to test ${kind === 'swap' ? 'Uniswap' : 'Aave'} testnet functionality.`}
-    {!sepolia && <button type="button" onClick={onSwitch} style={{ marginLeft: 8, border: 0, background: 'none', color: T.accent, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontWeight: 700 }}>Use {kind === 'swap' ? 'Sepolia' : 'Base Sepolia'}</button>}
-  </div>
-);
+/** Shown on Swap/Earn when the selected network is not the testnet those tabs test on. */
+const NetworkNotice: React.FC<{ kind: 'swap' | 'earn'; onSwitch: () => Promise<void> }> = ({ kind, onSwitch }) => {
+  const [busy, setBusy] = useState(false); const [failed, setFailed] = useState(false);
+  const net = kind === 'swap' ? 'Ethereum Sepolia' : 'Base Sepolia';
+  const run = async () => { setBusy(true); setFailed(false); try { await onSwitch(); } catch { setFailed(true); } finally { setBusy(false); } };
+  return (
+    <div role="status" style={{ margin: '4px 0 12px', padding: '9px 11px', borderRadius: 12, background: T.accentSoft, color: T.accent, fontSize: 12, lineHeight: 1.45 }}>
+      {kind === 'swap' ? 'Swap' : 'Earn'} is using the production provider for this network. Switch to {net} to test {kind === 'swap' ? 'Uniswap' : 'Aave'} testnet functionality.
+      <button type="button" disabled={busy} onClick={() => void run()} style={{ marginLeft: 8, border: 0, background: 'none', color: T.accent, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontWeight: 700 }}>{busy ? 'Switching…' : `Use ${kind === 'swap' ? 'Sepolia' : 'Base Sepolia'}`}</button>
+      {failed && <div style={{ color: T.error, marginTop: 4 }}>Couldn’t switch to {net}. Try again, or pick it from the network list.</div>}
+    </div>
+  );
+};
 
 export const Wallet: React.FC<{
   addrs: Record<string, string>; balances: Record<string, any>; totalUsd: number | null; loading: boolean;
@@ -128,7 +133,11 @@ export const Wallet: React.FC<{
   };
   const useTestnetSwap = testnetDefiEnabled() && networkFilter === SEPOLIA.id;
   const useTestnetEarn = testnetDefiEnabled() && networkFilter === BASE_SEPOLIA.id;
-  const selectSepolia = (kind: 'swap' | 'earn') => { void bg({ type: 'setNetworkFilter', networkId: kind === 'earn' ? BASE_SEPOLIA.id : SEPOLIA.id }).then(() => { onRefresh(); }); };
+  const selectSepolia = async (kind: 'swap' | 'earn') => {
+    const r = await bg({ type: 'setNetworkFilter', networkId: kind === 'earn' ? BASE_SEPOLIA.id : SEPOLIA.id });
+    if (!r?.ok) throw new Error(r?.error ?? 'Could not switch network.');
+    onRefresh();
+  };
   const ctx = { addrs, balances, bg, nav, accounts, activeAccount, hiddenAssets, networkFilter, refresh: onRefresh } as any;
   // Native coins only: tokens are registered in the asset catalog too (for Send / detail lookups) but render below from tokenItems.
   const visibleAssets = allAssets().filter((a) => a.native && !(hiddenAssets ?? []).includes(a.id) && (!networkFilter || a.id === networkFilter)
@@ -209,14 +218,14 @@ export const Wallet: React.FC<{
         {tab === 'trending' && <TrendingTab nav={nav} />}
 
         {tab === 'swap' && featureEnabled('swap') && <>
-          {!useTestnetSwap && <NetworkNotice kind="swap" sepolia={useTestnetSwap} onSwitch={() => selectSepolia('swap')} />}
+          {!useTestnetSwap && <NetworkNotice kind="swap" onSwitch={() => selectSepolia('swap')} />}
           {useTestnetSwap
             ? <TestnetDefiTab key={`swap:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="swap" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
             : <SwapTab nav={nav} />}
         </>}
 
         {tab === 'earn' && earnOk && <>
-          {!useTestnetEarn && <NetworkNotice kind="earn" sepolia={useTestnetEarn} onSwitch={() => selectSepolia('earn')} />}
+          {!useTestnetEarn && <NetworkNotice kind="earn" onSwitch={() => selectSepolia('earn')} />}
           {useTestnetEarn
             ? <TestnetDefiTab key={`earn:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="earn" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
             : <EarnTab nav={nav} />}

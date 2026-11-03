@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress, zeroAddress } from 'viem';
 import { bg } from '../../api';
 import { T } from '../../theme';
-import { Btn, Empty, Spinner } from '../ui';
+import { Btn, Spinner } from '../ui';
 import type { Nav } from '../screens';
 import { BASE_SEPOLIA, SEPOLIA } from '../../../integrations/testnet-defi/config';
 import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../integrations/testnet-defi/types';
@@ -80,23 +80,14 @@ export const TestnetDefiTab: React.FC<{
     } catch (e) { if (mounted.current) { setReview(null); setError(e instanceof Error ? e.message : 'Transaction failed.'); } }
     finally { if (mounted.current) setBusy(false); }
   };
-  const switchNetwork = async () => {
-    setError(''); setBusy(true);
-    try { const response = await bg({ type: 'setNetworkFilter', networkId: kind === 'earn' ? BASE_SEPOLIA.id : SEPOLIA.id }); if (!response?.ok) throw new Error(response?.error ?? 'Could not select a supported testnet.'); refresh?.(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not select Sepolia.'); }
-    finally { setBusy(false); }
-  };
   const addToken = () => {
     if (!isAddress(search.trim(), { strict: false })) { setError('Enter a Sepolia token contract address.'); return; }
     if (extras.length >= 8) { setError('You can check up to eight additional tokens per session.'); return; }
     change(); setExtras((items) => [...new Set([...items, search.trim().toLowerCase()])]); setSearch('');
   };
   const title = kind === 'earn' ? 'Earn' : 'Swap';
-  if (!supported) return <>
-    <h2>{title}</h2><Empty title={`Test ${title} on ${kind === 'earn' ? 'Base Sepolia' : 'Ethereum Sepolia'}`} sub={`Select a supported testnet to try ${kind === 'earn' ? 'Aave lending' : 'Uniswap swaps'} with test tokens.`} icon={kind === 'earn' ? 'leaf' : 'swap'} />
-    <Message>{kind === 'earn' ? 'Aave Earn testing is available on Base Sepolia.' : 'Uniswap Swap testing is available on Ethereum Sepolia.'} Test tokens have no monetary value.</Message>
-    {error && <Message error>{error}</Message>}<Btn disabled={busy} onClick={switchNetwork}>{busy ? 'Switching…' : `Use ${kind === 'earn' ? 'Base Sepolia' : 'Ethereum Sepolia'}`}</Btn>
-  </>;
+  // The host renders this tab only on its supported testnet (Wallet.tsx shows the switch prompt otherwise).
+  if (!supported) return null;
   return <div data-testid={`testnet-${kind}`}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2>{title}</h2><button type="button" disabled={busy || loading} onClick={() => void load()} style={{ color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Refresh</button></div>
     <Message>{title} testing is enabled on {networkName} via {kind === 'earn' ? 'Aave V3 (AaveKit)' : 'Uniswap API'}. Test tokens have no monetary value.</Message>
