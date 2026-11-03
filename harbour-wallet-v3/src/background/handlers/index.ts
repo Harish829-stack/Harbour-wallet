@@ -18,10 +18,13 @@ import { handlers as predictions } from './predictions';
 import { handlers as approvals } from './approvals';
 import { handlers as secrets } from './secrets';
 import { featureEnabled } from '../../core/harbour/policy';
+import { handlers as testnetDefi } from './testnetDefi';
 
 // Value-moving third-party features are registered only when core/harbour/policy.ts enables them (each is a flag in that file).
 const on = (f: Parameters<typeof featureEnabled>[0], m: HandlerMap): HandlerMap => (featureEnabled(f) ? m : {});
-const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
+// Keep legacy earn handlers available on mainnet/custom networks. The separate
+// `defi*` messages are selected by the Sepolia-only UI and never replace them.
+const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...testnetDefi, ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
 export const allExtraHandlers = (): HandlerMap => ALL;
 export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
   const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;

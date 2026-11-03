@@ -126,6 +126,7 @@ services:
       # Third-party gateway (/v1/gw): the keys live only here, never in the extension. Empty = that provider's routes answer "unavailable".
       ALCHEMY_API_KEY: ${ALCHEMY_API_KEY:-}   # gateway + transaction simulator (risk: in providers.yaml)
       LIFI_API_KEY: ${LIFI_API_KEY:-}
+      UNISWAP_API_KEY: ${UNISWAP_API_KEY:-}
       JUP_API_KEY: ${JUP_API_KEY:-}
       RELAY_API_KEY: ${RELAY_API_KEY:-}
       PIMLICO_API_KEY: ${PIMLICO_API_KEY:-}

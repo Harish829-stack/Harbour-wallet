@@ -31,9 +31,9 @@ import (
 
 // GatewayKeys are the third-party API keys held by the backend. They never reach the extension.
 type GatewayKeys struct {
-	LiFi, Jupiter, Relay, Pimlico, CoinGecko, Helius, Alchemy, Etherscan, TronGrid, TonCenter string
-	CoinGeckoPro                                                                              bool
-	ConfigJSON, ConfigSig                                                                     string
+	LiFi, Jupiter, Relay, Pimlico, Uniswap, CoinGecko, Helius, Alchemy, Etherscan, TronGrid, TonCenter string
+	CoinGeckoPro                                                                                       bool
+	ConfigJSON, ConfigSig                                                                              string
 }
 
 // GatewayKeysFromEnv reads the keys from the environment (backend/.env locally, the secret store in production).
@@ -48,6 +48,7 @@ func GatewayKeysFromEnv() GatewayKeys {
 	}
 	return GatewayKeys{
 		LiFi: get("LIFI_API_KEY"), Jupiter: get("JUP_API_KEY"), Relay: get("RELAY_API_KEY"), Pimlico: get("PIMLICO_API_KEY"),
+		Uniswap:   get("UNISWAP_API_KEY"),
 		CoinGecko: get("COINGECKO_API_KEY", "COINGECKO_KEY"), CoinGeckoPro: strings.EqualFold(strings.TrimSpace(os.Getenv("COINGECKO_PLAN")), "pro"),
 		Helius: get("HELIUS_API_KEY"), Alchemy: get("ALCHEMY_API_KEY"), Etherscan: get("ETHERSCAN_API_KEY"),
 		TronGrid: get("TRONGRID_API_KEY"), TonCenter: get("TONCENTER_API_KEY"),
@@ -57,7 +58,7 @@ func GatewayKeysFromEnv() GatewayKeys {
 
 // GatewayHosts are the upstream base URLs (overridden in tests).
 type GatewayHosts struct {
-	LiFi, Jupiter, Relay, Thor, CoinGecko, CoinGeckoPro, GeckoTerminal, Helius, Etherscan, TronGrid, TonCenter, Pimlico string
+	LiFi, Jupiter, Relay, Thor, CoinGecko, CoinGeckoPro, GeckoTerminal, Helius, Etherscan, TronGrid, TonCenter, Pimlico, Uniswap string
 	// Alchemy is a format with one %s for the network slug, e.g. "https://%s.g.alchemy.com".
 	Alchemy string
 }
@@ -66,7 +67,8 @@ type GatewayHosts struct {
 func DefaultGatewayHosts() GatewayHosts {
 	return GatewayHosts{
 		LiFi: "https://li.quest/v1", Jupiter: "https://api.jup.ag/swap/v1", Relay: "https://api.relay.link",
-		Thor: "https://gateway.liquify.com/chain/thorchain_api", CoinGecko: "https://api.coingecko.com/api/v3",
+		Uniswap: "https://trade-api.gateway.uniswap.org/v1",
+		Thor:    "https://gateway.liquify.com/chain/thorchain_api", CoinGecko: "https://api.coingecko.com/api/v3",
 		CoinGeckoPro: "https://pro-api.coingecko.com/api/v3", GeckoTerminal: "https://api.geckoterminal.com/api/v2",
 		Helius: "https://mainnet.helius-rpc.com", Etherscan: "https://api.etherscan.io/v2/api", TronGrid: "https://api.trongrid.io",
 		TonCenter: "https://toncenter.com", Pimlico: "https://api.pimlico.io/v2", Alchemy: "https://%s.g.alchemy.com",
@@ -98,6 +100,7 @@ var errUnavailable = &gwReject{http.StatusNotFound, "unavailable", "This service
 
 var (
 	reLiFi      = regexp.MustCompile(`^/lifi/v1/(advanced/(routes|stepTransaction)|status|token|tokens|chains)$`)
+	reUniswap   = regexp.MustCompile(`^/uniswap/v1/(check_approval|quote|swap)$`)
 	reJup       = regexp.MustCompile(`^/jup/swap/v1/(quote|swap)$`)
 	reRelay     = regexp.MustCompile(`^/relay/(quote/v2|intents/status/v[23])$`)
 	reThor      = regexp.MustCompile(`^/thornode/thorchain/(quote/swap|tx/status/[0-9A-Fa-f]{64}|inbound_addresses)$`)
@@ -384,6 +387,20 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		}
 		return &gwCall{method: method, url: g.hosts.LiFi + strings.TrimPrefix(path, "/lifi/v1") + qs, body: body, header: jsonH(map[string]string{"x-lifi-api-key": g.keys.LiFi}),
 			ttl: lifiTTL(path, method), secrets: []string{g.keys.LiFi}}, nil
+	case reUniswap.MatchString(path):
+		if method != http.MethodPost {
+			return nil, errBadRequest
+		}
+		if g.keys.Uniswap == "" {
+			return nil, &gwReject{http.StatusServiceUnavailable, "uniswap_not_configured", "Uniswap Trading API is not configured. Set UNISWAP_API_KEY on the Harbour backend."}
+		}
+		qs, ok := rawQuery(q)
+		if !ok || qs != "" {
+			return nil, errBadRequest
+		}
+		return &gwCall{method: method, url: g.hosts.Uniswap + strings.TrimPrefix(path, "/uniswap/v1"), body: body,
+			header:  jsonH(map[string]string{"x-api-key": g.keys.Uniswap, "x-universal-router-version": "2.1.2", "x-permit2-disabled": "true"}),
+			secrets: []string{g.keys.Uniswap}}, nil
 	case reJup.MatchString(path):
 		qs, ok := rawQuery(q)
 		if !ok || (method != http.MethodGet && method != http.MethodPost) {
