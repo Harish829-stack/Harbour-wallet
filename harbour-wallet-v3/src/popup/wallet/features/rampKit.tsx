@@ -48,12 +48,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): { data: T | 
 export const useDebounced = <V,>(v: V, ms: number): V => { const [d, setD] = useState(v); useEffect(() => { const t = setTimeout(() => setD(v), ms); return () => clearTimeout(t); }, [v, ms]); return d; };
 
 // ---- presentational
-export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string }> = ({ value, onChange, placeholder, autoFocus, label }) => (
-  <label style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 12 }}>
-    <Ic d={ICON.search} size={18} />
-    <input aria-label={label ?? placeholder} autoFocus={autoFocus} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text, minWidth: 0 }} />
-  </label>
-);
+// Use the same rounded focus container as Crypto and network search.
+export { SearchBox } from '../pickers';
 export const Chip: React.FC<{ active?: boolean; onClick: () => void; children: React.ReactNode; title?: string }> = ({ active, onClick, children, title }) => (
   <button type="button" onClick={onClick} title={title} aria-pressed={!!active} className="hb-tap" style={{ flexShrink: 0, whiteSpace: 'nowrap', padding: '7px 13px', borderRadius: 999, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: active ? T.accent : T.bgAlt, color: active ? ON_BRAND : T.sub }}>{children}</button>
 );

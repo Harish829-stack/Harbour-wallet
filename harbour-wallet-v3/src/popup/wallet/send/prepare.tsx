@@ -83,7 +83,7 @@ export const SendPrepare: React.FC<Ctx> = (c) => {
   const err = q.error;
 
   return (
-    <Screen title={`Send ${a.sym}`} onBack={c.nav.pop}>
+    <Screen title={`Send ${a.sym}`} onBack={c.nav.pop} footer={<Btn disabled={!canNext} onClick={() => c.nav.push('sendConfirm', { assetId })}>Next</Btn>}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Coin sym={a.sym} assetId={a.id} color={a.color} size={32} /><div><div style={{ fontWeight: 700 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{a.token ? `on ${chain.name}` : chain.name}</div></div></div>
       <div style={label}>Address or Domain Name</div>
       <div style={{ position: 'relative' }}>
@@ -118,7 +118,6 @@ export const SendPrepare: React.FC<Ctx> = (c) => {
       <FeeRow quote={quote} tier={d.tier} loading={q.loading || (!q.data && !q.error)} fiat={quote ? feeFiat(tierOf(quote, d.tier)?.fee ?? '0') : undefined} onEdit={quote ? () => setFeeSheet(true) : undefined} />
       {err && <Notice kind="error" testid="send-error">{err} <button className="hb-tap" style={{ ...chip, marginLeft: 6 }} onClick={() => void q.refresh()}>Retry</button></Notice>}
       {issues.map((i, k) => <Notice key={k} kind={i.blocking ? 'error' : 'warning'} testid={`send-issue-${i.code}`}>{i.message}</Notice>)}
-      <div style={{ marginTop: 22 }}><Btn disabled={!canNext} onClick={() => c.nav.push('sendConfirm', { assetId })}>Next</Btn></div>
       {scan && <AddressScanner onResult={apply} onClose={() => setScan(false)} />}
       {showBook && <ContactsSheet contacts={book ?? []} ct={chain.ct} evm={chain.kind === 'evm'} onPick={(_c, address) => { setDraft({ to: address }); setShowBook(false); }} onClose={() => setShowBook(false)} />}
       {feeSheet && quote && <FeeSheet quote={quote} tier={d.tier} fiatOf={feeFiat} onPick={(t) => setDraft({ tier: t })} onClose={() => setFeeSheet(false)} />}

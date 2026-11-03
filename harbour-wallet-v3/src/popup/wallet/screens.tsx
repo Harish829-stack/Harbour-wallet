@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs, SectionLabel, useAfterEnter } from './ui';
 import { SWAP_SCREENS } from './swap/screens';
 import { FEATURE_SCREENS } from './features';
 import { SETTINGS_SCREENS } from './settingsScreens';
@@ -13,7 +13,7 @@ import { CHART_RANGES, type ChartRange } from '../../core/marketData';
 import type { HistoryItem } from '../../core/txHistory';
 import { activitySupported } from '../../core/activity/index';
 import { mergeActivity, resolveActivityChain } from '../../core/activityFeed';
-import { NetworkPicker, type PickNetwork } from './pickers';
+import { NetworkPicker, SearchBox, type PickNetwork } from './pickers';
 import { chainById, chainCategory, networkSubtitle, NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
 import { DappsPanel } from './features/dappsPanel';
@@ -184,6 +184,7 @@ const MiniToggle: React.FC<{ on: boolean; onClick: () => void }> = ({ on, onClic
   </button>
 );
 export const SearchScreen: React.FC<Ctx> = (c) => {
+  const ready = useAfterEnter();
   const [tab, setTab] = useState<'crypto' | 'dapps'>('crypto');
   const [cq, setCq] = useState('');
   const [net, setNet] = useState<string | null>(c.networkFilter ?? null);
@@ -209,19 +210,12 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
 
   return (
     <Screen title="Search" onBack={c.nav.pop} right={tab === 'crypto' ? <IconBtn icon="plus" title="Add custom token" onClick={() => c.nav.push('selectTokenNetwork')} /> : undefined}>
-      <div style={{ display: 'flex', gap: 20, borderBottom: `1px solid ${T.border}`, marginBottom: 12 }}>
-        {(['crypto', 'dapps'] as const).map((t2) => (
-          <button key={t2} onClick={() => setTab(t2)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', fontWeight: 700, fontSize: 15, color: tab === t2 ? T.text : T.sub, borderBottom: tab === t2 ? `2px solid ${T.accent}` : '2px solid transparent' }}>{t2 === 'crypto' ? 'Crypto' : 'DApps'}</button>
-        ))}
-      </div>
-      {tab === 'crypto' && <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 12 }}>
-        <Ic d={ICON.search} size={18} />
-        <input autoFocus value={cq} onChange={(e) => setCq(e.target.value)} placeholder="Token name or contract address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
-      </div>}
+      <InkTabs tabs={['crypto', 'dapps'] as const} value={tab} onChange={setTab} label={(t2) => (t2 === 'crypto' ? 'Crypto' : 'DApps')} pad="8px 0" gap={20} style={{ marginBottom: 12 }} />
+      {tab === 'crypto' && <SearchBox autoFocus value={cq} onChange={setCq} placeholder="Token name or contract address" />}
       {tab === 'crypto' ? <>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }} className="scrollbar-hide">
           <button onClick={() => setNet(null)} title="All Networks" style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: `2px solid ${net === null ? T.accent : 'transparent'}`, background: T.bgAlt, color: net === null ? T.accent : T.sub, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>All</button>
-          {nets.map((n) => (
+          {(ready ? nets : nets.slice(0, 8)).map((n) => (
             <button key={n.id} onClick={() => setNet(n.id)} title={n.name} style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: `2px solid ${net === n.id ? T.accent : 'transparent'}`, background: 'transparent', cursor: 'pointer', padding: 0 }}>
               <Coin sym={n.sym} assetId={n.id} size={36} color={n.color} />
             </button>
@@ -229,7 +223,7 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, padding: '0 12px', height: 40, borderRadius: 999, border: `2px solid ${T.border}`, color: T.sub, fontWeight: 700, fontSize: 13 }}>{netCount}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
-          {cryptoAssets.map((a) => (
+          {(ready ? cryptoAssets : cryptoAssets.slice(0, 10)).map((a) => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Coin sym={a.sym} assetId={a.id} size={38} color={a.color} />
               <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>{a.sym}</div><div style={{ fontSize: 12, color: T.sub }}>{a.token ? `${a.name} · ${networkByChainId(a.chainId)?.name ?? ''}` : a.name}</div></div>
@@ -248,12 +242,14 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
 
 // ---------- Network selector (globe) — evidence 21 (Select network) ----------
 export const NetworkSelectorScreen: React.FC<Ctx> = (c) => {
+  const ready = useAfterEnter();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<string | null>(c.networkFilter ?? null);
   const [, bump] = useState(0);
   useEffect(() => { void syncNetworks(c.bg).then(() => bump((v) => v + 1)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const nq = q.trim().toLowerCase();
-  const nets = networkOptions().filter((n) => !nq || n.name.toLowerCase().includes(nq) || n.sym.toLowerCase().includes(nq));
+  const allNets = networkOptions().filter((n) => !nq || n.name.toLowerCase().includes(nq) || n.sym.toLowerCase().includes(nq));
+  const nets = ready ? allNets : allNets.slice(0, 10);
   const choose = async (id: string | null) => {
     setSel(id);
     await c.bg({ type: 'setNetworkFilter', networkId: id });
@@ -262,16 +258,14 @@ export const NetworkSelectorScreen: React.FC<Ctx> = (c) => {
   };
   return (
     <Screen title="Select network" onBack={c.nav.pop}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 12 }}>
-        <Ic d={ICON.search} size={18} /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
-      </div>
+      <SearchBox autoFocus value={q} onChange={setQ} placeholder="Search networks" />
       {!nq && (
         <Row onClick={() => choose(null)} left={<div style={{ width: 40, height: 40, borderRadius: 999, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic d={ICON.globe} size={20} /></div>} title="All Networks" right={<Radio on={sel === null} />} />
       )}
       {NETWORK_CATEGORIES.map((cat) => {
         const list = nets.filter((n) => n.category === cat); if (!list.length) return null;
         return <div key={cat} data-testid={`networks-${cat}`}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, margin: '14px 2px 6px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
+          <SectionLabel>{NETWORK_CATEGORY_LABEL[cat]}</SectionLabel>
           {list.map((n) => <Row key={n.id} onClick={() => choose(n.id)} left={<Coin sym={n.sym} assetId={n.id} size={40} color={n.color} />} title={n.name} right={<Radio on={sel === n.id} />} />)}
         </div>;
       })}

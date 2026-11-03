@@ -58,6 +58,7 @@
 .ob-select{position:relative}.ob-select>button.ob-select-btn{width:100%;display:flex;align-items:center;gap:10px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--hb-paper);color:var(--ink);font-weight:600;text-align:left}
 .ob-select-pop{position:absolute;z-index:10;left:0;right:0;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--hb-shadow-pop);max-height:290px;overflow:auto;padding:8px}
 .ob-select-pop input{width:100%;height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);margin-bottom:6px}
+.ob .ob-select-pop input:focus,.ob .ob-select-pop input:focus-visible{outline:none;border-color:var(--hb-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--hb-focus) 24%,transparent)}
 .ob-select-opt{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--ink);padding:10px 12px;border-radius:8px;text-align:left;font-weight:600}.ob-select-opt:hover,.ob-select-opt[aria-selected=true]{background:var(--hb-row-hover)}
 .ob-select-empty{padding:24px 12px;text-align:center;color:var(--muted)}.ob-stack{display:flex}.ob-stack>img+img{margin-left:-8px}.ob-stack>img,.ob-coin{width:24px;height:24px;border-radius:50%;border:2px solid var(--surface);object-fit:cover}
 .ob-coin{display:inline-grid;place-items:center;background:var(--hb-chip);color:var(--muted);font-size:9px;font-weight:700}

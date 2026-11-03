@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { T } from '../../theme';
-import { Screen, Coin, Row, Empty, Skeleton, Ic, ICON } from '../ui';
+import { Screen, Coin, Row, Empty, Skeleton } from '../ui';
 import type { Ctx } from '../screens';
 import { allAssets } from '../data';
 import { useTokenItems, tokenItem } from '../tokensStore';
@@ -9,12 +8,9 @@ import { resetDraft } from './store';
 import { networkByChainId } from '../../../core/customTokens';
 import { money } from '../../settingsStore';
 
-export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string }> = ({ value, onChange, placeholder }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 14, background: T.bgAlt, border: `1px solid ${T.border}`, margin: '4px 0 10px' }}>
-    <Ic d={ICON.search} size={18} />
-    <input data-testid="asset-search" aria-label={placeholder} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: T.text, outline: 'none', fontSize: 15 }} />
-  </div>
-);
+// One search field everywhere: the shared box draws the focus glow on its rounded edge, never around the bare input.
+import { SearchBox } from '../pickers';
+export { SearchBox };
 
 /** `/send`: choose the asset to send. Rows whose network cannot sign yet stay tappable and explain why on the next screen. */
 export const SendSelect: React.FC<Ctx> = (c) => {
@@ -30,8 +26,7 @@ export const SendSelect: React.FC<Ctx> = (c) => {
   }, [q, c.balances, support, c.hiddenAssets, c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Screen title="Send" onBack={c.nav.pop}>
-      <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 8px' }}>Select asset to send</div>
-      <SearchBox value={q} onChange={setQ} placeholder="Search assets" />
+      <SearchBox value={q} onChange={setQ} placeholder="Search assets" testid="asset-search" />
       {!support && rows.length === 0 ? <Skeleton h={56} /> : rows.length === 0 ? <Empty title="No assets found" sub={q ? 'Try a different name or symbol.' : 'Add a network or token from the home screen.'} icon="search" />
         : rows.map(({ a, bal, ok, chain }) => {
           const usdv = bal * (a.token ? tokenItem(a.id)?.price ?? 0 : c.balances[a.id]?.price ?? 0);

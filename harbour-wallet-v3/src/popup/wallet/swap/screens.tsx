@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
-import { Screen, Btn, Row, Spinner, SuccessCheck, Empty, Ic, ICON } from '../ui';
+import { Screen, Btn, Row, Spinner, SuccessCheck, Empty, Ic, ICON, SectionLabel } from '../ui';
+import { SearchBox } from '../pickers';
 import type { Ctx } from '../screens';
 import type { SwapAsset, SwapHistoryItem, SwapRoute } from '../../../core/swap/types';
 import { SWAP_DOMAINS, domainById } from '../../../core/swap/domains';
@@ -56,13 +57,12 @@ export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
   };
   return (
     <Screen title={side === 'from' ? 'Swap from' : 'Swap to'} onBack={c.nav.pop}>
-      <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or paste address" aria-label="Search tokens"
-        style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: '11px 12px', fontSize: 14, fontFamily: 'inherit', background: T.bgAlt, outline: 'none' }} />
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 0' }}>
+      <SearchBox autoFocus value={query} onChange={setQuery} placeholder="Search name or paste address" label="Search tokens" />
+      <div className="scrollbar-hide" style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '0 0 6px' }}>
         {chip(undefined, 'All networks')}{SWAP_DOMAINS.map((d) => chip(d.id, d.name))}
       </div>
-      {recents.length > 0 && <><div style={{ fontWeight: 700, fontSize: 13, color: T.sub, margin: '4px 0' }}>Recently used</div>{recents.map(rowFor)}</>}
-      <div style={{ fontWeight: 700, fontSize: 13, color: T.sub, margin: '10px 0 4px' }}>{query ? 'Results' : 'Popular'}</div>
+      {recents.length > 0 && <><SectionLabel>Recently used</SectionLabel>{recents.map(rowFor)}</>}
+      <SectionLabel>{query ? 'Results' : 'Popular'}</SectionLabel>
       {loading && list.length === 0 ? <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div> : list.length === 0 ? <Empty title="No tokens found" sub="Try another name or paste the token address." icon="search" /> : list.map(rowFor)}
     </Screen>
   );

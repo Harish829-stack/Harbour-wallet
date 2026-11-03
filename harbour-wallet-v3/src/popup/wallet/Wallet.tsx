@@ -4,7 +4,8 @@ import { TokenApprovalsPanel } from './features/provider';
 import { T } from '../theme';
 import { bg } from '../api';
 import { isPopupContext, loadPasskeyStatus, openInTab } from '../biometricsUi';
-import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion } from './ui';
+import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion, PageTitle } from './ui';
+import { SearchBox } from './pickers';
 import { SCREENS, type Nav } from './screens';
 import { SwapTab } from './swap/SwapTab';
 import { EarnTab } from './features/earn';
@@ -81,10 +82,16 @@ export const Wallet: React.FC<{
   backupRequired?: boolean; onRefresh: () => void; onLock: () => void;
 }> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onLock }) => {
   injectStyles();
-  const [tab, setTab] = useState<Tab>('home');
-  const lastTab = useRef<Tab>('home');
-  const tabDir = TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(lastTab.current) ? 'hb-tab-r' : TAB_ORDER.indexOf(tab) < TAB_ORDER.indexOf(lastTab.current) ? 'hb-tab-l' : 'hb-tab-fade';
-  useEffect(() => { lastTab.current = tab; }, [tab]);
+  const [tabState, setTabState] = useState<{ tab: Tab; direction: string }>({ tab: 'home', direction: 'hb-tab-fade' });
+  const tab = tabState.tab;
+  const tabDir = tabState.direction;
+  const setTab = React.useCallback((next: React.SetStateAction<Tab>) => {
+    setTabState((previous) => {
+      const target = typeof next === 'function' ? next(previous.tab) : next;
+      if (target === previous.tab) return previous;
+      return { tab: target, direction: TAB_ORDER.indexOf(target) > TAB_ORDER.indexOf(previous.tab) ? 'hb-tab-r' : 'hb-tab-l' };
+    });
+  }, []);
   const fromHash = () => {
     const path = window.location.hash.split('?')[0];
     if (path === '#/settings/connections/blacklist' || path === '#/settings/connections-blacklist') return [{ name: 'connections' }, { name: 'connectionsBlacklist' }];
@@ -98,7 +105,7 @@ export const Wallet: React.FC<{
   const [sub, setSub] = useState<'crypto' | 'approvals'>('crypto');
   // TW hides the earn branch for hardware accounts: ask the background whether Earn is available for the active wallet.
   const [earnOk, setEarnOk] = useState(featureEnabled('earn'));
-  useEffect(() => { if (!featureEnabled('earn')) return; bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount]);
+  useEffect(() => { if (!featureEnabled('earn')) return; bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount, setTab]);
   // Active wallet's real name (Settings > Wallets can rename it); never a hard-coded label.
   const [walletName, setWalletName] = useState<string | null>(null);
   const [, setNetworkVersion] = useState(0);
@@ -154,7 +161,7 @@ export const Wallet: React.FC<{
   const layers = useStackLayers(stack);
   const total = totalUsd == null ? null : totalUsd + tokenUsd;
   const shownTotal = useTween(total);
-  const navTabs = TAB_ORDER.filter((id) => id !== 'earn' || earnOk);
+  const navTabs = TAB_ORDER.filter((id) => (id !== 'earn' || earnOk) && (id !== 'swap' || featureEnabled('swap')));
 
   const fmtAmt = (s?: string) => { const n = Number(s ?? 0); return n === 0 ? '0' : n < 0.0001 ? '<0.0001' : fmtNumber(n, { maximumFractionDigits: 6 }); };
 
@@ -175,7 +182,7 @@ export const Wallet: React.FC<{
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className={tabDir} key={tab}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }} className={`hb-tab-content ${tabDir}`} key={tab}>
         {tab === 'home' && <>
           {needsPassword && (
             <div className="hb-tap" role="button" tabIndex={0} data-testid="add-password-banner" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void addPassword(); } }} onClick={() => { void addPassword(); }} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
@@ -187,15 +194,18 @@ export const Wallet: React.FC<{
               <Ic d={ICON.shield} size={18}/><div style={{ flex: 1, fontSize: 13, color: 'var(--hb-warn-ink)' }}>Back up your secret phrase</div><span style={{ color: 'var(--hb-warn-ink)' }}><Ic d={ICON.chevron} size={16} /></span>
             </div>
           )}
-          <div style={{ padding: '8px 0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div key={hide ? 'h' : 's'} className="hb-unblur" style={{ fontSize: 34, fontWeight: 800 }}>{loading && totalUsd == null ? <Skeleton w={150} h={34} r={10} /> : (hide ? '••••••' : (shownTotal == null ? '$—' : usd(shownTotal)))}</div>
-            <span className={loading ? 'hb-spinning' : ''} style={{ display: 'inline-flex' }}><IconBtn icon="refresh" size={30} bg="transparent" title="Refresh" onClick={onRefresh} /></span>
-            <IconBtn icon={hide ? 'eyeoff' : 'eye'} size={30} bg="transparent" title="Hide" onClick={() => setHide(!hide)} />
-          </div>
+          <section className="hb-balance-hero" aria-label="Portfolio balance">
+            <div className="hb-balance-topline"><span>Total balance</span><div className="hb-balance-tools">
+              <span className={loading ? 'hb-spinning' : ''} style={{ display: 'inline-flex' }}><IconBtn icon="refresh" size={30} bg="transparent" title="Refresh" onClick={onRefresh} /></span>
+              <IconBtn icon={hide ? 'eyeoff' : 'eye'} size={30} bg="transparent" title="Hide" onClick={() => setHide(!hide)} />
+            </div></div>
+            <div key={hide ? 'h' : 's'} className="hb-balance-amount hb-unblur">{loading && totalUsd == null ? <Skeleton w={150} h={36} r={10} /> : (hide ? '••••••' : (shownTotal == null ? '$—' : usd(shownTotal)))}</div>
+            <div className="hb-balance-caption">Across your selected wallet</div>
+          </section>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, margin: '16px 0 18px' }}>
             {([['Send', 'send', false, 'send'], ['Receive', 'receive', false, 'receive'], ['Swap', 'swap', false, 'swap'], ['Fund', 'fund', true, 'fund']] as const).filter(([, , , to]) => (to !== 'swap' || featureEnabled('swap')) && (to !== 'fund' || featureEnabled('ramps'))).map(([label, ic, filled, to]) => (
               <div key={label} style={{ textAlign: 'center', flex: 1 }}>
-                <button className="hb-action" title={label} aria-label={label} onClick={() => { if (to === 'swap') setTab('swap'); else nav.push(to); }} style={{ ...sq(filled ? T.accent : T.accentSoft, filled ? 'var(--hb-on-brand)' : T.accent), margin: '0 auto' }}><Ic d={ICON[ic]} size={22} /></button>
+                <button className="hb-action hb-quick-action" title={label} aria-label={label} onClick={() => { if (to === 'swap') setTab('swap'); else nav.push(to); }} style={{ ...sq(filled ? T.accent : T.accentSoft, filled ? 'var(--hb-on-brand)' : T.accent), margin: '0 auto' }}><Ic d={ICON[ic]} size={22} /></button>
                 <div style={{ fontSize: 12, marginTop: 6, color: T.sub }}>{label}</div>
               </div>
             ))}
@@ -221,17 +231,15 @@ export const Wallet: React.FC<{
         {tab === 'trending' && <TrendingTab nav={nav} />}
 
         {tab === 'swap' && featureEnabled('swap') && <>
-          {!useTestnetSwap && <NetworkNotice kind="swap" onSwitch={() => selectSepolia('swap')} />}
           {useTestnetSwap
             ? <TestnetDefiTab key={`swap:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="swap" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
-            : <SwapTab nav={nav} />}
+            : <SwapTab nav={nav} notice={<NetworkNotice kind="swap" onSwitch={() => selectSepolia('swap')} />} />}
         </>}
 
         {tab === 'earn' && earnOk && <>
-          {!useTestnetEarn && <NetworkNotice kind="earn" onSwitch={() => selectSepolia('earn')} />}
           {useTestnetEarn
             ? <TestnetDefiTab key={`earn:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="earn" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
-            : <EarnTab nav={nav} />}
+            : <EarnTab nav={nav} notice={<NetworkNotice kind="earn" onSwitch={() => selectSepolia('earn')} />} />}
         </>}
       </div>
 
@@ -336,18 +344,16 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
 
   return (
     <>
-      <h2 style={{ fontSize: 22, margin: '8px 0 12px', textAlign: 'center' }}>Trending</h2>
-      {(flags.perps || flags.predictions) && <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        {flags.perps && <button type="button" data-testid="open-perps" className="hb-tap" onClick={() => nav.push('perpsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Perps</button>}
-        {flags.predictions && <button type="button" data-testid="open-predictions" className="hb-tap" onClick={() => nav.push('predictionsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Predictions</button>}
+      <PageTitle>Trending</PageTitle>
+      {(flags.perps || flags.predictions) && <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {flags.perps && <button type="button" data-testid="open-perps" className="hb-tap" onClick={() => nav.push('perpsHome')} style={{ flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 700, cursor: 'pointer' }}>Perps</button>}
+        {flags.predictions && <button type="button" data-testid="open-predictions" className="hb-tap" onClick={() => nav.push('predictionsHome')} style={{ flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 700, cursor: 'pointer' }}>Predictions</button>}
       </div>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 10 }}>
-        <Ic d={ICON.search} size={18} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Token name or contract address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
-      </div>
+      <SearchBox value={q} onChange={setQ} placeholder="Token name or contract address" label="Search trending tokens" />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <Dropdown name="Network" align="left" minWidth={210} label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{net ? <Coin sym={chainByTwId(net.coinId)?.symbol ?? net.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(net.coinId)?.id} size={18} /> : <Ic d={ICON.globe} size={16} />}{net ? net.name : 'Networks'}</span>}>
           {(close) => <div>
-            <div style={{ padding: 8 }}><div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.bgAlt, borderRadius: 10, padding: '6px 10px' }}><Ic d={ICON.search} size={14} /><input autoFocus value={netQ} onChange={(e) => setNetQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13 }} /></div></div>
+            <div style={{ padding: 8 }}><div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.bgAlt, borderRadius: 10, padding: '6px 10px' }}><Ic d={ICON.search} size={14} /><input autoFocus value={netQ} onChange={(e) => setNetQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13 }} /></div></div>
             {!netQ && <div className="hb-tap" onClick={() => { setNet(null); setNetQ(''); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><Ic d={ICON.globe} size={18} /><span style={{ flex: 1, fontWeight: 600 }}>All Networks</span>{net === null && <span style={{ color: T.accent }}><Ic d={ICON.check} size={16} /></span>}</div>}
             {netFiltered.map((n) => <div key={n.coinId} className="hb-tap" onClick={() => { setNet(n); setNetQ(''); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><Coin sym={chainByTwId(n.coinId)?.symbol ?? n.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(n.coinId)?.id} size={22} /><span style={{ flex: 1, fontWeight: 600 }}>{n.name}</span>{net?.coinId === n.coinId && <span style={{ color: T.accent }}><Ic d={ICON.check} size={16} /></span>}</div>)}
           </div>}

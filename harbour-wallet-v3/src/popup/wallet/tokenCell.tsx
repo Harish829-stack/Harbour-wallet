@@ -24,13 +24,13 @@ export const TokenCell: React.FC<{ d: CellData; layout: TokenLayout; hide?: bool
   const rightTop = layout === 3 ? (d.evm ? mask(d.amount) : '—') : mask(fiat || '—');
   const rightSub = layout === 3 ? mask(fiat) : (valueChange != null && !hide ? <span style={{ color: valueChange < 0 ? T.error : T.success }}>{moneySigned(valueChange)}</span> : '');
   return (
-    <div className={onClick ? 'hb-tap hb-wallet-token-row' : 'hb-wallet-token-row'} role={onClick?'button':undefined} tabIndex={onClick?0:undefined} onKeyDown={onClick?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onClick();}}:undefined} onClick={onClick} data-testid="asset-row" data-layout={layout} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', cursor: onClick ? 'pointer' : 'default' }}>
+    <div className={onClick ? 'hb-interactive-row hb-wallet-token-row' : 'hb-wallet-token-row'} role={onClick?'button':undefined} tabIndex={onClick?0:undefined} onKeyDown={onClick?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onClick();}}:undefined} onClick={onClick} data-testid="asset-row" data-layout={layout} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', cursor: onClick ? 'pointer' : 'default' }}>
       <Coin sym={d.sym} assetId={d.assetId} size={38} color={d.color} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        <div style={{ fontSize: 12, color: T.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{secLeft}</div>
+        <div style={{ fontSize: 12, color: T.sub, display: 'flex', flexWrap: 'wrap', gap: '2px 6px', overflowWrap: 'anywhere' }}>{secLeft}</div>
       </div>
-      <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 600, fontSize: 14 }}>{rightTop}</div><div style={{ fontSize: 12, color: T.sub }}>{rightSub}</div></div>
+      <div style={{ textAlign: 'right', minWidth: 0, maxWidth: '45%', overflowWrap: 'anywhere' }}><div style={{ fontWeight: 600, fontSize: 14 }}>{rightTop}</div><div style={{ fontSize: 12, color: T.sub }}>{rightSub}</div></div>
     </div>
   );
 };

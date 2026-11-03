@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle } from './ui';
+import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle, Empty, Note, SectionLabel } from './ui';
 import { syncNetworks } from './networkStore';
 import { networkOptions } from './data';
 import { NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
@@ -12,10 +12,10 @@ import type { Ctx } from './screens';
 // Harbour additions: the RPC is probed and its chain id must match; built-in networks only allow changing the RPC.
 const input = inputStyle;
 const Field: React.FC<{ id: string; label: string; value: string; onChange?: (v: string) => void; readOnly?: boolean; error?: boolean; inputMode?: 'numeric' | 'url'; autoFocus?: boolean; testid: string }> = ({ id, label, value, onChange, readOnly, error, inputMode, autoFocus, testid }) => (
-  <div style={{ marginTop: 14 }}>
+  <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
     <label htmlFor={id} style={{ fontSize: 12, fontWeight: 700 }}>{label}</label>
     <input id={id} data-testid={testid} value={value} readOnly={readOnly} disabled={readOnly} inputMode={inputMode} autoFocus={autoFocus} spellCheck={false} autoComplete="off" onChange={(e) => onChange?.(e.target.value)}
-      style={{ ...input, opacity: readOnly ? 0.6 : 1, borderColor: error ? T.error : T.border }} />
+      style={{ ...input, marginTop: 0, opacity: readOnly ? 0.6 : 1, borderColor: error ? T.error : T.border }} />
   </div>
 );
 const Warn: React.FC = () => (
@@ -40,20 +40,17 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
   const [data, setData] = useState<any>(null);
   useEffect(() => { void syncNetworks(c.bg).then(setData); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Screen title="Manage networks" onBack={c.nav.pop}>
-      <div style={{ paddingBottom: 80 }}>
+    <Screen title="Manage networks" onBack={c.nav.pop} footer={<Btn onClick={() => c.nav.push('addNetwork')}>Add custom network</Btn>}>
+      <div>
         {!data ? <div style={{ textAlign: 'center', paddingTop: 40 }}><Spinner size={28} /></div> : <>
           {/* Same groups, labels and order as Home > Select network: Default, Custom, Testnets. */}
           {NETWORK_CATEGORIES.map((cat) => {
             const list: any[] = cat === 'custom' ? data.custom : data.builtin.filter((n: any) => !!n.testnet === (cat === 'testnet'));
             if (!list.length && cat !== 'custom') return null;
             return <div key={cat} data-testid={`networks-${cat}`}>
-              <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
+              <SectionLabel>{NETWORK_CATEGORY_LABEL[cat]}</SectionLabel>
               {list.length === 0 ? (
-                <div data-testid="networks-empty" style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>No custom networks added</div>
-                  <div style={{ color: T.sub, fontSize: 13, marginTop: 6 }}>Tap “Add custom network” to get started!</div>
-                </div>
+                <div data-testid="networks-empty"><Empty title="No custom networks added" sub="Tap “Add custom network” to get started!" icon="globe" /></div>
               ) : list.map((n: any) => cat === 'custom'
                 ? <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} symbol={n.symbol} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />
                 : <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
@@ -61,9 +58,7 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
           })}
         </>}
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px', background: T.bg }}>
-        <Btn onClick={() => c.nav.push('addNetwork')}>Add custom network</Btn>
-      </div>
+
     </Screen>
   );
 };
@@ -96,8 +91,12 @@ export const NetworkFormScreen: React.FC<Ctx> = (c) => {
   if (!loaded) return <Screen title="Custom network" onBack={c.nav.pop}><div style={{ textAlign: 'center', paddingTop: 40 }}><Spinner size={28} /></div></Screen>;
   const f = err?.field;
   return (
-    <Screen title={isEdit ? (builtin ? `${name} RPC` : 'Edit network') : 'Add custom network'} onBack={c.nav.pop}>
-      <div style={{ color: T.sub, fontSize: 13, textAlign: 'center', marginTop: 4 }}>We only support EVM networks currently.</div>
+    <Screen title={isEdit ? (builtin ? `${name} RPC` : 'Edit network') : 'Add custom network'} onBack={c.nav.pop} footer={<>
+        <Btn disabled={!complete || busy} onClick={save}>{busy ? 'Checking RPC…' : isEdit ? 'Save' : 'Add custom network'}</Btn>
+        {isEdit && !builtin && <Btn variant="ghost" onClick={() => setConfirm(true)}>Delete network</Btn>}
+        {builtin && overridden && <Btn variant="ghost" disabled={busy} onClick={remove}>Reset to default RPC</Btn>}
+      </>}>
+      <Note style={{ marginTop: 0 }}>We only support EVM networks currently.</Note>
       <Field id="net-name" testid="network-name-input" label="Network name" value={name} onChange={setName} readOnly={!!builtin} error={f === 'name'} autoFocus={!isEdit} />
       <Field id="net-rpc" testid="network-rpc-input" label="RPC URL" value={rpc} onChange={setRpc} inputMode="url" error={f === 'rpcUrl'} autoFocus={!!builtin} />
       <Field id="net-chain" testid="network-chainid-input" label="Chain ID" value={chainId} onChange={(v) => setChainId(v.replace(/[^0-9]/g, ''))} inputMode="numeric" readOnly={isEdit} error={f === 'chainId'} />
@@ -105,11 +104,6 @@ export const NetworkFormScreen: React.FC<Ctx> = (c) => {
       {!builtin && <Field id="net-explorer" testid="network-explorer-input" label="Block explorer URL (Optional)" value={explorer} onChange={setExplorer} inputMode="url" error={f === 'explorerUrl'} />}
       {err && <div role="alert" data-testid="network-error" style={{ color: T.error, fontSize: 13, marginTop: 12 }}>{err.error}</div>}
       <Warn />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '18px 0 24px' }}>
-        <Btn disabled={!complete || busy} onClick={save}>{busy ? 'Checking RPC…' : isEdit ? 'Save' : 'Add custom network'}</Btn>
-        {isEdit && !builtin && <Btn variant="ghost" onClick={() => setConfirm(true)}>Delete network</Btn>}
-        {builtin && overridden && <Btn variant="ghost" disabled={busy} onClick={remove}>Reset to default RPC</Btn>}
-      </div>
       {confirm && <Sheet title="Delete network?" onClose={() => setConfirm(false)}>
         <div style={{ color: T.sub, marginBottom: 14 }}>{name} will be removed. Tokens you added on it are kept but hidden until you add the network again.</div>
         <Btn onClick={remove} disabled={busy} style={{ background: T.error }}>Delete</Btn><div style={{ height: 10 }} /><Btn variant="ghost" onClick={() => setConfirm(false)}>Cancel</Btn>

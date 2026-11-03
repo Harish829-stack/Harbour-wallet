@@ -1,0 +1,319 @@
+diff --git a/src/popup/onboarding/onboarding.css b/src/popup/onboarding/onboarding.css
+index a3011ec..58c1bfa 100644
+--- a/src/popup/onboarding/onboarding.css
++++ b/src/popup/onboarding/onboarding.css
+@@ -58,6 +58,7 @@
+ .ob-select{position:relative}.ob-select>button.ob-select-btn{width:100%;display:flex;align-items:center;gap:10px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--hb-paper);color:var(--ink);font-weight:600;text-align:left}
+ .ob-select-pop{position:absolute;z-index:10;left:0;right:0;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--hb-shadow-pop);max-height:290px;overflow:auto;padding:8px}
+ .ob-select-pop input{width:100%;height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);margin-bottom:6px}
++.ob .ob-select-pop input:focus,.ob .ob-select-pop input:focus-visible{outline:none;border-color:var(--hb-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--hb-focus) 24%,transparent)}
+ .ob-select-opt{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--ink);padding:10px 12px;border-radius:8px;text-align:left;font-weight:600}.ob-select-opt:hover,.ob-select-opt[aria-selected=true]{background:var(--hb-row-hover)}
+ .ob-select-empty{padding:24px 12px;text-align:center;color:var(--muted)}.ob-stack{display:flex}.ob-stack>img+img{margin-left:-8px}.ob-stack>img,.ob-coin{width:24px;height:24px;border-radius:50%;border:2px solid var(--surface);object-fit:cover}
+ .ob-coin{display:inline-grid;place-items:center;background:var(--hb-chip);color:var(--muted);font-size:9px;font-weight:700}
+diff --git a/src/popup/wallet/Wallet.tsx b/src/popup/wallet/Wallet.tsx
+index d4537ec..0f1dd25 100644
+--- a/src/popup/wallet/Wallet.tsx
++++ b/src/popup/wallet/Wallet.tsx
+@@ -353,7 +353,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+         <Dropdown name="Network" align="left" minWidth={210} label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{net ? <Coin sym={chainByTwId(net.coinId)?.symbol ?? net.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(net.coinId)?.id} size={18} /> : <Ic d={ICON.globe} size={16} />}{net ? net.name : 'Networks'}</span>}>
+           {(close) => <div>
+-            <div style={{ padding: 8 }}><div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.bgAlt, borderRadius: 10, padding: '6px 10px' }}><Ic d={ICON.search} size={14} /><input autoFocus value={netQ} onChange={(e) => setNetQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13 }} /></div></div>
++            <div style={{ padding: 8 }}><div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.bgAlt, borderRadius: 10, padding: '6px 10px' }}><Ic d={ICON.search} size={14} /><input autoFocus value={netQ} onChange={(e) => setNetQ(e.target.value)} placeholder="Network Name" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13 }} /></div></div>
+             {!netQ && <div className="hb-tap" onClick={() => { setNet(null); setNetQ(''); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><Ic d={ICON.globe} size={18} /><span style={{ flex: 1, fontWeight: 600 }}>All Networks</span>{net === null && <span style={{ color: T.accent }}><Ic d={ICON.check} size={16} /></span>}</div>}
+             {netFiltered.map((n) => <div key={n.coinId} className="hb-tap" onClick={() => { setNet(n); setNetQ(''); close(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}><Coin sym={chainByTwId(n.coinId)?.symbol ?? n.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(n.coinId)?.id} size={22} /><span style={{ flex: 1, fontWeight: 600 }}>{n.name}</span>{net?.coinId === n.coinId && <span style={{ color: T.accent }}><Ic d={ICON.check} size={16} /></span>}</div>)}
+           </div>}
+diff --git a/src/popup/wallet/defi/TestnetDefiTab.tsx b/src/popup/wallet/defi/TestnetDefiTab.tsx
+index d09bfaa..39fa0ed 100644
+--- a/src/popup/wallet/defi/TestnetDefiTab.tsx
++++ b/src/popup/wallet/defi/TestnetDefiTab.tsx
+@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
+ import { formatUnits, isAddress, zeroAddress } from 'viem';
+ import { bg } from '../../api';
+ import { T } from '../../theme';
+-import { Btn, Spinner, Sheet, Ic, ICON, PageTitle } from '../ui';
++import { Btn, Spinner, Ic, ICON, PageTitle } from '../ui';
+ import type { Nav } from '../screens';
+ import { BASE_SEPOLIA, SEPOLIA } from '../../../integrations/testnet-defi/config';
+ import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../integrations/testnet-defi/types';
+@@ -18,19 +18,45 @@ const Message: React.FC<{ error?: boolean; children: React.ReactNode }> = ({ err
+ 
+ // Keep the same selection values and callbacks, with a contained, scrollable picker.
+ const ChoiceSelect: React.FC<{ label: string; value: string | number; disabled?: boolean; onValueChange: (value: string) => void; children: React.ReactNode }> = ({ label, value, disabled, onValueChange, children }) => {
+-  const [open, setOpen] = useState(false);
++  // An anchored dropdown (not a bottom sheet): opens in place with a short fade, flips upward near the bottom edge,
++  // and closes on outside click, Escape or Tab. Focus returns to the trigger without scrolling the tab.
++  const [open, setOpen] = useState(false); const [up, setUp] = useState(false);
++  const wrap = useRef<HTMLSpanElement>(null); const trigger = useRef<HTMLButtonElement>(null); const list = useRef<HTMLDivElement>(null);
+   const options = React.Children.toArray(children).filter(React.isValidElement) as React.ReactElement<{ value: string | number; children: React.ReactNode }>[];
+   const selected = options.find((option) => String(option.props.value) === String(value));
+-  return <>
+-    <button type="button" className="hb-choice" aria-label={label} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen(true)}>
+-      <span>{selected?.props.children ?? 'Select'}</span><Ic d={ICON.down} size={18} />
++  const close = (refocus = true) => { setOpen(false); if (refocus) trigger.current?.focus({ preventScroll: true }); };
++  const toggle = () => {
++    if (open) return close();
++    const r = trigger.current?.getBoundingClientRect(); const box = trigger.current?.closest('.hb-tab-content, .hb-screen-body')?.getBoundingClientRect();
++    const below = (box?.bottom ?? window.innerHeight) - (r?.bottom ?? 0); const above = (r?.top ?? 0) - (box?.top ?? 0);
++    setUp(below < Math.min(260, options.length * 52 + 12) && above > below); setOpen(true);
++  };
++  useEffect(() => {
++    if (!open) return;
++    (list.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? list.current?.querySelector<HTMLElement>('[role="option"]'))?.focus({ preventScroll: true });
++    const outside = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) close(false); };
++    document.addEventListener('pointerdown', outside, true);
++    return () => document.removeEventListener('pointerdown', outside, true);
++  }, [open]);
++  const onListKey = (e: React.KeyboardEvent) => {
++    const items = Array.from(list.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? []); const at = items.indexOf(document.activeElement as HTMLElement);
++    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
++    else if (e.key === 'Tab') close(false);
++    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus(); }
++    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); items[e.key === 'Home' ? 0 : items.length - 1]?.focus(); }
++  };
++  return <span ref={wrap} className="hb-select">
++    <button ref={trigger} type="button" className="hb-choice" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={toggle}
++      onKeyDown={(e) => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open) { e.preventDefault(); toggle(); } }}>
++      <span>{selected?.props.children ?? 'Select'}</span><span className="hb-select-caret" aria-hidden="true"><Ic d={ICON.down} size={18} /></span>
+     </button>
+-    {open && <Sheet title={label} onClose={() => setOpen(false)}><div className="hb-choice-list">
+-      {options.map((option) => <button type="button" key={option.props.value} className="hb-choice-option" aria-pressed={String(option.props.value) === String(value)} onClick={() => { onValueChange(String(option.props.value)); setOpen(false); }}>
+-        <span>{option.props.children}</span>{String(option.props.value) === String(value) && <Ic d={ICON.check} size={18} />}
+-      </button>)}
+-    </div></Sheet>}
+-  </>;
++    {/* preventDefault stops the surrounding <label> from re-clicking the trigger when the list padding is clicked. */}
++    {open && <div ref={list} role="listbox" aria-label={label} className={`hb-select-menu${up ? ' up' : ''}`} onKeyDown={onListKey} onClick={(e) => e.preventDefault()}>
++      {options.map((option) => { const on = String(option.props.value) === String(value); return <button type="button" role="option" aria-selected={on} key={option.props.value} className="hb-select-option" onClick={() => { onValueChange(String(option.props.value)); close(); }}>
++        <span>{option.props.children}</span>{on && <Ic d={ICON.check} size={16} />}
++      </button>; })}
++    </div>}
++  </span>;
+ };
+ const displayUnits = (raw: string, decimals: number) => Number(units(raw, decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 });
+ 
+diff --git a/src/popup/wallet/layout.css b/src/popup/wallet/layout.css
+index baf13d5..257c9f6 100644
+--- a/src/popup/wallet/layout.css
++++ b/src/popup/wallet/layout.css
+@@ -18,9 +18,6 @@
+ .hb-choice { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; justify-content: space-between; text-align: left; padding: 12px 14px; color: var(--hb-ink); background: var(--hb-paper); border: 1px solid var(--hb-line); border-radius: 12px; cursor: pointer; }
+ .hb-choice > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .hb-choice:disabled { opacity: .55; cursor: not-allowed; }
+-.hb-choice-list { display: grid; gap: 6px; }
+-.hb-choice-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 14px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--hb-ink); text-align: left; cursor: pointer; }
+-.hb-choice-option[aria-pressed="true"] { background: var(--hb-brand-soft); border-color: var(--hb-balance-line); color: var(--hb-brand); }
+ .hb-defi { padding: 0 0 16px; }
+ .hb-page-title { font-size: 22px; line-height: 1.3; letter-spacing: -.5px; margin: 4px 0 16px; }
+ .hb-defi-field { display: flex; flex-direction: column; gap: 8px; margin: 22px 0 0; font-size: 13px; font-weight: 600; }
+@@ -40,8 +37,25 @@
+ .hb-defi-stat strong { color: var(--hb-ink); font-weight: 500; }
+ .hb-defi-reserve p { border-top: 1px solid var(--hb-line); padding-top: 12px; margin: 0; }
+ .hb-defi details + input, .hb-defi details :is(.hb-tap, .hb-btn) { margin-top: 12px; }
+-@media (hover: hover) { .hb-choice-option:hover, .hb-settings-selection:hover { background: var(--hb-paper); } .hb-choice:hover { border-color: var(--hb-focus); } }
++@media (hover: hover) { .hb-settings-selection:hover { background: var(--hb-paper); } .hb-choice:hover { border-color: var(--hb-focus); } }
+ @media (max-width: 360px) { .hb-settings-row, .hb-settings-switch-row { gap: 10px !important; padding: 14px 12px !important; } .hb-defi { padding-left: 0; padding-right: 0; } }
+ 
+ /* A section label that opens a screen sits flush with the body's top padding. */
+ .hb-screen-body > :first-child > .hb-section-label:first-child, .hb-screen-body > .hb-section-label:first-child { margin-top: 0 !important; }
++
++/* Anchored dropdown used on the Swap / Earn tabs: plain, quick and predictable (no sheet slide). */
++.hb-select { position: relative; display: block; }
++.hb-select-caret { display: inline-flex; flex-shrink: 0; overflow: visible !important; color: var(--hb-muted); transition: transform 160ms ease; }
++.hb-choice[aria-expanded="true"] { border-color: var(--hb-focus); }
++.hb-choice[aria-expanded="true"] .hb-select-caret { transform: rotate(180deg); }
++.hb-select-menu { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 25; max-height: 260px; overflow-y: auto; overscroll-behavior: contain; padding: 6px; background: var(--hb-surface); border: 1px solid var(--hb-line); border-radius: 12px; box-shadow: var(--hb-shadow-pop); transform-origin: top center; animation: hb-select-in 120ms ease-out; }
++.hb-select-menu.up { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; }
++@keyframes hb-select-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
++.hb-select-menu.up { animation-name: hb-select-in-up; }
++@keyframes hb-select-in-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
++.hb-select-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--hb-ink); text-align: left; font-weight: 500; cursor: pointer; }
++.hb-select-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++.hb-select-option[aria-selected="true"] { color: var(--hb-brand); font-weight: 600; }
++.hb-select-option:focus-visible { outline: none; background: var(--hb-paper); }
++@media (hover: hover) { .hb-select-option:hover { background: var(--hb-paper); } }
++@media (prefers-reduced-motion: reduce) { .hb-select-menu, .hb-select-caret { animation: none; transition: none; } }
+diff --git a/src/popup/wallet/pickers.tsx b/src/popup/wallet/pickers.tsx
+index 0c2620f..7a77196 100644
+--- a/src/popup/wallet/pickers.tsx
++++ b/src/popup/wallet/pickers.tsx
+@@ -1,6 +1,6 @@
+-import React, { useMemo, useState } from 'react';
++import React, { useEffect, useMemo, useRef, useState } from 'react';
+ import { T } from '../theme';
+-import { Coin, Empty, Ic, ICON, Row, Sheet } from './ui';
++import { Coin, Empty, Ic, ICON, Row, Sheet, navMs, reducedMotion } from './ui';
+ 
+ // Shared network picker: one searchable, grouped list used wherever the user must choose a network
+ // (Add custom token, Import NFT). Long flat lists made people scroll through ~100 chains; here the
+@@ -10,14 +10,20 @@ export interface PickNetwork { key: string; id: string; name: string; sym?: stri
+ const POPULAR = ['ethereum', 'base', 'smartchain', 'polygon', 'arbitrum', 'optimism', 'avalanchec', 'solana', 'tron'];
+ const byName = (a: PickNetwork, b: PickNetwork) => a.name.localeCompare(b.name);
+ 
+-export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string }> = ({ value, onChange, placeholder, autoFocus, label }) => (
++// autoFocus waits for the screen / sheet to finish sliding in and focuses without scrolling, so the caret and focus ring
++// appear once the view has settled instead of jumping in mid-transition.
++export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string }> = ({ value, onChange, placeholder, autoFocus, label }) => {
++  const ref = useRef<HTMLInputElement>(null);
++  useEffect(() => { if (!autoFocus) return; const t = setTimeout(() => ref.current?.focus({ preventScroll: true }), reducedMotion() ? 0 : navMs() + 40); return () => clearTimeout(t); }, [autoFocus]);
++  return (
+   <div className="hb-search-wrap"><div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '0 14px', minHeight: 46 }}>
+     <span style={{ color: T.sub, display: 'inline-flex' }}><Ic d={ICON.search} size={18} /></span>
+-    <input type="text" inputMode="search" aria-label={label ?? placeholder} value={value} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} autoComplete="off"
++    <input ref={ref} type="text" inputMode="search" aria-label={label ?? placeholder} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} autoComplete="off"
+       style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text, padding: '12px 0' }} />
+     {value && <button type="button" className="hb-tap" aria-label="Clear search" onClick={() => onChange('')} style={{ background: 'none', border: 'none', color: T.sub, cursor: 'pointer', display: 'inline-flex', padding: 4 }}><Ic d={ICON.close} size={16} /></button>}
+   </div></div>
+-);
++  );
++};
+ 
+ const Heading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+   <div className="hb-section-label" style={{ fontSize: 12, fontWeight: 700, color: T.sub, margin: '12px 2px 4px' }}>{children}</div>
+diff --git a/src/popup/wallet/screens.tsx b/src/popup/wallet/screens.tsx
+index f14c532..0d6f346 100644
+--- a/src/popup/wallet/screens.tsx
++++ b/src/popup/wallet/screens.tsx
+@@ -1,6 +1,6 @@
+ import React, { useEffect, useMemo, useRef, useState } from 'react';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs, SectionLabel } from './ui';
++import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs, SectionLabel, useAfterEnter } from './ui';
+ import { SWAP_SCREENS } from './swap/screens';
+ import { FEATURE_SCREENS } from './features';
+ import { SETTINGS_SCREENS } from './settingsScreens';
+@@ -184,6 +184,7 @@ const MiniToggle: React.FC<{ on: boolean; onClick: () => void }> = ({ on, onClic
+   </button>
+ );
+ export const SearchScreen: React.FC<Ctx> = (c) => {
++  const ready = useAfterEnter();
+   const [tab, setTab] = useState<'crypto' | 'dapps'>('crypto');
+   const [cq, setCq] = useState('');
+   const [net, setNet] = useState<string | null>(c.networkFilter ?? null);
+@@ -214,7 +215,7 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
+       {tab === 'crypto' ? <>
+         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }} className="scrollbar-hide">
+           <button onClick={() => setNet(null)} title="All Networks" style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: `2px solid ${net === null ? T.accent : 'transparent'}`, background: T.bgAlt, color: net === null ? T.accent : T.sub, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>All</button>
+-          {nets.map((n) => (
++          {(ready ? nets : nets.slice(0, 8)).map((n) => (
+             <button key={n.id} onClick={() => setNet(n.id)} title={n.name} style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: `2px solid ${net === n.id ? T.accent : 'transparent'}`, background: 'transparent', cursor: 'pointer', padding: 0 }}>
+               <Coin sym={n.sym} assetId={n.id} size={36} color={n.color} />
+             </button>
+@@ -222,7 +223,7 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
+           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, padding: '0 12px', height: 40, borderRadius: 999, border: `2px solid ${T.border}`, color: T.sub, fontWeight: 700, fontSize: 13 }}>{netCount}</div>
+         </div>
+         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
+-          {cryptoAssets.map((a) => (
++          {(ready ? cryptoAssets : cryptoAssets.slice(0, 10)).map((a) => (
+             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+               <Coin sym={a.sym} assetId={a.id} size={38} color={a.color} />
+               <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>{a.sym}</div><div style={{ fontSize: 12, color: T.sub }}>{a.token ? `${a.name} · ${networkByChainId(a.chainId)?.name ?? ''}` : a.name}</div></div>
+@@ -241,12 +242,14 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
+ 
+ // ---------- Network selector (globe) — evidence 21 (Select network) ----------
+ export const NetworkSelectorScreen: React.FC<Ctx> = (c) => {
++  const ready = useAfterEnter();
+   const [q, setQ] = useState('');
+   const [sel, setSel] = useState<string | null>(c.networkFilter ?? null);
+   const [, bump] = useState(0);
+   useEffect(() => { void syncNetworks(c.bg).then(() => bump((v) => v + 1)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+   const nq = q.trim().toLowerCase();
+-  const nets = networkOptions().filter((n) => !nq || n.name.toLowerCase().includes(nq) || n.sym.toLowerCase().includes(nq));
++  const allNets = networkOptions().filter((n) => !nq || n.name.toLowerCase().includes(nq) || n.sym.toLowerCase().includes(nq));
++  const nets = ready ? allNets : allNets.slice(0, 10);
+   const choose = async (id: string | null) => {
+     setSel(id);
+     await c.bg({ type: 'setNetworkFilter', networkId: id });
+diff --git a/src/popup/wallet/settingsScreens.tsx b/src/popup/wallet/settingsScreens.tsx
+index 0d755ce..963e261 100644
+--- a/src/popup/wallet/settingsScreens.tsx
++++ b/src/popup/wallet/settingsScreens.tsx
+@@ -2,7 +2,7 @@ import { userText } from '../../core/errors';
+ import React, { useEffect, useMemo, useState } from 'react';
+ import browser from 'webextension-polyfill';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty, inputStyle, FieldLabel, SectionLabel, Note } from './ui';
++import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Skeleton, Empty, inputStyle, FieldLabel, SectionLabel, Note } from './ui';
+ import { useSettingsState, updateSettings, refreshSettings } from '../settingsStore';
+ import { AUTO_LOCK_OPTIONS, autoLockLabel, SUPPORTED_LOCALES, localeLabel, COLOR_MODES, TOKEN_LAYOUTS, type ColorMode, type TokenLayout } from '../../core/settings';
+ import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
+@@ -86,7 +86,7 @@ export const SettingsScreen: React.FC<Ctx> = (c) => {
+       <div className="hb-settings-row" role="button" tabIndex={0} data-testid="settings-manage-wallets" onClick={() => c.nav.push('manageWallets')} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('manageWallets'); }}
+         style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 14, margin: '0 0 16px', cursor: 'pointer' }}>
+         <div style={{ width: 42, height: 42, borderRadius: 999, background: T.accent, color: 'var(--hb-on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>H</div>
+-        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>Manage wallets</div><div style={{ fontSize: 12, color: T.sub }}>{wallet?.label ?? (wallet === null ? 'Loading…' : 'Wallet')} · {n} account{n === 1 ? '' : 's'}</div></div>
++        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>Manage wallets</div><div style={{ fontSize: 12, color: T.sub, minHeight: 18, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wallet ? `${wallet.label} · ${n} account${n === 1 ? '' : 's'}` : <Skeleton w={140} h={10} style={{ marginTop: 4 }} />}</div></div>
+         <Ic d={ICON.chevron} size={18} />
+       </div>
+       <Group><NavRow first icon="full" label="Fullscreen" onClick={fullscreen} testid="settings-fullscreen" /></Group>
+diff --git a/src/popup/wallet/ui.tsx b/src/popup/wallet/ui.tsx
+index 786087e..085bad2 100644
+--- a/src/popup/wallet/ui.tsx
++++ b/src/popup/wallet/ui.tsx
+@@ -26,7 +26,7 @@ export function injectStyles() {
+   @keyframes hb-check { to{stroke-dashoffset:0} }
+   @keyframes hb-rise { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+   .hb-screen{animation:hb-slidein .26s cubic-bezier(.3,.7,.4,1)}
+-  .hb-screen-header{position:relative;z-index:2;border-bottom:1px solid color-mix(in srgb,var(--hb-line) 72%,transparent);background:color-mix(in srgb,var(--hb-surface) 94%,transparent);backdrop-filter:blur(14px) saturate(1.12)}
++  .hb-screen-header{position:relative;z-index:2;border-bottom:1px solid color-mix(in srgb,var(--hb-line) 72%,transparent);background:var(--hb-surface)}
+   .hb-screen-header h1{letter-spacing:-.35px!important}
+   .hb-screen-body{overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--hb-muted) 28%,transparent) transparent}
+   .hb-footer{padding-bottom:max(12px,env(safe-area-inset-bottom))!important;box-shadow:0 -8px 22px color-mix(in srgb,var(--hb-ink) 3%,transparent)}
+@@ -37,7 +37,8 @@ export function injectStyles() {
+   .hb-root{font-variant-numeric:tabular-nums;font-size:14px;line-height:1.5}
+   .hb-root input,.hb-root textarea,.hb-root select{color:var(--hb-ink);font:inherit}
+   .hb-root input::placeholder,.hb-root textarea::placeholder{color:var(--hb-muted);opacity:1}
+-  .hb-root :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select):not(.hb-search-box *):focus{outline:none!important;border-color:var(--hb-focus)!important;box-shadow:var(--hb-focus-ring)}
++  /* Low specificity (:where) so the search box rule below always wins: the glow belongs on the box, never on the bare input. */
++  .hb-root :where(input:not([type=checkbox],[type=radio],[type=range]),textarea,select):focus{outline:none;border-color:var(--hb-focus);box-shadow:var(--hb-focus-ring)}
+ 
+   /* ---- motion system: one easing family so every movement feels related ---- */
+   :root{--hb-ease-out:cubic-bezier(.22,1,.36,1);--hb-ease-spring:cubic-bezier(.34,1.56,.64,1);--hb-ease-io:cubic-bezier(.65,0,.35,1);--hb-nav-ms:320ms}
+@@ -59,7 +60,7 @@ export function injectStyles() {
+   @keyframes hb-dialog-in{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+ 
+   /* navigation stack: pushed screen slides over, the one beneath drifts left and dims (native-app parallax) */
+-  .hb-layer{position:absolute;inset:0;overflow:hidden;background:var(--hb-surface);will-change:transform}
++  .hb-layer{position:absolute;inset:0;overflow:hidden;overflow:clip;background:var(--hb-surface);will-change:transform}
+   .hb-layer>.hb-screen,.hb-layer>*>.hb-screen{animation:none}
+   .hb-layer::after{content:"";position:absolute;inset:0;background:var(--hb-overlay);opacity:0;pointer-events:none;z-index:999}
+   .hb-layer.enter{z-index:22;animation:hb-push-in var(--hb-nav-ms) var(--hb-ease-out) both;box-shadow:-12px 0 32px rgba(0,0,0,.10)}
+@@ -69,7 +70,7 @@ export function injectStyles() {
+   .hb-layer.reveal{z-index:20;animation:hb-pop-reveal var(--hb-nav-ms) var(--hb-ease-out) both}
+   .hb-layer.reveal::after{animation:hb-dim-out var(--hb-nav-ms) ease both}
+   .hb-layer.leave{z-index:23;animation:hb-pop-out calc(var(--hb-nav-ms) - 40ms) var(--hb-ease-io) both;pointer-events:none;box-shadow:-12px 0 32px rgba(0,0,0,.10)}
+-  .hb-home{display:flex;flex-direction:column;flex:1;min-height:0;position:relative;transition:transform var(--hb-nav-ms) var(--hb-ease-out)}
++  .hb-home{display:flex;flex-direction:column;flex:1;min-height:0;position:relative;overflow:clip;transition:transform var(--hb-nav-ms) var(--hb-ease-out)}
+   .hb-home::after{content:"";position:absolute;inset:0;background:var(--hb-overlay);opacity:0;pointer-events:none;transition:opacity var(--hb-nav-ms) ease;z-index:50}
+   .hb-home.under{transform:translateX(-24%)}
+   .hb-home.under::after{opacity:1}
+@@ -141,8 +142,10 @@ export function injectStyles() {
+   .hb-root,.hb-root *{box-sizing:border-box}
+   .hb-root svg{flex-shrink:0}
+   .hb-root button{font:inherit}
+-  .hb-search-box:focus-within{box-shadow:inset 0 0 0 1px var(--hb-focus),var(--hb-focus-ring)}
+-  .hb-root .hb-search-box input:focus,.hb-search-box input:focus-visible{outline:none!important;box-shadow:none!important;border-color:transparent!important}
++  .hb-search-box{border:1px solid transparent;transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease}
++  .hb-search-box:focus-within{border-color:var(--hb-focus);box-shadow:var(--hb-focus-ring)}
++  .hb-search-box input,.hb-search-box input:focus,.hb-search-box input:focus-visible{outline:none!important;box-shadow:none!important;border:0!important;background:transparent!important;-webkit-appearance:none;appearance:none}
++  .hb-search-box input::-webkit-search-decoration,.hb-search-box input::-webkit-search-cancel-button{-webkit-appearance:none}
+   .hb-interactive-row{border-radius:12px;margin:0 -8px;padding-left:8px!important;padding-right:8px!important;transition:background .14s ease}
+   .hb-interactive-row:active{background:var(--hb-paper)}
+   .hb-settings-row{transition:background .14s ease}
+@@ -303,6 +306,16 @@ export const PageTitle: React.FC<{ children: React.ReactNode; action?: React.Rea
+   <div className="hb-page-head"><h2>{children}</h2>{action}</div>
+ );
+ 
++/** Milliseconds of the stack push/pop animation (CSS --hb-nav-ms). */
++export const navMs = () => (typeof document === 'undefined' ? 0 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hb-nav-ms')) || 320);
++/** False while a freshly pushed screen is still sliding in. Long lists render a first screenful, then the rest once the slide
++ *  has finished, so the transition never stalls on hundreds of rows and logos. */
++export function useAfterEnter(): boolean {
++  const [ready, setReady] = useState(() => reducedMotion());
++  useEffect(() => { if (ready) return; const t = setTimeout(() => setReady(true), navMs() + 40); return () => clearTimeout(t); }, [ready]);
++  return ready;
++}
++
+ export function useDebouncedLoading(initial = true, ms = 700) {
+   const [loading, setLoading] = useState(initial);
+   useEffect(() => { const t = setTimeout(() => setLoading(false), ms); return () => clearTimeout(t); }, [ms]);

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress, zeroAddress } from 'viem';
 import { bg } from '../../api';
 import { T } from '../../theme';
-import { Btn, Spinner } from '../ui';
+import { Btn, Spinner, Ic, ICON, PageTitle } from '../ui';
 import type { Nav } from '../screens';
 import { BASE_SEPOLIA, SEPOLIA } from '../../../integrations/testnet-defi/config';
 import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../integrations/testnet-defi/types';
@@ -10,11 +10,55 @@ import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../inte
 interface Catalog { assets?: EarnAsset[]; tokens?: DefiToken[]; nativeBalance?: string; account: string }
 const short = (value: string) => `${value.slice(0, 6)}…${value.slice(-4)}`;
 const units = (raw: string, decimals: number) => formatUnits(BigInt(raw), decimals);
-const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 14 };
+const field: React.CSSProperties = { minHeight: 48, marginTop: 8, lineHeight: 1.5, width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 14 };
 const hint: React.CSSProperties = { fontSize: 12, color: T.sub, lineHeight: 1.5, overflowWrap: 'anywhere' };
 const card: React.CSSProperties = { background: T.bgAlt, borderRadius: 16, padding: 14, margin: '12px 0' };
 const labels: Record<DefiAction, string> = { supply: 'Supply', withdraw: 'Withdraw', swap: 'Swap', wrap: 'Wrap ETH', unwrap: 'Unwrap WETH' };
 const Message: React.FC<{ error?: boolean; children: React.ReactNode }> = ({ error, children }) => <div role={error ? 'alert' : 'status'} style={{ ...card, background: error ? T.bgAlt : T.accentSoft, color: error ? T.error : T.accent, fontSize: 13, lineHeight: 1.5 }}>{children}</div>;
+
+// Keep the same selection values and callbacks, with a contained, scrollable picker.
+const ChoiceSelect: React.FC<{ label: string; value: string | number; disabled?: boolean; onValueChange: (value: string) => void; children: React.ReactNode }> = ({ label, value, disabled, onValueChange, children }) => {
+  // An anchored dropdown (not a bottom sheet): opens in place with a short fade, flips upward near the bottom edge,
+  // and closes on outside click, Escape or Tab. Focus returns to the trigger without scrolling the tab.
+  const [open, setOpen] = useState(false); const [up, setUp] = useState(false);
+  const wrap = useRef<HTMLSpanElement>(null); const trigger = useRef<HTMLButtonElement>(null); const list = useRef<HTMLDivElement>(null);
+  const options = React.Children.toArray(children).filter(React.isValidElement) as React.ReactElement<{ value: string | number; children: React.ReactNode }>[];
+  const selected = options.find((option) => String(option.props.value) === String(value));
+  const close = (refocus = true) => { setOpen(false); if (refocus) trigger.current?.focus({ preventScroll: true }); };
+  const toggle = () => {
+    if (open) return close();
+    const r = trigger.current?.getBoundingClientRect(); const box = trigger.current?.closest('.hb-tab-content, .hb-screen-body')?.getBoundingClientRect();
+    const below = (box?.bottom ?? window.innerHeight) - (r?.bottom ?? 0); const above = (r?.top ?? 0) - (box?.top ?? 0);
+    setUp(below < Math.min(260, options.length * 52 + 12) && above > below); setOpen(true);
+  };
+  useEffect(() => {
+    if (!open) return;
+    (list.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? list.current?.querySelector<HTMLElement>('[role="option"]'))?.focus({ preventScroll: true });
+    const outside = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) close(false); };
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [open]);
+  const onListKey = (e: React.KeyboardEvent) => {
+    const items = Array.from(list.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? []); const at = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === 'Tab') close(false);
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus(); }
+    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); items[e.key === 'Home' ? 0 : items.length - 1]?.focus(); }
+  };
+  return <span ref={wrap} className="hb-select">
+    <button ref={trigger} type="button" className="hb-choice" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={toggle}
+      onKeyDown={(e) => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open) { e.preventDefault(); toggle(); } }}>
+      <span>{selected?.props.children ?? 'Select'}</span><span className="hb-select-caret" aria-hidden="true"><Ic d={ICON.down} size={18} /></span>
+    </button>
+    {/* preventDefault stops the surrounding <label> from re-clicking the trigger when the list padding is clicked. */}
+    {open && <div ref={list} role="listbox" aria-label={label} className={`hb-select-menu${up ? ' up' : ''}`} onKeyDown={onListKey} onClick={(e) => e.preventDefault()}>
+      {options.map((option) => { const on = String(option.props.value) === String(value); return <button type="button" role="option" aria-selected={on} key={option.props.value} className="hb-select-option" onClick={() => { onValueChange(String(option.props.value)); close(); }}>
+        <span>{option.props.children}</span>{on && <Ic d={ICON.check} size={16} />}
+      </button>; })}
+    </div>}
+  </span>;
+};
+const displayUnits = (raw: string, decimals: number) => Number(units(raw, decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 });
 
 /** Only the wallet host imports this entry point. Protocol-specific UI does not modify legacy screens. */
 export const TestnetDefiTab: React.FC<{
@@ -88,8 +132,8 @@ export const TestnetDefiTab: React.FC<{
   const title = kind === 'earn' ? 'Earn' : 'Swap';
   // The host renders this tab only on its supported testnet (Wallet.tsx shows the switch prompt otherwise).
   if (!supported) return null;
-  return <div data-testid={`testnet-${kind}`}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2>{title}</h2><button type="button" disabled={busy || loading} onClick={() => void load()} style={{ color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Refresh</button></div>
+  return <div className="hb-defi" data-testid={`testnet-${kind}`}>
+    <PageTitle action={<button type="button" className="hb-link-btn" disabled={busy || loading} onClick={() => void load()}>{loading ? 'Refreshing…' : 'Refresh'}</button>}>{title}</PageTitle>
     <Message>{title} testing is enabled on {networkName} via {kind === 'earn' ? 'Aave V3 (AaveKit)' : 'Uniswap API'}. Test tokens have no monetary value.</Message>
     {loading && <div role="status" style={{ padding: 18, textAlign: 'center' }}><Spinner size={22} /><p style={hint}>Checking live {kind === 'earn' ? 'reserves and balances' : 'token balances'}…</p></div>}
     {error && <Message error>{error}</Message>}
@@ -97,40 +141,43 @@ export const TestnetDefiTab: React.FC<{
     {!loading && !catalog && <Btn disabled={busy} onClick={() => void load()}>Retry</Btn>}
     {catalog && <>
       <div style={hint}>Account {short(catalog.account)} · {networkName}</div>
-      <label style={{ display: 'block', margin: '12px 0' }}>Action
-        <select aria-label="DeFi action" value={action} disabled={busy || !!review} onChange={(e) => chooseAction(e.target.value as DefiAction)} style={field}>
+      <label className="hb-defi-field">Action
+        <ChoiceSelect label="Action" value={action} disabled={busy || !!review} onValueChange={(value) => chooseAction(value as DefiAction)}>
           {(kind === 'earn' ? ['supply', 'withdraw'] as const : ['swap'] as const).map((a) => <option value={a} key={a}>{labels[a]}</option>)}
-        </select>
+        </ChoiceSelect>
       </label>
       {<>
         {tokens.length === 0 && <Message>No {kind === 'earn' ? 'available Aave reserves' : 'checked Sepolia tokens'} were found. {kind === 'swap' ? 'Try checking another token contract below.' : 'Refresh to check again.'}</Message>}
-        <label style={{ display: 'block', margin: '12px 0' }}>{kind === 'earn' ? 'Asset' : 'You pay'}
-          <select aria-label="Input token" style={field} disabled={busy || !!review || !tokens.length} value={token} onChange={(e) => choose(e.target.value)}>
+        <label className="hb-defi-field">{kind === 'earn' ? 'Asset' : 'You pay'}
+          <ChoiceSelect label={kind === 'earn' ? 'Choose asset' : 'You pay'} disabled={busy || !!review || !tokens.length} value={token} onValueChange={choose}>
             <option value="">Select token</option>{tokens.map((t) => <option key={t.address} value={t.address}>{t.address === zeroAddress ? `${t.symbol} · native` : `${t.symbol} · ${short(t.address)}`}</option>)}
-          </select>
+          </ChoiceSelect>
         </label>
-        {selected && <div style={hint}>Wallet: {units(selected.balance, selected.decimals)} {selected.symbol}<br />{selected.address === zeroAddress ? <span>Native ETH · supplied through Aave’s WETH gateway</span> : <span title={selected.address}>Contract: {selected.address}</span>}</div>}
-        {earnAsset && <div style={card}>
+        {selected && <div className="hb-defi-asset-meta">
+          <div><span>Wallet balance</span><strong title={units(selected.balance, selected.decimals)}>{displayUnits(selected.balance, selected.decimals)} {selected.symbol}</strong></div>
+          {selected.address === zeroAddress ? <p>Native ETH · supplied through Aave’s WETH gateway</p> : <details><summary>Token contract <span>{short(selected.address)}</span></summary><code>{selected.address}</code></details>}
+        </div>}
+        {earnAsset && <div className="hb-defi-reserve" style={card}>
           <strong>{earnAsset.apy.toFixed(2)}% variable supply APY</strong>
-          <div style={hint}>Supplied: {units(earnAsset.supplied, earnAsset.decimals)} {earnAsset.symbol}</div>
-          <div style={hint}>Available pool liquidity: {units(earnAsset.availableLiquidity, earnAsset.decimals)} {earnAsset.symbol}</div>
+          <div className="hb-defi-stat"><span>Supplied</span><strong title={units(earnAsset.supplied, earnAsset.decimals)}>{displayUnits(earnAsset.supplied, earnAsset.decimals)} {earnAsset.symbol}</strong></div>
+          <div className="hb-defi-stat"><span>Pool liquidity</span><strong title={units(earnAsset.availableLiquidity, earnAsset.decimals)}>{displayUnits(earnAsset.availableLiquidity, earnAsset.decimals)} {earnAsset.symbol}</strong></div>
           <div style={hint}>Deposit: {earnAsset.canSupply ? 'Available' : `Unavailable${earnAsset.reason ? ` · ${earnAsset.reason}` : ''}`}</div>
           <div style={hint}>Withdraw: {earnAsset.canWithdraw ? 'Available' : BigInt(earnAsset.supplied) > 0n ? 'Unavailable · no pool liquidity' : 'Unavailable · no supplied balance'}</div>
           <p style={hint}>Interest comes from borrowing activity. Testnet rates can be zero and are not guaranteed. Withdrawals depend on liquidity and any collateral obligations.</p>
         </div>}
-        {kind === 'swap' && <label style={{ display: 'block', margin: '12px 0' }}>You receive
-          <select aria-label="Output token" style={field} disabled={busy || !!review || !outputs.length} value={tokenOut} onChange={(e) => { change(); setTokenOut(e.target.value); }}>
+        {kind === 'swap' && <label className="hb-defi-field">You receive
+          <ChoiceSelect label="You receive" disabled={busy || !!review || !outputs.length} value={tokenOut} onValueChange={(value) => { change(); setTokenOut(value); }}>
             <option value="">Select token</option>{outputs.map((t) => <option key={t.address} value={t.address}>{t.symbol} · {short(t.address)}</option>)}
-          </select>
+          </ChoiceSelect>
         </label>}
       </>}
-      <label style={{ display: 'block', margin: '12px 0' }}>Amount
+      <label className="hb-defi-field">Amount
         <input aria-label="Token amount" inputMode="decimal" placeholder="0.00" style={field} disabled={busy || !!review} value={amount} onChange={(e) => { change(); setAmount(e.target.value); }} />
       </label>
-      {kind === 'swap' && action === 'swap' && <label style={{ display: 'block', margin: '12px 0' }}>Slippage tolerance
-        <select aria-label="Slippage tolerance" value={slippage} disabled={busy || !!review} style={field} onChange={(e) => { change(); setSlippage(Number(e.target.value)); }}>
+      {kind === 'swap' && action === 'swap' && <label className="hb-defi-field">Slippage tolerance
+        <ChoiceSelect label="Slippage tolerance" value={slippage} disabled={busy || !!review} onValueChange={(value) => { change(); setSlippage(Number(value)); }}>
           {[10, 50, 100, 300, 500].map((bps) => <option key={bps} value={bps}>{bps / 100}%</option>)}
-        </select>
+        </ChoiceSelect>
       </label>}
       {!review && <Btn disabled={!canPrepare} onClick={() => void prepare()}>{busy ? 'Preparing…' : `Review ${labels[action].toLowerCase()}`}</Btn>}
       {review && <section aria-label="Transaction review" style={card}>

@@ -1,0 +1,77 @@
+{
+  "results": [
+    {
+      "width": 320,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    }
+  ],
+  "errors": []
+}

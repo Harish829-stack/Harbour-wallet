@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
-import { Btn, Ic, ICON, IconBtn } from '../ui';
+import { Btn, Ic, ICON, IconBtn, PageTitle } from '../ui';
 import type { Nav } from '../screens';
 import type { SwapQuoteResult, SwapRoute, SwapStep } from '../../../core/swap/types';
 import { toAtomic, fromAtomic, fmtToken, fmtUsd, rateOf } from '../../../core/swap/amount';
@@ -37,7 +37,7 @@ function useQuoteFeed(key: string, req: { from: any; to: any; atomic: bigint | n
   return { ...st, result: st.key === key ? st.result : undefined, refresh };
 }
 
-export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
+export const SwapTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav, notice }) => {
   const s = useSwapStore();
   const { from, to, amount, settings, balances } = s;
   const [sheet, setSheet] = useState<'settings' | 'providers' | null>(null);
@@ -123,16 +123,15 @@ export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 14px' }}>
-        <h2 style={{ fontSize: 22, margin: 0 }}>Swap</h2>
+      <PageTitle action={
         <div style={{ display: 'flex', gap: 6 }}>
           <span style={{ position: 'relative' }}>
             <IconBtn icon="history" size={34} bg="transparent" title="Swap history" onClick={() => nav.push('swapHistory')} />
             {pending > 0 && <span data-testid="swap-history-badge" style={{ position: 'absolute', top: 2, right: 2, minWidth: 14, height: 14, borderRadius: 7, background: T.accent, color: 'var(--hb-on-brand)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{pending}</span>}
           </span>
           <IconBtn icon="gear" size={34} bg="transparent" title="Swap settings" onClick={() => setSheet('settings')} />
-        </div>
-      </div>
+        </div>}>Swap</PageTitle>
+      {notice}
 
       <Block label="You pay" side="from" asset={from} amount={amount} onAmount={setAmount} fiat={fromUsd} balance={from ? fromAtomic(bal, from.decimals) : undefined}
         onMax={onMax} onSelect={() => nav.push('swapAssetPicker', { side: 'from' })} showFund={!!noFunds} onFund={() => nav.push('buy')} />

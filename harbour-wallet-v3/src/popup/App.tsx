@@ -11,9 +11,10 @@ import { AddWalletReauth } from './wallet/addWalletReauth';
 import { BackupFlow } from './onboarding/BackupFlow';
 import { ProviderSurface, TokenApprovalsSurface } from './wallet/features/provider';
 import { Wallet } from './wallet/Wallet';
-import { injectStyles } from './wallet/ui';
+import { injectStyles, Spinner } from './wallet/ui';
 import './design/system.css';
-import { Brand } from './design/components';
+import './wallet/layout.css';
+import { Brand, PasswordField } from './design/components';
 import { AddPassword } from './wallet/addPassword';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
 import { useSecretField } from './secureField';
@@ -30,7 +31,7 @@ const primary = (disabled = false): React.CSSProperties => ({
 const ghost: React.CSSProperties = { width: '100%', padding: '14px 16px', borderRadius: 999, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 12 };
 // Wallet creation, import and the phrase backup live in onboarding/* and wallet/features/onboarding.tsx. This file only unlocks:
 // the password field is uncontrolled (popup/secureField.tsx) and its value is read once, sent to the worker and cleared.
-const input: React.CSSProperties = { width: '100%', padding: '14px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.surface, color: T.text, boxSizing: 'border-box', marginTop: 10, fontSize: 15 };
+
 
 const Logo = ({ size = 28 }: { size?: number }) => <div style={{fontSize:size}}><Brand/></div>;
 
@@ -137,16 +138,16 @@ function WalletApp() {
     try { const res = await bg({ type: 'unlock', password }); if (res.ok) setScreen('home'); else setErr(res.error || 'Incorrect password'); } finally { setBusy(false); }
   };
 
-  if (screen === 'loading') return <Shell k={screen} header={false}><div style={{ color: T.sub, textAlign: 'center', marginTop: 80 }}>Loading…</div></Shell>;
+  if (screen === 'loading') return <Shell k={screen} header={false}><div role="status" style={{ color: T.sub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginTop: 80 }}><Spinner size={28} />Loading your wallet…</div></Shell>;
 
   if (screen === 'unlock') {
     const bioPrimary = passkey.enabled && !usePassword;
     return <Shell k={screen} header={false}>
-      <div style={{ textAlign: 'center', paddingTop: 64 }}><Logo size={56} /><h2 style={{ fontSize: 22, margin: '20px 0 0' }}>Welcome back</h2></div>
+      <div style={{ textAlign: 'center', paddingTop: 64 }}><Logo size={56} /><h2 style={{ fontSize: 24, letterSpacing: -0.6, margin: '24px 0 8px' }}>Welcome back</h2><p style={{ color: T.sub, fontSize: 13, margin: 0 }}>Unlock to access your wallet.</p></div>
       <div style={{ marginTop: 28 }}>
-        {!bioPrimary && <input style={input} type="password" placeholder="Password" ref={pw.ref} onInput={(e) => setPwFilled(!!e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && doUnlock()} autoFocus spellCheck={false} autoComplete="current-password" />}
+        {!bioPrimary && <PasswordField label="Password" inputRef={pw.ref} onInput={(el) => setPwFilled(!!el.value)} onEnter={doUnlock} autoFocus autoComplete="current-password" />}
         {err && <div key={err} className="hb-shake" role="alert" style={{ color: T.error, fontSize: 13, marginTop: 10 }}>{err}</div>}
-        {!bioPrimary && <button style={primary(!pwFilled || busy)} disabled={!pwFilled || busy} onClick={doUnlock}>Unlock</button>}
+        {!bioPrimary && <button className="hb-tap" aria-busy={busy} style={primary(!pwFilled || busy)} disabled={!pwFilled || busy} onClick={doUnlock}>{busy ? 'Unlocking…' : 'Unlock'}</button>}
         {passkey.enabled && <>
           {bioPrimary
             ? <button data-testid="unlock-biometrics" style={primary(bioBusy)} disabled={bioBusy} onClick={doBiometric}>{bioBusy ? 'Waiting for ' + bio.name + '…' : 'Unlock with ' + bio.name}</button>

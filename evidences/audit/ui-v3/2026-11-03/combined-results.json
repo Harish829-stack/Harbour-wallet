@@ -1,0 +1,991 @@
+{
+  "scope": "Isolated actual-component layout fixtures; no live wallet. Baseline plus targeted recheck of nftList mock and password/biometric spacing.",
+  "results": [
+    {
+      "width": 320,
+      "screen": "settings",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsSecurity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsAutoLock",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsColorMode",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsLanguage",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsCurrency",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsPrefs",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsAddressBook",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsAddressBookEdit",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsDeveloper",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsFaucets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsNotifications",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "connections",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "connectionsBlacklist",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "customNetworks",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "addNetwork",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "manageWallets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "editWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsWalletAccounts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "help",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "about",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "settingsHardwareWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "migrationSelectSource",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "migrationSelectDestination",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "migrationSelectAssets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "walletConnect",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "accountDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "connectionDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "fixtureEarn",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "fixtureSwap",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "fixtureHome",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "send",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "receive",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "activity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "search",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "networkSelector",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "tokenDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 320,
+      "screen": "addCustomToken",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settings",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsSecurity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsAutoLock",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsColorMode",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsLanguage",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsCurrency",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsPrefs",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsAddressBook",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsAddressBookEdit",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsDeveloper",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsFaucets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsNotifications",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "connections",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "connectionsBlacklist",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "customNetworks",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "addNetwork",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "manageWallets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "editWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsWalletAccounts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "help",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "about",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "settingsHardwareWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "migrationSelectSource",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "migrationSelectDestination",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "migrationSelectAssets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "walletConnect",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "accountDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "connectionDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "fixtureEarn",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "fixtureSwap",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "fixtureHome",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "send",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "receive",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "activity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "search",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "networkSelector",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "tokenDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 380,
+      "screen": "addCustomToken",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settings",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsSecurity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsAutoLock",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsColorMode",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsLanguage",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsCurrency",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsPrefs",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsAddressBook",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsAddressBookEdit",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsDeveloper",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsFaucets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsNotifications",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "connections",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "connectionsBlacklist",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "customNetworks",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "addNetwork",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "manageWallets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "editWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsWalletAccounts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "help",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "about",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsAddPassword",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsBiometrics",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "settingsHardwareWallet",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "migrationSelectSource",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "migrationSelectDestination",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "migrationSelectAssets",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "walletConnect",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "accountDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "connectionDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "fixtureEarn",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "fixtureSwap",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "fixtureHome",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "send",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "receive",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "activity",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "search",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "networkSelector",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "tokenDetail",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "nfts",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    },
+    {
+      "width": 480,
+      "screen": "addCustomToken",
+      "overflow": false,
+      "unknown": false,
+      "blank": false,
+      "controls": 0
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

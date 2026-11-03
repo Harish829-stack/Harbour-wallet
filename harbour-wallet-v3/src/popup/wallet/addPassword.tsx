@@ -12,7 +12,7 @@ import { loadPasskeyStatus } from '../biometricsUi';
 // never the only way in. The biometric prompt both proves the user and lets the worker re-seal the biometric blob under the new password.
 // The password is read once from an uncontrolled field and handed straight to the worker.
 const EMPTY = { policy: { valid: false } as { valid: boolean; error?: string }, strength: EMPTY_STRENGTH as PasswordStrength, confirmFilled: false, match: false };
-export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string; onDone: () => void; onBack?: () => void }> = ({ bg, name, onDone, onBack }) => {
+export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string; onDone: () => void; onBack?: () => void; heading?: boolean }> = ({ bg, name, onDone, onBack, heading = true }) => {
   const pw = useSecretField(); const confirm = useSecretField();
   const [meta, setMeta] = useState(EMPTY); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
   const onInput = () => { const a = pw.peek(); const b = confirm.peek(); setMeta({ policy: validatePassword(a), strength: passwordStrength(a), confirmFilled: b.length > 0, match: a.length > 0 && a === b }); };
@@ -31,7 +31,7 @@ export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string;
   };
   return <form onSubmit={submit} style={{ padding: 20, maxWidth: 420, margin: '0 auto' }} data-testid="add-password">
     {onBack && <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: T.sub, cursor: 'pointer', padding: 0, marginBottom: 12 }}>‹ Back</button>}
-    <h2 style={{ margin: '8px 0 4px' }}>Add a password</h2>
+    {heading && <h2 style={{ margin: '8px 0 4px' }}>Add a password</h2>}
     <div style={{ color: T.sub, marginBottom: 16 }}>Your wallet currently unlocks only with {name}. Add a password so you can always unlock it, for example when {name} is unavailable. {name} keeps working too. Harbour cannot recover this password, so keep it somewhere safe.</div>
     <PasswordField label="New password" inputRef={pw.ref} onInput={onInput} placeholder="Min 8 characters" error={meta.policy.error} autoFocus disabled={busy || done}/>
     <PasswordMeter strength={meta.strength}/>

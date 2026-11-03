@@ -8,7 +8,7 @@ import { ErrorLine, Group, Note, SectionLabel } from '../settingsScreens';
 import { AddressScanner } from '../send/parts';
 
 interface Session { topic: string; origin: string; name: string; url: string; icon: string | null; chains: string[]; connectedAt: number; expiry: number | null }
-const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, margin: '6px 0 10px' };
+const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, minHeight: 48, margin: '8px 0 20px' };
 const host = (o: string) => { try { return new URL(o).host; } catch { return o; } };
 
 const SiteDot: React.FC<{ s: Session }> = ({ s }) => {

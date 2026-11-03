@@ -37,3 +37,27 @@
 :root[data-theme="dark"]{--hb-on-brand:#fff;--hb-overlay:rgba(0,0,0,.62);--hb-focus:#6fc1ad;--hb-warn-bg:#2f2513;--hb-warn-line:#5a4520;--hb-warn-ink:#e6bd6e;
 --hb-danger-bg:#35191d;--hb-balance-line:#285044;--hb-balance-ring:#315c4e;--hb-soft-hover:#1f3d36;--hb-row-hover:#1d2a2e;--hb-glyph-bg:#1b3a33;--hb-glyph-line:#2f5a4e;--hb-orbit:#2a4a41;--hb-dot:#3a4a4d;--hb-chip:#1c282b;--hb-scrim:rgba(0,0,0,.72);--hb-shadow-pop:0 8px 40px #00000099}
 body{background:var(--hb-surface);color:var(--hb-ink)}
+
+/* Shared finishing layer: consistent keyboard, touch, form, and surface feedback across v3 screens. */
+:root{--hb-ease-out:cubic-bezier(.22,1,.36,1);--hb-ease-spring:cubic-bezier(.34,1.56,.64,1);--hb-focus-ring:0 0 0 3px color-mix(in srgb,var(--hb-focus) 24%,transparent)}
+html{scroll-behavior:smooth}
+body{min-width:320px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input,textarea,select{font-family:inherit;-webkit-tap-highlight-color:transparent}
+button:not(:disabled){touch-action:manipulation}
+:where(.fx) button:not(:disabled){transition:transform .16s var(--hb-ease-out),background-color .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
+:where(.fx) button:not(:disabled):active{transform:scale(.985)}
+button:disabled{cursor:not-allowed}
+:where(.hb-root,.hb-design,.fx) :where(button,[role="button"],[role="tab"],[role="menuitem"],[role="radio"],[role="switch"]):focus-visible{outline:2px solid var(--hb-focus);outline-offset:2px}
+:where(.hb-root,.hb-design) :where(input,textarea,select){transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease}
+:where(.hb-root,.hb-design) :where(input,textarea,select)::placeholder{color:var(--hb-muted);opacity:.72}
+:where(.hb-root,.hb-design) :where(input,textarea,select):disabled{opacity:.68;cursor:not-allowed}
+.hb-design{isolation:isolate}
+.hb-design .hb-button{min-height:48px;box-shadow:0 1px 0 color-mix(in srgb,var(--hb-ink) 8%,transparent);transition:transform .16s var(--hb-ease-out),background .16s ease,box-shadow .16s ease}
+.hb-design .hb-button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px color-mix(in srgb,var(--hb-brand) 14%,transparent)}
+.hb-design .hb-button:active:not(:disabled){transform:translateY(0) scale(.985);box-shadow:none}
+.hb-design .hb-field input:focus,.hb-design .hb-field textarea:focus{box-shadow:var(--hb-focus-ring)}
+.hb-design .hb-notice{border:1px solid color-mix(in srgb,currentColor 12%,transparent);line-height:1.5}
+.hb-design .hb-dialog{background:var(--hb-surface);animation:hb-dialog-appear .22s var(--hb-ease-out) both}
+@keyframes hb-dialog-appear{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media(max-width:360px){.hb-design .hb-dialog{padding:18px;border-radius:16px}.hb-design .hb-dialog footer{gap:8px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hb-design .hb-button,.hb-design .hb-dialog{animation:none!important;transition:none!important}}

@@ -1,0 +1,983 @@
+diff --git a/src/popup/design/system.css b/src/popup/design/system.css
+index 9355b35..32e7ae4 100644
+--- a/src/popup/design/system.css
++++ b/src/popup/design/system.css
+@@ -47,7 +47,7 @@ button:not(:disabled){touch-action:manipulation}
+ :where(.fx) button:not(:disabled){transition:transform .16s var(--hb-ease-out),background-color .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
+ :where(.fx) button:not(:disabled):active{transform:scale(.985)}
+ button:disabled{cursor:not-allowed}
+-:where(.hb-root,.hb-design,.fx) :where(button,input,textarea,select,[role="button"],[role="tab"],[role="menuitem"]):focus-visible{outline:3px solid var(--hb-focus);outline-offset:3px;box-shadow:var(--hb-focus-ring)}
++:where(.hb-root,.hb-design,.fx) :where(button,[role="button"],[role="tab"],[role="menuitem"],[role="radio"],[role="switch"]):focus-visible{outline:2px solid var(--hb-focus);outline-offset:2px}
+ :where(.hb-root,.hb-design) :where(input,textarea,select){transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease}
+ :where(.hb-root,.hb-design) :where(input,textarea,select)::placeholder{color:var(--hb-muted);opacity:.72}
+ :where(.hb-root,.hb-design) :where(input,textarea,select):disabled{opacity:.68;cursor:not-allowed}
+diff --git a/src/popup/ledger/ImportLedger.tsx b/src/popup/ledger/ImportLedger.tsx
+index cdd432c..c882c58 100644
+--- a/src/popup/ledger/ImportLedger.tsx
++++ b/src/popup/ledger/ImportLedger.tsx
+@@ -2,7 +2,7 @@
+ // (the user can switch apps between steps), then add a hardware wallet holding only those public addresses.
+ import React, { useState } from 'react';
+ import { T } from '../theme';
+-import { Screen, Btn, Row } from '../wallet/ui';
++import { Screen, Btn, Row, Coin } from '../wallet/ui';
+ import type { Ctx } from '../wallet/screens';
+ 
+ const PATHS = { ethereum: "44'/60'/0'/0/0", bitcoin: "84'/0'/0'/0/0", solana: "44'/501'/0'" } as const;
+@@ -29,14 +29,13 @@ export const ImportLedgerScreen: React.FC<Ctx> = (c) => {
+     if (r?.ok) { c.refresh?.(); c.nav.home(); } else setErr(r?.error === 'MAX_WALLETS' ? 'You have reached the wallet limit.' : r?.error ?? 'Could not add the Ledger');
+   };
+   return (
+-    <Screen title="Connect your Ledger" onBack={c.nav.pop}>
++    <Screen title="Connect your Ledger" onBack={c.nav.pop} footer={<Btn disabled={!!busy || !(found.ethereum || found.bitcoin)} onClick={add}>{busy === 'add' ? 'Adding…' : 'Add Ledger wallet'}</Btn>}>
+       <div style={{ color: T.sub, fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>Connect your Ledger with a USB cable and unlock it. For each network, open its app on the device, then tap Read. Harbour stores only the public addresses; every transaction is confirmed on the Ledger.</div>
+       {(Object.keys(PATHS) as Ct[]).map((ct) => (
+         <Row key={ct} title={NAMES[ct]} sub={found[ct] ? `${found[ct]!.slice(0, 10)}…${found[ct]!.slice(-6)}` : `Open the ${ct === 'ethereum' ? 'Ethereum' : ct === 'bitcoin' ? 'Bitcoin' : 'Solana'} app · ${PATHS[ct]}`}
+-          right={<button type="button" data-testid={`ledger-read-${ct}`} disabled={!!busy} onClick={() => void read(ct)} style={{ background: 'none', border: 'none', color: T.accent, fontWeight: 800, cursor: 'pointer' }}>{busy === ct ? 'Reading…' : found[ct] ? 'Read again' : 'Read'}</button>} left={<div style={{ width: 6 }} />} />
++          right={<button type="button" data-testid={`ledger-read-${ct}`} disabled={!!busy} onClick={() => void read(ct)} className="hb-link-btn">{busy === ct ? 'Reading…' : found[ct] ? 'Read again' : 'Read'}</button>} left={<Coin sym={ct === 'ethereum' ? 'ETH' : ct === 'bitcoin' ? 'BTC' : 'SOL'} assetId={ct} size={36} />} />
+       ))}
+       {err && <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 0' }}>{err}</div>}
+-      <Btn disabled={!!busy || !(found.ethereum || found.bitcoin)} onClick={add} style={{ marginTop: 14 }}>{busy === 'add' ? 'Adding…' : 'Add Ledger wallet'}</Btn>
+       <div style={{ color: T.sub, fontSize: 12, marginTop: 12 }}>Sending works on EVM networks and Bitcoin. Solana is receive-only from a Ledger for now. If Chrome's device picker does not open in the popup, use Expand view and try again.</div>
+     </Screen>
+   );
+diff --git a/src/popup/wallet/Wallet.tsx b/src/popup/wallet/Wallet.tsx
+index e3771b9..d4537ec 100644
+--- a/src/popup/wallet/Wallet.tsx
++++ b/src/popup/wallet/Wallet.tsx
+@@ -4,7 +4,8 @@ import { TokenApprovalsPanel } from './features/provider';
+ import { T } from '../theme';
+ import { bg } from '../api';
+ import { isPopupContext, loadPasskeyStatus, openInTab } from '../biometricsUi';
+-import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion } from './ui';
++import { injectStyles, Ic, ICON, IconBtn, Coin, Empty, Skeleton, InkTabs, useTween, reducedMotion, PageTitle } from './ui';
++import { SearchBox } from './pickers';
+ import { SCREENS, type Nav } from './screens';
+ import { SwapTab } from './swap/SwapTab';
+ import { EarnTab } from './features/earn';
+@@ -104,7 +105,7 @@ export const Wallet: React.FC<{
+   const [sub, setSub] = useState<'crypto' | 'approvals'>('crypto');
+   // TW hides the earn branch for hardware accounts: ask the background whether Earn is available for the active wallet.
+   const [earnOk, setEarnOk] = useState(featureEnabled('earn'));
+-  useEffect(() => { if (!featureEnabled('earn')) return; bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount]);
++  useEffect(() => { if (!featureEnabled('earn')) return; bg({ type: 'earnAvailable' }).then((r) => { const ok = r?.available !== false; setEarnOk(ok); if (!ok) setTab((t) => (t === 'earn' ? 'home' : t)); }).catch(() => {}); }, [activeAccount, setTab]);
+   // Active wallet's real name (Settings > Wallets can rename it); never a hard-coded label.
+   const [walletName, setWalletName] = useState<string | null>(null);
+   const [, setNetworkVersion] = useState(0);
+@@ -230,17 +231,15 @@ export const Wallet: React.FC<{
+         {tab === 'trending' && <TrendingTab nav={nav} />}
+ 
+         {tab === 'swap' && featureEnabled('swap') && <>
+-          {!useTestnetSwap && <NetworkNotice kind="swap" onSwitch={() => selectSepolia('swap')} />}
+           {useTestnetSwap
+             ? <TestnetDefiTab key={`swap:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="swap" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
+-            : <SwapTab nav={nav} />}
++            : <SwapTab nav={nav} notice={<NetworkNotice kind="swap" onSwitch={() => selectSepolia('swap')} />} />}
+         </>}
+ 
+         {tab === 'earn' && earnOk && <>
+-          {!useTestnetEarn && <NetworkNotice kind="earn" onSwitch={() => selectSepolia('earn')} />}
+           {useTestnetEarn
+             ? <TestnetDefiTab key={`earn:${networkFilter}:${activeAccount}:${addrs.ethereum}`} kind="earn" networkId={networkFilter} accountKey={`${activeAccount}:${addrs.ethereum}`} nav={nav} backupRequired={backupRequired} refresh={onRefresh} />
+-            : <EarnTab nav={nav} />}
++            : <EarnTab nav={nav} notice={<NetworkNotice kind="earn" onSwitch={() => selectSepolia('earn')} />} />}
+         </>}
+       </div>
+ 
+@@ -345,14 +344,12 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
+ 
+   return (
+     <>
+-      <h2 style={{ fontSize: 22, margin: '8px 0 12px', textAlign: 'center' }}>Trending</h2>
+-      {(flags.perps || flags.predictions) && <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+-        {flags.perps && <button type="button" data-testid="open-perps" className="hb-tap" onClick={() => nav.push('perpsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Perps</button>}
+-        {flags.predictions && <button type="button" data-testid="open-predictions" className="hb-tap" onClick={() => nav.push('predictionsHome')} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 800, cursor: 'pointer' }}>Predictions</button>}
++      <PageTitle>Trending</PageTitle>
++      {(flags.perps || flags.predictions) && <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
++        {flags.perps && <button type="button" data-testid="open-perps" className="hb-tap" onClick={() => nav.push('perpsHome')} style={{ flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 700, cursor: 'pointer' }}>Perps</button>}
++        {flags.predictions && <button type="button" data-testid="open-predictions" className="hb-tap" onClick={() => nav.push('predictionsHome')} style={{ flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 12, border: 'none', background: T.accentSoft, color: T.accent, fontWeight: 700, cursor: 'pointer' }}>Predictions</button>}
+       </div>}
+-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '10px 14px', marginBottom: 10 }}>
+-        <Ic d={ICON.search} size={18} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Token name or contract address" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text }} />
+-      </div>
++      <SearchBox value={q} onChange={setQ} placeholder="Token name or contract address" label="Search trending tokens" />
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+         <Dropdown name="Network" align="left" minWidth={210} label={<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{net ? <Coin sym={chainByTwId(net.coinId)?.symbol ?? net.name.slice(0, 3).toUpperCase()} assetId={chainByTwId(net.coinId)?.id} size={18} /> : <Ic d={ICON.globe} size={16} />}{net ? net.name : 'Networks'}</span>}>
+           {(close) => <div>
+diff --git a/src/popup/wallet/addPassword.tsx b/src/popup/wallet/addPassword.tsx
+index fda8ba2..55bf9d9 100644
+--- a/src/popup/wallet/addPassword.tsx
++++ b/src/popup/wallet/addPassword.tsx
+@@ -12,7 +12,7 @@ import { loadPasskeyStatus } from '../biometricsUi';
+ // never the only way in. The biometric prompt both proves the user and lets the worker re-seal the biometric blob under the new password.
+ // The password is read once from an uncontrolled field and handed straight to the worker.
+ const EMPTY = { policy: { valid: false } as { valid: boolean; error?: string }, strength: EMPTY_STRENGTH as PasswordStrength, confirmFilled: false, match: false };
+-export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string; onDone: () => void; onBack?: () => void }> = ({ bg, name, onDone, onBack }) => {
++export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string; onDone: () => void; onBack?: () => void; heading?: boolean }> = ({ bg, name, onDone, onBack, heading = true }) => {
+   const pw = useSecretField(); const confirm = useSecretField();
+   const [meta, setMeta] = useState(EMPTY); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [done, setDone] = useState(false);
+   const onInput = () => { const a = pw.peek(); const b = confirm.peek(); setMeta({ policy: validatePassword(a), strength: passwordStrength(a), confirmFilled: b.length > 0, match: a.length > 0 && a === b }); };
+@@ -31,7 +31,7 @@ export const AddPassword: React.FC<{ bg: (m: any) => Promise<any>; name: string;
+   };
+   return <form onSubmit={submit} style={{ padding: 20, maxWidth: 420, margin: '0 auto' }} data-testid="add-password">
+     {onBack && <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: T.sub, cursor: 'pointer', padding: 0, marginBottom: 12 }}>‹ Back</button>}
+-    <h2 style={{ margin: '8px 0 4px' }}>Add a password</h2>
++    {heading && <h2 style={{ margin: '8px 0 4px' }}>Add a password</h2>}
+     <div style={{ color: T.sub, marginBottom: 16 }}>Your wallet currently unlocks only with {name}. Add a password so you can always unlock it, for example when {name} is unavailable. {name} keeps working too. Harbour cannot recover this password, so keep it somewhere safe.</div>
+     <PasswordField label="New password" inputRef={pw.ref} onInput={onInput} placeholder="Min 8 characters" error={meta.policy.error} autoFocus disabled={busy || done}/>
+     <PasswordMeter strength={meta.strength}/>
+diff --git a/src/popup/wallet/defi/TestnetDefiTab.tsx b/src/popup/wallet/defi/TestnetDefiTab.tsx
+index 5cd2d9e..d09bfaa 100644
+--- a/src/popup/wallet/defi/TestnetDefiTab.tsx
++++ b/src/popup/wallet/defi/TestnetDefiTab.tsx
+@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
+ import { formatUnits, isAddress, zeroAddress } from 'viem';
+ import { bg } from '../../api';
+ import { T } from '../../theme';
+-import { Btn, Spinner, Sheet, Ic, ICON } from '../ui';
++import { Btn, Spinner, Sheet, Ic, ICON, PageTitle } from '../ui';
+ import type { Nav } from '../screens';
+ import { BASE_SEPOLIA, SEPOLIA } from '../../../integrations/testnet-defi/config';
+ import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../integrations/testnet-defi/types';
+@@ -107,7 +107,7 @@ export const TestnetDefiTab: React.FC<{
+   // The host renders this tab only on its supported testnet (Wallet.tsx shows the switch prompt otherwise).
+   if (!supported) return null;
+   return <div className="hb-defi" data-testid={`testnet-${kind}`}>
+-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 className="hb-page-title">{title}</h2><button type="button" disabled={busy || loading} onClick={() => void load()} style={{ color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Refresh</button></div>
++    <PageTitle action={<button type="button" className="hb-link-btn" disabled={busy || loading} onClick={() => void load()}>{loading ? 'Refreshing…' : 'Refresh'}</button>}>{title}</PageTitle>
+     <Message>{title} testing is enabled on {networkName} via {kind === 'earn' ? 'Aave V3 (AaveKit)' : 'Uniswap API'}. Test tokens have no monetary value.</Message>
+     {loading && <div role="status" style={{ padding: 18, textAlign: 'center' }}><Spinner size={22} /><p style={hint}>Checking live {kind === 'earn' ? 'reserves and balances' : 'token balances'}…</p></div>}
+     {error && <Message error>{error}</Message>}
+diff --git a/src/popup/wallet/features/earn.tsx b/src/popup/wallet/features/earn.tsx
+index 33b2516..3e5af16 100644
+--- a/src/popup/wallet/features/earn.tsx
++++ b/src/popup/wallet/features/earn.tsx
+@@ -5,7 +5,7 @@ import { userText } from '../../../core/errors';
+ import React, { useCallback, useEffect, useState } from 'react';
+ import { T } from '../../theme';
+ import { bg } from '../../api';
+-import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, Spinner } from '../ui';
++import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, Spinner, PageTitle, SectionLabel } from '../ui';
+ import type { Ctx, Nav } from '../screens';
+ import type { StakeListItem, Position, StakeAction } from '../../../core/staking/types';
+ import { fmtRaw, pctText, remaining, notifyEarnChanged, onEarnChanged, ValidatorAvatar, ValidatorSheet, Notice, type ValidatorView } from './earnParts';
+@@ -64,9 +64,11 @@ const StakingListBody: React.FC<{ nav: Nav }> = ({ nav }) => {
+   );
+ };
+ /** Home bottom-tab body (replaces the old static "Native Staking" card). */
+-export const EarnTab: React.FC<{ nav: Nav }> = ({ nav }) => (
++export const EarnTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav, notice }) => (
+   <>
+-    <h2 style={{ fontSize: 22, margin: '8px 0 12px', textAlign: 'center' }}>Native Staking</h2>
++    <PageTitle>Earn</PageTitle>
++    {notice}
++    <SectionLabel first>Native staking</SectionLabel>
+     <StakingListBody nav={nav} />
+   </>
+ );
+diff --git a/src/popup/wallet/features/earnParts.tsx b/src/popup/wallet/features/earnParts.tsx
+index ec5fbad..075ba9f 100644
+--- a/src/popup/wallet/features/earnParts.tsx
++++ b/src/popup/wallet/features/earnParts.tsx
+@@ -3,6 +3,7 @@ import { userText } from '../../../core/errors';
+ import React, { useState } from 'react';
+ import { T } from '../../theme';
+ import { Sheet, Ic, ICON, Empty } from '../ui';
++import { SearchBox } from '../pickers';
+ import { formatUnits } from '../../../core/chains/adapters/types';
+ import { stakingAsset } from '../../../core/staking/registry';
+ import { validatorLogoPath } from '../../../core/assetLogos';
+@@ -58,7 +59,7 @@ export const ValidatorSheet: React.FC<{ chainId: string; symbol: string; decimal
+   );
+   return (
+     <Sheet title="Validators" onClose={onClose}>
+-      {validators.length > 8 && <input aria-label="Search validators" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 14, marginBottom: 6 }} />}
++      {validators.length > 8 && <SearchBox value={q} onChange={setQ} placeholder="Search validators" />}
+       {!list.length && <Empty title="No validators found" icon="search" />}
+       {active.length > 0 && <div style={{ fontSize: 13, color: T.sub, fontWeight: 600, margin: '6px 0 0' }}>Active</div>}
+       {active.map(row)}
+diff --git a/src/popup/wallet/features/predictions.tsx b/src/popup/wallet/features/predictions.tsx
+index dd7599e..562fcb5 100644
+--- a/src/popup/wallet/features/predictions.tsx
++++ b/src/popup/wallet/features/predictions.tsx
+@@ -2,7 +2,8 @@
+ // `predictions` flag is on; trading also requires Polymarket's region check to pass (checked in the background).
+ import React, { useCallback, useEffect, useState } from 'react';
+ import { T } from '../../theme';
+-import { Screen, Btn, Row, Empty, Spinner } from '../ui';
++import { Screen, Btn, Row, Empty, Spinner, InkTabs } from '../ui';
++import { SearchBox } from '../pickers';
+ import { Notice } from './earnParts';
+ import type { Ctx } from '../screens';
+ 
+@@ -24,14 +25,13 @@ const PredictionsHome: React.FC<Ctx> = (c) => {
+   const mk = useLoad(() => must(c.bg({ type: 'predictionMarkets', q: q || undefined })), [q]);
+   const pf = useLoad(() => (tab === 'portfolio' ? must(c.bg({ type: 'predictionPortfolio' })) : Promise.resolve(null)), [tab]);
+   const [wrap, setWrap] = useState(''); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('');
+-  const pill = (on: boolean): React.CSSProperties => ({ flex: 1, padding: '9px 0', borderRadius: 999, border: 'none', cursor: 'pointer', fontWeight: 800, background: on ? T.accent : T.bgAlt, color: on ? 'var(--hb-on-brand)' : T.text });
+   const doWrap = async () => { setBusy(true); setMsg(''); const r = await c.bg({ type: 'predictionWrap', amount: String(Math.round(Number(wrap) * 1e6)) }).catch((e) => ({ ok: false, error: String(e?.message ?? e) })); setBusy(false); setMsg(r?.ok ? 'pUSD ready to trade' : r?.error ?? 'Failed'); if (r?.ok) pf.reload(); };
+   return (
+     <Screen title="Predictions" onBack={c.nav.pop}>
+       {mk.data?.tradingBlocked && <Notice>Polymarket does not allow trading from your region{mk.data.country ? ` (${mk.data.country})` : ''}. You can still browse markets.</Notice>}
+-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}><button type="button" style={pill(tab === 'markets')} onClick={() => setTab('markets')}>Markets</button><button type="button" style={pill(tab === 'portfolio')} onClick={() => setTab('portfolio')}>Portfolio</button></div>
++      <InkTabs tabs={['markets', 'portfolio'] as const} value={tab} onChange={setTab} label={(t) => (t === 'markets' ? 'Markets' : 'Portfolio')} pad="8px 0" gap={20} style={{ marginBottom: 12 }} />
+       {tab === 'markets' ? <>
+-        <div style={{ ...card, padding: '8px 12px' }}><input style={{ ...input, fontSize: 14 }} placeholder="Search markets" value={q} onChange={(e) => setQ(e.target.value)} /></div>
++        <SearchBox value={q} onChange={setQ} placeholder="Search markets" />
+         {mk.loading && !mk.data ? <Spinner /> : mk.err ? <Notice tone="error" action={{ label: 'Retry', onClick: mk.reload }}>{mk.err}</Notice> : !mk.data?.markets?.length ? <Empty title="No markets" /> :
+           mk.data.markets.map((m: any) => <Row key={m.id} onClick={() => c.nav.push('predictionMarket', { id: m.id })} left={m.image ? <img src={m.image} alt="" width={36} height={36} style={{ borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 36 }} />}
+             title={<span style={{ whiteSpace: 'normal', lineHeight: 1.3 }}>{m.question}</span>} sub={`${m.outcomes.map((o: string, i: number) => `${o} ${cents(m.prices[i])}`).join(' · ')} · Vol ${usd(m.volume, 0)}`} />)}
+diff --git a/src/popup/wallet/features/sentimentHelp.tsx b/src/popup/wallet/features/sentimentHelp.tsx
+index 235a60e..590a0cf 100644
+--- a/src/popup/wallet/features/sentimentHelp.tsx
++++ b/src/popup/wallet/features/sentimentHelp.tsx
+@@ -2,7 +2,7 @@
+ import React, { useState } from 'react';
+ import { T } from '../../theme';
+ import type { Ctx } from '../screens';
+-import { Screen, Btn, Empty, Ic, ICON, Row, Sheet, Coin } from '../ui';
++import { Screen, Btn, Empty, Ic, ICON, Row, Sheet, Coin, SectionLabel, cardStyle } from '../ui';
+ import { Notice, Chip, ChipRow, ListSkeleton, ErrorBox, openHttps, useAsync, ago } from './rampKit';
+ 
+ interface Item { id: string; kind: 'article' | 'post'; title: string; snippet: string; url: string; source: string; at: number; label: 'positive' | 'neutral' | 'negative'; labelBy: 'source' | 'lexicon' }
+@@ -60,19 +60,19 @@ export const HelpScreen: React.FC<Ctx> = (c) => {
+         <div className="hb-rise">
+           {link('Help Center', 'Opens in a new tab', cfg?.helpCenterUrl, 'help')}
+           {link('Support', 'Opens in a new tab', cfg?.guideUrl, 'support')}
+-          <button type="button" onClick={() => setEdit(true)} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: '4px 2px 10px' }}>Edit support links</button>
+-          <h3 style={{ fontSize: 15, margin: '8px 2px' }}>Announcements</h3>
++          <button type="button" className="hb-link-btn" onClick={() => setEdit(true)} style={{ margin: '2px 0 4px' }}>Edit support links</button>
++          <SectionLabel>Announcements</SectionLabel>
+           {an.loading ? <ListSkeleton n={2} /> : !an.data?.configured ? <Notice>Harbour has no public announcements feed. Add your own JSON feed URL under Edit support links to see announcements here.</Notice>
+             : an.data.ok === false ? <Notice tone="error" action={{ label: 'Retry', onClick: an.reload }}>{an.data.error ?? 'Announcements are unavailable.'}</Notice>
+             : an.data.items.length === 0 ? <Empty title="No announcements" icon="bell" /> : an.data.items.map((x: any) => <Row key={x.id} left={<span style={{ color: T.accent }}><Ic d={ICON.bell} size={20} /></span>} title={x.title} sub={x.body || (x.at ? ago(x.at) : '')} onClick={x.url ? () => openHttps(x.url) : undefined} />)}
+-          <h3 style={{ fontSize: 15, margin: '14px 2px 6px' }}>FAQ</h3>
++          <SectionLabel>FAQ</SectionLabel>
+           {h.data!.faq.map((g) => <div key={g.title} style={{ marginBottom: 10 }}><div style={{ fontSize: 12, color: T.sub, fontWeight: 700, margin: '6px 2px' }}>{g.title}</div>
+             {g.items.map((it) => { const k = `${g.title}:${it.q}`; const o = open === k; return (
+-              <div key={k} style={{ background: T.bgAlt, borderRadius: 14, marginBottom: 8 }}>
++              <div key={k} style={{ ...cardStyle, marginBottom: 8, overflow: 'hidden' }}>
+                 <button type="button" aria-expanded={o} onClick={() => setOpen(o ? null : k)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: 'none', background: 'transparent', padding: '12px 14px', cursor: 'pointer', color: T.text, fontWeight: 700, textAlign: 'left', fontSize: 14 }}>{it.q}<Ic d={o ? ICON.down : ICON.chevron} size={16} /></button>
+                 {o && <div style={{ padding: '0 14px 12px', color: T.sub, fontSize: 13, lineHeight: 1.5 }}>{it.a}</div>}
+               </div>); })}</div>)}
+-          <h3 style={{ fontSize: 15, margin: '14px 2px 6px' }}>Developer</h3>
++          <SectionLabel>Developer</SectionLabel>
+           <Row left={<span style={{ color: T.accent }}><Ic d={ICON.card} size={22} /></span>} title="Ramp API keys" sub="Provider keys for buy and sell quotes" right={<Ic d={ICON.chevron} size={16} />} onClick={() => c.nav.push('rampApiKeys')} />
+           <div style={{ textAlign: 'center', color: T.sub, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>Harbour Wallet {ver() ? `version ${ver()}` : ''}<br />Data sources: CoinGecko, DeFiLlama, public block explorers, open.er-api.com. No analytics.</div>
+         </div>)}
+diff --git a/src/popup/wallet/layout.css b/src/popup/wallet/layout.css
+index d3f8705..baf13d5 100644
+--- a/src/popup/wallet/layout.css
++++ b/src/popup/wallet/layout.css
+@@ -12,19 +12,21 @@
+ .hb-settings-selection { min-height: 56px; border-radius: 10px; transition: background 140ms ease; }
+ .hb-settings-selection[aria-checked="true"] { color: var(--hb-brand); }
+ .hb-settings-selection:focus-visible { outline-offset: -3px; }
+-.hb-section-label { letter-spacing: .4px; }
++.hb-section-label { letter-spacing: .2px; }
++.hb-settings-group + .hb-section-label, .hb-note + .hb-section-label { margin-top: 4px !important; }
++.hb-screen-body > .hb-search-wrap:first-child { margin-top: -2px; }
+ .hb-choice { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; justify-content: space-between; text-align: left; padding: 12px 14px; color: var(--hb-ink); background: var(--hb-paper); border: 1px solid var(--hb-line); border-radius: 12px; cursor: pointer; }
+ .hb-choice > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .hb-choice:disabled { opacity: .55; cursor: not-allowed; }
+ .hb-choice-list { display: grid; gap: 6px; }
+ .hb-choice-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 14px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--hb-ink); text-align: left; cursor: pointer; }
+ .hb-choice-option[aria-pressed="true"] { background: var(--hb-brand-soft); border-color: var(--hb-balance-line); color: var(--hb-brand); }
+-.hb-defi { padding: 8px 4px 16px; }
++.hb-defi { padding: 0 0 16px; }
+ .hb-page-title { font-size: 22px; line-height: 1.3; letter-spacing: -.5px; margin: 4px 0 16px; }
+ .hb-defi-field { display: flex; flex-direction: column; gap: 8px; margin: 22px 0 0; font-size: 13px; font-weight: 600; }
+ .hb-defi-field > input { margin-top: 0 !important; font-weight: 400; }
+ .hb-defi-field .hb-choice { font-weight: 400; }
+-.hb-defi-field + .hb-tap { margin-top: 24px; }
++.hb-defi-field + :is(.hb-tap, .hb-btn) { margin-top: 24px; }
+ .hb-defi-asset-meta { display: grid; gap: 10px; margin: 12px 0 20px; color: var(--hb-muted); font-size: 12px; }
+ .hb-defi-asset-meta > div, .hb-defi-stat { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+ .hb-defi-asset-meta strong { color: var(--hb-ink); font-weight: 500; }
+@@ -37,6 +39,9 @@
+ .hb-defi-stat { font-size: 12px; color: var(--hb-muted); }
+ .hb-defi-stat strong { color: var(--hb-ink); font-weight: 500; }
+ .hb-defi-reserve p { border-top: 1px solid var(--hb-line); padding-top: 12px; margin: 0; }
+-.hb-defi details + input, .hb-defi details .hb-tap { margin-top: 12px; }
++.hb-defi details + input, .hb-defi details :is(.hb-tap, .hb-btn) { margin-top: 12px; }
+ @media (hover: hover) { .hb-choice-option:hover, .hb-settings-selection:hover { background: var(--hb-paper); } .hb-choice:hover { border-color: var(--hb-focus); } }
+ @media (max-width: 360px) { .hb-settings-row, .hb-settings-switch-row { gap: 10px !important; padding: 14px 12px !important; } .hb-defi { padding-left: 0; padding-right: 0; } }
++
++/* A section label that opens a screen sits flush with the body's top padding. */
++.hb-screen-body > :first-child > .hb-section-label:first-child, .hb-screen-body > .hb-section-label:first-child { margin-top: 0 !important; }
+diff --git a/src/popup/wallet/networkScreens.tsx b/src/popup/wallet/networkScreens.tsx
+index 0649932..f8f71ec 100644
+--- a/src/popup/wallet/networkScreens.tsx
++++ b/src/popup/wallet/networkScreens.tsx
+@@ -1,6 +1,6 @@
+ import React, { useEffect, useState } from 'react';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle } from './ui';
++import { Screen, Sheet, Btn, Ic, ICON, Coin, Spinner, inputStyle, Empty, Note, SectionLabel } from './ui';
+ import { syncNetworks } from './networkStore';
+ import { networkOptions } from './data';
+ import { NETWORK_CATEGORIES, NETWORK_CATEGORY_LABEL } from '../../core/chains/index';
+@@ -48,12 +48,9 @@ export const CustomNetworksScreen: React.FC<Ctx> = (c) => {
+             const list: any[] = cat === 'custom' ? data.custom : data.builtin.filter((n: any) => !!n.testnet === (cat === 'testnet'));
+             if (!list.length && cat !== 'custom') return null;
+             return <div key={cat} data-testid={`networks-${cat}`}>
+-              <div style={{ fontWeight: 700, margin: '18px 0 10px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
++              <SectionLabel>{NETWORK_CATEGORY_LABEL[cat]}</SectionLabel>
+               {list.length === 0 ? (
+-                <div data-testid="networks-empty" style={{ textAlign: 'center', padding: '8px 0' }}>
+-                  <div style={{ fontWeight: 700, fontSize: 16 }}>No custom networks added</div>
+-                  <div style={{ color: T.sub, fontSize: 13, marginTop: 6 }}>Tap “Add custom network” to get started!</div>
+-                </div>
++                <div data-testid="networks-empty"><Empty title="No custom networks added" sub="Tap “Add custom network” to get started!" icon="globe" /></div>
+               ) : list.map((n: any) => cat === 'custom'
+                 ? <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} symbol={n.symbol} sub={`Chain ID ${n.chainId} · ${n.symbol}`} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />
+                 : <NetRow key={n.chainId} testid={`network-${n.chainId}`} name={n.name} chainId={n.chainId} sub={n.overridden ? 'Custom RPC' : undefined} onEdit={() => c.nav.push('editNetwork', { chainId: n.chainId })} />)}
+@@ -94,8 +91,12 @@ export const NetworkFormScreen: React.FC<Ctx> = (c) => {
+   if (!loaded) return <Screen title="Custom network" onBack={c.nav.pop}><div style={{ textAlign: 'center', paddingTop: 40 }}><Spinner size={28} /></div></Screen>;
+   const f = err?.field;
+   return (
+-    <Screen title={isEdit ? (builtin ? `${name} RPC` : 'Edit network') : 'Add custom network'} onBack={c.nav.pop}>
+-      <div style={{ color: T.sub, fontSize: 13, textAlign: 'center', marginTop: 4 }}>We only support EVM networks currently.</div>
++    <Screen title={isEdit ? (builtin ? `${name} RPC` : 'Edit network') : 'Add custom network'} onBack={c.nav.pop} footer={<>
++        <Btn disabled={!complete || busy} onClick={save}>{busy ? 'Checking RPC…' : isEdit ? 'Save' : 'Add custom network'}</Btn>
++        {isEdit && !builtin && <Btn variant="ghost" onClick={() => setConfirm(true)}>Delete network</Btn>}
++        {builtin && overridden && <Btn variant="ghost" disabled={busy} onClick={remove}>Reset to default RPC</Btn>}
++      </>}>
++      <Note style={{ marginTop: 0 }}>We only support EVM networks currently.</Note>
+       <Field id="net-name" testid="network-name-input" label="Network name" value={name} onChange={setName} readOnly={!!builtin} error={f === 'name'} autoFocus={!isEdit} />
+       <Field id="net-rpc" testid="network-rpc-input" label="RPC URL" value={rpc} onChange={setRpc} inputMode="url" error={f === 'rpcUrl'} autoFocus={!!builtin} />
+       <Field id="net-chain" testid="network-chainid-input" label="Chain ID" value={chainId} onChange={(v) => setChainId(v.replace(/[^0-9]/g, ''))} inputMode="numeric" readOnly={isEdit} error={f === 'chainId'} />
+@@ -103,11 +104,6 @@ export const NetworkFormScreen: React.FC<Ctx> = (c) => {
+       {!builtin && <Field id="net-explorer" testid="network-explorer-input" label="Block explorer URL (Optional)" value={explorer} onChange={setExplorer} inputMode="url" error={f === 'explorerUrl'} />}
+       {err && <div role="alert" data-testid="network-error" style={{ color: T.error, fontSize: 13, marginTop: 12 }}>{err.error}</div>}
+       <Warn />
+-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '18px 0 24px' }}>
+-        <Btn disabled={!complete || busy} onClick={save}>{busy ? 'Checking RPC…' : isEdit ? 'Save' : 'Add custom network'}</Btn>
+-        {isEdit && !builtin && <Btn variant="ghost" onClick={() => setConfirm(true)}>Delete network</Btn>}
+-        {builtin && overridden && <Btn variant="ghost" disabled={busy} onClick={remove}>Reset to default RPC</Btn>}
+-      </div>
+       {confirm && <Sheet title="Delete network?" onClose={() => setConfirm(false)}>
+         <div style={{ color: T.sub, marginBottom: 14 }}>{name} will be removed. Tokens you added on it are kept but hidden until you add the network again.</div>
+         <Btn onClick={remove} disabled={busy} style={{ background: T.error }}>Delete</Btn><div style={{ height: 10 }} /><Btn variant="ghost" onClick={() => setConfirm(false)}>Cancel</Btn>
+diff --git a/src/popup/wallet/pickers.tsx b/src/popup/wallet/pickers.tsx
+index 1306eed..0c2620f 100644
+--- a/src/popup/wallet/pickers.tsx
++++ b/src/popup/wallet/pickers.tsx
+@@ -11,16 +11,16 @@ const POPULAR = ['ethereum', 'base', 'smartchain', 'polygon', 'arbitrum', 'optim
+ const byName = (a: PickNetwork, b: PickNetwork) => a.name.localeCompare(b.name);
+ 
+ export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string }> = ({ value, onChange, placeholder, autoFocus, label }) => (
+-  <div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '0 14px', minHeight: 46 }}>
++  <div className="hb-search-wrap"><div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '0 14px', minHeight: 46 }}>
+     <span style={{ color: T.sub, display: 'inline-flex' }}><Ic d={ICON.search} size={18} /></span>
+     <input type="text" inputMode="search" aria-label={label ?? placeholder} value={value} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} autoComplete="off"
+       style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text, padding: '12px 0' }} />
+     {value && <button type="button" className="hb-tap" aria-label="Clear search" onClick={() => onChange('')} style={{ background: 'none', border: 'none', color: T.sub, cursor: 'pointer', display: 'inline-flex', padding: 4 }}><Ic d={ICON.close} size={16} /></button>}
+-  </div>
++  </div></div>
+ );
+ 
+ const Heading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', color: T.sub, margin: '16px 0 2px' }}>{children}</div>
++  <div className="hb-section-label" style={{ fontSize: 12, fontWeight: 700, color: T.sub, margin: '12px 2px 4px' }}>{children}</div>
+ );
+ 
+ export const NetworkPicker: React.FC<{ items: PickNetwork[]; onPick: (n: PickNetwork) => void; selectedId?: string; autoFocus?: boolean }> = ({ items, onPick, selectedId, autoFocus = true }) => {
+diff --git a/src/popup/wallet/screens.tsx b/src/popup/wallet/screens.tsx
+index 8947010..f14c532 100644
+--- a/src/popup/wallet/screens.tsx
++++ b/src/popup/wallet/screens.tsx
+@@ -1,6 +1,6 @@
+ import React, { useEffect, useMemo, useRef, useState } from 'react';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs } from './ui';
++import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Coin, Row, Skeleton, Empty, InkTabs, SectionLabel } from './ui';
+ import { SWAP_SCREENS } from './swap/screens';
+ import { FEATURE_SCREENS } from './features';
+ import { SETTINGS_SCREENS } from './settingsScreens';
+@@ -209,12 +209,8 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
+ 
+   return (
+     <Screen title="Search" onBack={c.nav.pop} right={tab === 'crypto' ? <IconBtn icon="plus" title="Add custom token" onClick={() => c.nav.push('selectTokenNetwork')} /> : undefined}>
+-      <div style={{ display: 'flex', gap: 20, borderBottom: `1px solid ${T.border}`, marginBottom: 12 }}>
+-        {(['crypto', 'dapps'] as const).map((t2) => (
+-          <button key={t2} onClick={() => setTab(t2)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', fontWeight: 700, fontSize: 15, color: tab === t2 ? T.text : T.sub, borderBottom: tab === t2 ? `2px solid ${T.accent}` : '2px solid transparent' }}>{t2 === 'crypto' ? 'Crypto' : 'DApps'}</button>
+-        ))}
+-      </div>
+-      {tab === 'crypto' && <div style={{ marginBottom: 12 }}><SearchBox autoFocus value={cq} onChange={setCq} placeholder="Token name or contract address" /></div>}
++      <InkTabs tabs={['crypto', 'dapps'] as const} value={tab} onChange={setTab} label={(t2) => (t2 === 'crypto' ? 'Crypto' : 'DApps')} pad="8px 0" gap={20} style={{ marginBottom: 12 }} />
++      {tab === 'crypto' && <SearchBox autoFocus value={cq} onChange={setCq} placeholder="Token name or contract address" />}
+       {tab === 'crypto' ? <>
+         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }} className="scrollbar-hide">
+           <button onClick={() => setNet(null)} title="All Networks" style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: `2px solid ${net === null ? T.accent : 'transparent'}`, background: T.bgAlt, color: net === null ? T.accent : T.sub, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>All</button>
+@@ -259,14 +255,14 @@ export const NetworkSelectorScreen: React.FC<Ctx> = (c) => {
+   };
+   return (
+     <Screen title="Select network" onBack={c.nav.pop}>
+-      <div style={{ marginBottom: 12 }}><SearchBox autoFocus value={q} onChange={setQ} placeholder="Network Name" /></div>
++      <SearchBox autoFocus value={q} onChange={setQ} placeholder="Search networks" />
+       {!nq && (
+         <Row onClick={() => choose(null)} left={<div style={{ width: 40, height: 40, borderRadius: 999, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic d={ICON.globe} size={20} /></div>} title="All Networks" right={<Radio on={sel === null} />} />
+       )}
+       {NETWORK_CATEGORIES.map((cat) => {
+         const list = nets.filter((n) => n.category === cat); if (!list.length) return null;
+         return <div key={cat} data-testid={`networks-${cat}`}>
+-          <div style={{ fontSize: 13, fontWeight: 700, color: T.sub, margin: '14px 2px 6px' }}>{NETWORK_CATEGORY_LABEL[cat]}</div>
++          <SectionLabel>{NETWORK_CATEGORY_LABEL[cat]}</SectionLabel>
+           {list.map((n) => <Row key={n.id} onClick={() => choose(n.id)} left={<Coin sym={n.sym} assetId={n.id} size={40} color={n.color} />} title={n.name} right={<Radio on={sel === n.id} />} />)}
+         </div>;
+       })}
+diff --git a/src/popup/wallet/send/confirm.tsx b/src/popup/wallet/send/confirm.tsx
+index ca1df3e..e53d28d 100644
+--- a/src/popup/wallet/send/confirm.tsx
++++ b/src/popup/wallet/send/confirm.tsx
+@@ -96,7 +96,10 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
+   );
+ 
+   return (
+-    <Screen title="Confirm" onBack={phase === 'sending' ? () => {} : c.nav.pop}>
++    <Screen title="Confirm" onBack={phase === 'sending' ? () => {} : c.nav.pop} footer={<>
++      <Btn disabled={!ready} onClick={onConfirm}>{phase === 'sending' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Spinner size={16} color="currentColor" />Sending…</span> : 'Confirm'}</Btn>
++      <div style={{ fontSize: 12, color: T.sub, textAlign: 'center' }}>Signed on this device with your active account. Transactions cannot be reversed.</div>
++    </>}>
+       <div style={{ textAlign: 'center', padding: '8px 0 14px' }}>
+         <Coin sym={a.sym} assetId={a.id} color={a.color} size={48} />
+         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }} data-testid="confirm-amount">{amountTxt} {a.sym}</div>
+@@ -110,10 +113,6 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
+       {quote && quote.tiers.length > 1 && <div style={{ fontSize: 12, color: T.sub }}>Speed: {TIER_LABEL[d.tier]}{picked?.detail ? ` · ${picked.detail}` : ''}</div>}
+       {q.error && <Notice kind="error" testid="confirm-error">{q.error}</Notice>}
+       {issues.map((i, k) => <Notice key={k} kind={i.blocking ? 'error' : 'warning'}>{i.message}</Notice>)}
+-      <div style={{ marginTop: 22 }}>
+-        <Btn disabled={!ready} onClick={onConfirm}>{phase === 'sending' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Spinner size={16} color="currentColor" />Sending…</span> : 'Confirm'}</Btn>
+-      </div>
+-      <div style={{ fontSize: 12, color: T.sub, textAlign: 'center', marginTop: 10 }}>Signed on this device with your active account. Transactions cannot be reversed.</div>
+       {feeSheet && quote && <FeeSheet quote={quote} tier={d.tier} fiatOf={feeFiat} onPick={(t) => setDraft({ tier: t })} onClose={() => setFeeSheet(false)} />}
+       {guard && <Sheet title="Before you send" onClose={() => setGuard(false)}>
+         {risks.map((r, i) => <Notice key={i} kind="warning">{r}</Notice>)}
+diff --git a/src/popup/wallet/send/prepare.tsx b/src/popup/wallet/send/prepare.tsx
+index 372f10e..e5034a4 100644
+--- a/src/popup/wallet/send/prepare.tsx
++++ b/src/popup/wallet/send/prepare.tsx
+@@ -83,7 +83,7 @@ export const SendPrepare: React.FC<Ctx> = (c) => {
+   const err = q.error;
+ 
+   return (
+-    <Screen title={`Send ${a.sym}`} onBack={c.nav.pop}>
++    <Screen title={`Send ${a.sym}`} onBack={c.nav.pop} footer={<Btn disabled={!canNext} onClick={() => c.nav.push('sendConfirm', { assetId })}>Next</Btn>}>
+       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Coin sym={a.sym} assetId={a.id} color={a.color} size={32} /><div><div style={{ fontWeight: 700 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{a.token ? `on ${chain.name}` : chain.name}</div></div></div>
+       <div style={label}>Address or Domain Name</div>
+       <div style={{ position: 'relative' }}>
+@@ -118,7 +118,6 @@ export const SendPrepare: React.FC<Ctx> = (c) => {
+       <FeeRow quote={quote} tier={d.tier} loading={q.loading || (!q.data && !q.error)} fiat={quote ? feeFiat(tierOf(quote, d.tier)?.fee ?? '0') : undefined} onEdit={quote ? () => setFeeSheet(true) : undefined} />
+       {err && <Notice kind="error" testid="send-error">{err} <button className="hb-tap" style={{ ...chip, marginLeft: 6 }} onClick={() => void q.refresh()}>Retry</button></Notice>}
+       {issues.map((i, k) => <Notice key={k} kind={i.blocking ? 'error' : 'warning'} testid={`send-issue-${i.code}`}>{i.message}</Notice>)}
+-      <div style={{ marginTop: 22 }}><Btn disabled={!canNext} onClick={() => c.nav.push('sendConfirm', { assetId })}>Next</Btn></div>
+       {scan && <AddressScanner onResult={apply} onClose={() => setScan(false)} />}
+       {showBook && <ContactsSheet contacts={book ?? []} ct={chain.ct} evm={chain.kind === 'evm'} onPick={(_c, address) => { setDraft({ to: address }); setShowBook(false); }} onClose={() => setShowBook(false)} />}
+       {feeSheet && quote && <FeeSheet quote={quote} tier={d.tier} fiatOf={feeFiat} onPick={(t) => setDraft({ tier: t })} onClose={() => setFeeSheet(false)} />}
+diff --git a/src/popup/wallet/send/receive.tsx b/src/popup/wallet/send/receive.tsx
+index 9ec02ed..6aa3849 100644
+--- a/src/popup/wallet/send/receive.tsx
++++ b/src/popup/wallet/send/receive.tsx
+@@ -24,7 +24,7 @@ export const ReceiveSelect: React.FC<Ctx> = (c) => {
+   const rows = useMemo(() => { const t = q.trim().toLowerCase(); return allAssets().filter((a) => !hidden.has(a.id) || !a.token).filter((a) => !t || a.name.toLowerCase().includes(t) || a.sym.toLowerCase().includes(t)).sort((a, b) => Number(b.id === c.networkFilter && b.native) - Number(a.id === c.networkFilter && a.native)); }, [q, c.hiddenAssets, c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+   return (
+     <Screen title="Receive" onBack={c.nav.pop}>
+-      <SearchBox value={q} onChange={setQ} placeholder="Search" />
++      <SearchBox value={q} onChange={setQ} placeholder="Search assets" />
+       {rows.length === 0 ? <Empty title="No results" sub="Try a different network or asset name." icon="search" />
+         : rows.map((a) => <Row key={a.id} onClick={() => (a.token ? c.nav.push('receiveAsset', { assetId: a.id }) : c.nav.push('receiveChain', { blockchainId: chainOfAsset(a)?.id ?? a.id }))}
+           left={<Coin sym={a.sym} assetId={a.id} color={a.color} />} title={a.name} sub={chainCategory(a.id) === 'testnet' ? 'Testnet' : a.token ? `${a.sym} · ${networkByChainId(a.chainId)?.name ?? ''}` : a.sym} />)}
+@@ -41,21 +41,21 @@ export const ReceiveView: React.FC<{ c: Ctx; a: Asset }> = ({ c, a }) => {
+   const share = async () => { try { if (navigator.share) await navigator.share({ text: addr }); else { await navigator.clipboard.writeText(addr); setShared('Address copied'); setTimeout(() => setShared(''), 1600); } } catch { /* user cancelled */ } };
+   if (!addr) return <Screen title={`Receive ${a.sym}`} onBack={c.nav.pop}><Empty title="No address for this network" sub={`The active account does not have a ${chain?.name ?? a.name} address yet. Switch accounts or refresh and try again.`} icon="receive" /></Screen>;
+   return (
+-    <Screen title={`Receive ${a.sym}`} onBack={c.nav.pop}>
+-      <div style={{ textAlign: 'center', paddingTop: 8 }} className="hb-rise">
++    <Screen title={`Receive ${a.sym}`} onBack={c.nav.pop} footer={<div style={{ display: 'flex', gap: 10 }}>
++          <Btn variant="ghost" onClick={() => void share()}>{shared || 'Share'}</Btn>
++          <CopyBtn text={addr} />
++        </div>}>
++      <div style={{ textAlign: 'center', paddingTop: 4 }} className="hb-rise">
+         <Coin sym={a.sym} assetId={a.id} size={44} color={a.color} />
+         <div style={{ fontWeight: 700, marginTop: 8 }}>{a.name}</div>
+         <div style={{ color: T.sub, fontSize: 13, marginBottom: 16 }}>{a.token ? `${a.sym} on ${chain?.name ?? ''}` : chain?.name ?? a.name}</div>
+         <div style={{ display: 'inline-block', padding: 12, background: 'var(--hb-on-brand)', border: `1px solid ${T.border}`, borderRadius: 16 }}>
+           {qr ? <img src={qr} width={200} height={200} alt={`QR code of your ${a.name} address`} data-testid="receive-qr" /> : qrErr ? <div style={{ width: 200, height: 200, display: 'grid', placeItems: 'center', color: T.error, fontSize: 13 }}>QR code could not be drawn. Copy the address below.</div> : <Skeleton w={200} h={200} r={12} />}
+         </div>
+-        <div data-testid="receive-address" style={{ wordBreak: 'break-all', fontFamily: 'monospace', fontSize: 13, margin: '16px 8px 0' }}>{addr}</div>
++        {/* Long addresses break into two even halves instead of leaving one orphaned character on the second line. */}
++        <div data-testid="receive-address" style={{ wordBreak: 'break-all', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, margin: '16px 8px 0' }}>{addr.length > 30 ? <><span style={{ display: 'inline-block' }}>{addr.slice(0, Math.ceil(addr.length / 2))}</span><wbr /><span style={{ display: 'inline-block' }}>{addr.slice(Math.ceil(addr.length / 2))}</span></> : addr}</div>
+         <Notice kind="warning" testid="receive-warning">{`Only send ${a.name} (${type}) assets to this address. Other assets will be lost forever.`}</Notice>
+         {note && <Notice kind="info">{note}</Notice>}
+-        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+-          <Btn variant="ghost" onClick={() => void share()}>{shared || 'Share'}</Btn>
+-          <CopyBtn text={addr} />
+-        </div>
+       </div>
+     </Screen>
+   );
+diff --git a/src/popup/wallet/send/select.tsx b/src/popup/wallet/send/select.tsx
+index 4068269..93dd9fb 100644
+--- a/src/popup/wallet/send/select.tsx
++++ b/src/popup/wallet/send/select.tsx
+@@ -30,7 +30,6 @@ export const SendSelect: React.FC<Ctx> = (c) => {
+   }, [q, c.balances, support, c.hiddenAssets, c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+   return (
+     <Screen title="Send" onBack={c.nav.pop}>
+-      <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 8px' }}>Select asset to send</div>
+       <SearchBox value={q} onChange={setQ} placeholder="Search assets" />
+       {!support && rows.length === 0 ? <Skeleton h={56} /> : rows.length === 0 ? <Empty title="No assets found" sub={q ? 'Try a different name or symbol.' : 'Add a network or token from the home screen.'} icon="search" />
+         : rows.map(({ a, bal, ok, chain }) => {
+diff --git a/src/popup/wallet/settingsScreens.tsx b/src/popup/wallet/settingsScreens.tsx
+index 3277cf5..0d755ce 100644
+--- a/src/popup/wallet/settingsScreens.tsx
++++ b/src/popup/wallet/settingsScreens.tsx
+@@ -2,7 +2,7 @@ import { userText } from '../../core/errors';
+ import React, { useEffect, useMemo, useState } from 'react';
+ import browser from 'webextension-polyfill';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty, inputStyle } from './ui';
++import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty, inputStyle, FieldLabel, SectionLabel, Note } from './ui';
+ import { useSettingsState, updateSettings, refreshSettings } from '../settingsStore';
+ import { AUTO_LOCK_OPTIONS, autoLockLabel, SUPPORTED_LOCALES, localeLabel, COLOR_MODES, TOKEN_LAYOUTS, type ColorMode, type TokenLayout } from '../../core/settings';
+ import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
+@@ -17,7 +17,7 @@ import type { Ctx } from './screens';
+ // default wallet, developer toggles, push delivery, custom networks, UTXO management, mobile sync) are intentionally absent.
+ 
+ // ---------- shared building blocks ----------
+-export const Group: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="hb-settings-group" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>{children}</div>;
++export const Group: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="hb-settings-group" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>{children}</div>;
+ 
+ export const IconDot: React.FC<{ icon: string }> = ({ icon }) => <div style={{ width: 36, height: 36, borderRadius: 999, background: T.bgAlt, color: T.sub, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Ic d={ICON[icon] ?? icon} size={18} /></div>;
+ 
+@@ -53,9 +53,8 @@ export const SelectionRow: React.FC<{ label: string; selected: boolean; onClick:
+   </div>
+ );
+ 
+-export const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="hb-section-label" style={{ fontWeight: 700, color: T.sub, fontSize: 12, margin: '24px 2px 10px' }}>{children}</div>;
+ export const ErrorLine: React.FC<{ msg: string }> = ({ msg }) => msg ? <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 2px' }}>{userText(msg)}</div> : null;
+-export const Note: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '14px 16px', fontSize: 13, lineHeight: 1.6, margin: '12px 0 20px' }}>{children}</div>;
++export { SectionLabel, Note };
+ const manifestVersion = (): string => { try { return browser.runtime.getManifest().version; } catch { return ''; } };
+ 
+ const COLOR_LABEL: Record<ColorMode, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+@@ -85,7 +84,7 @@ export const SettingsScreen: React.FC<Ctx> = (c) => {
+   return (
+     <Screen title="Settings" onBack={c.nav.pop}>
+       <div className="hb-settings-row" role="button" tabIndex={0} data-testid="settings-manage-wallets" onClick={() => c.nav.push('manageWallets')} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('manageWallets'); }}
+-        style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.bgAlt, borderRadius: 16, padding: 14, margin: '6px 0 16px', cursor: 'pointer' }}>
++        style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 14, margin: '0 0 16px', cursor: 'pointer' }}>
+         <div style={{ width: 42, height: 42, borderRadius: 999, background: T.accent, color: 'var(--hb-on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>H</div>
+         <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>Manage wallets</div><div style={{ fontSize: 12, color: T.sub }}>{wallet?.label ?? (wallet === null ? 'Loading…' : 'Wallet')} · {n} account{n === 1 ? '' : 's'}</div></div>
+         <Ic d={ICON.chevron} size={18} />
+@@ -152,7 +151,7 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
+ 
+ export const AddPasswordScreen: React.FC<Ctx> = (c) => {
+   const bio = useBiometricAvailability();
+-  return <Screen title="Add a password" onBack={c.nav.pop}><AddPassword bg={c.bg} name={bio.name} onDone={c.nav.pop} /></Screen>;
++  return <Screen title="Add a password" onBack={c.nav.pop}><AddPassword bg={c.bg} name={bio.name} onDone={c.nav.pop} heading={false} /></Screen>;
+ };
+ 
+ export const BiometricsEnrollScreen: React.FC<Ctx> = (c) => {
+@@ -272,7 +271,7 @@ export const AddressBookScreen: React.FC<Ctx> = (c) => {
+     <Screen title="Address Book" onBack={c.nav.pop} right={<IconBtn icon="plus" title="Add contact" onClick={() => c.nav.push('settingsAddressBookEdit')} />}>
+       <ErrorLine msg={err} />
+       {items === null ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner /></div>
+-        : items.length === 0 ? <><Empty title="No contacts yet" sub="Save addresses you send to often and pick them in Send." icon="contacts" /><Btn variant="ghost" onClick={() => c.nav.push('settingsAddressBookEdit')}>Add contact</Btn></>
++        : items.length === 0 ? <Empty title="No contacts yet" sub="Save addresses you send to often and pick them in Send." icon="contacts"><Btn onClick={() => c.nav.push('settingsAddressBookEdit')} style={{ width: 'auto', padding: '12px 28px' }}>Add contact</Btn></Empty>
+         : items.map((e) => (
+           <Row key={e.id} onClick={() => c.nav.push('settingsAddressBookEdit', { entry: e })} left={<IconDot icon="contacts" />} title={e.name}
+             sub={ADDRESS_BOOK_COINS.filter((k) => e.addresses[k]).map((k) => `${k === 'ethereum' ? 'EVM' : ADDRESS_BOOK_COIN_LABEL[k]} ${shortAddr(e.addresses[k]!)}`).join(' · ')} right={<Ic d={ICON.chevron} size={18} />} />
+@@ -298,17 +297,17 @@ export const AddressBookEditScreen: React.FC<Ctx> = (c) => {
+   };
+   const input = inputStyle;
+   return (
+-    <Screen title={entry ? 'Edit contact' : 'New contact'} onBack={c.nav.pop} right={entry ? <IconBtn icon="trash" title="Delete contact" onClick={() => setConfirm(true)} /> : undefined}>
+-      <label style={{ fontSize: 12, color: T.sub }} htmlFor="ab-name">Name</label>
++    <Screen title={entry ? 'Edit contact' : 'New contact'} onBack={c.nav.pop} right={entry ? <IconBtn icon="trash" title="Delete contact" onClick={() => setConfirm(true)} /> : undefined}
++      footer={<Btn disabled={!canSave} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn>}>
++      <FieldLabel htmlFor="ab-name" first>Name</FieldLabel>
+       <input id="ab-name" data-testid="ab-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alice" style={input} />
+       {ADDRESS_BOOK_COINS.map((coin: AddressBookCoin) => (
+-        <div key={coin} style={{ marginTop: 16 }}>
+-          <label style={{ fontSize: 12, color: T.sub }} htmlFor={`ab-${coin}`}>{ADDRESS_BOOK_COIN_LABEL[coin]} address</label>
++        <div key={coin}>
++          <FieldLabel htmlFor={`ab-${coin}`}>{ADDRESS_BOOK_COIN_LABEL[coin]} address</FieldLabel>
+           <input id={`ab-${coin}`} data-testid={`ab-${coin}`} value={addrs[coin] ?? ''} onChange={(e) => setAddrs({ ...addrs, [coin]: e.target.value })} placeholder="Optional" spellCheck={false} autoComplete="off" style={{ ...input, fontFamily: 'monospace' }} />
+         </div>
+       ))}
+       <ErrorLine msg={err} />
+-      <div style={{ marginTop: 22 }}><Btn disabled={!canSave} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn></div>
+       {confirm && <Sheet title="Delete contact?" onClose={() => setConfirm(false)}>
+         <div style={{ color: T.sub, marginBottom: 14 }}>{entry?.name} will be removed from your address book. This can't be undone.</div>
+         <Btn onClick={remove} disabled={busy} style={{ background: T.error }}>Delete</Btn>
+diff --git a/src/popup/wallet/swap/SwapTab.tsx b/src/popup/wallet/swap/SwapTab.tsx
+index 5df869e..460136c 100644
+--- a/src/popup/wallet/swap/SwapTab.tsx
++++ b/src/popup/wallet/swap/SwapTab.tsx
+@@ -1,7 +1,7 @@
+ import React, { useCallback, useEffect, useRef, useState } from 'react';
+ import { T } from '../../theme';
+ import { bg } from '../../api';
+-import { Btn, Ic, ICON, IconBtn } from '../ui';
++import { Btn, Ic, ICON, IconBtn, PageTitle } from '../ui';
+ import type { Nav } from '../screens';
+ import type { SwapQuoteResult, SwapRoute, SwapStep } from '../../../core/swap/types';
+ import { toAtomic, fromAtomic, fmtToken, fmtUsd, rateOf } from '../../../core/swap/amount';
+@@ -37,7 +37,7 @@ function useQuoteFeed(key: string, req: { from: any; to: any; atomic: bigint | n
+   return { ...st, result: st.key === key ? st.result : undefined, refresh };
+ }
+ 
+-export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
++export const SwapTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav, notice }) => {
+   const s = useSwapStore();
+   const { from, to, amount, settings, balances } = s;
+   const [sheet, setSheet] = useState<'settings' | 'providers' | null>(null);
+@@ -123,16 +123,15 @@ export const SwapTab: React.FC<{ nav: Nav }> = ({ nav }) => {
+ 
+   return (
+     <>
+-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 14px' }}>
+-        <h2 style={{ fontSize: 22, margin: 0 }}>Swap</h2>
++      <PageTitle action={
+         <div style={{ display: 'flex', gap: 6 }}>
+           <span style={{ position: 'relative' }}>
+             <IconBtn icon="history" size={34} bg="transparent" title="Swap history" onClick={() => nav.push('swapHistory')} />
+             {pending > 0 && <span data-testid="swap-history-badge" style={{ position: 'absolute', top: 2, right: 2, minWidth: 14, height: 14, borderRadius: 7, background: T.accent, color: 'var(--hb-on-brand)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{pending}</span>}
+           </span>
+           <IconBtn icon="gear" size={34} bg="transparent" title="Swap settings" onClick={() => setSheet('settings')} />
+-        </div>
+-      </div>
++        </div>}>Swap</PageTitle>
++      {notice}
+ 
+       <Block label="You pay" side="from" asset={from} amount={amount} onAmount={setAmount} fiat={fromUsd} balance={from ? fromAtomic(bal, from.decimals) : undefined}
+         onMax={onMax} onSelect={() => nav.push('swapAssetPicker', { side: 'from' })} showFund={!!noFunds} onFund={() => nav.push('buy')} />
+diff --git a/src/popup/wallet/swap/screens.tsx b/src/popup/wallet/swap/screens.tsx
+index 32cf70b..9b6e3e3 100644
+--- a/src/popup/wallet/swap/screens.tsx
++++ b/src/popup/wallet/swap/screens.tsx
+@@ -1,6 +1,7 @@
+ import React, { useEffect, useRef, useState } from 'react';
+ import { T } from '../../theme';
+-import { Screen, Btn, Row, Spinner, SuccessCheck, Empty, Ic, ICON } from '../ui';
++import { Screen, Btn, Row, Spinner, SuccessCheck, Empty, Ic, ICON, SectionLabel } from '../ui';
++import { SearchBox } from '../pickers';
+ import type { Ctx } from '../screens';
+ import type { SwapAsset, SwapHistoryItem, SwapRoute } from '../../../core/swap/types';
+ import { SWAP_DOMAINS, domainById } from '../../../core/swap/domains';
+@@ -56,13 +57,12 @@ export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
+   };
+   return (
+     <Screen title={side === 'from' ? 'Swap from' : 'Swap to'} onBack={c.nav.pop}>
+-      <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or paste address" aria-label="Search tokens"
+-        style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: '11px 12px', fontSize: 14, fontFamily: 'inherit', background: T.bgAlt, outline: 'none' }} />
+-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 0' }}>
++      <SearchBox autoFocus value={query} onChange={setQuery} placeholder="Search name or paste address" label="Search tokens" />
++      <div className="scrollbar-hide" style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '0 0 6px' }}>
+         {chip(undefined, 'All networks')}{SWAP_DOMAINS.map((d) => chip(d.id, d.name))}
+       </div>
+-      {recents.length > 0 && <><div style={{ fontWeight: 700, fontSize: 13, color: T.sub, margin: '4px 0' }}>Recently used</div>{recents.map(rowFor)}</>}
+-      <div style={{ fontWeight: 700, fontSize: 13, color: T.sub, margin: '10px 0 4px' }}>{query ? 'Results' : 'Popular'}</div>
++      {recents.length > 0 && <><SectionLabel>Recently used</SectionLabel>{recents.map(rowFor)}</>}
++      <SectionLabel>{query ? 'Results' : 'Popular'}</SectionLabel>
+       {loading && list.length === 0 ? <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div> : list.length === 0 ? <Empty title="No tokens found" sub="Try another name or paste the token address." icon="search" /> : list.map(rowFor)}
+     </Screen>
+   );
+diff --git a/src/popup/wallet/ui.tsx b/src/popup/wallet/ui.tsx
+index 5de32cc..786087e 100644
+--- a/src/popup/wallet/ui.tsx
++++ b/src/popup/wallet/ui.tsx
+@@ -14,7 +14,7 @@ export function injectStyles() {
+   if (injected || typeof document === 'undefined') return; injected = true;
+   const css = `
+   html,body,#root{height:100%;}
+-  body{margin:0;min-width:320px;} button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--hb-focus);outline-offset:3px;}
++  body{margin:0;min-width:320px;} button:focus-visible,[role=button]:focus-visible{outline:2px solid var(--hb-focus);outline-offset:2px;}
+   .hb-root{width:100%;max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;}
+   .scrollbar-hide::-webkit-scrollbar{display:none} .scrollbar-hide{scrollbar-width:none;-ms-overflow-style:none}
+   @keyframes hb-shimmer { 0%{background-position:-200px 0} 100%{background-position:200px 0} }
+@@ -30,7 +30,6 @@ export function injectStyles() {
+   .hb-screen-header h1{letter-spacing:-.35px!important}
+   .hb-screen-body{overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--hb-muted) 28%,transparent) transparent}
+   .hb-footer{padding-bottom:max(12px,env(safe-area-inset-bottom))!important;box-shadow:0 -8px 22px color-mix(in srgb,var(--hb-ink) 3%,transparent)}
+-  .hb-sheet{animation:hb-slideup .34s cubic-bezier(.22,1,.36,1)}
+   .hb-fade{animation:hb-fade .2s ease}
+   .hb-rise{animation:hb-rise .32s ease both}
+   .hb-trow{border-radius:10px;margin:0 -8px;padding:10px 8px !important;transition:background .12s} .hb-trow:hover{background:var(--hb-paper)}
+@@ -38,7 +37,7 @@ export function injectStyles() {
+   .hb-root{font-variant-numeric:tabular-nums;font-size:14px;line-height:1.5}
+   .hb-root input,.hb-root textarea,.hb-root select{color:var(--hb-ink);font:inherit}
+   .hb-root input::placeholder,.hb-root textarea::placeholder{color:var(--hb-muted);opacity:1}
+-  .hb-root input:focus-visible,.hb-root textarea:focus-visible,.hb-root select:focus-visible{outline:3px solid var(--hb-focus)!important;outline-offset:2px}
++  .hb-root :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select):not(.hb-search-box *):focus{outline:none!important;border-color:var(--hb-focus)!important;box-shadow:var(--hb-focus-ring)}
+ 
+   /* ---- motion system: one easing family so every movement feels related ---- */
+   :root{--hb-ease-out:cubic-bezier(.22,1,.36,1);--hb-ease-spring:cubic-bezier(.34,1.56,.64,1);--hb-ease-io:cubic-bezier(.65,0,.35,1);--hb-nav-ms:320ms}
+@@ -91,13 +90,12 @@ export function injectStyles() {
+   .hb-nav-btn.on .hb-nav-ic svg{filter:drop-shadow(0 2px 4px color-mix(in srgb,var(--hb-brand) 22%,transparent))}
+   .hb-navbar{backdrop-filter:saturate(1.15);box-shadow:0 -8px 24px color-mix(in srgb,var(--hb-ink) 3%,transparent)}
+   .hb-nav-pill>span{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-brand) 7%,transparent);transition:background .2s ease,box-shadow .2s ease}
+-  .hb-balance-hero{position:relative;isolation:isolate;overflow:hidden;padding:14px 16px 13px;margin:8px 0 2px;border:1px solid var(--hb-balance-line);border-radius:20px;background:linear-gradient(135deg,var(--hb-brand-soft),color-mix(in srgb,var(--hb-surface) 42%,var(--hb-brand-soft)));box-shadow:0 7px 20px color-mix(in srgb,var(--hb-brand) 6%,transparent);animation:hb-balance-in .48s var(--hb-ease-out) both}
++  .hb-balance-hero{position:relative;isolation:isolate;overflow:hidden;padding:14px 16px 13px;margin:8px 0 2px;border:1px solid var(--hb-balance-line);border-radius:20px;background:linear-gradient(135deg,var(--hb-brand-soft),color-mix(in srgb,var(--hb-surface) 42%,var(--hb-brand-soft)));box-shadow:0 7px 20px color-mix(in srgb,var(--hb-brand) 6%,transparent)}
+   .hb-balance-hero::before{content:"";position:absolute;z-index:-1;width:170px;height:170px;right:-72px;top:-106px;border:1px solid var(--hb-balance-ring);border-radius:50%;box-shadow:0 0 0 16px color-mix(in srgb,var(--hb-brand) 3%,transparent),0 0 0 34px color-mix(in srgb,var(--hb-brand) 2%,transparent);pointer-events:none}
+   .hb-balance-topline{display:flex;align-items:center;justify-content:space-between;color:var(--hb-muted);font-size:10px;font-weight:700;letter-spacing:1.25px;text-transform:uppercase}
+   .hb-balance-tools{display:flex;align-items:center;gap:2px;margin:-5px -8px -5px 0}
+   .hb-balance-amount{min-height:42px;display:flex;align-items:center;font-size:35px;font-weight:750;letter-spacing:-1.7px;line-height:1.2;color:var(--hb-brand);font-variant-numeric:tabular-nums}
+   .hb-balance-caption{font-size:11px;color:var(--hb-muted);margin-top:1px}
+-  @keyframes hb-balance-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+   .hb-quick-action{position:relative;isolation:isolate;transition:transform .24s var(--hb-ease-spring),box-shadow .24s ease,filter .24s ease!important}
+   .hb-quick-action::after{content:"";position:absolute;inset:-4px;border:1px solid color-mix(in srgb,currentColor 22%,transparent);border-radius:20px;opacity:0;transform:scale(.86);transition:opacity .2s ease,transform .28s var(--hb-ease-out);pointer-events:none}
+   .hb-quick-action:hover::after{opacity:1;transform:scale(1)}
+@@ -121,26 +119,38 @@ export function injectStyles() {
+   .hb-tap:active{transform:scale(.985)}
+   .hb-sheet-closing{animation:hb-fadeout .2s ease forwards}
+   .hb-sheet-closing>.hb-sheet{animation:hb-slidedown .22s var(--hb-ease-io) forwards}
+-  .hb-sheet{animation:hb-slideup .34s var(--hb-ease-out)}
++  .hb-sheet{animation:hb-slideup .34s var(--hb-ease-out);box-shadow:0 -12px 48px color-mix(in srgb,var(--hb-ink) 15%,transparent)}
+   .hb-sheet-handle{position:relative;margin-bottom:14px!important}
+   .hb-sheet-handle::before{content:"";position:absolute;inset:-8px -16px;pointer-events:none}
+   .hb-dialog[open]{animation:hb-dialog-in .24s var(--hb-ease-out)}
+   .hb-dialog[open]::backdrop{animation:hb-fade .24s ease}
+   .hb-switch-knob{transition:left .26s var(--hb-ease-spring),transform .26s var(--hb-ease-spring)}
+   .hb-tab-content{overscroll-behavior:contain;scrollbar-width:thin}
++  @keyframes hb-empty-in{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
++  .hb-empty{animation:hb-fade .3s ease backwards}
++  .hb-empty-glyph{animation:hb-empty-in .42s var(--hb-ease-out) backwards}
++  .hb-search-wrap{position:sticky;top:0;z-index:3;background:var(--hb-surface);padding:2px 0 12px;margin-top:-2px}
++  .hb-page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin:4px 0 14px}
++  .hb-page-head h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1.25}
++  .hb-link-btn{background:none;border:0;padding:6px 2px;color:var(--hb-brand);font-weight:700;font-size:13px;cursor:pointer;border-radius:8px}
++  .hb-link-btn:disabled{opacity:.5}
++  @media(hover:hover){.hb-link-btn:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}}
++  .hb-btn{transition:transform .14s var(--hb-ease-out),background .15s ease,color .15s ease,box-shadow .15s ease,opacity .15s ease}
++  @media(hover:hover){.hb-btn-primary:hover:not(:disabled){filter:brightness(1.06)}.hb-btn-ghost:hover:not(:disabled){background:var(--hb-paper)!important}}
++  .hb-btn:active:not(:disabled){transform:scale(.985)}
+   .hb-root,.hb-root *{box-sizing:border-box}
+   .hb-root svg{flex-shrink:0}
+   .hb-root button{font:inherit}
+-  .hb-sheet{box-shadow:0 -12px 48px color-mix(in srgb,var(--hb-ink) 15%,transparent)}
+   .hb-search-box:focus-within{box-shadow:inset 0 0 0 1px var(--hb-focus),var(--hb-focus-ring)}
+-  .hb-search-box input:focus-visible{outline:none!important;box-shadow:none}
+-  .hb-interactive-row{border-radius:12px;transition:background .14s ease}
++  .hb-root .hb-search-box input:focus,.hb-search-box input:focus-visible{outline:none!important;box-shadow:none!important;border-color:transparent!important}
++  .hb-interactive-row{border-radius:12px;margin:0 -8px;padding-left:8px!important;padding-right:8px!important;transition:background .14s ease}
++  .hb-interactive-row:active{background:var(--hb-paper)}
+   .hb-settings-row{transition:background .14s ease}
+   .hb-settings-row:focus-visible{outline-offset:-3px}
+   @media(hover:hover){.hb-settings-row:hover{background:var(--hb-paper)}}
+   @media(hover:hover){.hb-interactive-row:hover{background:var(--hb-paper)}}
+ 
+-  @media(prefers-reduced-motion:reduce){.hb-screen,.hb-sheet,.hb-fade,.hb-rise,.hb-skel,.hb-layer,.hb-layer::after,.hb-tab-l,.hb-tab-r,.hb-tab-fade,.hb-stagger>*,.hb-screen-body>*,.hb-unblur,.hb-menu,.hb-shake,.hb-enter,.hb-nav-ic,.hb-spinning svg,.hb-balance-hero{animation:none!important}.hb-tap,.hb-action,.hb-home,.hb-home::after,.hb-nav-pill,.hb-ink,.hb-switch-knob,.hb-nav-btn .hb-nav-ic svg,.hb-quick-action,.hb-quick-action::after{transition:none!important}}
++  @media(prefers-reduced-motion:reduce){.hb-screen,.hb-sheet,.hb-fade,.hb-rise,.hb-skel,.hb-layer,.hb-layer::after,.hb-tab-l,.hb-tab-r,.hb-tab-fade,.hb-stagger>*,.hb-screen-body>*,.hb-unblur,.hb-menu,.hb-shake,.hb-enter,.hb-nav-ic,.hb-spinning svg,.hb-empty,.hb-empty-glyph{animation:none!important}.hb-tap,.hb-action,.hb-home,.hb-home::after,.hb-nav-pill,.hb-ink,.hb-switch-knob,.hb-nav-btn .hb-nav-ic svg,.hb-quick-action,.hb-quick-action::after{transition:none!important}}
+   `;
+   const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+ }
+@@ -174,8 +184,8 @@ export const IconBtn: React.FC<{ icon: string; onClick?: () => void; title?: str
+ );
+ 
+ export const Btn: React.FC<{ children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: 'primary' | 'ghost'; style?: React.CSSProperties }> = ({ children, onClick, disabled, variant = 'primary', style }) => (
+-  <button className="hb-tap" onClick={onClick} disabled={disabled} style={{
+-    width: '100%', padding: '15px 16px', borderRadius: 999, fontWeight: 700, fontSize: 15, cursor: disabled ? 'not-allowed' : 'pointer',
++  <button className={`hb-btn hb-btn-${variant}`} onClick={onClick} disabled={disabled} style={{
++    width: '100%', minHeight: 48, padding: '13px 16px', borderRadius: 999, fontWeight: 700, fontSize: 15, cursor: disabled ? 'not-allowed' : 'pointer',
+     border: variant === 'ghost' ? `1px solid ${T.border}` : 'none',
+     background: variant === 'ghost' ? T.surface : (disabled ? T.bgAlt : T.accent), color: variant === 'ghost' ? T.text : (disabled ? T.sub : 'var(--hb-on-brand)'), ...style,
+   }}>{children}</button>
+@@ -211,10 +221,10 @@ export const Screen: React.FC<{ title?: React.ReactNode; onBack: () => void; rig
+   <div className="hb-screen" style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', zIndex: 20 }}>
+     <div className="hb-screen-header" style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 8, flexShrink: 0 }}>
+       <IconBtn icon="back" title="Back" onClick={onBack} />
+-      <h1 style={{ flex: 1, minWidth: 0, margin: 0, textAlign: 'center', fontWeight: 800, fontSize: 16, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h1>
++      <h1 style={{ flex: 1, minWidth: 0, margin: 0, textAlign: 'center', fontWeight: 700, fontSize: 16, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h1>
+       <div style={{ minWidth: 36, display: 'flex', justifyContent: 'flex-end' }}>{right}</div>
+     </div>
+-    <div className="hb-screen-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: pad ? '16px 20px 28px' : 0 }}>{children}</div>
++    <div className="hb-screen-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: pad ? '12px 16px 24px' : 0 }}>{children}</div>
+     {footer && <div className="hb-footer" style={{ flexShrink: 0, padding: '12px 16px', borderTop: `1px solid ${T.border}`, background: T.bg, display: 'flex', flexDirection: 'column', gap: 10 }}>{footer}</div>}
+   </div>
+ );
+@@ -267,14 +277,32 @@ export const Sheet: React.FC<{ title?: string; onClose: () => void; children: Re
+     </div>, host)}</>;
+ };
+ 
+-export const Empty: React.FC<{ title: string; sub?: string; icon?: string }> = ({ title, sub, icon = 'grid' }) => (
+-  <div role="status" style={{ textAlign: 'center', padding: '56px 20px 44px', color: T.sub, maxWidth: 340, margin: '0 auto' }}>
+-    <div style={{ width: 76, height: 76, borderRadius: 24, border: '1px solid var(--hb-glyph-line)', background: 'var(--hb-glyph-bg)', color: T.accent, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, transform: 'rotate(-5deg)' }}><span style={{ transform: 'rotate(5deg)' }}><Ic d={ICON[icon]} size={30} /></span></div>
++export const Empty: React.FC<{ title: string; sub?: string; icon?: string; children?: React.ReactNode }> = ({ title, sub, icon = 'grid', children }) => (
++  <div role="status" className="hb-empty" style={{ textAlign: 'center', padding: '48px 20px 40px', color: T.sub, maxWidth: 340, margin: '0 auto' }}>
++    <div className="hb-empty-glyph" style={{ width: 72, height: 72, borderRadius: 22, border: '1px solid var(--hb-glyph-line)', background: 'var(--hb-glyph-bg)', color: T.accent, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}><Ic d={ICON[icon]} size={30} /></div>
+     <div style={{ fontWeight: 700, fontSize: 17, lineHeight: 1.3, color: T.text, marginBottom: 8 }}>{title}</div>
+     {sub && <div style={{ fontSize: 13, lineHeight: 1.55 }}>{sub}</div>}
++    {children && <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>{children}</div>}
+   </div>
+ );
+ 
++/** Bordered surface card — same look as settings groups, wallet lists and detail panels. */
++export const cardStyle: React.CSSProperties = { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16 };
++
++/** Small heading above a group of rows or fields — one style for every list and form. */
++export const SectionLabel: React.FC<{ children: React.ReactNode; first?: boolean }> = ({ children, first }) => <div className="hb-section-label" style={{ fontWeight: 700, color: T.sub, fontSize: 12, lineHeight: 1.4, margin: first ? '0 2px 8px' : '20px 2px 8px' }}>{children}</div>;
++/** Neutral explanatory note (with an info glyph). Use `tone` for warnings. */
++export const Note: React.FC<{ children: React.ReactNode; tone?: 'info' | 'warn'; style?: React.CSSProperties }> = ({ children, tone = 'info', style }) => (
++  <div className="hb-note" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: tone === 'warn' ? 'var(--hb-warn-bg)' : T.bgAlt, border: `1px solid ${tone === 'warn' ? 'var(--hb-warn-line)' : 'transparent'}`, color: tone === 'warn' ? 'var(--hb-warn-ink)' : T.sub, borderRadius: 12, padding: '12px 14px', fontSize: 13, lineHeight: 1.55, margin: '12px 0 16px', ...style }}>
++    <span style={{ display: 'inline-flex', marginTop: 1, opacity: .85 }}><Ic d={ICON.info} size={16} /></span><div style={{ flex: 1, minWidth: 0 }}>{children}</div>
++  </div>
++);
++
++/** Title row for the bottom-nav tab pages (Trending, Swap, Earn) so they all start the same way. */
++export const PageTitle: React.FC<{ children: React.ReactNode; action?: React.ReactNode }> = ({ children, action }) => (
++  <div className="hb-page-head"><h2>{children}</h2>{action}</div>
++);
++
+ export function useDebouncedLoading(initial = true, ms = 700) {
+   const [loading, setLoading] = useState(initial);
+   useEffect(() => { const t = setTimeout(() => setLoading(false), ms); return () => clearTimeout(t); }, [ms]);
+diff --git a/src/popup/wallet/walletScreens.tsx b/src/popup/wallet/walletScreens.tsx
+index 694482b..81bf1c4 100644
+--- a/src/popup/wallet/walletScreens.tsx
++++ b/src/popup/wallet/walletScreens.tsx
+@@ -4,7 +4,7 @@
+ // the right rows: no "Add account" / secret-phrase backup for a private-key wallet, a reveal-private-key row instead.
+ import React, { useCallback, useEffect, useState } from 'react';
+ import { T } from '../theme';
+-import { Screen, Sheet, Btn, Ic, ICON, Row, Skeleton, Empty } from './ui';
++import { Screen, Sheet, Btn, Ic, ICON, IconBtn, Row, Skeleton, Empty, cardStyle } from './ui';
+ import { RevealGate } from './revealGate';
+ import { SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
+ import { Group, NavRow, SectionLabel, ErrorLine, Note, SelectionRow } from './settingsScreens';
+@@ -50,22 +50,21 @@ export const WalletSelector: React.FC<Ctx> = (c) => {
+     catch (e: any) { setErr(e?.message || 'Could not switch'); } finally { setBusy(false); }
+   };
+   return (
+-    <Screen title="Wallets" onBack={c.nav.pop} right={<button className="hb-tap" aria-label="Settings" onClick={() => c.nav.push('settings')} style={{ background: 'none', border: 0, color: T.text, cursor: 'pointer' }}><Ic d="gear" size={20}/></button>}>
++    <Screen title="Wallets" onBack={c.nav.pop} right={<IconBtn icon="gear" title="Settings" onClick={() => c.nav.push('settings')} />} footer={wallets === null ? undefined : <div style={{ display: 'flex', gap: 10 }}>
++          <Btn variant="ghost" onClick={() => c.nav.push('addWallet')} style={{ flex: 1 }}>Add new wallet</Btn>
++          <Btn variant="ghost" onClick={() => c.nav.push('manageWallets')} style={{ flex: 1 }}>Manage wallets</Btn>
++        </div>}>
+       {wallets === null ? <ListSkeleton/> : <>
+         <ErrorLine msg={error || err}/>
+         {groupWallets(wallets).map((g) => <div key={g.kind}>
+           <SectionLabel>{g.title}</SectionLabel>
+-          {g.wallets.map((w) => <div key={w.id} style={{ background: T.bgAlt, borderRadius: 14, padding: '2px 12px', margin: '6px 0 12px' }} data-testid={`wallet-${w.id}`}>
+-            <div style={{ fontWeight: 800, fontSize: 15, padding: '10px 2px 0' }}>{w.label}</div>
++          {g.wallets.map((w) => <div key={w.id} style={{ ...cardStyle, padding: '2px 14px', margin: '0 0 12px' }} data-testid={`wallet-${w.id}`}>
++            <div style={{ fontWeight: 700, fontSize: 15, padding: '12px 0 0' }}>{w.label}</div>
+             {w.accounts.map((a) => <Row key={a.index} onClick={() => select(w.id, a.index)} left={<Avatar kind={w.kind}/>} title={a.name} sub={shortAddress(primaryAddress(a))} right={<Radio on={w.id === active && a.index === w.activeAccount}/>}/>)}
+             {canAddAccount(w) && <div className="hb-tap" role="button" tabIndex={0} onClick={() => addAccount(w.id)} onKeyDown={(e) => { if (e.key === 'Enter') void addAccount(w.id); }} style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: 12, fontWeight: 700, cursor: 'pointer' }}>Add account <Ic d="plus" size={18}/></div>}
+           </div>)}
+         </div>)}
+         {wallets.length === 0 && !error && <Empty title="No wallets yet" sub="Add a wallet to get started." icon="wallet"/>}
+-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+-          <Btn variant="ghost" onClick={() => c.nav.push('addWallet')} style={{ flex: 1 }}>Add new wallet</Btn>
+-          <Btn variant="ghost" onClick={() => c.nav.push('manageWallets')} style={{ flex: 1 }}>Manage wallets</Btn>
+-        </div>
+       </>}
+     </Screen>
+   );
+@@ -75,16 +74,15 @@ export const WalletSelector: React.FC<Ctx> = (c) => {
+ export const ManageWallets: React.FC<Ctx> = (c) => {
+   const { wallets, error } = useWallets(c);
+   return (
+-    <Screen title="Manage wallets" onBack={c.nav.pop}>
++    <Screen title="Manage wallets" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn onClick={() => c.nav.push('addWallet')}>Add new wallet</Btn>}>
+       {wallets === null ? <ListSkeleton/> : <>
+         <ErrorLine msg={error}/>
+         {groupWallets(wallets).map((g) => <div key={g.kind}><SectionLabel>{g.title}</SectionLabel>
+-          {g.wallets.map((w) => <div key={w.id} style={{ background: T.bgAlt, borderRadius: 14, padding: '2px 14px', margin: '8px 0 12px' }}>
++          {g.wallets.map((w) => <div key={w.id} style={{ ...cardStyle, padding: '2px 14px', margin: '0 0 12px' }}>
+             <Row onClick={() => c.nav.push(w.kind === 'hardware' ? 'settingsHardwareWallet' : 'editWallet', { walletId: w.id, label: w.label })} left={<Avatar kind={w.kind}/>} title={w.label} sub={`${w.accounts.length} account${w.accounts.length === 1 ? '' : 's'}`} right={<Ic d={ICON.chevron} size={18}/>}/>
+             {canBackupPhrase(w) && <div className="hb-tap" role="button" tabIndex={0} onClick={() => c.nav.push('backup', { walletId: w.id, label: w.label })} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('backup', { walletId: w.id, label: w.label }); }} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', color: T.accent, fontWeight: 600, cursor: 'pointer', borderTop: `1px solid ${T.border}` }}><span>{w.backupRequired ? 'Back up your Secret Phrase now' : 'Back up your Secret Phrase'}</span><Ic d={ICON.chevron} size={18}/></div>}
+           </div>)}</div>)}
+         {wallets.length === 0 && !error && <Empty title="No wallets yet" icon="wallet"/>}
+-        <Btn onClick={() => c.nav.push('addWallet')} style={{ marginTop: 6 }}>Add new wallet</Btn>
+       </>}
+     </Screen>
+   );
+@@ -181,11 +179,11 @@ export const WalletAccounts: React.FC<Ctx> = (c) => {
+     catch (e: any) { setErr(e?.message || 'Could not add account'); } finally { setBusy(false); }
+   };
+   return (
+-    <Screen title={`${w.label} accounts`} onBack={c.nav.pop}>
++    <Screen title={`${w.label} accounts`} onBack={c.nav.pop} footer={canAddAccount(w) ? <Btn onClick={add} disabled={busy}>{busy ? 'Adding…' : 'Add account'}</Btn> : undefined}>
+       {w.accounts.map((a) => <Row key={a.index} onClick={() => c.nav.push('accountDetail', { walletId: w.id, index: a.index, name: a.name, address: primaryAddress(a) })} left={<Avatar kind={w.kind}/>}
+         title={a.name} sub={shortAddress(primaryAddress(a))} right={w.id === active && a.index === w.activeAccount ? <span style={{ color: T.accent, fontSize: 12 }}>Active</span> : <Ic d={ICON.chevron} size={18}/>}/>)}
+       <ErrorLine msg={err}/>
+-      {canAddAccount(w) ? <Btn onClick={add} disabled={busy} style={{ marginTop: 12 }}>{busy ? 'Adding…' : 'Add account'}</Btn> : <Note>{w.kind === 'privateKey' ? 'An imported private-key wallet has a single account.' : 'Accounts of this wallet are managed on the hardware device.'}</Note>}
++      {!canAddAccount(w) && <Note>{w.kind === 'privateKey' ? 'An imported private-key wallet has a single account.' : 'Accounts of this wallet are managed on the hardware device.'}</Note>}
+     </Screen>
+   );
+ };
+@@ -216,7 +214,7 @@ export const AccountDetail: React.FC<Ctx> = (c) => {
+       <ErrorLine msg={err}/>
+       {wallets === null && <ListSkeleton/>}
+       {addresses.length > 0 && <SectionLabel>Addresses</SectionLabel>}
+-      {addresses.map(([k, v]) => <div key={k} className="hb-tap" role="button" tabIndex={0} onClick={() => copy(k, v)} onKeyDown={(e) => { if (e.key === 'Enter') copy(k, v); }} style={{ background: T.bgAlt, borderRadius: 14, padding: 12, marginTop: 8, cursor: 'pointer' }}>
++      {addresses.map(([k, v]) => <div key={k} className="hb-tap" role="button" tabIndex={0} onClick={() => copy(k, v)} onKeyDown={(e) => { if (e.key === 'Enter') copy(k, v); }} style={{ ...cardStyle, padding: '12px 14px', marginBottom: 8, cursor: 'pointer' }}>
+         <div style={{ fontSize: 12, color: T.sub, textTransform: 'capitalize' }}>{k} {copied === k && <span style={{ color: T.success }}>Copied</span>}</div>
+         <div style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all', marginTop: 2 }}>{v}</div></div>)}
+       {wallets !== null && addresses.length === 0 && <Empty title="No addresses" icon="wallet"/>}
+@@ -227,8 +225,9 @@ export const AccountDetail: React.FC<Ctx> = (c) => {
+ // ---------- Hardware wallet placeholder ----------
+ export const HardwareWallet: React.FC<Ctx> = (c) => (
+   <Screen title="Hardware wallet" onBack={c.nav.pop}>
+-    <Empty title="Hardware wallet" sub="Accounts on a hardware wallet are added and signed on the device. Connect your Ledger from Add wallet to import its accounts." icon="shield"/>
+-    <Btn onClick={() => c.nav.push('addWallet')}>Connect your Ledger</Btn>
++    <Empty title="Hardware wallet" sub="Accounts on a hardware wallet are added and signed on the device. Connect your Ledger from Add wallet to import its accounts." icon="shield">
++      <Btn onClick={() => c.nav.push('addWallet')} style={{ width: 'auto', padding: '12px 28px' }}>Connect your Ledger</Btn>
++    </Empty>
+   </Screen>
+ );
+ 
+@@ -239,13 +238,12 @@ const readMigration = (c: Ctx): MigrationState => ({ source: c.params?.source, d
+ export const MigrationSource: React.FC<Ctx> = (c) => {
+   const { wallets, error } = useWallets(c); const [s, setS] = useState<MigrationState>(readMigration(c));
+   return (
+-    <Screen title="Select source wallet" onBack={c.nav.pop}>
++    <Screen title="Select source wallet" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn disabled={!canContinueFromSource(s) || wallets.length < 2} onClick={() => c.nav.push('migrationSelectDestination', { ...s })}>Continue</Btn>}>
+       <MigrationHeader step={1} text="Choose the wallet to move assets from."/>
+       {wallets === null ? <ListSkeleton/> : <>
+         <ErrorLine msg={error}/>
+         {wallets.filter((w) => walletKind(w) !== 'hardware').map((w) => <SelectionRow key={w.id} label={`${w.label} - ${WALLET_KIND_LABEL[walletKind(w)]}`} selected={s.source === w.id} onClick={() => setS(pickSource(s, w.id))} testid={`migration-source-${w.id}`}/>)}
+         {wallets.length < 2 && !error && <Note>You need at least two wallets to move assets between them.</Note>}
+-        <Btn disabled={!canContinueFromSource(s) || wallets.length < 2} onClick={() => c.nav.push('migrationSelectDestination', { ...s })} style={{ marginTop: 14 }}>Continue</Btn>
+       </>}
+     </Screen>
+   );
+@@ -254,13 +252,12 @@ export const MigrationDestination: React.FC<Ctx> = (c) => {
+   const { wallets, error } = useWallets(c); const [s, setS] = useState<MigrationState>(readMigration(c));
+   const options = destinationOptions(wallets ?? [], s.source);
+   return (
+-    <Screen title="Select destination wallet" onBack={c.nav.pop}>
++    <Screen title="Select destination wallet" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn disabled={!canContinueFromDestination(s)} onClick={() => c.nav.push('migrationSelectAssets', { ...s })}>Continue</Btn>}>
+       <MigrationHeader step={2} text="Choose the wallet that receives the assets."/>
+       {wallets === null ? <ListSkeleton/> : <>
+         <ErrorLine msg={error}/>
+         {options.map((w) => <SelectionRow key={w.id} label={`${w.label} - ${WALLET_KIND_LABEL[walletKind(w)]}`} selected={s.destination === w.id} onClick={() => setS(pickDestination(s, w.id))} testid={`migration-destination-${w.id}`}/>)}
+         {options.length === 0 && <Note>There is no other wallet to move assets to.</Note>}
+-        <Btn disabled={!canContinueFromDestination(s)} onClick={() => c.nav.push('migrationSelectAssets', { ...s })} style={{ marginTop: 14 }}>Continue</Btn>
+       </>}
+     </Screen>
+   );
+@@ -289,7 +286,10 @@ export const MigrationAssets: React.FC<Ctx> = (c) => {
+     } catch (e: any) { setErr(e?.message || 'Could not start the transfer'); } finally { setBusy(false); }
+   };
+   return (
+-    <Screen title="Select assets" onBack={c.nav.pop}>
++    <Screen title="Select assets" onBack={c.nav.pop} footer={assets === null ? undefined : <>
++      {err && <Btn variant="ghost" onClick={() => void load()}>Try again</Btn>}
++      <Btn disabled={!canMigrate(s) || busy} onClick={go}>{busy ? 'Preparing…' : 'Move selected assets'}</Btn>
++    </>}>
+       <MigrationHeader step={3} text="Choose the assets to move. Each transfer is reviewed on the Send screen."/>
+       {assets === null ? <ListSkeleton/> : <>
+         <ErrorLine msg={err}/>
+@@ -297,8 +297,6 @@ export const MigrationAssets: React.FC<Ctx> = (c) => {
+         {assets.length > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 2px' }}><span style={{ color: T.sub, fontSize: 13 }}>{s.selected.length} selected</span><button className="hb-tap" onClick={() => setS(selectAllAssets(s, assets))} style={{ background: 'none', border: 0, color: T.accent, fontWeight: 600, cursor: 'pointer' }}>{s.selected.length === assets.length ? 'Clear' : 'Select all'}</button></div>}
+         {assets.map((a) => <SelectionRow key={a.id} label={`${a.name} - ${a.balance} ${a.symbol}`} selected={s.selected.includes(a.id)} onClick={() => setS(toggleAsset(s, a.id))} testid={`migration-asset-${a.id}`}/>)}
+         {failed > 0 && <Note>{failed} network{failed === 1 ? '' : 's'} could not be read and {failed === 1 ? 'is' : 'are'} not listed.</Note>}
+-        {err && <Btn variant="ghost" onClick={() => void load()}>Try again</Btn>}
+-        <Btn disabled={!canMigrate(s) || busy} onClick={go} style={{ marginTop: 14 }}>{busy ? 'Preparing…' : 'Move selected assets'}</Btn>
+       </>}
+     </Screen>
+   );

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { T } from '../../theme';
 import type { Ctx } from '../screens';
-import { Screen, Btn, Empty, Ic, ICON, Row, Sheet, Coin } from '../ui';
+import { Screen, Btn, Empty, Ic, ICON, Row, Sheet, Coin, SectionLabel, cardStyle } from '../ui';
 import { Notice, Chip, ChipRow, ListSkeleton, ErrorBox, openHttps, useAsync, ago } from './rampKit';
 
 interface Item { id: string; kind: 'article' | 'post'; title: string; snippet: string; url: string; source: string; at: number; label: 'positive' | 'neutral' | 'negative'; labelBy: 'source' | 'lexicon' }
@@ -60,19 +60,19 @@ export const HelpScreen: React.FC<Ctx> = (c) => {
         <div className="hb-rise">
           {link('Help Center', 'Opens in a new tab', cfg?.helpCenterUrl, 'help')}
           {link('Support', 'Opens in a new tab', cfg?.guideUrl, 'support')}
-          <button type="button" onClick={() => setEdit(true)} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: '4px 2px 10px' }}>Edit support links</button>
-          <h3 style={{ fontSize: 15, margin: '8px 2px' }}>Announcements</h3>
+          <button type="button" className="hb-link-btn" onClick={() => setEdit(true)} style={{ margin: '2px 0 4px' }}>Edit support links</button>
+          <SectionLabel>Announcements</SectionLabel>
           {an.loading ? <ListSkeleton n={2} /> : !an.data?.configured ? <Notice>Harbour has no public announcements feed. Add your own JSON feed URL under Edit support links to see announcements here.</Notice>
             : an.data.ok === false ? <Notice tone="error" action={{ label: 'Retry', onClick: an.reload }}>{an.data.error ?? 'Announcements are unavailable.'}</Notice>
             : an.data.items.length === 0 ? <Empty title="No announcements" icon="bell" /> : an.data.items.map((x: any) => <Row key={x.id} left={<span style={{ color: T.accent }}><Ic d={ICON.bell} size={20} /></span>} title={x.title} sub={x.body || (x.at ? ago(x.at) : '')} onClick={x.url ? () => openHttps(x.url) : undefined} />)}
-          <h3 style={{ fontSize: 15, margin: '14px 2px 6px' }}>FAQ</h3>
+          <SectionLabel>FAQ</SectionLabel>
           {h.data!.faq.map((g) => <div key={g.title} style={{ marginBottom: 10 }}><div style={{ fontSize: 12, color: T.sub, fontWeight: 700, margin: '6px 2px' }}>{g.title}</div>
             {g.items.map((it) => { const k = `${g.title}:${it.q}`; const o = open === k; return (
-              <div key={k} style={{ background: T.bgAlt, borderRadius: 14, marginBottom: 8 }}>
+              <div key={k} style={{ ...cardStyle, marginBottom: 8, overflow: 'hidden' }}>
                 <button type="button" aria-expanded={o} onClick={() => setOpen(o ? null : k)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: 'none', background: 'transparent', padding: '12px 14px', cursor: 'pointer', color: T.text, fontWeight: 700, textAlign: 'left', fontSize: 14 }}>{it.q}<Ic d={o ? ICON.down : ICON.chevron} size={16} /></button>
                 {o && <div style={{ padding: '0 14px 12px', color: T.sub, fontSize: 13, lineHeight: 1.5 }}>{it.a}</div>}
               </div>); })}</div>)}
-          <h3 style={{ fontSize: 15, margin: '14px 2px 6px' }}>Developer</h3>
+          <SectionLabel>Developer</SectionLabel>
           <Row left={<span style={{ color: T.accent }}><Ic d={ICON.card} size={22} /></span>} title="Ramp API keys" sub="Provider keys for buy and sell quotes" right={<Ic d={ICON.chevron} size={16} />} onClick={() => c.nav.push('rampApiKeys')} />
           <div style={{ textAlign: 'center', color: T.sub, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>Harbour Wallet {ver() ? `version ${ver()}` : ''}<br />Data sources: CoinGecko, DeFiLlama, public block explorers, open.er-api.com. No analytics.</div>
         </div>)}

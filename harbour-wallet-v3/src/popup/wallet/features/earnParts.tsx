@@ -3,6 +3,7 @@ import { userText } from '../../../core/errors';
 import React, { useState } from 'react';
 import { T } from '../../theme';
 import { Sheet, Ic, ICON, Empty } from '../ui';
+import { SearchBox } from '../pickers';
 import { formatUnits } from '../../../core/chains/adapters/types';
 import { stakingAsset } from '../../../core/staking/registry';
 import { validatorLogoPath } from '../../../core/assetLogos';
@@ -58,7 +59,7 @@ export const ValidatorSheet: React.FC<{ chainId: string; symbol: string; decimal
   );
   return (
     <Sheet title="Validators" onClose={onClose}>
-      {validators.length > 8 && <input aria-label="Search validators" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 14, marginBottom: 6 }} />}
+      {validators.length > 8 && <SearchBox value={q} onChange={setQ} placeholder="Search validators" />}
       {!list.length && <Empty title="No validators found" icon="search" />}
       {active.length > 0 && <div style={{ fontSize: 13, color: T.sub, fontWeight: 600, margin: '6px 0 0' }}>Active</div>}
       {active.map(row)}

@@ -96,7 +96,10 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
   );
 
   return (
-    <Screen title="Confirm" onBack={phase === 'sending' ? () => {} : c.nav.pop}>
+    <Screen title="Confirm" onBack={phase === 'sending' ? () => {} : c.nav.pop} footer={<>
+      <Btn disabled={!ready} onClick={onConfirm}>{phase === 'sending' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Spinner size={16} color="currentColor" />Sending…</span> : 'Confirm'}</Btn>
+      <div style={{ fontSize: 12, color: T.sub, textAlign: 'center' }}>Signed on this device with your active account. Transactions cannot be reversed.</div>
+    </>}>
       <div style={{ textAlign: 'center', padding: '8px 0 14px' }}>
         <Coin sym={a.sym} assetId={a.id} color={a.color} size={48} />
         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }} data-testid="confirm-amount">{amountTxt} {a.sym}</div>
@@ -110,10 +113,6 @@ export const SendConfirm: React.FC<Ctx> = (c) => {
       {quote && quote.tiers.length > 1 && <div style={{ fontSize: 12, color: T.sub }}>Speed: {TIER_LABEL[d.tier]}{picked?.detail ? ` · ${picked.detail}` : ''}</div>}
       {q.error && <Notice kind="error" testid="confirm-error">{q.error}</Notice>}
       {issues.map((i, k) => <Notice key={k} kind={i.blocking ? 'error' : 'warning'}>{i.message}</Notice>)}
-      <div style={{ marginTop: 22 }}>
-        <Btn disabled={!ready} onClick={onConfirm}>{phase === 'sending' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Spinner size={16} color="currentColor" />Sending…</span> : 'Confirm'}</Btn>
-      </div>
-      <div style={{ fontSize: 12, color: T.sub, textAlign: 'center', marginTop: 10 }}>Signed on this device with your active account. Transactions cannot be reversed.</div>
       {feeSheet && quote && <FeeSheet quote={quote} tier={d.tier} fiatOf={feeFiat} onPick={(t) => setDraft({ tier: t })} onClose={() => setFeeSheet(false)} />}
       {guard && <Sheet title="Before you send" onClose={() => setGuard(false)}>
         {risks.map((r, i) => <Notice key={i} kind="warning">{r}</Notice>)}

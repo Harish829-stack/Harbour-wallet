@@ -41,3 +41,17 @@ Found by inspecting `src/popup/design/system.css`, `src/popup/theme.ts`, `src/po
 The "Conflict #1" description above was based on the first, legacy rules in `onboarding.css`. Later rules in that same file already remap `--ink`, `--muted`, `--brand`, `--line`, and `--surface` to `--hb-*`. Rendered onboarding is Harbour teal; the earlier blue declarations are dead cascade values, not the active palette. The wallet header also already loaded the active wallet label before this UI pass. Both remain historical findings, not current open defects.
 
 The production asset path was the real icon defect: Vite bundles `public-production/`, while the 82 network images had been downloaded to `public/`. They are now packaged and rendered. `Coin` receives the chain ID on existing selector/detail rows, while unknown assets retain a neutral fallback. The account avatar now uses the same Lucide/teal system. The shared empty state uses a restrained glyph tile, and unconnected financial/dApp surfaces show an honest unavailable state rather than invented quotes, APRs, or holdings. Popup captures at 320, 375, and 480 px and full-page onboarding captures are linked from `docs/re/UI-PARITY.md`; the user-owned Harbour palette was preserved.
+
+## 2026-11-03 — v3 shared UX pass (code inspection only)
+
+The v3 wallet UI now uses a shared finish layer for focus rings, form field feedback, button states, onboarding press feedback, dialog entry, and screen-shell scrolling. The shared wallet `Screen` header/footer and `Sheet` handle have consistent visual treatment. Home adds a balance summary card and more expressive quick-action and bottom-tab feedback. Existing handlers, tab destinations, state, and provider paths were not changed. This pass has not received a rendered visual or browser interaction review; `docs/re/UI-PARITY.md` remains the record for those statuses.
+
+## 2026-11-03 — v3 layout rhythm
+
+Wallet content uses 20px horizontal gutters and 16px top clearance beneath shared
+screen headers. Form groups separate labels from controls and each other. Settings
+values stack below labels; list groups and section headings have distinct spacing.
+Testnet asset selectors use contained sheets, contracts expand on demand, and
+reserve figures use readable display formatting without changing raw amounts.
+See `harbour-wallet-v3/src/popup/wallet/layout.css` and the v3 layout audit in
+`evidences/audit/ui-v3/2026-11-03/`.

@@ -46,7 +46,7 @@ export const DappsPanel: React.FC<{ c: Ctx; query?: string }> = ({ c, query }) =
   const chainOpts = useMemo(() => (d?.chains ?? []).filter((x) => x.chainId).slice(0, 20), [d]);
   return (
     <div>
-      {query === undefined && <SearchBox value={own} onChange={setOwn} placeholder="Search DApps" label="Search DApps" />}
+      {query === undefined && <div style={{ marginBottom: 12 }}><SearchBox value={own} onChange={setOwn} placeholder="Search DApps" label="Search DApps" /></div>}
       <ChipRow><Chip active={cat === 'all'} onClick={() => setCat('all')}>All</Chip>{(d?.categories ?? []).map((x) => <Chip key={x.id} active={cat === x.id} onClick={() => setCat(x.id)}>{x.name}</Chip>)}</ChipRow>
       {chainOpts.length > 0 && <ChipRow><Chip active={!chain} onClick={() => setChain('')}>Any chain</Chip>{chainOpts.map((x) => <Chip key={x.name} active={chain === x.name} onClick={() => setChain(x.name)}>{x.name}</Chip>)}</ChipRow>}
       {r.loading && !d ? <ListSkeleton n={7} /> : r.error && !d ? <ErrorBox message={r.error} onRetry={r.reload} /> : d && (

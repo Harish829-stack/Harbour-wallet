@@ -2,7 +2,8 @@
 // `predictions` flag is on; trading also requires Polymarket's region check to pass (checked in the background).
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
-import { Screen, Btn, Row, Empty, Spinner } from '../ui';
+import { Screen, Btn, Row, Empty, Spinner, InkTabs } from '../ui';
+import { SearchBox } from '../pickers';
 import { Notice } from './earnParts';
 import type { Ctx } from '../screens';
 
@@ -24,14 +25,13 @@ const PredictionsHome: React.FC<Ctx> = (c) => {
   const mk = useLoad(() => must(c.bg({ type: 'predictionMarkets', q: q || undefined })), [q]);
   const pf = useLoad(() => (tab === 'portfolio' ? must(c.bg({ type: 'predictionPortfolio' })) : Promise.resolve(null)), [tab]);
   const [wrap, setWrap] = useState(''); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('');
-  const pill = (on: boolean): React.CSSProperties => ({ flex: 1, padding: '9px 0', borderRadius: 999, border: 'none', cursor: 'pointer', fontWeight: 800, background: on ? T.accent : T.bgAlt, color: on ? 'var(--hb-on-brand)' : T.text });
   const doWrap = async () => { setBusy(true); setMsg(''); const r = await c.bg({ type: 'predictionWrap', amount: String(Math.round(Number(wrap) * 1e6)) }).catch((e) => ({ ok: false, error: String(e?.message ?? e) })); setBusy(false); setMsg(r?.ok ? 'pUSD ready to trade' : r?.error ?? 'Failed'); if (r?.ok) pf.reload(); };
   return (
     <Screen title="Predictions" onBack={c.nav.pop}>
       {mk.data?.tradingBlocked && <Notice>Polymarket does not allow trading from your region{mk.data.country ? ` (${mk.data.country})` : ''}. You can still browse markets.</Notice>}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}><button type="button" style={pill(tab === 'markets')} onClick={() => setTab('markets')}>Markets</button><button type="button" style={pill(tab === 'portfolio')} onClick={() => setTab('portfolio')}>Portfolio</button></div>
+      <InkTabs tabs={['markets', 'portfolio'] as const} value={tab} onChange={setTab} label={(t) => (t === 'markets' ? 'Markets' : 'Portfolio')} pad="8px 0" gap={20} style={{ marginBottom: 12 }} />
       {tab === 'markets' ? <>
-        <div style={{ ...card, padding: '8px 12px' }}><input style={{ ...input, fontSize: 14 }} placeholder="Search markets" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <SearchBox value={q} onChange={setQ} placeholder="Search markets" />
         {mk.loading && !mk.data ? <Spinner /> : mk.err ? <Notice tone="error" action={{ label: 'Retry', onClick: mk.reload }}>{mk.err}</Notice> : !mk.data?.markets?.length ? <Empty title="No markets" /> :
           mk.data.markets.map((m: any) => <Row key={m.id} onClick={() => c.nav.push('predictionMarket', { id: m.id })} left={m.image ? <img src={m.image} alt="" width={36} height={36} style={{ borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 36 }} />}
             title={<span style={{ whiteSpace: 'normal', lineHeight: 1.3 }}>{m.question}</span>} sub={`${m.outcomes.map((o: string, i: number) => `${o} ${cents(m.prices[i])}`).join(' · ')} · Vol ${usd(m.volume, 0)}`} />)}

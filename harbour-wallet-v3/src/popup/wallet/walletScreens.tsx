@@ -4,7 +4,7 @@
 // the right rows: no "Add account" / secret-phrase backup for a private-key wallet, a reveal-private-key row instead.
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, Ic, ICON, Row, Skeleton, Empty } from './ui';
+import { Screen, Sheet, Btn, Ic, ICON, IconBtn, Row, Skeleton, Empty, cardStyle } from './ui';
 import { RevealGate } from './revealGate';
 import { SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
 import { Group, NavRow, SectionLabel, ErrorLine, Note, SelectionRow } from './settingsScreens';
@@ -50,22 +50,21 @@ export const WalletSelector: React.FC<Ctx> = (c) => {
     catch (e: any) { setErr(e?.message || 'Could not switch'); } finally { setBusy(false); }
   };
   return (
-    <Screen title="Wallets" onBack={c.nav.pop} right={<button className="hb-tap" aria-label="Settings" onClick={() => c.nav.push('settings')} style={{ background: 'none', border: 0, color: T.text, cursor: 'pointer' }}><Ic d="gear" size={20}/></button>}>
+    <Screen title="Wallets" onBack={c.nav.pop} right={<IconBtn icon="gear" title="Settings" onClick={() => c.nav.push('settings')} />} footer={wallets === null ? undefined : <div style={{ display: 'flex', gap: 10 }}>
+          <Btn variant="ghost" onClick={() => c.nav.push('addWallet')} style={{ flex: 1 }}>Add new wallet</Btn>
+          <Btn variant="ghost" onClick={() => c.nav.push('manageWallets')} style={{ flex: 1 }}>Manage wallets</Btn>
+        </div>}>
       {wallets === null ? <ListSkeleton/> : <>
         <ErrorLine msg={error || err}/>
         {groupWallets(wallets).map((g) => <div key={g.kind}>
           <SectionLabel>{g.title}</SectionLabel>
-          {g.wallets.map((w) => <div key={w.id} style={{ background: T.bgAlt, borderRadius: 14, padding: '2px 12px', margin: '6px 0 12px' }} data-testid={`wallet-${w.id}`}>
-            <div style={{ fontWeight: 800, fontSize: 15, padding: '10px 2px 0' }}>{w.label}</div>
+          {g.wallets.map((w) => <div key={w.id} style={{ ...cardStyle, padding: '2px 14px', margin: '0 0 12px' }} data-testid={`wallet-${w.id}`}>
+            <div style={{ fontWeight: 700, fontSize: 15, padding: '12px 0 0' }}>{w.label}</div>
             {w.accounts.map((a) => <Row key={a.index} onClick={() => select(w.id, a.index)} left={<Avatar kind={w.kind}/>} title={a.name} sub={shortAddress(primaryAddress(a))} right={<Radio on={w.id === active && a.index === w.activeAccount}/>}/>)}
             {canAddAccount(w) && <div className="hb-tap" role="button" tabIndex={0} onClick={() => addAccount(w.id)} onKeyDown={(e) => { if (e.key === 'Enter') void addAccount(w.id); }} style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: 12, fontWeight: 700, cursor: 'pointer' }}>Add account <Ic d="plus" size={18}/></div>}
           </div>)}
         </div>)}
         {wallets.length === 0 && !error && <Empty title="No wallets yet" sub="Add a wallet to get started." icon="wallet"/>}
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-          <Btn variant="ghost" onClick={() => c.nav.push('addWallet')} style={{ flex: 1 }}>Add new wallet</Btn>
-          <Btn variant="ghost" onClick={() => c.nav.push('manageWallets')} style={{ flex: 1 }}>Manage wallets</Btn>
-        </div>
       </>}
     </Screen>
   );
@@ -75,16 +74,15 @@ export const WalletSelector: React.FC<Ctx> = (c) => {
 export const ManageWallets: React.FC<Ctx> = (c) => {
   const { wallets, error } = useWallets(c);
   return (
-    <Screen title="Manage wallets" onBack={c.nav.pop}>
+    <Screen title="Manage wallets" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn onClick={() => c.nav.push('addWallet')}>Add new wallet</Btn>}>
       {wallets === null ? <ListSkeleton/> : <>
         <ErrorLine msg={error}/>
         {groupWallets(wallets).map((g) => <div key={g.kind}><SectionLabel>{g.title}</SectionLabel>
-          {g.wallets.map((w) => <div key={w.id} style={{ background: T.bgAlt, borderRadius: 14, padding: '2px 14px', margin: '8px 0 12px' }}>
+          {g.wallets.map((w) => <div key={w.id} style={{ ...cardStyle, padding: '2px 14px', margin: '0 0 12px' }}>
             <Row onClick={() => c.nav.push(w.kind === 'hardware' ? 'settingsHardwareWallet' : 'editWallet', { walletId: w.id, label: w.label })} left={<Avatar kind={w.kind}/>} title={w.label} sub={`${w.accounts.length} account${w.accounts.length === 1 ? '' : 's'}`} right={<Ic d={ICON.chevron} size={18}/>}/>
             {canBackupPhrase(w) && <div className="hb-tap" role="button" tabIndex={0} onClick={() => c.nav.push('backup', { walletId: w.id, label: w.label })} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('backup', { walletId: w.id, label: w.label }); }} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', color: T.accent, fontWeight: 600, cursor: 'pointer', borderTop: `1px solid ${T.border}` }}><span>{w.backupRequired ? 'Back up your Secret Phrase now' : 'Back up your Secret Phrase'}</span><Ic d={ICON.chevron} size={18}/></div>}
           </div>)}</div>)}
         {wallets.length === 0 && !error && <Empty title="No wallets yet" icon="wallet"/>}
-        <Btn onClick={() => c.nav.push('addWallet')} style={{ marginTop: 6 }}>Add new wallet</Btn>
       </>}
     </Screen>
   );
@@ -137,7 +135,7 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
           : <div style={{ padding: 14 }}>
               <label style={{ fontSize: 12, color: T.sub }} htmlFor="wallet-name">Wallet name</label>
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <input id="wallet-name" autoFocus value={draft} maxLength={40} aria-invalid={!!nameError} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void save(); if (e.key === 'Escape') setDraft(null); }} style={{ flex: 1, border: `1px solid ${nameError ? T.error : T.border}`, background: T.surface, color: T.text, borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit' }}/>
+                <input id="wallet-name" autoFocus value={draft} maxLength={40} aria-invalid={!!nameError} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void save(); if (e.key === 'Escape') setDraft(null); }} style={{ flex: 1, minWidth: 0, border: `1px solid ${nameError ? T.error : T.border}`, background: T.surface, color: T.text, borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit' }}/>
                 <Btn onClick={save} disabled={busy || !!nameError || !draft.trim()} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Save</Btn>
               </div>
               {nameError && <div role="alert" style={{ color: T.error, fontSize: 12, marginTop: 6 }}>{nameError}</div>}
@@ -181,11 +179,11 @@ export const WalletAccounts: React.FC<Ctx> = (c) => {
     catch (e: any) { setErr(e?.message || 'Could not add account'); } finally { setBusy(false); }
   };
   return (
-    <Screen title={`${w.label} accounts`} onBack={c.nav.pop}>
+    <Screen title={`${w.label} accounts`} onBack={c.nav.pop} footer={canAddAccount(w) ? <Btn onClick={add} disabled={busy}>{busy ? 'Adding…' : 'Add account'}</Btn> : undefined}>
       {w.accounts.map((a) => <Row key={a.index} onClick={() => c.nav.push('accountDetail', { walletId: w.id, index: a.index, name: a.name, address: primaryAddress(a) })} left={<Avatar kind={w.kind}/>}
         title={a.name} sub={shortAddress(primaryAddress(a))} right={w.id === active && a.index === w.activeAccount ? <span style={{ color: T.accent, fontSize: 12 }}>Active</span> : <Ic d={ICON.chevron} size={18}/>}/>)}
       <ErrorLine msg={err}/>
-      {canAddAccount(w) ? <Btn onClick={add} disabled={busy} style={{ marginTop: 12 }}>{busy ? 'Adding…' : 'Add account'}</Btn> : <Note>{w.kind === 'privateKey' ? 'An imported private-key wallet has a single account.' : 'Accounts of this wallet are managed on the hardware device.'}</Note>}
+      {!canAddAccount(w) && <Note>{w.kind === 'privateKey' ? 'An imported private-key wallet has a single account.' : 'Accounts of this wallet are managed on the hardware device.'}</Note>}
     </Screen>
   );
 };
@@ -209,14 +207,14 @@ export const AccountDetail: React.FC<Ctx> = (c) => {
       <Group>
         {draft == null ? <NavRow first icon="edit" label="Account name" value={name} onClick={() => setDraft(name)} testid="account-rename"/>
           : <div style={{ padding: 14, display: 'flex', gap: 8 }}>
-              <input autoFocus aria-label="Account name" value={draft} maxLength={40} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void save(); if (e.key === 'Escape') setDraft(null); }} style={{ flex: 1, border: `1px solid ${T.border}`, background: T.surface, color: T.text, borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit' }}/>
+              <input autoFocus aria-label="Account name" value={draft} maxLength={40} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void save(); if (e.key === 'Escape') setDraft(null); }} style={{ flex: 1, minWidth: 0, border: `1px solid ${T.border}`, background: T.surface, color: T.text, borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit' }}/>
               <Btn onClick={save} disabled={busy || !draft.trim()} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Save</Btn>
             </div>}
       </Group>
       <ErrorLine msg={err}/>
       {wallets === null && <ListSkeleton/>}
       {addresses.length > 0 && <SectionLabel>Addresses</SectionLabel>}
-      {addresses.map(([k, v]) => <div key={k} className="hb-tap" role="button" tabIndex={0} onClick={() => copy(k, v)} onKeyDown={(e) => { if (e.key === 'Enter') copy(k, v); }} style={{ background: T.bgAlt, borderRadius: 14, padding: 12, marginTop: 8, cursor: 'pointer' }}>
+      {addresses.map(([k, v]) => <div key={k} className="hb-tap" role="button" tabIndex={0} onClick={() => copy(k, v)} onKeyDown={(e) => { if (e.key === 'Enter') copy(k, v); }} style={{ ...cardStyle, padding: '12px 14px', marginBottom: 8, cursor: 'pointer' }}>
         <div style={{ fontSize: 12, color: T.sub, textTransform: 'capitalize' }}>{k} {copied === k && <span style={{ color: T.success }}>Copied</span>}</div>
         <div style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all', marginTop: 2 }}>{v}</div></div>)}
       {wallets !== null && addresses.length === 0 && <Empty title="No addresses" icon="wallet"/>}
@@ -227,8 +225,9 @@ export const AccountDetail: React.FC<Ctx> = (c) => {
 // ---------- Hardware wallet placeholder ----------
 export const HardwareWallet: React.FC<Ctx> = (c) => (
   <Screen title="Hardware wallet" onBack={c.nav.pop}>
-    <Empty title="Hardware wallet" sub="Accounts on a hardware wallet are added and signed on the device. Connect your Ledger from Add wallet to import its accounts." icon="shield"/>
-    <Btn onClick={() => c.nav.push('addWallet')}>Connect your Ledger</Btn>
+    <Empty title="Hardware wallet" sub="Accounts on a hardware wallet are added and signed on the device. Connect your Ledger from Add wallet to import its accounts." icon="shield">
+      <Btn onClick={() => c.nav.push('addWallet')} style={{ width: 'auto', padding: '12px 28px' }}>Connect your Ledger</Btn>
+    </Empty>
   </Screen>
 );
 
@@ -239,13 +238,12 @@ const readMigration = (c: Ctx): MigrationState => ({ source: c.params?.source, d
 export const MigrationSource: React.FC<Ctx> = (c) => {
   const { wallets, error } = useWallets(c); const [s, setS] = useState<MigrationState>(readMigration(c));
   return (
-    <Screen title="Select source wallet" onBack={c.nav.pop}>
+    <Screen title="Select source wallet" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn disabled={!canContinueFromSource(s) || wallets.length < 2} onClick={() => c.nav.push('migrationSelectDestination', { ...s })}>Continue</Btn>}>
       <MigrationHeader step={1} text="Choose the wallet to move assets from."/>
       {wallets === null ? <ListSkeleton/> : <>
         <ErrorLine msg={error}/>
         {wallets.filter((w) => walletKind(w) !== 'hardware').map((w) => <SelectionRow key={w.id} label={`${w.label} - ${WALLET_KIND_LABEL[walletKind(w)]}`} selected={s.source === w.id} onClick={() => setS(pickSource(s, w.id))} testid={`migration-source-${w.id}`}/>)}
         {wallets.length < 2 && !error && <Note>You need at least two wallets to move assets between them.</Note>}
-        <Btn disabled={!canContinueFromSource(s) || wallets.length < 2} onClick={() => c.nav.push('migrationSelectDestination', { ...s })} style={{ marginTop: 14 }}>Continue</Btn>
       </>}
     </Screen>
   );
@@ -254,13 +252,12 @@ export const MigrationDestination: React.FC<Ctx> = (c) => {
   const { wallets, error } = useWallets(c); const [s, setS] = useState<MigrationState>(readMigration(c));
   const options = destinationOptions(wallets ?? [], s.source);
   return (
-    <Screen title="Select destination wallet" onBack={c.nav.pop}>
+    <Screen title="Select destination wallet" onBack={c.nav.pop} footer={wallets === null ? undefined : <Btn disabled={!canContinueFromDestination(s)} onClick={() => c.nav.push('migrationSelectAssets', { ...s })}>Continue</Btn>}>
       <MigrationHeader step={2} text="Choose the wallet that receives the assets."/>
       {wallets === null ? <ListSkeleton/> : <>
         <ErrorLine msg={error}/>
         {options.map((w) => <SelectionRow key={w.id} label={`${w.label} - ${WALLET_KIND_LABEL[walletKind(w)]}`} selected={s.destination === w.id} onClick={() => setS(pickDestination(s, w.id))} testid={`migration-destination-${w.id}`}/>)}
         {options.length === 0 && <Note>There is no other wallet to move assets to.</Note>}
-        <Btn disabled={!canContinueFromDestination(s)} onClick={() => c.nav.push('migrationSelectAssets', { ...s })} style={{ marginTop: 14 }}>Continue</Btn>
       </>}
     </Screen>
   );
@@ -289,7 +286,10 @@ export const MigrationAssets: React.FC<Ctx> = (c) => {
     } catch (e: any) { setErr(e?.message || 'Could not start the transfer'); } finally { setBusy(false); }
   };
   return (
-    <Screen title="Select assets" onBack={c.nav.pop}>
+    <Screen title="Select assets" onBack={c.nav.pop} footer={assets === null ? undefined : <>
+      {err && <Btn variant="ghost" onClick={() => void load()}>Try again</Btn>}
+      <Btn disabled={!canMigrate(s) || busy} onClick={go}>{busy ? 'Preparing…' : 'Move selected assets'}</Btn>
+    </>}>
       <MigrationHeader step={3} text="Choose the assets to move. Each transfer is reviewed on the Send screen."/>
       {assets === null ? <ListSkeleton/> : <>
         <ErrorLine msg={err}/>
@@ -297,8 +297,6 @@ export const MigrationAssets: React.FC<Ctx> = (c) => {
         {assets.length > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 2px' }}><span style={{ color: T.sub, fontSize: 13 }}>{s.selected.length} selected</span><button className="hb-tap" onClick={() => setS(selectAllAssets(s, assets))} style={{ background: 'none', border: 0, color: T.accent, fontWeight: 600, cursor: 'pointer' }}>{s.selected.length === assets.length ? 'Clear' : 'Select all'}</button></div>}
         {assets.map((a) => <SelectionRow key={a.id} label={`${a.name} - ${a.balance} ${a.symbol}`} selected={s.selected.includes(a.id)} onClick={() => setS(toggleAsset(s, a.id))} testid={`migration-asset-${a.id}`}/>)}
         {failed > 0 && <Note>{failed} network{failed === 1 ? '' : 's'} could not be read and {failed === 1 ? 'is' : 'are'} not listed.</Note>}
-        {err && <Btn variant="ghost" onClick={() => void load()}>Try again</Btn>}
-        <Btn disabled={!canMigrate(s) || busy} onClick={go} style={{ marginTop: 14 }}>{busy ? 'Preparing…' : 'Move selected assets'}</Btn>
       </>}
     </Screen>
   );

@@ -1,0 +1,61 @@
+/* Layout rules shared by the production wallet surfaces. */
+.hb-root { line-height: 1.5; }
+.hb-screen-body > :first-child { margin-top: 0; }
+.hb-screen-body > :is([data-testid="add-password"], [data-testid="biometric-enroll"]) { padding: 0 !important; }
+.hb-screen-body :where(p, li) { overflow-wrap: anywhere; }
+.hb-settings-row-copy { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.hb-settings-row-copy > span { font-weight: 600; line-height: 1.4; }
+.hb-settings-row-copy small { color: var(--hb-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.hb-settings-row, .hb-settings-switch-row { min-height: 66px; }
+.hb-settings-switch-row > div { line-height: 1.5; }
+.hb-settings-group > :first-child { border-top: 0 !important; }
+.hb-settings-selection { min-height: 56px; border-radius: 10px; transition: background 140ms ease; }
+.hb-settings-selection[aria-checked="true"] { color: var(--hb-brand); }
+.hb-settings-selection:focus-visible { outline-offset: -3px; }
+.hb-section-label { letter-spacing: .2px; }
+.hb-settings-group + .hb-section-label, .hb-note + .hb-section-label { margin-top: 4px !important; }
+.hb-screen-body > .hb-search-wrap:first-child { margin-top: -2px; }
+.hb-choice { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; justify-content: space-between; text-align: left; padding: 12px 14px; color: var(--hb-ink); background: var(--hb-paper); border: 1px solid var(--hb-line); border-radius: 12px; cursor: pointer; }
+.hb-choice > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-choice:disabled { opacity: .55; cursor: not-allowed; }
+.hb-defi { padding: 0 0 16px; }
+.hb-page-title { font-size: 22px; line-height: 1.3; letter-spacing: -.5px; margin: 4px 0 16px; }
+.hb-defi-field { display: flex; flex-direction: column; gap: 8px; margin: 22px 0 0; font-size: 13px; font-weight: 600; }
+.hb-defi-field > input { margin-top: 0 !important; font-weight: 400; }
+.hb-defi-field .hb-choice { font-weight: 400; }
+.hb-defi-field + :is(.hb-tap, .hb-btn) { margin-top: 24px; }
+.hb-defi-asset-meta { display: grid; gap: 10px; margin: 12px 0 20px; color: var(--hb-muted); font-size: 12px; }
+.hb-defi-asset-meta > div, .hb-defi-stat { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.hb-defi-asset-meta strong { color: var(--hb-ink); font-weight: 500; }
+.hb-defi-asset-meta p { margin: 0; }
+.hb-defi-asset-meta summary { cursor: pointer; padding: 4px 0; }
+.hb-defi-asset-meta summary span { margin-left: 8px; font-variant-numeric: tabular-nums; }
+.hb-defi-asset-meta code { display: block; overflow-wrap: anywhere; padding: 10px 12px; margin-top: 8px; background: var(--hb-paper); border: 1px solid var(--hb-line); border-radius: 10px; }
+.hb-defi-reserve { display: grid; gap: 12px; padding: 18px !important; border: 1px solid var(--hb-line); }
+.hb-defi-reserve > strong { color: var(--hb-brand); font-size: 16px; }
+.hb-defi-stat { font-size: 12px; color: var(--hb-muted); }
+.hb-defi-stat strong { color: var(--hb-ink); font-weight: 500; }
+.hb-defi-reserve p { border-top: 1px solid var(--hb-line); padding-top: 12px; margin: 0; }
+.hb-defi details + input, .hb-defi details :is(.hb-tap, .hb-btn) { margin-top: 12px; }
+@media (hover: hover) { .hb-settings-selection:hover { background: var(--hb-paper); } .hb-choice:hover { border-color: var(--hb-focus); } }
+@media (max-width: 360px) { .hb-settings-row, .hb-settings-switch-row { gap: 10px !important; padding: 14px 12px !important; } .hb-defi { padding-left: 0; padding-right: 0; } }
+
+/* A section label that opens a screen sits flush with the body's top padding. */
+.hb-screen-body > :first-child > .hb-section-label:first-child, .hb-screen-body > .hb-section-label:first-child { margin-top: 0 !important; }
+
+/* Anchored dropdown used on the Swap / Earn tabs: plain, quick and predictable (no sheet slide). */
+.hb-select { position: relative; display: block; }
+.hb-select-caret { display: inline-flex; flex-shrink: 0; overflow: visible !important; color: var(--hb-muted); transition: transform 160ms ease; }
+.hb-choice[aria-expanded="true"] { border-color: var(--hb-focus); }
+.hb-choice[aria-expanded="true"] .hb-select-caret { transform: rotate(180deg); }
+.hb-select-menu { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 25; max-height: 260px; overflow-y: auto; overscroll-behavior: contain; padding: 6px; background: var(--hb-surface); border: 1px solid var(--hb-line); border-radius: 12px; box-shadow: var(--hb-shadow-pop); transform-origin: top center; animation: hb-select-in 120ms ease-out; }
+.hb-select-menu.up { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; }
+@keyframes hb-select-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.hb-select-menu.up { animation-name: hb-select-in-up; }
+@keyframes hb-select-in-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hb-select-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--hb-ink); text-align: left; font-weight: 500; cursor: pointer; }
+.hb-select-option > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-select-option[aria-selected="true"] { color: var(--hb-brand); font-weight: 600; }
+.hb-select-option:focus-visible { outline: none; background: var(--hb-paper); }
+@media (hover: hover) { .hb-select-option:hover { background: var(--hb-paper); } }
+@media (prefers-reduced-motion: reduce) { .hb-select-menu, .hb-select-caret { animation: none; transition: none; } }

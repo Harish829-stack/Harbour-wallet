@@ -2,7 +2,7 @@ import { userText } from '../../core/errors';
 import React, { useEffect, useMemo, useState } from 'react';
 import browser from 'webextension-polyfill';
 import { T } from '../theme';
-import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Empty, inputStyle } from './ui';
+import { Screen, Sheet, Btn, IconBtn, Ic, ICON, Row, Spinner, Skeleton, Empty, inputStyle, FieldLabel, SectionLabel, Note } from './ui';
 import { useSettingsState, updateSettings, refreshSettings } from '../settingsStore';
 import { AUTO_LOCK_OPTIONS, autoLockLabel, SUPPORTED_LOCALES, localeLabel, COLOR_MODES, TOKEN_LAYOUTS, type ColorMode, type TokenLayout } from '../../core/settings';
 import { POPULAR_CURRENCIES, OTHER_CURRENCIES } from '../../core/fiat';
@@ -17,16 +17,15 @@ import type { Ctx } from './screens';
 // default wallet, developer toggles, push delivery, custom networks, UTXO management, mobile sync) are intentionally absent.
 
 // ---------- shared building blocks ----------
-export const Group: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: 'hidden', marginBottom: 14 }}>{children}</div>;
+export const Group: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="hb-settings-group" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>{children}</div>;
 
 export const IconDot: React.FC<{ icon: string }> = ({ icon }) => <div style={{ width: 36, height: 36, borderRadius: 999, background: T.bgAlt, color: T.sub, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Ic d={ICON[icon] ?? icon} size={18} /></div>;
 
 export const NavRow: React.FC<{ icon: string; label: string; value?: string; onClick: () => void; first?: boolean; external?: boolean; testid?: string }> = ({ icon, label, value, onClick, first, external, testid }) => (
-  <div className="hb-tap" role="button" tabIndex={0} data-testid={testid} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+  <div className="hb-settings-row" role="button" tabIndex={0} data-testid={testid} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderTop: first ? 'none' : `1px solid ${T.border}`, cursor: 'pointer' }}>
     <IconDot icon={icon} />
-    <span style={{ flex: 1, fontWeight: 600, minWidth: 0 }}>{label}</span>
-    {value && <span style={{ color: T.sub, fontSize: 14, maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</span>}
+    <div className="hb-settings-row-copy"><span>{label}</span>{value && <small>{value}</small>}</div>
     <Ic d={external ? ICON.external : ICON.chevron} size={external ? 16 : 18} />
   </div>
 );
@@ -39,7 +38,7 @@ export const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string;
 );
 
 export const SwitchRow: React.FC<{ icon?: string; label: string; sub?: string; on: boolean; onToggle: () => void; first?: boolean; testid?: string }> = ({ icon, label, sub, on, onToggle, first, testid }) => (
-  <div data-testid={testid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderTop: first ? 'none' : `1px solid ${T.border}` }}>
+  <div className="hb-settings-switch-row" data-testid={testid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px', borderTop: first ? 'none' : `1px solid ${T.border}` }}>
     {icon && <IconDot icon={icon} />}
     <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600 }}>{label}</div>{sub && <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{sub}</div>}</div>
     <Toggle on={on} onClick={onToggle} label={label} />
@@ -47,16 +46,15 @@ export const SwitchRow: React.FC<{ icon?: string; label: string; sub?: string; o
 );
 
 export const SelectionRow: React.FC<{ label: string; selected: boolean; onClick: () => void; busy?: boolean; testid?: string }> = ({ label, selected, onClick, busy, testid }) => (
-  <div className="hb-tap" role="radio" aria-checked={selected} tabIndex={0} data-testid={testid} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+  <div className="hb-settings-selection" role="radio" aria-checked={selected} tabIndex={0} data-testid={testid} onClick={onClick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 4px', borderBottom: `1px solid ${T.border}`, cursor: 'pointer' }}>
     <span style={{ flex: 1, fontWeight: selected ? 700 : 500 }}>{label}</span>
     {busy ? <Spinner size={16} /> : selected ? <span style={{ color: T.accent }}><Ic d={ICON.check} size={18} /></span> : null}
   </div>
 );
 
-export const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ fontWeight: 700, color: T.sub, fontSize: 13, margin: '14px 2px 2px' }}>{children}</div>;
 export const ErrorLine: React.FC<{ msg: string }> = ({ msg }) => msg ? <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 2px' }}>{userText(msg)}</div> : null;
-export const Note: React.FC<{ children: React.ReactNode }> = ({ children }) => <div style={{ background: T.bgAlt, color: T.sub, borderRadius: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, margin: '4px 0 12px' }}>{children}</div>;
+export { SectionLabel, Note };
 const manifestVersion = (): string => { try { return browser.runtime.getManifest().version; } catch { return ''; } };
 
 const COLOR_LABEL: Record<ColorMode, string> = { system: 'System', light: 'Light', dark: 'Dark' };
@@ -85,20 +83,24 @@ export const SettingsScreen: React.FC<Ctx> = (c) => {
   const n = wallet?.accounts ?? c.accounts?.length ?? 1;
   return (
     <Screen title="Settings" onBack={c.nav.pop}>
-      <div className="hb-tap" role="button" tabIndex={0} data-testid="settings-manage-wallets" onClick={() => c.nav.push('manageWallets')} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('manageWallets'); }}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.bgAlt, borderRadius: 16, padding: 14, margin: '6px 0 16px', cursor: 'pointer' }}>
+      <div className="hb-settings-row" role="button" tabIndex={0} data-testid="settings-manage-wallets" onClick={() => c.nav.push('manageWallets')} onKeyDown={(e) => { if (e.key === 'Enter') c.nav.push('manageWallets'); }}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 14, margin: '0 0 16px', cursor: 'pointer' }}>
         <div style={{ width: 42, height: 42, borderRadius: 999, background: T.accent, color: 'var(--hb-on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>H</div>
-        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>Manage wallets</div><div style={{ fontSize: 12, color: T.sub }}>{wallet?.label ?? (wallet === null ? 'Loading…' : 'Wallet')} · {n} account{n === 1 ? '' : 's'}</div></div>
+        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>Manage wallets</div><div style={{ fontSize: 12, color: T.sub, minHeight: 18, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wallet ? `${wallet.label} · ${n} account${n === 1 ? '' : 's'}` : <Skeleton w={140} h={10} style={{ marginTop: 4 }} />}</div></div>
         <Ic d={ICON.chevron} size={18} />
       </div>
       <Group><NavRow first icon="full" label="Fullscreen" onClick={fullscreen} testid="settings-fullscreen" /></Group>
+      <SectionLabel>Security & connections</SectionLabel>
       <Group>
         <NavRow first icon="shield" label="Security" value={autoLockLabel(settings.lockTimeInMinutes)} onClick={() => c.nav.push('settingsSecurity')} testid="settings-security" />
         <NavRow icon="globe" label="Connections" onClick={() => c.nav.push('connections')} testid="settings-connections" />
         <NavRow icon="globe" label="Custom Networks" onClick={() => c.nav.push('customNetworks')} testid="settings-custom-networks" />
         <NavRow icon="contacts" label="Address Book" onClick={() => c.nav.push('settingsAddressBook')} testid="settings-address-book" />
         <NavRow icon="scan" label="Sync with Mobile" onClick={syncMobile} testid="settings-sync-mobile" />
-        <NavRow icon="gear" label="Preferences" onClick={() => c.nav.push('settingsPrefs')} testid="settings-preferences" />
+      </Group>
+      <SectionLabel>Preferences</SectionLabel>
+      <Group>
+        <NavRow first icon="gear" label="Preferences" onClick={() => c.nav.push('settingsPrefs')} testid="settings-preferences" />
         <NavRow icon="lang" label="Language" value={localeLabel(settings.locale)} onClick={() => c.nav.push('settingsLanguage')} testid="settings-language" />
         <NavRow icon="card" label="Currency" value={settings.baseCurrency} onClick={() => c.nav.push('settingsCurrency')} testid="settings-currency" />
         <NavRow icon="theme" label="Color mode" value={COLOR_LABEL[settings.colorMode]} onClick={() => c.nav.push('settingsColorMode')} testid="settings-color-mode" />
@@ -149,7 +151,7 @@ export const SecurityScreen: React.FC<Ctx> = (c) => {
 
 export const AddPasswordScreen: React.FC<Ctx> = (c) => {
   const bio = useBiometricAvailability();
-  return <Screen title="Add a password" onBack={c.nav.pop}><AddPassword bg={c.bg} name={bio.name} onDone={c.nav.pop} /></Screen>;
+  return <Screen title="Add a password" onBack={c.nav.pop}><AddPassword bg={c.bg} name={bio.name} onDone={c.nav.pop} heading={false} /></Screen>;
 };
 
 export const BiometricsEnrollScreen: React.FC<Ctx> = (c) => {
@@ -269,7 +271,7 @@ export const AddressBookScreen: React.FC<Ctx> = (c) => {
     <Screen title="Address Book" onBack={c.nav.pop} right={<IconBtn icon="plus" title="Add contact" onClick={() => c.nav.push('settingsAddressBookEdit')} />}>
       <ErrorLine msg={err} />
       {items === null ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner /></div>
-        : items.length === 0 ? <><Empty title="No contacts yet" sub="Save addresses you send to often and pick them in Send." icon="contacts" /><Btn variant="ghost" onClick={() => c.nav.push('settingsAddressBookEdit')}>Add contact</Btn></>
+        : items.length === 0 ? <Empty title="No contacts yet" sub="Save addresses you send to often and pick them in Send." icon="contacts"><Btn onClick={() => c.nav.push('settingsAddressBookEdit')} style={{ width: 'auto', padding: '12px 28px' }}>Add contact</Btn></Empty>
         : items.map((e) => (
           <Row key={e.id} onClick={() => c.nav.push('settingsAddressBookEdit', { entry: e })} left={<IconDot icon="contacts" />} title={e.name}
             sub={ADDRESS_BOOK_COINS.filter((k) => e.addresses[k]).map((k) => `${k === 'ethereum' ? 'EVM' : ADDRESS_BOOK_COIN_LABEL[k]} ${shortAddr(e.addresses[k]!)}`).join(' · ')} right={<Ic d={ICON.chevron} size={18} />} />
@@ -295,17 +297,17 @@ export const AddressBookEditScreen: React.FC<Ctx> = (c) => {
   };
   const input = inputStyle;
   return (
-    <Screen title={entry ? 'Edit contact' : 'New contact'} onBack={c.nav.pop} right={entry ? <IconBtn icon="trash" title="Delete contact" onClick={() => setConfirm(true)} /> : undefined}>
-      <label style={{ fontSize: 12, color: T.sub }} htmlFor="ab-name">Name</label>
+    <Screen title={entry ? 'Edit contact' : 'New contact'} onBack={c.nav.pop} right={entry ? <IconBtn icon="trash" title="Delete contact" onClick={() => setConfirm(true)} /> : undefined}
+      footer={<Btn disabled={!canSave} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn>}>
+      <FieldLabel htmlFor="ab-name" first>Name</FieldLabel>
       <input id="ab-name" data-testid="ab-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alice" style={input} />
       {ADDRESS_BOOK_COINS.map((coin: AddressBookCoin) => (
-        <div key={coin} style={{ marginTop: 16 }}>
-          <label style={{ fontSize: 12, color: T.sub }} htmlFor={`ab-${coin}`}>{ADDRESS_BOOK_COIN_LABEL[coin]} address</label>
+        <div key={coin}>
+          <FieldLabel htmlFor={`ab-${coin}`}>{ADDRESS_BOOK_COIN_LABEL[coin]} address</FieldLabel>
           <input id={`ab-${coin}`} data-testid={`ab-${coin}`} value={addrs[coin] ?? ''} onChange={(e) => setAddrs({ ...addrs, [coin]: e.target.value })} placeholder="Optional" spellCheck={false} autoComplete="off" style={{ ...input, fontFamily: 'monospace' }} />
         </div>
       ))}
       <ErrorLine msg={err} />
-      <div style={{ marginTop: 22 }}><Btn disabled={!canSave} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn></div>
       {confirm && <Sheet title="Delete contact?" onClose={() => setConfirm(false)}>
         <div style={{ color: T.sub, marginBottom: 14 }}>{entry?.name} will be removed from your address book. This can't be undone.</div>
         <Btn onClick={remove} disabled={busy} style={{ background: T.error }}>Delete</Btn>

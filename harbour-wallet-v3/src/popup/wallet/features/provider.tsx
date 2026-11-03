@@ -12,13 +12,13 @@ import { Biometrics, isUserCancel } from '../../../core/passkey';
 import { useSecretField } from '../../secureField';
 import { biometricUnlock, loadPasskeyStatus, useBiometricAvailability, type PasskeyStatus } from '../../biometricsUi';
 
-const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, margin: '6px 0 12px' };
+const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: `1px solid ${T.border}`, borderRadius: 12, padding: 12, background: T.surface, color: T.text, minHeight: 48, margin: '8px 0 20px' };
 const mono: React.CSSProperties = { fontFamily: 'monospace', fontSize: 12, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', margin: '6px 0' };
 const json = (v: unknown) => JSON.stringify(v, null, 2);
 const humanize = (k: string) => k.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
 const plain = (v: any): string => v == null ? '' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : Array.isArray(v) ? v.map(plain).join(', ') : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${humanize(k)}: ${plain(x)}`).join('\n') : String(v);
 // Objects and lists render as labelled rows, never as raw JSON.
-const Detail = ({ label, value }: { label: string; value: any }) => value == null || value === '' ? null : <div style={{ padding: '10px 0', borderBottom: `1px solid ${T.border}` }}><div style={{ color: T.sub, fontSize: 12 }}>{label}</div><div style={{ ...mono, fontFamily: typeof value === 'string' && value.length > 28 ? 'monospace' : 'inherit' }}>{plain(value)}</div></div>;
+const Detail = ({ label, value }: { label: string; value: any }) => value == null || value === '' ? null : <div style={{ padding: '14px 0', borderBottom: `1px solid ${T.border}` }}><div style={{ color: T.sub, fontSize: 12 }}>{label}</div><div style={{ ...mono, fontFamily: typeof value === 'string' && value.length > 28 ? 'monospace' : 'inherit' }}>{plain(value)}</div></div>;
 const gwei = (wei: any): string => { try { const n = Number(BigInt(String(wei))) / 1e9; return `${+n.toFixed(n < 1 ? 4 : 2)} gwei`; } catch { return ''; } };
 const fmtUnits = (raw: string, dec = 18): string => { const t = raw.padStart(dec + 1, '0'); const i = t.slice(0, t.length - dec), f = t.slice(t.length - dec).replace(/0+$/, ''); return f ? `${i}.${f}` : i; };
 // One sentence for the decoded call; a plain native transfer has nothing to decode, so the row is hidden.

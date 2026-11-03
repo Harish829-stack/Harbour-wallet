@@ -5,7 +5,7 @@ import { userText } from '../../../core/errors';
 import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../../theme';
 import { bg } from '../../api';
-import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, Spinner } from '../ui';
+import { Screen, Row, Btn, Coin, Empty, Skeleton, Sheet, Ic, ICON, SuccessCheck, Spinner, PageTitle, SectionLabel } from '../ui';
 import type { Ctx, Nav } from '../screens';
 import type { StakeListItem, Position, StakeAction } from '../../../core/staking/types';
 import { fmtRaw, pctText, remaining, notifyEarnChanged, onEarnChanged, ValidatorAvatar, ValidatorSheet, Notice, type ValidatorView } from './earnParts';
@@ -64,9 +64,11 @@ const StakingListBody: React.FC<{ nav: Nav }> = ({ nav }) => {
   );
 };
 /** Home bottom-tab body (replaces the old static "Native Staking" card). */
-export const EarnTab: React.FC<{ nav: Nav }> = ({ nav }) => (
+export const EarnTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav, notice }) => (
   <>
-    <h2 style={{ fontSize: 22, margin: '8px 0 12px', textAlign: 'center' }}>Native Staking</h2>
+    <PageTitle>Earn</PageTitle>
+    {notice}
+    <SectionLabel first>Native staking</SectionLabel>
     <StakingListBody nav={nav} />
   </>
 );

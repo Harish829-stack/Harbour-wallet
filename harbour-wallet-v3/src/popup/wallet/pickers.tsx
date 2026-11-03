@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../theme';
-import { Coin, Empty, Ic, ICON, Row, Sheet } from './ui';
+import { Coin, Empty, Ic, ICON, Row, Sheet, navMs, reducedMotion } from './ui';
 
 // Shared network picker: one searchable, grouped list used wherever the user must choose a network
 // (Add custom token, Import NFT). Long flat lists made people scroll through ~100 chains; here the
@@ -10,17 +10,23 @@ export interface PickNetwork { key: string; id: string; name: string; sym?: stri
 const POPULAR = ['ethereum', 'base', 'smartchain', 'polygon', 'arbitrum', 'optimism', 'avalanchec', 'solana', 'tron'];
 const byName = (a: PickNetwork, b: PickNetwork) => a.name.localeCompare(b.name);
 
-export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string }> = ({ value, onChange, placeholder, autoFocus, label }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '0 14px', minHeight: 46 }}>
+// autoFocus waits for the screen / sheet to finish sliding in and focuses without scrolling, so the caret and focus ring
+// appear once the view has settled instead of jumping in mid-transition.
+export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; label?: string; testid?: string }> = ({ value, onChange, placeholder, autoFocus, label, testid }) => {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!autoFocus) return; const t = setTimeout(() => ref.current?.focus({ preventScroll: true }), reducedMotion() ? 0 : navMs() + 40); return () => clearTimeout(t); }, [autoFocus]);
+  return (
+  <div className="hb-search-wrap"><div className="hb-search-box" style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.bgAlt, borderRadius: 14, padding: '0 14px', minHeight: 46 }}>
     <span style={{ color: T.sub, display: 'inline-flex' }}><Ic d={ICON.search} size={18} /></span>
-    <input type="text" inputMode="search" aria-label={label ?? placeholder} value={value} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} autoComplete="off"
+    <input ref={ref} data-testid={testid} type="text" inputMode="search" aria-label={label ?? placeholder} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} autoComplete="off"
       style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text, padding: '12px 0' }} />
     {value && <button type="button" className="hb-tap" aria-label="Clear search" onClick={() => onChange('')} style={{ background: 'none', border: 'none', color: T.sub, cursor: 'pointer', display: 'inline-flex', padding: 4 }}><Ic d={ICON.close} size={16} /></button>}
-  </div>
-);
+  </div></div>
+  );
+};
 
 const Heading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', color: T.sub, margin: '16px 0 2px' }}>{children}</div>
+  <div className="hb-section-label" style={{ fontSize: 12, fontWeight: 700, color: T.sub, margin: '12px 2px 4px' }}>{children}</div>
 );
 
 export const NetworkPicker: React.FC<{ items: PickNetwork[]; onPick: (n: PickNetwork) => void; selectedId?: string; autoFocus?: boolean }> = ({ items, onPick, selectedId, autoFocus = true }) => {

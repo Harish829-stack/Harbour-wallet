@@ -376,3 +376,42 @@ statuses remain unchanged. API discovery is not UI parity or live integration pr
 Repacked the supplied Desktop Harbour.zip with manifest.json at ZIP root.
 See harbour-wallet-v2/releases/Harbour-root-fixed.validation.json. No UI,
 integration, visual or interaction status changed; Firefox runtime unverified.
+
+## 2026-11-03 — Harbour Wallet v3 shared UX pass (code-only)
+
+Updated the v3 shared design layer and wallet UI shell for consistent focus,
+form feedback, reduced-motion handling, screen headers/footers, sheets, and
+navigation interactions. Home's portfolio balance and quick actions also have
+new visual hierarchy. Existing route and action handlers were left intact.
+This is source-level progress only: no v3 browser render or interaction audit
+was completed, so no visual or interaction parity row is promoted.
+
+### 2026-11-03 — v3 motion and interaction corrections
+
+Corrected visible-tab indicator sizing and persistent transition direction, capped
+list staggering, and removed automatic transforms on every screen child. Shared
+sheets now portal to their wallet/navigation surface, keep a fixed title and close
+control, contain keyboard focus, restore trigger focus, and cancel dismissal timers
+on unmount. Tab underlines observe resize/font geometry and tabs support arrow,
+Home, and End keys. Search focus, settings row feedback, the QR glyph alias, and
+unlock password visibility/loading presentation were also corrected. Wallet
+services and transaction handlers are unchanged. Production build and subsequent
+TypeScript check passed. The existing locked extension was inspected in Chrome;
+authenticated screens have not received a rendered audit of these changes.
+
+### 2026-11-03 — v3 spacing and settings layout audit
+
+Addressed the supplied Swap/Earn screenshots with explicit label/control gaps,
+contained token-choice sheets, expandable full contract addresses, separated
+reserve metrics, and display-only numeric formatting (full precision remains in
+tooltips and transaction data). Settings navigation values sit below labels;
+sections, selection rows, switches and form spacing use consistent rhythm.
+Network management uses the shared footer rather than an overlapping absolute
+button. Account/wallet rename fields shrink safely; token price/change text wraps
+in narrow layouts. Nested password/biometric forms no longer double their padding.
+
+`evidences/audit/ui-v3/2026-11-03/` records 41 actual-component fixtures at three
+widths (123 captures plus 6 picker captures), final geometry results, and inspection
+scope. The fixtures use mock transport and no wallet secrets. Build/typecheck and
+diff checks passed. These captures do not certify live services, transactions,
+light mode, or every state/interaction; see the evidence README.
