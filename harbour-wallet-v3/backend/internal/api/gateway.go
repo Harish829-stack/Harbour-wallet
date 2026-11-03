@@ -250,6 +250,51 @@ func cleanQuery(q url.Values, keys []string, max int, value *regexp.Regexp) (str
 }
 
 // rawQuery passes a short query string through (used where the upstream API defines its own parameters).
+// uniswapChains are the chains the Uniswap route may be used for (the extension's testnet Swap: Ethereum Sepolia).
+// Without this, any device could spend the backend's Uniswap key on mainnet quotes.
+var uniswapChains = map[float64]bool{11155111: true}
+
+// uniswapBodyAllowed requires a JSON object (<= 64 KiB) whose every chain id field, at any depth, is an allowed chain,
+// and at least one such field. Trading API requests carry chainId / tokenInChainId / tokenOutChainId (in `quote` for /swap).
+func uniswapBodyAllowed(body []byte) bool {
+	if len(body) == 0 || len(body) > 64<<10 {
+		return false
+	}
+	var doc map[string]any
+	if json.Unmarshal(body, &doc) != nil {
+		return false
+	}
+	found, ok := 0, true
+	var walk func(v any, depth int)
+	walk = func(v any, depth int) {
+		if depth > 12 || !ok {
+			ok = false
+			return
+		}
+		switch t := v.(type) {
+		case map[string]any:
+			for k, x := range t {
+				if k == "chainId" || k == "tokenInChainId" || k == "tokenOutChainId" {
+					n, isNum := x.(float64)
+					if !isNum || !uniswapChains[n] {
+						ok = false
+						return
+					}
+					found++
+					continue
+				}
+				walk(x, depth+1)
+			}
+		case []any:
+			for _, x := range t {
+				walk(x, depth+1)
+			}
+		}
+	}
+	walk(doc, 0)
+	return ok && found > 0
+}
+
 func rawQuery(r url.Values) (string, bool) {
 	if len(r) == 0 {
 		return "", true
@@ -395,7 +440,7 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 			return nil, &gwReject{http.StatusServiceUnavailable, "uniswap_not_configured", "Uniswap Trading API is not configured. Set UNISWAP_API_KEY on the Harbour backend."}
 		}
 		qs, ok := rawQuery(q)
-		if !ok || qs != "" {
+		if !ok || qs != "" || !uniswapBodyAllowed(body) {
 			return nil, errBadRequest
 		}
 		return &gwCall{method: method, url: g.hosts.Uniswap + strings.TrimPrefix(path, "/uniswap/v1"), body: body,

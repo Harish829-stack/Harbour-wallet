@@ -42,9 +42,10 @@ func testGateway(t *testing.T, h http.HandlerFunc) (*gateway, *memCache) {
 		LiFi: srv.URL + "/lifi", Jupiter: srv.URL + "/jup", Relay: srv.URL + "/relay", Thor: srv.URL + "/thor", CoinGecko: srv.URL + "/cg",
 		CoinGeckoPro: srv.URL + "/cgpro", GeckoTerminal: srv.URL + "/gt", Helius: srv.URL + "/helius", Etherscan: srv.URL + "/es",
 		TronGrid: srv.URL + "/tron", TonCenter: srv.URL + "/ton", Pimlico: srv.URL + "/pim", Alchemy: srv.URL + "/alch/%s",
+		Uniswap: srv.URL + "/uni",
 	}
 	keys := GatewayKeys{LiFi: "lifi-secret-key", Jupiter: "jup-secret-key", CoinGecko: "cg-secret-key", Helius: "helius-secret", Alchemy: "alchemy-secret",
-		Etherscan: "etherscan-secret", TronGrid: "trongrid-secret", TonCenter: "toncenter-secret"}
+		Etherscan: "etherscan-secret", TronGrid: "trongrid-secret", TonCenter: "toncenter-secret", Uniswap: "uniswap-secret"}
 	cache := &memCache{}
 	return newGateway(keys, hosts, map[uint64]string{1: "eth-mainnet", 137: "polygon-mainnet"}, cache), cache
 }
@@ -206,5 +207,48 @@ func TestCleanQuery(t *testing.T) {
 	}
 	if _, ok := cleanQuery(url.Values{"a": {"1"}, "z": {"1"}}, []string{"a"}, 4, reNFTValue); ok {
 		t.Fatal("unlisted key accepted")
+	}
+}
+
+func TestGatewayUniswapRoute(t *testing.T) {
+	var gotPath, gotKey, gotPermit2 string
+	g, _ := testGateway(t, func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotKey, gotPermit2 = r.URL.Path, r.Header.Get("x-api-key"), r.Header.Get("x-permit2-disabled")
+		_, _ = io.WriteString(w, `{"routing":"CLASSIC","echo":"`+r.Header.Get("x-api-key")+`"}`)
+	})
+	quote := `{"type":"EXACT_INPUT","amount":"1","tokenInChainId":11155111,"tokenOutChainId":11155111,"tokenIn":"0x1","tokenOut":"0x2"}`
+	res, rej, err := call(t, g, "POST", "/uniswap/v1/quote", quote)
+	if err != nil || rej != nil {
+		t.Fatalf("quote: rej=%v err=%v", rej, err)
+	}
+	if gotPath != "/uni/quote" || gotKey != "uniswap-secret" || gotPermit2 != "true" {
+		t.Fatalf("upstream got path=%q key=%q permit2=%q", gotPath, gotKey, gotPermit2)
+	}
+	if strings.Contains(string(res.Body), "uniswap-secret") {
+		t.Fatal("key echoed back to the client")
+	}
+	// /swap carries the chain inside the quote (and its route tokens).
+	swap := `{"deadline":1,"quote":{"chainId":11155111,"route":[[{"tokenIn":{"chainId":11155111},"tokenOut":{"chainId":11155111}}]]}}`
+	if _, rej, _ := call(t, g, "POST", "/uniswap/v1/swap", swap); rej != nil {
+		t.Fatalf("swap rejected: %v", rej.msg)
+	}
+	for name, c := range map[string]struct{ method, target, body string }{
+		"GET":             {"GET", "/uniswap/v1/quote", quote},
+		"query string":    {"POST", "/uniswap/v1/quote?x=1", quote},
+		"unlisted path":   {"POST", "/uniswap/v1/order", quote},
+		"mainnet":         {"POST", "/uniswap/v1/quote", strings.ReplaceAll(quote, `"tokenOutChainId":11155111`, `"tokenOutChainId":1`)},
+		"nested mainnet":  {"POST", "/uniswap/v1/swap", strings.Replace(swap, `"tokenOut":{"chainId":11155111}`, `"tokenOut":{"chainId":1}`, 1)},
+		"no chain":        {"POST", "/uniswap/v1/swap", `{"deadline":1,"quote":{}}`},
+		"string chain id": {"POST", "/uniswap/v1/quote", `{"tokenInChainId":"11155111"}`},
+		"not json":        {"POST", "/uniswap/v1/quote", `chainId=11155111`},
+		"empty":           {"POST", "/uniswap/v1/quote", ``},
+	} {
+		if _, rej, _ := call(t, g, c.method, c.target, c.body); rej == nil {
+			t.Errorf("%s: expected rejection", name)
+		}
+	}
+	g.keys.Uniswap = ""
+	if _, rej, _ := call(t, g, "POST", "/uniswap/v1/quote", quote); rej == nil || rej.code != "uniswap_not_configured" {
+		t.Fatalf("missing key should be uniswap_not_configured, got %v", rej)
 	}
 }
