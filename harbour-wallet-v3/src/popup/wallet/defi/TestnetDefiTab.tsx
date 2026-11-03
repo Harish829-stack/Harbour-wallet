@@ -99,7 +99,7 @@ export const TestnetDefiTab: React.FC<{
   </>;
   return <div data-testid={`testnet-${kind}`}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2>{title}</h2><button type="button" disabled={busy || loading} onClick={() => void load()} style={{ color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Refresh</button></div>
-    <Message>{title} testing is enabled on {networkName} via {kind === 'earn' ? 'Aave V3' : 'Uniswap API'}. Test tokens have no monetary value.</Message>
+    <Message>{title} testing is enabled on {networkName} via {kind === 'earn' ? 'Aave V3 (AaveKit)' : 'Uniswap API'}. Test tokens have no monetary value.</Message>
     {loading && <div role="status" style={{ padding: 18, textAlign: 'center' }}><Spinner size={22} /><p style={hint}>Checking live {kind === 'earn' ? 'reserves and balances' : 'token balances'}…</p></div>}
     {error && <Message error>{error}</Message>}
     {!catalog && extras.length > 0 && <Btn variant="ghost" disabled={busy || loading} onClick={() => { setExtras([]); setSearch(''); }}>Clear added token checks</Btn>}
@@ -115,10 +115,10 @@ export const TestnetDefiTab: React.FC<{
         {tokens.length === 0 && <Message>No {kind === 'earn' ? 'available Aave reserves' : 'checked Sepolia tokens'} were found. {kind === 'swap' ? 'Try checking another token contract below.' : 'Refresh to check again.'}</Message>}
         <label style={{ display: 'block', margin: '12px 0' }}>{kind === 'earn' ? 'Asset' : 'You pay'}
           <select aria-label="Input token" style={field} disabled={busy || !!review || !tokens.length} value={token} onChange={(e) => choose(e.target.value)}>
-            <option value="">Select token</option>{tokens.map((t) => <option key={t.address} value={t.address}>{t.symbol} · {short(t.address)}</option>)}
+            <option value="">Select token</option>{tokens.map((t) => <option key={t.address} value={t.address}>{t.address === zeroAddress ? `${t.symbol} · native` : `${t.symbol} · ${short(t.address)}`}</option>)}
           </select>
         </label>
-        {selected && <div style={hint}>Wallet: {units(selected.balance, selected.decimals)} {selected.symbol}<br /><span title={selected.address}>Contract: {selected.address}</span></div>}
+        {selected && <div style={hint}>Wallet: {units(selected.balance, selected.decimals)} {selected.symbol}<br />{selected.address === zeroAddress ? <span>Native ETH · supplied through Aave’s WETH gateway</span> : <span title={selected.address}>Contract: {selected.address}</span>}</div>}
         {earnAsset && <div style={card}>
           <strong>{earnAsset.apy.toFixed(2)}% variable supply APY</strong>
           <div style={hint}>Supplied: {units(earnAsset.supplied, earnAsset.decimals)} {earnAsset.symbol}</div>

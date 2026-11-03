@@ -10,6 +10,7 @@ import { aaveDeployment, assertTestnetNetwork, PLAN_TTL_MS, SEPOLIA } from '../.
 import { readToken, sameAddress, tokenAddress } from '../../integrations/testnet-defi/rpc';
 import { defiClient } from '../../integrations/testnet-defi/client';
 import { listEarnAssets, prepareEarn } from '../../integrations/testnet-defi/aave';
+import { AaveKitUnavailable, EARN_PROVIDER, NATIVE_TOKEN, listEarnAssetsKit, prepareEarnKit } from '../../integrations/testnet-defi/aavekit';
 import { prepareSwap, prepareWrap, swapCatalog } from '../../integrations/testnet-defi/uniswap';
 import { ReviewStore } from '../../integrations/testnet-defi/plans';
 import type { DefiCall, DefiRequest, DefiReview } from '../../integrations/testnet-defi/types';
@@ -43,17 +44,33 @@ function rawAmount(value: string, decimals: number): bigint {
   if (amount <= 0n || amount >= 2n ** 256n) throw new Error('Enter a positive token amount.');
   return amount;
 }
+// AaveKit first; if its API is unreachable, ERC-20 reserves fall back to direct contract reads.
+// Native ETH (WETH gateway) is AaveKit-only. Validation errors never fall back.
+async function earnCatalog(c: Awaited<ReturnType<typeof context>>) {
+  if (EARN_PROVIDER === 'aavekit') {
+    try { return await listEarnAssetsKit(c.client, c.address, c.deployment); }
+    catch (error) { if (!(error instanceof AaveKitUnavailable)) throw error; }
+  }
+  return listEarnAssets(c.client, c.address, c.deployment);
+}
+async function earnPrepare(c: Awaited<ReturnType<typeof context>>, token: Address, amount: bigint, action: 'supply' | 'withdraw') {
+  if (EARN_PROVIDER === 'aavekit') {
+    try { return await prepareEarnKit(c.client, c.address, token, amount, action, c.deployment); }
+    catch (error) { if (!(error instanceof AaveKitUnavailable) || token === NATIVE_TOKEN) throw error; }
+  }
+  return prepareEarn(c.client, c.address, token, amount, action, c.deployment);
+}
 async function build(ctx: HandlerCtx, req: DefiRequest) {
   const c = await context(ctx, req.networkId, req.action === 'supply' || req.action === 'withdraw' ? 'earn' : 'swap');
   const token = tokenAddress(req.token);
   const wrapped = req.action === 'wrap' || req.action === 'unwrap';
   if (wrapped && !sameAddress(token, SEPOLIA.weth)) throw new Error('Unsupported wrapped token.');
-  const metadata = wrapped || (req.action === 'swap' && sameAddress(token, '0x0000000000000000000000000000000000000000'))
+  const metadata = wrapped || ((req.action === 'swap' || req.action === 'supply' || req.action === 'withdraw') && sameAddress(token, zeroAddress))
     ? { decimals: 18 } : await readToken(c.client, token, c.address);
   const amount = rawAmount(req.amount, metadata.decimals);
   const expiresAt = Date.now() + PLAN_TTL_MS;
   const prepared = req.action === 'supply' || req.action === 'withdraw'
-    ? await prepareEarn(c.client, c.address, token, amount, req.action, c.deployment)
+    ? await earnPrepare(c, token, amount, req.action)
     : req.action === 'swap'
       ? await prepareSwap(c.client, c.address, token, tokenAddress(req.tokenOut ?? ''), amount, req.slippageBps ?? 50, Math.floor(expiresAt / 1000))
       : await prepareWrap(c.client, c.address, amount, req.action);
@@ -76,7 +93,7 @@ export const handlers: HandlerMap = {
   async defiCatalog(msg, ctx) {
     const kind = msg.kind === 'earn' ? 'earn' : 'swap';
     const c = await context(ctx, String(msg.networkId ?? ''), kind);
-    if (kind === 'earn') return { ok: true, assets: await listEarnAssets(c.client, c.address, c.deployment), account: c.address };
+    if (kind === 'earn') return { ok: true, assets: await earnCatalog(c), account: c.address };
     const extras: Address[] = Array.isArray(msg.tokens) ? msg.tokens.slice(0, 8).map((t: unknown) => tokenAddress(String(t))) : [];
     // Token search validates metadata before pool discovery. It cannot make an arbitrary contract a supported Aave reserve.
     await Promise.all(extras.map((token) => readToken(c.client, token, c.address)));
