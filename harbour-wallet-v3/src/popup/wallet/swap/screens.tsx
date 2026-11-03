@@ -14,12 +14,15 @@ const shortHash = (h?: string) => (h ? `${h.slice(0, 8)}…${h.slice(-6)}` : '')
 const explorerUrl = (domainId: string, hash?: string) => { const d = domainById(domainId); return d && hash ? d.explorerTx + hash : undefined; };
 
 // ---------- Asset picker (TW: swap asset select page) ----------
+/** The selected network's native coin goes to the top of a picker list; other order is kept. */
+const nativeFirst = (list: SwapAsset[], domainId?: string) => (domainId ? [...list].sort((a, b) => Number(b.domainId === domainId && b.address === 'native') - Number(a.domainId === domainId && a.address === 'native')) : list);
 export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
   const side: 'from' | 'to' = c.params?.side === 'to' ? 'to' : 'from';
   const s = useSwapStore();
   const [query, setQuery] = useState('');
-  const [domain, setDomain] = useState<string | undefined>(undefined);
-  const [list, setList] = useState<SwapAsset[]>(() => popularAssets());
+  // Start on the network selected on Home (when it is a swap network), so its native coin is listed first.
+  const [domain, setDomain] = useState<string | undefined>(() => (c.networkFilter && domainById(c.networkFilter) ? c.networkFilter : undefined));
+  const [list, setList] = useState<SwapAsset[]>(() => popularAssets(domain));
   const [loading, setLoading] = useState(false);
   const seq = useRef(0);
 
@@ -28,7 +31,7 @@ export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
     const t = setTimeout(() => {
       c.bg({ type: 'swapSearchTokens', query, domainId: domain }).then((r) => {
         if (my !== seq.current) return;
-        setList(r?.ok && Array.isArray(r.assets) ? r.assets : popularAssets(domain)); setLoading(false);
+        setList(nativeFirst(r?.ok && Array.isArray(r.assets) ? r.assets : popularAssets(domain), domain ?? c.networkFilter ?? undefined)); setLoading(false);
       }).catch(() => { if (my === seq.current) { setList(popularAssets(domain)); setLoading(false); } });
     }, query ? 300 : 0);
     return () => clearTimeout(t);

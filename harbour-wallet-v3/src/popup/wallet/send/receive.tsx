@@ -21,7 +21,7 @@ const addrFor = (c: Ctx, a: Asset) => { const ch = chainOfAsset(a); if (!ch) ret
 export const ReceiveSelect: React.FC<Ctx> = (c) => {
   useTokenItems(); const [q, setQ] = useState('');
   const hidden = new Set(c.hiddenAssets ?? []);
-  const rows = useMemo(() => { const t = q.trim().toLowerCase(); return allAssets().filter((a) => !hidden.has(a.id) || !a.token).filter((a) => !t || a.name.toLowerCase().includes(t) || a.sym.toLowerCase().includes(t)); }, [q, c.hiddenAssets]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = useMemo(() => { const t = q.trim().toLowerCase(); return allAssets().filter((a) => !hidden.has(a.id) || !a.token).filter((a) => !t || a.name.toLowerCase().includes(t) || a.sym.toLowerCase().includes(t)).sort((a, b) => Number(b.id === c.networkFilter && b.native) - Number(a.id === c.networkFilter && a.native)); }, [q, c.hiddenAssets, c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Screen title="Receive" onBack={c.nav.pop}>
       <SearchBox value={q} onChange={setQ} placeholder="Search" />

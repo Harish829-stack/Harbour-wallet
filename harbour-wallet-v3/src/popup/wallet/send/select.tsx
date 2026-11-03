@@ -26,8 +26,8 @@ export const SendSelect: React.FC<Ctx> = (c) => {
       const bal = a.token ? Number(tokenItem(a.id)?.formatted ?? 0) : Number(c.balances[a.id]?.formatted ?? 0);
       const chain = chainOfAsset(a); const sup = chain ? support?.[chain.id] : undefined; const ok = !support || (!!sup?.supported && (!a.token || sup.tokens || chain?.kind === 'evm'));
       return { a, bal, ok, chain };
-    }).sort((x, y) => Number(y.ok) - Number(x.ok) || Number(y.bal > 0) - Number(x.bal > 0) || y.bal * (y.a.price || 0) - x.bal * (x.a.price || 0));
-  }, [q, c.balances, support, c.hiddenAssets]); // eslint-disable-line react-hooks/exhaustive-deps
+    }).sort((x, y) => Number(y.a.id === c.networkFilter && y.a.native) - Number(x.a.id === c.networkFilter && x.a.native) || Number(y.ok) - Number(x.ok) || Number(y.bal > 0) - Number(x.bal > 0) || y.bal * (y.a.price || 0) - x.bal * (x.a.price || 0));
+  }, [q, c.balances, support, c.hiddenAssets, c.networkFilter]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Screen title="Send" onBack={c.nav.pop}>
       <div style={{ color: T.sub, fontSize: 13, margin: '4px 0 8px' }}>Select asset to send</div>

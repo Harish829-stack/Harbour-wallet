@@ -60,8 +60,10 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 90 }}>
         {/* price */}
         <div style={{ textAlign: 'center', paddingTop: 10 }} className="hb-rise">
-          <div style={{ fontSize: 30, fontWeight: 800 }}>{price != null ? usd(price) : '—'}</div>
-          {change != null && <div style={{ color: up ? T.success : T.error, fontWeight: 600, fontSize: 14, marginTop: 2 }}>{up ? '▲' : '▼'} {pct(change)}</div>}
+          <div data-testid="native-balance-primary" style={{ fontSize: 30, fontWeight: 800 }}>{!b ? '…' : b.ok === false ? 'Unavailable' : `${Number(b.formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${a.sym}`}</div>
+          <div style={{ color: change == null || change >= 0 ? T.sub : T.error, fontWeight: 600, fontSize: 14, marginTop: 2 }}>
+            {b?.usd != null ? `${usd(b.usd)}${change != null ? ` (${pct(change)})` : ''}` : 'Fiat value unavailable'}
+          </div>
         </div>
         {/* chart (real CoinGecko market chart) */}
         <div style={{ margin: '18px 0', minHeight: 130 }}>
@@ -80,7 +82,7 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
             <div style={{ fontWeight: 700, margin: '4px 0 8px' }}>My Balance</div>
             <div style={{ background: T.bgAlt, borderRadius: 14, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
               <Coin sym={a.sym} assetId={a.id} color={a.color} />
-              <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{price != null ? usd(price) : '—'}</div></div>
+              <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{price != null ? `${usd(price)} per ${a.sym}` : 'Price unavailable'}</div></div>
               <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 700 }} data-testid="native-balance">{!b ? '…' : b.ok === false ? 'Unavailable' : `${Number(b.formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${a.sym}`}</div><div style={{ fontSize: 12, color: T.sub }}>{b?.ok === false ? "Couldn't load balance" : b?.usd != null ? usd(b.usd) : '—'}</div></div>
             </div>
             {a.evm && a.native && chainCategory(a.id) !== 'testnet' && <Row onClick={() => c.nav.push('gasStation', { assetId: a.id })} left={<Coin sym="GAS" color={a.color} />} title="Gas station" sub="Live network fees" right={<Ic d={ICON.chevron} size={18} />} />}
@@ -183,7 +185,8 @@ const MiniToggle: React.FC<{ on: boolean; onClick: () => void }> = ({ on, onClic
 export const SearchScreen: React.FC<Ctx> = (c) => {
   const [tab, setTab] = useState<'crypto' | 'dapps'>('crypto');
   const [cq, setCq] = useState('');
-  const [net, setNet] = useState<string | null>(null);
+  const [net, setNet] = useState<string | null>(c.networkFilter ?? null);
+  useEffect(() => { setNet(c.networkFilter ?? null); }, [c.networkFilter]);
   const [hidden, setHidden] = useState<string[]>(c.hiddenAssets ?? []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { c.bg({ type: 'getUiPrefs' }).then((r) => { if (r?.ok) setHidden(r.hiddenAssets ?? []); }); }, []);
@@ -198,6 +201,8 @@ export const SearchScreen: React.FC<Ctx> = (c) => {
   const looksAddr = /^0x[0-9a-fA-F]{40}$/.test(cq.trim());
   let cryptoAssets = allAssets().filter((a) => !net || a.id === net || a.token?.networkId === net);
   if (q) cryptoAssets = cryptoAssets.filter((a) => a.sym.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.token?.address.toLowerCase() === q);
+  // A selected network's native currency is its default asset in the Crypto tab.
+  if (net) cryptoAssets.sort((a, b) => Number(b.id === net && b.native) - Number(a.id === net && a.native));
   const nets = networkOptions();
   const netCount = nets.length;
 

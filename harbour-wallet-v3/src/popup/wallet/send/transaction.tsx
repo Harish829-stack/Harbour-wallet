@@ -4,6 +4,7 @@ import { Screen, Btn, Coin, Skeleton, Spinner, Empty } from '../ui';
 import type { Ctx } from '../screens';
 import { fmtAmount, shortAddr, openExternal } from './lib';
 import { Notice, CopyBtn } from './parts';
+import { resetDraft } from './store';
 import { chainById, explorerTxUrl } from '../../../core/chains/index';
 import type { SentTx } from '../../../core/sendService';
 
@@ -33,8 +34,10 @@ export const TransactionScreen: React.FC<Ctx> = (c) => {
   const state = d?.status.state ?? 'unknown'; const rec = d?.record ?? null;
   useEffect(() => { if (state !== 'pending' && !(state === 'unknown' && rec)) return; const t = setInterval(() => void load(true), POLL_MS); return () => clearInterval(t); }, [state, !!rec, load]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading && !d) return <Screen title="Transaction" onBack={c.nav.pop}><Skeleton h={60} /><div style={{ height: 12 }} /><Skeleton h={180} /></Screen>;
-  if (!d) return <Screen title="Transaction" onBack={c.nav.pop}><Empty title="Transaction not available" sub={error || 'This transaction could not be found.'} icon="history" /><div style={{ marginTop: 16 }}><Btn onClick={() => void load(false)}>Try again</Btn></div>{item?.url && <div style={{ marginTop: 10 }}><Btn variant="ghost" onClick={() => openExternal(item.url!)}>View on explorer</Btn></div>}</Screen>;
+  // Done ends the send flow: clear the draft (as the Sent screen does) and return to Home.
+  const done = () => { resetDraft(); c.nav.home(); };
+  if (loading && !d) return <Screen title="Transaction" onBack={c.nav.pop}><Skeleton h={60} /><div style={{ height: 12 }} /><Skeleton h={180} /><div style={{ marginTop: 12 }}><Btn variant="ghost" onClick={done}>Done</Btn></div></Screen>;
+  if (!d) return <Screen title="Transaction" onBack={c.nav.pop}><Empty title="Transaction not available" sub={error || 'This transaction could not be found.'} icon="history" /><div style={{ marginTop: 16 }}><Btn onClick={() => void load(false)}>Try again</Btn></div>{item?.url && <div style={{ marginTop: 10 }}><Btn variant="ghost" onClick={() => openExternal(item.url!)}>View on explorer</Btn></div>}<div style={{ marginTop: 12 }}><Btn variant="ghost" onClick={done}>Done</Btn></div></Screen>;
 
   const chain = chainById(d.chain.id); const url = explorerTxUrl(chain, rec?.hash ?? hash ?? '') || item?.url || '';
   const decimals = rec?.decimals ?? d.chain.decimals; const symbol = rec?.symbol ?? item?.symbol ?? d.chain.symbol;
@@ -70,6 +73,7 @@ export const TransactionScreen: React.FC<Ctx> = (c) => {
         {theHash && <CopyBtn text={theHash} label="Copy hash" copiedLabel="Copied" ghost />}
         {url ? <Btn onClick={() => openExternal(url)}>View on explorer</Btn> : <div style={{ flex: 1, fontSize: 12, color: T.sub, alignSelf: 'center' }}>No block explorer is configured for this network.</div>}
       </div>
+      <div style={{ marginTop: 12 }}><Btn variant="ghost" onClick={done}>Done</Btn></div>
     </Screen>
   );
 };
