@@ -70,3 +70,7 @@ docs/harbour/harbour-v3/
 /Harbour-v3-audit
 harbour-wallet-v3/audit
 docs/deployment/
+# Browser network captures (HAR) and DevTools exports: contain session headers and wallet data
+*.har
+*.3novlog
+harbour-wallet-v3/Claude outputs/
