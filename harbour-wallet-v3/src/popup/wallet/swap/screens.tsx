@@ -22,7 +22,7 @@ export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
   const [query, setQuery] = useState('');
   // Start on the network selected on Home (when it is a swap network), so its native coin is listed first.
   const [domain, setDomain] = useState<string | undefined>(() => (c.networkFilter && domainById(c.networkFilter) ? c.networkFilter : undefined));
-  const [list, setList] = useState<SwapAsset[]>(() => popularAssets(domain));
+  const [list, setList] = useState<SwapAsset[]>(() => nativeFirst(popularAssets(domain), domain ?? c.networkFilter ?? undefined));
   const [loading, setLoading] = useState(false);
   const seq = useRef(0);
 
@@ -32,7 +32,7 @@ export const SwapAssetPickerScreen: React.FC<Ctx> = (c) => {
       c.bg({ type: 'swapSearchTokens', query, domainId: domain }).then((r) => {
         if (my !== seq.current) return;
         setList(nativeFirst(r?.ok && Array.isArray(r.assets) ? r.assets : popularAssets(domain), domain ?? c.networkFilter ?? undefined)); setLoading(false);
-      }).catch(() => { if (my === seq.current) { setList(popularAssets(domain)); setLoading(false); } });
+      }).catch(() => { if (my === seq.current) { setList(nativeFirst(popularAssets(domain), domain ?? c.networkFilter ?? undefined)); setLoading(false); } });
     }, query ? 300 : 0);
     return () => clearTimeout(t);
   }, [query, domain]); // eslint-disable-line react-hooks/exhaustive-deps
