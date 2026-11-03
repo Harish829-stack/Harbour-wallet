@@ -97,25 +97,38 @@ async function kitReserves(deployment: AaveDeployment, fetcher?: Fetcher): Promi
   return market.reserves ?? [];
 }
 
-async function toAsset(client: DefiClient, owner: Address, r: KitReserve, native: boolean, deployment: AaveDeployment): Promise<EarnAsset> {
-  // Reserve state (active/paused/frozen/cap/liquidity) and balances are read on-chain, not taken from the API.
-  // AaveKit reports supplyCapReached=true for Base Sepolia reserves whose on-chain cap is 0 (= unlimited),
-  // e.g. USDC/USDT, so its flags are not used for gating.
+/** Reserve state (active/paused/frozen/cap/liquidity) and balances come from the chain, not the API. AaveKit
+ *  reports supplyCapReached=true for Base Sepolia reserves whose on-chain cap is 0 (= unlimited), e.g. USDC/USDT,
+ *  so its flags are not used for gating. Returns the ERC-20 row and, for the wrapped-native reserve, the ETH row. */
+async function toAssets(client: DefiClient, owner: Address, r: KitReserve, deployment: AaveDeployment, want: 'erc20' | 'native' | 'both'): Promise<EarnAsset[]> {
   const onchain = await reserve(client, addr(r.underlyingToken.address), owner, deployment);
   if (!sameAddress(onchain.aToken, r.aToken.address)) throw new AaveKitUnavailable('Aave returned inconsistent market data.');
   const apy = Number(r.supplyInfo.apy?.formatted);
   const base = { ...onchain, apy: Number.isFinite(apy) ? apy : onchain.apy };
-  if (!native) return base;
-  return { ...base, address: NATIVE_TOKEN, symbol: String(r.acceptsNative!.symbol).slice(0, 24), decimals: 18, balance: (await client.getBalance({ address: owner })).toString() };
+  const out: EarnAsset[] = want === 'native' ? [] : [base];
+  if (want !== 'erc20' && r.acceptsNative && PERIPHERY[deployment.chainId]) {
+    const balance = await client.getBalance({ address: owner });
+    out.unshift({ ...base, address: NATIVE_TOKEN, symbol: String(r.acceptsNative.symbol).slice(0, 24), decimals: 18, balance: balance.toString() });
+  }
+  return out;
 }
 
 export async function listEarnAssetsKit(client: DefiClient, owner: Address, deployment: AaveDeployment, fetcher?: Fetcher): Promise<EarnAsset[]> {
   const reserves = await kitReserves(deployment, fetcher);
-  const jobs = reserves.flatMap((r) => [toAsset(client, owner, r, false, deployment), ...(r.acceptsNative && PERIPHERY[deployment.chainId] ? [toAsset(client, owner, r, true, deployment)] : [])]);
-  const results = await Promise.allSettled(jobs);
-  const assets = results.flatMap((x) => x.status === 'fulfilled' ? [x.value] : []);
+  // One on-chain read set per reserve; the ETH row reuses the WETH reserve's state.
+  const results = await Promise.allSettled(reserves.map((r) => toAssets(client, owner, r, deployment, 'both')));
+  const assets = results.flatMap((x) => x.status === 'fulfilled' ? x.value : []);
   // Native ETH first (supplied through Aave's WETH gateway).
   return assets.filter((a) => a.canSupply || BigInt(a.supplied) > 0n).sort((a, b) => Number(b.address === NATIVE_TOKEN) - Number(a.address === NATIVE_TOKEN));
+}
+
+/** Reads only the reserve being reviewed (not the whole market). */
+async function kitAsset(client: DefiClient, owner: Address, token: Address, deployment: AaveDeployment, fetcher?: Fetcher): Promise<EarnAsset | undefined> {
+  const reserves = await kitReserves(deployment, fetcher);
+  const native = token === NATIVE_TOKEN;
+  const r = native ? reserves.find((x) => x.acceptsNative) : reserves.find((x) => sameAddress(x.underlyingToken.address, token));
+  if (!r) return undefined;
+  return (await toAssets(client, owner, r, deployment, native ? 'native' : 'erc20'))[0];
 }
 
 const bad = (): never => { throw new Error('Aave returned an unexpected transaction. Nothing was sent.'); };
@@ -157,8 +170,7 @@ export function verifyKitTx(tx: KitTx, ctx: { owner: Address; token: Address; aT
 }
 
 export async function prepareEarnKit(client: DefiClient, owner: Address, token: Address, amount: bigint, action: 'supply' | 'withdraw', deployment: AaveDeployment, fetcher?: Fetcher): Promise<PreparedDefi> {
-  const assets = await listEarnAssetsKit(client, owner, deployment, fetcher);
-  const asset = assets.find((a) => sameAddress(a.address, token));
+  const asset = await kitAsset(client, owner, token, deployment, fetcher);
   if (!asset) throw new Error(`This token is not supported by Aave on ${deployment.name}.`);
   if (action === 'supply') {
     if (!asset.canSupply) throw new Error(asset.reason ?? 'Deposits are unavailable.');
