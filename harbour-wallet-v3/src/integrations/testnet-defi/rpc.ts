@@ -3,7 +3,7 @@ import type { Address, PublicClient } from 'viem';
 import { tokenAbi } from './abis';
 import type { DefiCall, DefiToken } from './types';
 
-export type DefiClient = Pick<PublicClient, 'readContract' | 'multicall' | 'simulateContract' | 'getBalance' | 'getChainId' | 'getCode'>;
+export type DefiClient = Pick<PublicClient, 'readContract' | 'simulateContract' | 'getBalance' | 'getChainId' | 'getCode'>;
 export function tokenAddress(value: string): Address {
   if (!isAddress(value, { strict: false })) throw new Error('Enter a valid token contract address.');
   return getAddress(value.toLowerCase());

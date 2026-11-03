@@ -1,69 +1,25 @@
 import { decodeFunctionData, encodeFunctionData, getAddress, isAddress, zeroAddress } from 'viem';
 import type { Address } from 'viem';
 import { SEPOLIA, SWAP_BASES } from './config';
-import { factoryAbi, liquidityAbi, tokenAbi, wethAbi } from './abis';
+import { tokenAbi, wethAbi } from './abis';
 import { readToken, sameAddress } from './rpc';
 import type { DefiClient } from './rpc';
-import type { DefiToken, PoolEdge, PreparedDefi, SwapCatalog } from './types';
+import type { DefiToken, PreparedDefi, SwapCatalog } from './types';
 import { GATEWAY_URL } from '../../kit/endpoints';
 
-// Standard V3 fee tiers, in hundredths of a basis point. Missing/disabled tiers return the zero address.
-const FEES = [100, 500, 3000, 10000];
 // Token seeds for Sepolia; quotes always go to Uniswap's API, which checks the requested amount and live route.
 const BASES: readonly Address[] = SWAP_BASES;
-// Seed candidates from Aave's Sepolia address book; live V3 pool checks decide whether they appear.
-// Swap remains independent of the Aave API and contracts being available.
+// Seed candidates from Aave's Sepolia address book. Uniswap's API decides per quote whether a route exists.
 const CANDIDATES: Address[] = [
   '0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357', '0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5',
   '0x29f2D40B0605204364af54EC677bD022dA425d03', '0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c',
   '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0', '0x88541670E55cC00bEEFD87eB59EDd1b7C511AC9a',
   '0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E',
 ];
-const multicallValue = (value: unknown): unknown => {
-  if (value && typeof value === 'object' && 'status' in value) {
-    const row = value as { status?: string; result?: unknown };
-    return row.status === 'success' ? row.result : null;
-  }
-  return value;
-};
-export async function discoverPools(client: DefiClient, tokens: Address[]): Promise<PoolEdge[]> {
-  const pairs = new Map<string, { a: Address; b: Address; fee: number }>();
-  for (const token of tokens) for (const base of BASES) {
-    if (sameAddress(token, base)) continue;
-    const [a, b] = [token, base].sort((x, y) => x.toLowerCase().localeCompare(y.toLowerCase()));
-    for (const fee of FEES) pairs.set(`${a.toLowerCase()}:${b.toLowerCase()}:${fee}`, { a, b, fee });
-  }
-  const specs = [...pairs.values()];
-  // Do not make the whole catalog depend on Multicall3 support. A number of
-  // Sepolia RPCs reject aggregate3 even though ordinary eth_call works. Keep
-  // the batched path for small test doubles/fast RPCs, then fall back safely.
-  let found: Array<Address | null>;
-  try {
-    const result = await client.multicall({ contracts: specs.map(({ a, b, fee }) => ({ address: SEPOLIA.factory, abi: factoryAbi, functionName: 'getPool', args: [a, b, fee] })), allowFailure: true });
-    found = result.map((value) => { const unwrapped = multicallValue(value); return unwrapped == null ? null : String(unwrapped) as Address; });
-  } catch (error) {
-    const results = await Promise.allSettled(specs.map(({ a, b, fee }) => client.readContract({ address: SEPOLIA.factory, abi: factoryAbi, functionName: 'getPool', args: [a, b, fee] })));
-    if (!results.some((result) => result.status === 'fulfilled')) throw error;
-    found = results.map((result) => result.status === 'fulfilled' ? result.value as Address : null);
-  }
-  const existing = found.flatMap((address, i) => address && !sameAddress(String(address), zeroAddress)
-    ? [{ address, token0: specs[i].a, token1: specs[i].b, fee: specs[i].fee }] : []);
-  if (!existing.length) return [];
-  let liquidity: Array<bigint | null>;
-  try {
-    const result = await client.multicall({ contracts: existing.map(({ address }) => ({ address, abi: liquidityAbi, functionName: 'liquidity' })), allowFailure: true });
-    liquidity = result.map((value) => { const unwrapped = multicallValue(value); return unwrapped == null ? null : BigInt(String(unwrapped)); });
-  } catch (error) {
-    const results = await Promise.allSettled(existing.map(({ address }) => client.readContract({ address, abi: liquidityAbi, functionName: 'liquidity' })));
-    if (!results.some((result) => result.status === 'fulfilled')) throw error;
-    liquidity = results.map((result) => result.status === 'fulfilled' ? BigInt(String(result.value)) : null);
-  }
-  return existing.filter((_, i) => liquidity[i] != null && liquidity[i]! > 0n);
-}
 export async function swapCatalog(client: DefiClient, owner: Address, extras: Address[] = []): Promise<SwapCatalog> {
   const candidates = [...new Map([...BASES, ...CANDIDATES, ...extras].map((a) => [a.toLowerCase(), a])).values()];
   const metadata = await Promise.allSettled(candidates.map((a) => readToken(client, a, owner)));
-  return { pools: [], tokens: metadata.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []) };
+  return { tokens: metadata.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []) };
 }
 
 export function minimumOutput(token: DefiToken, raw: bigint, slippageBps: number): bigint {

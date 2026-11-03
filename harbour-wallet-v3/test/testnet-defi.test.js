@@ -4,13 +4,12 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { decodeFunctionData, encodeFunctionData, encodePacked, zeroAddress } from 'viem';
 
-const out = await build({ stdin: { contents: `export * from './aave'; export * from './uniswap'; export * from './routing'; export * from './plans'; export * from './config'; export * from './abis'; export * from './rpc';`, resolveDir: fileURLToPath(new URL('../src/integrations/testnet-defi/', import.meta.url)), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
+const out = await build({ stdin: { contents: `export * from './aave'; export * from './uniswap'; export * from './plans'; export * from './config'; export * from './abis'; export * from './rpc';`, resolveDir: fileURLToPath(new URL('../src/integrations/testnet-defi/', import.meta.url)), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const OWNER = '0x1111111111111111111111111111111111111111';
 const TOKEN = '0x2222222222222222222222222222222222222222';
 const OUTPUT = '0x3333333333333333333333333333333333333333';
 const ATOKEN = '0x4444444444444444444444444444444444444444';
-const EDGE = { address: '0x5555555555555555555555555555555555555555', token0: TOKEN, token1: OUTPUT, fee: 3000 };
 const ACTIVE = 1n << 56n;
 
 function fakeClient(overrides = {}) {
@@ -83,36 +82,11 @@ test('withdrawal checks supplied balance, live liquidity, pause and collateral s
 });
 test('approval reset supports nonzero existing allowances without granting unlimited approval', async () => {
   const client = fakeClient({ readContract: async () => 1n });
-  const calls = await M.approvals(client, TOKEN, OWNER, M.SEPOLIA.router, 10n);
+  const calls = await M.approvals(client, TOKEN, OWNER, M.SEPOLIA.apiRouter, 10n);
   assert.deepEqual(calls.map((c) => decodeFunctionData({ abi: M.tokenAbi, data: c.data }).args[1]), [0n, 10n]);
-  assert.deepEqual(await M.approvals(fakeClient({ readContract: async () => 10n }), TOKEN, OWNER, M.SEPOLIA.router, 10n), []);
+  assert.deepEqual(await M.approvals(fakeClient({ readContract: async () => 10n }), TOKEN, OWNER, M.SEPOLIA.apiRouter, 10n), []);
 });
-test('V3 routes include direct and reverse paths and an intermediate token, never self swaps', () => {
-  const edge2 = { ...EDGE, token0: OUTPUT, token1: ATOKEN, fee: 500 };
-  assert.deepEqual(M.pathsFor([EDGE], TOKEN, OUTPUT), [encodePacked(['address', 'uint24', 'address'], [TOKEN, 3000, OUTPUT])]);
-  assert.deepEqual(M.pathsFor([EDGE], OUTPUT, TOKEN), [encodePacked(['address', 'uint24', 'address'], [OUTPUT, 3000, TOKEN])]);
-  assert.equal(M.pathsFor([EDGE, edge2], TOKEN, ATOKEN, [OUTPUT])[0].length, 134);
-  assert.deepEqual(M.pathsFor([EDGE, edge2], TOKEN, ATOKEN), [], 'UI and backend only use configured intermediate bases');
-  assert.deepEqual(M.pathsFor([EDGE], TOKEN, TOKEN), []);
-  assert.deepEqual(M.pathsFor([], TOKEN, OUTPUT), []);
-});
-test('pool discovery omits absent and zero active-liquidity pools; RPC errors surface', async () => {
-  let n = 0;
-  const client = fakeClient({ multicall: async ({ contracts }) => {
-    n++; return n === 1 ? contracts.map((_, i) => i === 0 || i === 1 ? EDGE.address : zeroAddress) : [0n, 1n];
-  } });
-  const pools = await M.discoverPools(client, [TOKEN]);
-  assert.equal(pools.length, 1);
-  await assert.rejects(M.discoverPools(fakeClient({ multicall: async () => { throw new Error('RPC unavailable'); } }), [TOKEN]), /RPC unavailable/);
-});
-test('pool discovery unwraps viem allowFailure multicall result objects', async () => {
-  const client = fakeClient({ multicall: async ({ contracts }) => contracts[0].functionName === 'getPool'
-    ? contracts.map((_, i) => ({ status: 'success', result: i === 0 ? EDGE.address : zeroAddress }))
-    : [{ status: 'success', result: 100n }] });
-  const pools = await M.discoverPools(client, [TOKEN]);
-  assert.equal(pools.length, 1);
-});
-test('SDK slippage rounds down precisely for large integer amounts', () => {
+test('slippage floor rounds down precisely for large integer amounts', () => {
   const token = { address: OUTPUT, symbol: 'OUT', decimals: 6, balance: '0' };
   const raw = 12345678901234567890123456789n;
   assert.equal(M.minimumOutput(token, raw, 50), raw * 9950n / 10000n);

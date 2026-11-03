@@ -8,9 +8,6 @@ export const SEPOLIA = Object.freeze({
   id: 'sepolia', chainId: 11155111, name: 'Ethereum Sepolia',
   pool: '0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951',
   dataProvider: '0x3e9708d80f7B3e43118013075F7e95CE3AB31F31',
-  factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
-  quoter: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
-  router: '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E',
   // Uniswap Trading API proxy used when Permit2 is disabled (the gateway sends x-permit2-disabled: true).
   // It is both the approval spender and the swap target. Same address on every supported chain:
   // https://developers.uniswap.org/docs/trading/swapping-api/concepts/no-permit2-workflow

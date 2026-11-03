@@ -18,14 +18,14 @@ The host connections are limited to:
 - `background/index.ts`: registers legacy swap handlers only in legacy mode.
 - `background/handlers/index.ts`: chooses the new DeFi handlers or legacy staking handlers.
 
-For full removal, restore those three connections, remove `popup/wallet/defi/`, `background/handlers/testnetDefi.ts` and this folder, then uninstall `@uniswap/sdk-core`. Legacy implementations require no reconstruction.
+For full removal, restore those three connections, remove `popup/wallet/defi/`, `background/handlers/testnetDefi.ts` and this folder. Legacy implementations require no reconstruction.
 
 ## Boundaries
 
 - `client.ts`: network-aware public RPC reads for the configured test markets.
-- `aave.ts`: discovers reserves, reads status/caps/rates/positions, and builds supply/withdraw calls.
-- `uniswap.ts`: seeds the token picker from known Sepolia ERC-20 contracts, then uses Uniswap's API for exact-input quotes, approval checks and swap calldata. Native ETH is sent as the API's zero address. Quotes include a minimum output and use API transaction data after enforcing the expected Sepolia router and account.
-- `routing.ts`: retained for the legacy V3 discovery helper; testnet quotes no longer depend on its bounded route list.
+- `aavekit.ts`: AaveKit (api.v3.aave.com) reserve list and supply/withdraw plans, incl. native ETH via the WETH gateway; every returned transaction is decoded and checked before review. Falls back to `aave.ts` for ERC-20 reserves.
+- `aave.ts`: on-chain reserve state (status/caps/rates/positions) and the direct supply/withdraw builder.
+- `uniswap.ts`: seeds the token picker from known Sepolia ERC-20 contracts, then uses Uniswap's API for exact-input quotes, approval checks and swap calldata. Native ETH is sent as the API's zero address. Quotes must honour the user's slippage floor; API transaction data is used after enforcing chain, account, the Uniswap proxy target and the ETH value. Approvals are rebuilt for the exact input amount.
 - `rpc.ts`, `abis.ts`, `types.ts`: shared protocol primitives with no wallet/key dependencies.
 - `plans.ts`: bounded, expiring, single-use worker review storage.
 - `background/handlers/testnetDefi.ts`: active wallet checks, estimates, review IDs, signing, submission and receipts.
@@ -41,7 +41,7 @@ Swap lists ETH and known ERC-20 token contracts, with up to eight additional con
 
 The testnet Swap path does not offer separate wrap or unwrap actions. Token symbols are accompanied by contract address suffixes, and Aave eligibility is determined only by live reserves on Base Sepolia.
 
-The Uniswap API key is held by the backend (`UNISWAP_API_KEY`) and its allow-listed routes are reached through Harbour's signed gateway. Approvals grant the requested amount. Review plans bind amount, calldata, recipient, account and network. Swaps include the API's minimum output and deadline. The worker waits for each receipt and stops after a revert, expiry, lock, account or selected-network change. Keys are wiped immediately after each signature. Partial transaction hashes remain available in the result and the existing activity recorder.
+The Uniswap API key is held by the backend (`UNISWAP_API_KEY`) and its allow-listed routes are reached through Harbour's signed gateway. Approvals grant only the swap's exact input amount. Review plans bind amount, calldata, recipient, account and network. Swaps include the API's minimum output and deadline. The worker waits for each receipt and stops after a revert, expiry, lock, account or selected-network change. Keys are wiped immediately after each signature. Partial transaction hashes remain available in the result and the existing activity recorder.
 
 To enable API quotes, set `UNISWAP_API_KEY` in the backend environment and restart/redeploy the Harbour API. The extension never receives this key.
 
@@ -55,11 +55,12 @@ npm run verify
 node scripts/check-testnet-defi.mjs
 ```
 
-The last command makes read-only calls to the public Sepolia RPC (override with `SEPOLIA_RPC_URL`). It verifies chain ID, bytecode at all deployment addresses, live Earn discovery and live pool discovery. It never opens a wallet or broadcasts. Signed supply/withdraw/swap acceptance testing requires a funded test wallet and explicit transaction confirmation in the extension.
+The last command makes read-only calls to the public Sepolia RPC (override with `SEPOLIA_RPC_URL`). It verifies chain ID, bytecode at all deployment addresses, live Earn discovery and the seeded swap token list. It never opens a wallet or broadcasts. Signed supply/withdraw/swap acceptance testing requires a funded test wallet and explicit transaction confirmation in the extension.
 
 Deployment sources:
 
 - https://developers.uniswap.org/deployments
 - https://github.com/aave-dao/aave-address-book/blob/main/src/ts/AaveV3Sepolia.ts
 - https://www.aave.com/docs/aave-v3/smart-contracts/pool
-- https://github.com/Uniswap/swap-router-contracts/blob/main/contracts/interfaces/IV3SwapRouter.sol
+- https://developers.uniswap.org/docs/trading/swapping-api/concepts/no-permit2-workflow
+- https://aave.com/docs/aave-v3/getting-started/graphql

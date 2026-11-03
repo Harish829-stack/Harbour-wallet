@@ -5,8 +5,7 @@ export interface EarnAsset extends DefiToken {
   aToken: Address; supplied: string; apy: number; canSupply: boolean; canWithdraw: boolean;
   supplyRemaining: string | null; availableLiquidity: string; reason?: string;
 }
-export interface PoolEdge { address: Address; token0: Address; token1: Address; fee: number }
-export interface SwapCatalog { tokens: DefiToken[]; pools: PoolEdge[] }
+export interface SwapCatalog { tokens: DefiToken[] }
 export type DefiAction = 'supply' | 'withdraw' | 'swap' | 'wrap' | 'unwrap';
 export interface DefiRequest {
   networkId: string; action: DefiAction; token: string; tokenOut?: string; amount: string; slippageBps?: number;

@@ -5,9 +5,9 @@ import { T } from '../../theme';
 import { Btn, Empty, Spinner } from '../ui';
 import type { Nav } from '../screens';
 import { BASE_SEPOLIA, SEPOLIA } from '../../../integrations/testnet-defi/config';
-import type { DefiAction, DefiReview, DefiToken, EarnAsset, PoolEdge } from '../../../integrations/testnet-defi/types';
+import type { DefiAction, DefiReview, DefiToken, EarnAsset } from '../../../integrations/testnet-defi/types';
 
-interface Catalog { assets?: EarnAsset[]; tokens?: DefiToken[]; pools?: PoolEdge[]; nativeBalance?: string; weth?: DefiToken; account: string }
+interface Catalog { assets?: EarnAsset[]; tokens?: DefiToken[]; nativeBalance?: string; account: string }
 const short = (value: string) => `${value.slice(0, 6)}…${value.slice(-4)}`;
 const units = (raw: string, decimals: number) => formatUnits(BigInt(raw), decimals);
 const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 14 };
