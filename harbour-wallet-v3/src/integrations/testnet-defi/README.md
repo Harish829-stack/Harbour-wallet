@@ -35,7 +35,7 @@ For full removal, restore those three connections, remove `popup/wallet/defi/`, 
 
 Swap is enabled on **Ethereum Sepolia (11155111)**; Earn is enabled on **Base Sepolia (84532)**. The selected wallet network and RPC-reported chain must agree. Other networks show a switch prompt. This switch changes the wallet's network filter, not a website's dApp connection.
 
-Earn loads `Pool.getReservesList()` live, then checks each reserve's active/frozen/paused state, remaining supply cap, balances and liquidity. A frozen or capped asset with an existing position remains visible for withdrawal. Current variable APY is calculated from the live ray-denominated supply rate. Withdrawals are simulated for existing collateral restrictions.
+Earn lists reserves from AaveKit (plus native ETH for the WETH reserve), then checks each reserve's active/frozen/paused state, remaining supply cap, balances and liquidity on-chain; if AaveKit is unavailable it uses `Pool.getReservesList()` directly. AaveKit's own cap flag is ignored because it reports cap-0 (unlimited) reserves as full. A frozen or capped asset with an existing position remains visible for withdrawal. Current variable APY is calculated from the live ray-denominated supply rate. Withdrawals are simulated for existing collateral restrictions.
 
 Swap lists ETH and known ERC-20 token contracts, with up to eight additional contracts per session. Uniswap's API chooses the route and checks live liquidity for the entered amount; a token can appear in the picker and still have no usable route. WETH is hidden from the picker so users can swap native ETH directly. Cross-chain swaps are not enabled.
 

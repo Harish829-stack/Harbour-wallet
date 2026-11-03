@@ -105,6 +105,15 @@ The popup follows a shorter path. A button calls `bg({ type: '...' })` in `src/p
 
 To add a feature, register a new message handler in `src/background/handlers/` (add it to `handlers/index.ts`), then call it from a screen with `bg(...)`. Anything that moves value also needs a check in `core/harbour/policy.ts`.
 
+## Testnet Swap and Earn
+
+On Ethereum Sepolia the Swap tab uses the Uniswap Trading API, and on Base Sepolia the Earn tab uses Aave V3. Other networks keep the production Swap and Earn providers and show a "Use Sepolia" / "Use Base Sepolia" prompt. The code is in `src/integrations/testnet-defi/` (see its `README.md`), the worker handlers in `src/background/handlers/testnetDefi.ts` and the tab in `src/popup/wallet/defi/TestnetDefiTab.tsx`.
+
+- **Swap** goes through the backend gateway route `/v1/gw/uniswap/v1/{quote,check_approval,swap}`. Set `UNISWAP_API_KEY` in `backend/.env` and restart; without it the route answers `uniswap_not_configured`. The gateway accepts only Ethereum Sepolia (chain 11155111) request bodies. The extension approves only the exact input amount, rejects quotes outside the user's slippage, and checks the swap's target and ETH value before review.
+- **Earn** uses AaveKit, Aave's GraphQL API at `https://api.v3.aave.com/graphql`, called directly from the worker; no key is needed. AaveKit lists the reserves and builds supply/withdraw transactions, including native ETH through Aave's WETH gateway. Every transaction it returns is decoded and checked (chain, sender, contract allowlist, token, exact amount, beneficiary, bounded approval) before review. Reserve state and balances are read on-chain. If AaveKit is down or refuses, ERC-20 reserves fall back to the direct-contract builder in `aave.ts`; native ETH needs AaveKit. `EARN_PROVIDER` in `aavekit.ts` switches the provider.
+- AaveKit reports "supply cap reached" for Base Sepolia reserves whose on-chain cap is 0 (unlimited, e.g. USDC and USDT). Harbour ignores that flag and uses the on-chain cap.
+- Tests: `node --test test/testnet-defi.test.js test/testnet-defi-handlers.test.js test/aavekit.test.js`. Read-only live check: `node scripts/check-testnet-defi.mjs`.
+
 ## Everyday commands and tests
 
 Run extension commands from `harbour-wallet-v3`, backend commands from `harbour-wallet-v3/backend`.
@@ -122,7 +131,7 @@ Run extension commands from `harbour-wallet-v3`, backend commands from `harbour-
 
 The backend's chain list is generated from the extension's testnet list: edit `src/core/chains/testnets.ts`, then run `backend/scripts/gen_chains.py` so the extension, backend and faucets stay in step. Add a custom RPC provider in `backend/config/providers.yaml` and `chains.yaml`; no Go code is needed for a plain URL provider.
 
-Before you open a pull request: `npm run lint`, `npm test`, and for backend changes `make test`. Work on branch `harbour-v3` and commit in small steps.
+Before you open a pull request: `npm run lint`, `npm test`, and for backend changes `make test`. Work on branch `harbour-v3` from the `REA` repository root and commit in small steps.
 
 ## Troubleshooting
 
@@ -134,6 +143,10 @@ Before you open a pull request: `npm run lint`, `npm test`, and for backend chan
 | `npm run build` fails with "VITE\_HB\_API\_URL must be https://" | The backend URL must be https, except localhost. Unset it for local work |
 | `npm run build` stops on type errors in `cardano.ts`, `algorand.ts` or `device.ts` | You are using a newer TypeScript than the project's 5.5.4. Run `npm ci` and use `npx tsc -v` to confirm, or build with `npx vite build` |
 | esbuild says it was "installed for another platform" | `node_modules` was copied from another machine or operating system. Delete it and run `npm ci` where you work |
+| `npm run build` fails with "VITE\_HB\_API\_URL must be https:// (got wss://...)" | `VITE_HB_API_URL` is the HTTP base URL, so use `https://` even for a tunnel host. The websocket address is the backend's `REALTIME_PUBLIC_URL` (`wss://...`), which the backend hands to the extension |
+| `git status` inside `harbour-wallet-v3` shows a different history from the repo root | `harbour-wallet-v3/` contains a stray local-only `.git` (no remote). Commit and push from the `REA` root, where `harbour-v3` tracks `origin/harbour-v3` |
+| Swap says "Uniswap Trading API is not configured" | Set `UNISWAP_API_KEY` in `backend/.env`, then `./run.sh restart` |
+| Earn shows "Aave data is temporarily unavailable" | AaveKit (`api.v3.aave.com`) is unreachable. ERC-20 reserves still work on-chain; native ETH supply and withdraw wait for AaveKit |
 | Extension changes do not appear | Click the reload icon on the extension in `chrome://extensions`. For provider changes also hard-reload the website tab, because the page script loads at document start |
 | Balances, history or prices stay empty | The backend is not running, or the build points at another URL. `dist/build-info.json` shows the address baked into the build; run `./run.sh status` |
 | A dApp such as chainlist opens MetaMask instead | Turn on Settings, Connections, "Use Harbour as default wallet", then reload the website tab |
