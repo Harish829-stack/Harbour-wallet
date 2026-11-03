@@ -57,6 +57,9 @@ function useStackLayers(stack: Entry[]) {
   return layers;
 }
 const sq = (bg2: string, color: string): React.CSSProperties => ({ width: 52, height: 52, borderRadius: 16, background: bg2, color, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' });
+/** Sets the DOM `inert` attribute directly: React 18 needs inert="" while React 19 treats "" as false,
+ *  so a ref works on both and avoids the `as any` prop spread. */
+const inertWhen = (on: boolean) => (el: HTMLElement | null) => { el?.toggleAttribute('inert', on); };
 /** Shown on Swap/Earn when the selected network is not the testnet those tabs test on. */
 const NetworkNotice: React.FC<{ kind: 'swap' | 'earn'; onSwitch: () => Promise<void> }> = ({ kind, onSwitch }) => {
   const [busy, setBusy] = useState(false); const [failed, setFailed] = useState(false);
@@ -157,7 +160,7 @@ export const Wallet: React.FC<{
 
   return (
     <div className="hb-root hb-enter" style={{ position: 'relative', background: T.bg, color: T.text, fontFamily: 'Inter, -apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 'calc(100dvh - var(--hb-banner-h, 0px))', minHeight: 'calc(100dvh - var(--hb-banner-h, 0px))', maxHeight: 'calc(100dvh - var(--hb-banner-h, 0px))' }}>
-      <div className={stack.length ? 'hb-home under' : 'hb-home'} {...(stack.length ? { inert: '' } : {}) as any}>
+      <div className={stack.length ? 'hb-home under' : 'hb-home'} ref={inertWhen(stack.length > 0)}>
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 8px' }}>
         <button className="hb-tap" onClick={() => nav.push('walletSelector')} aria-label="Select wallet" style={{ flex: 1, minWidth: 0, lineHeight: 1.1, cursor: 'pointer', background: 'none', border: 0, padding: 0, textAlign: 'left', color: T.text }}>
@@ -243,7 +246,7 @@ export const Wallet: React.FC<{
       </div>
       </div>
 
-      {layers.map(({ e, phase }) => { const S = SCREENS[e.name]; return S ? <div key={eid(e)} className={`hb-layer ${phase}`} {...((phase === 'under' || phase === 'leave') ? { inert: '' } : {}) as any}><S {...ctx} params={e.params} /></div> : null; })}
+      {layers.map(({ e, phase }) => { const S = SCREENS[e.name]; return S ? <div key={eid(e)} className={`hb-layer ${phase}`} ref={inertWhen(phase === 'under' || phase === 'leave')}><S {...ctx} params={e.params} /></div> : null; })}
     </div>
   );
 };
