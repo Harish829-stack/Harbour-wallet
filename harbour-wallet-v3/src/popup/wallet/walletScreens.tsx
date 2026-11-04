@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { T } from '../theme';
 import { Screen, Sheet, Btn, Ic, ICON, IconBtn, Row, Skeleton, Empty, cardStyle } from './ui';
 import { RevealGate } from './revealGate';
-import { SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
+import { HoldToReveal, SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
 import { Group, NavRow, SectionLabel, ErrorLine, Note, SelectionRow } from './settingsScreens';
 import { validateWalletName } from '../../core/importKey';
 import { chainById } from '../../core/chains/index';
@@ -146,8 +146,11 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
       {canRevealPrivateKey(w) && <Group><NavRow first icon="lock" label="Show private key" onClick={() => { setErr(''); setGate(true); }} testid="wallet-reveal-key"/></Group>}
       {kind === 'privateKey' && <Note>This wallet was imported with a private key. It has one account and no secret phrase.</Note>}
       {key && <div data-testid="private-key-panel" style={{ background: T.bgAlt, borderRadius: 14, padding: 14, marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Private key ({key.network}). Never share it. Hidden again in 60 seconds.</div>
-        <SecretImage pic={key} label={`Private key for ${key.network}, shown as an image`} testid="private-key-image"/>
+        <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Private key ({key.network}). Never share it. Stop any screen sharing first. Hidden again after 60 seconds or when you leave this window.</div>
+        <HoldToReveal label="Hold to show the key" testid="private-key-reveal"
+          placeholder={<div aria-hidden="true" style={{ height: Math.max(64, Math.round(key.height)), borderRadius: 10, background: T.surface, filter: 'blur(2px)' }}/>}>
+          <SecretImage pic={key} label={`Private key for ${key.network}, shown as an image`} testid="private-key-image"/>
+        </HoldToReveal>
         {copied && <div role="status" style={{ fontSize: 12, color: T.sub, marginTop: 8 }}>{copied}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <Btn variant="ghost" onClick={copyKey} style={{ flex: 1 }}>Copy</Btn>

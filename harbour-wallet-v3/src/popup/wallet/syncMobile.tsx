@@ -97,7 +97,7 @@ const Code: React.FC<{ bg: (m: any) => Promise<any>; stageId: string; onBack: ()
     if (busy || !ONE_TIME_CODE.test(c)) return; setBusy(true); setErr('');
     const r = await bg({ type: 'qrSyncImport', stageId, code: c }).catch(() => null);
     setBusy(false); setCode('');
-    if (r?.ok) onDone(r); else setErr(r?.error === 'INCORRECT_CODE' ? 'Incorrect one-time code. Try again.' : r?.error === 'QR_EXPIRED' ? 'The scan expired. Go back and scan again.' : r?.error || 'Import failed');
+    if (r?.ok) onDone(r); else setErr(r?.error === 'INCORRECT_CODE' ? 'Incorrect one-time code. Try again.' : r?.error === 'QR_EXPIRED' ? 'The scan expired. Go back and scan again.' : r?.error === 'QR_TOO_MANY_ATTEMPTS' ? 'Too many wrong codes. For your safety the scan was discarded. Go back and scan again.' : r?.error || 'Import failed');
   };
   return (
     <div data-testid="sync-code" style={{ textAlign: 'center' }}>
@@ -106,7 +106,7 @@ const Code: React.FC<{ bg: (m: any) => Promise<any>; stageId: string; onBack: ()
       <div style={{ color: T.sub, fontSize: 14 }}>Enter the one-time code from mobile. Tap “Request a one-time code” in your mobile app.</div>
       <input data-testid="sync-code-input" autoFocus value={code} maxLength={6} disabled={busy} spellCheck={false} autoComplete="off" aria-label="One-time code"
         onChange={(e) => { const v = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6); setCode(v); setErr(''); if (v.length === 6) void submit(v); }}
-        style={{ width: '100%', margin: '20px 0 8px', padding: 14, textAlign: 'center', letterSpacing: 12, fontSize: 24, fontWeight: 700, borderRadius: 14, border: `2px solid ${err ? T.error : T.border}`, background: T.surface, color: T.text, boxSizing: 'border-box' }} />
+        style={{ ...({ WebkitTextSecurity: 'disc' } as React.CSSProperties), width: '100%', margin: '20px 0 8px', padding: 14, textAlign: 'center', letterSpacing: 12, fontSize: 24, fontWeight: 700, borderRadius: 14, border: `2px solid ${err ? T.error : T.border}`, background: T.surface, color: T.text, boxSizing: 'border-box' }} />
       {busy && <div style={{ color: T.sub, fontSize: 13 }}>Verifying…</div>}
       {err && <div role="alert" data-testid="sync-code-error" style={{ color: T.error, fontSize: 13 }}>{err}</div>}
       <div style={{ marginTop: 18 }}><Btn variant="ghost" onClick={onBack}>Back</Btn></div>

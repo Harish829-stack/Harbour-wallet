@@ -8,6 +8,10 @@ import { registerBiometrics, useBiometricAvailability, BiometricEnroll, type Enr
 import { isUserCancel } from '../../core/passkey';
 import { validateWalletName, MAX_WALLETS, type PkNetworkOption } from '../../core/importKey';
 import { useSecretField } from '../secureField';
+import { english } from 'viem/accounts';
+import { assessTypedPhrase, prefixSet } from '../../core/seedWords';
+
+const BIP39 = new Set<string>(english); const BIP39_PREFIXES = prefixSet(BIP39);
 import { createIdleGuard, restoreStep, serializeStep, STEP_KEY, type OnboardingFlow, type OnboardingMode, type OnboardingStep } from '../../core/onboardingRules';
 import { ImportInstructions, SecretForm, ChainIcon, type SecretCheck } from './ImportSecret';
 import { QrScanner, type StoredKeys } from './qrScanner';
@@ -36,6 +40,7 @@ const errorText = (code: string): string => ({
   INCORRECT_CODE: 'Incorrect encryption code. Check the code shown in your mobile app.',
   LOCKED: 'The wallet is locked. Unlock it and try again.',
   QR_EXPIRED: 'The scan expired. Scan the QR code from your mobile app again.',
+  QR_TOO_MANY_ATTEMPTS: 'Too many wrong codes. For your safety the scan was discarded. Go back and scan the QR code again.',
   INVALID_WALLET_INPUT: 'Choose a valid password and try again.',
   AUTH_REQUIRED: 'Verify it’s you to continue.',
   FORBIDDEN_REQUEST: 'This wallet already has a password. Unlock it to continue.',
@@ -146,14 +151,20 @@ export function Onboarding() {
   }, [step]);
 
   const nameError = status ? validateWalletName(name, status.names).error : undefined;
-  // Live validation in the worker (`importCheck`: kind + validity only). The text is read from the uncontrolled field when the
-  // check runs and is not kept here.
+  // Live validation. A phrase is checked word by word HERE against the public BIP39 list; it goes to the worker (`importCheck`,
+  // checksum: kind + validity only) only once it has 12/18/24 known words, instead of after every typing pause. A private key
+  // (one token) is still checked by the worker, which needs the chain. The text is read from the uncontrolled field and not kept.
   const runCheck = (net: PkNetworkOption | null) => {
     if (checkTimer.current) clearTimeout(checkTimer.current);
     const seq = ++checkSeq.current;
     checkTimer.current = setTimeout(() => {
       const value = secretField.peek();
-      if (!value.trim()) { setKind('empty'); setCheck({ state: 'idle' }); return; }
+      const a = assessTypedPhrase(value, BIP39, BIP39_PREFIXES);
+      if (a.state === 'empty') { setKind('empty'); setCheck({ state: 'idle' }); return; }
+      if (a.state !== 'privateKey') setKind('mnemonic');
+      if (a.state === 'badWord') { setCheck({ state: 'invalid', error: `Word ${a.index + 1} is not a secret phrase word` }); return; }
+      if (a.state === 'tooLong') { setCheck({ state: 'invalid', error: 'A secret phrase has at most 24 words' }); return; }
+      if (a.state === 'typing') { setCheck({ state: 'idle' }); return; }
       setCheck({ state: 'checking' });
       bg({ type: 'importCheck', secret: value, chainId: net?.chainId, group: net?.kind === 'evm-group' }).then((r) => {
         if (seq !== checkSeq.current) return;
@@ -351,7 +362,7 @@ export function Onboarding() {
       {step === 'sources' && <div className="ob-choices"><Choice icon="phone" desc="Move wallets over from the Trust Wallet mobile app." testid="onboarding-select-import-method-trust-wallet" onClick={() => { setSource('trust'); go('trust-method'); }}>Trust Wallet Mobile</Choice><Choice icon="key" desc="Use a secret phrase or private key from any wallet." onClick={() => { setSource('other'); go('secret'); }}>Other mobile wallet or extension</Choice><p className="ob-muted ob-hardware">Hardware wallets</p><Choice icon="usb" desc="Keep keys on your Ledger and sign over USB." testid="onboarding-import-ledger" onClick={() => { setFlow('ledger'); go('ledger'); }}>Connect your Ledger</Choice></div>}
       {step === 'trust-method' && <div className="ob-choices"><Choice icon="qr" recommended desc="Scan a code with your phone. No typing required." onClick={() => { setFlow('qr'); go('qr-mobile'); }}>Import with QR Code from mobile</Choice><Choice icon="key" desc="Type or paste your 12 to 24 word phrase, or a private key." onClick={() => { setFlow('import'); go('secret'); }}>Import with Secret Phrase or Private Key</Choice></div>}
       {step === 'secret' && <SecretForm name={name} onName={(v) => { setName(v); setError(''); }} nameError={nameError} product={source === 'trust' ? 'trust-wallet' : 'other'}
-        secretRef={secretField.ref} onSecretInput={() => { setError(''); runCheck(network); }} kind={kind} check={check} network={network} onNetwork={setNetwork} error={error} busy={busy} canSubmit={canSubmit} onSubmit={submitSecret}/>}
+        secretRef={secretField.ref} onSecretInput={() => { setError(''); runCheck(network); }} kind={kind} check={check} network={network} onNetwork={setNetwork} error={error} busy={busy} canSubmit={canSubmit} onSubmit={submitSecret} onWipe={clearSecret}/>}
       {step === 'solana' && <div className="ob-import-form" data-testid="solana-derivation">
         <p className="ob-muted">We found two ways your phrase can derive a Solana wallet. Choose the one that holds your funds; you can import the other later.</p>
         <div role="radiogroup" aria-label="Solana derivation" className="ob-choices">
@@ -376,7 +387,7 @@ export function Onboarding() {
       {step === 'qr-scan' && <div className="ob-qr-instructions"><QrScanner onKeys={(keys) => { void stageQr(keys); }}/>{error && <p className="ob-error" role="alert">{error}</p>}</div>}
       {step === 'qr-code' && <div className="ob-import-form" data-testid="qr-code-step">
         <p className="ob-muted">Enter the 6-character code shown in your mobile app to decrypt your wallets.</p>
-        <div className={`ob-code ${error ? 'bad' : ''}`} role="group" aria-label="Encryption code">{codeSlots.map((c, i) => <input key={i} aria-label={`Character ${i + 1}`} value={c} placeholder=" " maxLength={1} disabled={busy} autoFocus={i === code.length || (i === 5 && code.length === 6)} autoComplete="off"
+        <div className={`ob-code ${error ? 'bad' : ''}`} role="group" aria-label="Encryption code">{codeSlots.map((c, i) => <input key={i} aria-label={`Character ${i + 1}`} value={c} placeholder=" " maxLength={1} disabled={busy} className="ob-secret-masked" spellCheck={false} autoFocus={i === code.length || (i === 5 && code.length === 6)} autoComplete="off"
           onChange={(e) => { const v = e.target.value.replace(/[^a-z0-9]/gi, '').slice(-1).toUpperCase(); if (!v) return; const next = (code + v).slice(0, 6); setCode(next); setError(''); if (next.length === 6) void submitCode(next); }}
           onKeyDown={(e) => { if (e.key === 'Backspace') { setCode(code.slice(0, -1)); setError(''); } }}
           onPaste={(e) => { const v = e.clipboardData.getData('text').replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase(); if (v) { e.preventDefault(); setCode(v); if (v.length === 6) void submitCode(v); } }}/>)}</div>

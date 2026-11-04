@@ -5,7 +5,7 @@
 //    the worker and cleared; components keep only derived flags (filled, valid, strength), never the text.
 //  * Secrets the worker shows (phrase, private key) arrive as PNG images painted in the worker (background/secretRender);
 //    the popup never receives them as text.
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export type SecretElement = HTMLInputElement | HTMLTextAreaElement;
 export function useSecretField<T extends SecretElement = HTMLInputElement>() {
@@ -38,3 +38,52 @@ export const SecretImage: React.FC<{ pic: SecretPicture; label: string; testid?:
   <img src={pic.image} width={pic.width} height={pic.height} alt={label} data-testid={testid} draggable={false} onContextMenu={(e) => e.preventDefault()}
     style={{ display: 'block', maxWidth: '100%', height: 'auto', userSelect: 'none', WebkitUserSelect: 'none', ...style }} />
 );
+
+/** Hide-on-leave hook: calls `hide` when the window loses focus or the page is hidden (screen-share / switching apps), and once on
+ *  page hide. Used to re-mask secrets; it never clears what the user typed. */
+export function useHideOnLeave(hide: () => void, active = true): void {
+  const ref = useRef(hide); ref.current = hide;
+  useEffect(() => {
+    if (!active) return;
+    const h = () => ref.current();
+    const vis = () => { if (document.visibilityState === 'hidden') h(); };
+    window.addEventListener('blur', h); document.addEventListener('visibilitychange', vis); window.addEventListener('pagehide', h);
+    return () => { window.removeEventListener('blur', h); document.removeEventListener('visibilitychange', vis); window.removeEventListener('pagehide', h); };
+  }, [active]);
+}
+
+export const HOLD_TO_REVEAL_MS = 1200;
+export const REVEAL_VISIBLE_MS = 60_000;
+/** Press-and-hold to reveal a secret (MetaMask-style), so a stray click, a clickjack or a screen-sharing session does not show it
+ *  by accident. Once revealed it stays visible for at most `visibleMs`, and is hidden again as soon as the window loses focus or
+ *  the page is hidden; revealing again needs another hold. Keyboard: hold Space or Enter. */
+export const HoldToReveal: React.FC<{ children: React.ReactNode; placeholder: React.ReactNode; disabled?: boolean; visibleMs?: number; holdMs?: number; label?: string; onReveal?: () => void; testid?: string }> =
+  ({ children, placeholder, disabled, visibleMs = REVEAL_VISIBLE_MS, holdMs = HOLD_TO_REVEAL_MS, label = 'Hold to reveal', onReveal, testid }) => {
+  const [shown, setShown] = useState(false); const [progress, setProgress] = useState(0);
+  const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined); const start = useRef(0);
+  const stop = () => { if (timer.current) clearInterval(timer.current); timer.current = undefined; setProgress(0); };
+  const begin = () => {
+    if (disabled || shown || timer.current) return;
+    start.current = Date.now();
+    timer.current = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start.current) / holdMs); setProgress(p);
+      if (p >= 1) { stop(); setShown(true); onReveal?.(); }
+    }, 30);
+  };
+  useEffect(() => () => stop(), []);
+  useEffect(() => { if (!shown) return; const t = setTimeout(() => setShown(false), visibleMs); return () => clearTimeout(t); }, [shown, visibleMs]);
+  useHideOnLeave(() => { stop(); setShown(false); });
+  return (
+    <div style={{ position: 'relative' }} data-testid={testid}>
+      {shown ? children : placeholder}
+      {!shown && <button type="button" data-testid="hold-to-reveal" disabled={disabled} style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'transparent', border: 0, cursor: disabled ? 'default' : 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} aria-label={`${label}. Press and hold.`}
+        onPointerDown={(e) => { e.preventDefault(); begin(); }} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onContextMenu={(e) => e.preventDefault()}
+        onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); begin(); } }} onKeyUp={(e) => { if (e.key === ' ' || e.key === 'Enter') stop(); }} onBlur={stop}>
+        <span style={{ position: 'relative', overflow: 'hidden', display: 'inline-block', borderRadius: 14, background: 'var(--hb-scrim, rgba(0,0,0,.6))', color: 'var(--hb-on-brand, #fff)', padding: '10px 18px', fontWeight: 600, textAlign: 'center', maxWidth: '90%' }}>
+          <i aria-hidden="true" style={{ position: 'absolute', inset: 0, width: `${Math.round(progress * 100)}%`, background: 'rgba(255,255,255,.22)', transition: 'width 30ms linear' }}/>
+          <span style={{ position: 'relative' }}>{progress > 0 ? 'Keep holding…' : label}<small style={{ display: 'block', fontWeight: 400, opacity: .85 }}>Make sure no one is watching and you are not sharing your screen</small></span>
+        </span>
+      </button>}
+    </div>
+  );
+};

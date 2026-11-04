@@ -5,6 +5,10 @@ import { ALL_CHAINS, chainById, chainLogo } from '../../core/chains/index';
 import { privateKeyNetworkOptions, type PkNetworkOption } from '../../core/importKey';
 import { ThemedImg } from './FlowFrame';
 import { INSTRUCTIONS, parseInstruction, type InstructionProduct, type InstructionStep } from './instructions';
+import { useHideOnLeave } from '../secureField';
+
+/** Typed secrets are wiped after this long without typing (they are never kept anywhere else). */
+export const SECRET_IDLE_WIPE_MS = 5 * 60_000;
 
 export const ChainIcon: React.FC<{ id: string; size?: number }> = ({ id, size = 24 }) => {
   const [bad, setBad] = useState(false); const c = chainById(id);
@@ -73,8 +77,24 @@ export const SecretForm: React.FC<{
   secretRef: React.Ref<HTMLTextAreaElement>; onSecretInput: () => void; kind: 'empty' | 'mnemonic' | 'privateKey'; check: SecretCheck;
   network: PkNetworkOption | null; onNetwork: (o: PkNetworkOption) => void;
   error: string; busy: boolean; canSubmit: boolean; onSubmit: (e: React.FormEvent) => void;
+  /** Clears the typed secret (field + derived state). Called on idle timeout and when the page is left. */
+  onWipe: () => void;
 }> = (p) => {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(false); const [pasted, setPasted] = useState(false); const [wiped, setWiped] = useState(false);
+  // Seed-typing review (2026-11-04): re-mask when the window loses focus or is hidden (screen share, app switch) but never wipe on
+  // blur, which would push users to paste. Wipe after 5 minutes without typing, and when the page is closed or left.
+  useHideOnLeave(() => setVisible(false));
+  const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const wipe = useRef(p.onWipe); wipe.current = p.onWipe;
+  const armIdle = () => { if (idle.current) clearTimeout(idle.current); idle.current = setTimeout(() => { wipe.current(); setVisible(false); setPasted(false); setWiped(true); }, SECRET_IDLE_WIPE_MS); };
+  useEffect(() => {
+    const leave = () => wipe.current();
+    window.addEventListener('pagehide', leave);
+    return () => { window.removeEventListener('pagehide', leave); if (idle.current) clearTimeout(idle.current); wipe.current(); }; // leaving the step wipes too
+  }, []);
+  // A pasted phrase is already in the clipboard (and possibly clipboard history / synced devices). Overwrite the live clipboard
+  // right away (best effort; history cannot be reached from a browser) and tell the user.
+  const onPaste = () => { setPasted(true); setTimeout(() => { void navigator.clipboard?.writeText('').catch(() => {}); }, 0); };
   const hint = INSTRUCTIONS[p.product].inputHint.split('\n');
   const detected = p.kind === 'mnemonic' ? 'Secret Phrase detected' : p.kind === 'privateKey' ? 'Private Key detected' : null;
   return (
@@ -83,12 +103,15 @@ export const SecretForm: React.FC<{
         <input data-testid="wallet-name-input" value={p.name} onChange={(e) => p.onName(e.target.value)} disabled={p.busy} maxLength={40} aria-invalid={!!p.nameError}/>
         <small className={p.nameError ? '' : 'ob-muted'}>{p.nameError ?? 'You can edit this later'}</small>
       </label>
+      <div className="ob-notice" data-testid="secret-typing-warning">Anything recording this computer (malware, screen sharing, clipboard tools) can capture a typed or pasted phrase. Importing with the QR code from your mobile app or a Ledger avoids typing it.</div>
       <label className={`ob-field ${p.check.state === 'invalid' && p.check.error ? 'has-error' : ''}`}><span>{INSTRUCTIONS[p.product].inputLabel}</span>
-        <textarea data-testid="secret-input" autoFocus ref={p.secretRef} onInput={p.onSecretInput} disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
+        <textarea data-testid="secret-input" autoFocus ref={p.secretRef} onInput={() => { setWiped(false); armIdle(); p.onSecretInput(); }} onPaste={onPaste} translate="no" data-gramm="false" data-1p-ignore="true" data-lpignore="true" disabled={p.busy} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" className={visible ? '' : 'ob-secret-masked'} aria-invalid={p.check.state === 'invalid'}/>
         {/* eslint-disable-next-line no-constant-condition -- secret toggle is always offered */}
         {p.kind !== 'mnemonic' || true ? <button type="button" className="ob-link ob-secret-toggle" onClick={() => setVisible(!visible)} aria-pressed={visible}>{visible ? <EyeOff size={14}/> : <Eye size={14}/>}{visible ? 'Hide' : 'Show'}</button> : null}
         {p.check.state === 'invalid' && p.check.error ? <small role="alert">{p.check.error}</small> : <small className="ob-muted" data-testid="secret-caption">{detected ?? hint.map((h, n) => <React.Fragment key={n}>{h}{n < hint.length - 1 && <br/>}</React.Fragment>)}</small>}
       </label>
+      {pasted && <div className="ob-notice warn" role="status" data-testid="secret-pasted-warning">Harbour cleared your clipboard. If you use clipboard history (Windows Win+V, a clipboard app or a synced clipboard), delete the phrase there too, and next time type it or use QR import.</div>}
+      {wiped && <div className="ob-notice" role="status" data-testid="secret-wiped">For your safety the field was cleared after 5 minutes without typing.</div>}
       {p.kind === 'privateKey' && <PkNetworkSelect value={p.network} onSelect={p.onNetwork} disabled={p.busy}/>}
       {p.error && <div className="ob-notice warn" role="alert" data-testid="import-error">{p.error}</div>}
       <button className="ob-primary ob-half" data-testid="import-wallet-submit" disabled={!p.canSubmit || p.busy}>{p.busy ? 'Importing...' : 'Import'}</button>

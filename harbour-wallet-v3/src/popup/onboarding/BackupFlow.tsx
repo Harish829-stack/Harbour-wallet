@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Eye, ShieldAlert, PenLine, EyeOff, UserX, CheckCircle2, Undo2 } from 'lucide-react';
+import { ShieldAlert, PenLine, EyeOff, UserX, CheckCircle2, Undo2 } from 'lucide-react';
 import { Confetti } from './FlowFrame';
 import { RevealGate } from '../wallet/revealGate';
 import { SeedPlaceholder } from '../wallet/SeedCanvas';
-import { SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
+import { HoldToReveal, SecretImage, readSecretTheme, type SecretPicture } from '../secureField';
 
 type Phase = 'auth' | 'reveal' | 'verify' | 'done';
 interface Chip extends SecretPicture { id: string }
@@ -57,13 +57,16 @@ export const BackupFlow: React.FC<{ bg: (m: any) => Promise<any>; walletId?: str
     <div className="ob-backup">
       <div className="fx-tips">
         <div><PenLine size={20}/><b>Write it down</b>All {words} words, in order, on paper.</div>
-        <div><EyeOff size={20}/><b>Keep it offline</b>No screenshots, cloud notes or email.</div>
+        <div><EyeOff size={20}/><b>Keep it offline</b>No screenshots, cloud notes or email. Stop any screen sharing or recording first.</div>
         <div><UserX size={20}/><b>Never share it</b>Harbour will never ask for your phrase.</div>
       </div>
       {loading ? <p className="ob-muted" role="status">Revealing...</p> : err ? <p className="ob-error" role="alert">{err}</p> : (
         <div className="ob-seed-wrap">
-          {shown && session?.grid ? <SecretImage pic={session.grid} label="Secret phrase shown on screen" testid="seed-image" style={{ margin: '0 auto' }}/> : <SeedPlaceholder count={words}/>}
-          {!shown && <button type="button" className="ob-reveal-cover" onClick={() => setShown(true)} aria-label="Reveal secret phrase" disabled={!session}><span><Eye size={20}/> Click to reveal<small>Make sure no one is watching</small></span></button>}
+          {/* Press-and-hold (MetaMask-style); hidden again after 60 s or when the window loses focus. `shown` = seen at least once. */}
+          <HoldToReveal disabled={!session?.grid} label="Hold to reveal your secret phrase" onReveal={() => setShown(true)} testid="seed-reveal"
+            placeholder={<SeedPlaceholder count={words}/>}>
+            {session?.grid ? <SecretImage pic={session.grid} label="Secret phrase shown on screen" testid="seed-image" style={{ margin: '0 auto' }}/> : <SeedPlaceholder count={words}/>}
+          </HoldToReveal>
         </div>)}
       <div className="fx-row"><button className="ob-secondary" onClick={onCancel}>Cancel</button><button className="ob-primary" disabled={!shown || !session} onClick={() => { setSession((s) => (s ? { ...s, grid: null } : s)); setPhase('verify'); }} data-testid="backup-continue">I wrote it down</button></div>
     </div>

@@ -4,7 +4,7 @@ import { armLockTimer, clearLockTimer } from '../settingsService';
 import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey, dropLegacyPasskey } from '../../core/passkeyService';
 // Dumb-UI rule: no handler here returns a recovery phrase, private key or password (see handlers/secrets.ts, core/uiSafe.ts).
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
-import { readQrStage, clearQrStage } from '../qrStage';
+import { readQrStage, clearQrStage, qrWrongCode } from '../qrStage';
 import { verifyPasskeySecret } from '../../core/passkeyService';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
@@ -238,7 +238,7 @@ export const handlers: HandlerMap = {
           catch { wrong++; }
           finally { sk.delete(); }
         }
-        if (!mnemonics.length) return { ok: false, error: wrong ? 'INCORRECT_CODE' : 'No seed-phrase wallets in this QR code', skipped };
+        if (!mnemonics.length) return { ok: false, error: wrong ? await qrWrongCode(msg.stageId) : 'No seed-phrase wallets in this QR code', skipped };
         if (msg.dryRun) return { ok: true, count: mnemonics.length, skipped };
         if (!(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; // adding seeds needs the unlock credential
         let imported = 0, duplicates = 0; let lastErr = '';

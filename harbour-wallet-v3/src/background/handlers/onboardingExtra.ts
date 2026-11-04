@@ -7,7 +7,7 @@ import type { HandlerMap, HandlerCtx, Msg } from './types';
 import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
 import { removePasskey, enrollPasskey } from '../../core/passkeyService';
-import { readQrStage, clearQrStage } from '../qrStage';
+import { readQrStage, clearQrStage, qrWrongCode } from '../qrStage';
 import { armLockTimer } from '../settingsService';
 import { ALL_CHAINS, chainById } from '../../core/chains/index';
 import { fetchNativeBalance } from '../../core/chains/adapters';
@@ -229,7 +229,7 @@ export const handlers: HandlerMap = {
     if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
     const r = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
     for (const s of r.secrets) if (s.kind === 'privateKey') s.bytes.fill(0);
-    if (!r.secrets.length) return { ok: false, error: r.wrong ? 'INCORRECT_CODE' : 'No importable wallets in this QR code', skipped: r.skipped };
+    if (!r.secrets.length) return { ok: false, error: r.wrong ? await qrWrongCode(m.stageId) : 'No importable wallets in this QR code', skipped: r.skipped };
     return { ok: true, count: r.secrets.length, skipped: r.skipped };
   },
   async qrImportAll(m, ctx) {
@@ -239,7 +239,7 @@ export const handlers: HandlerMap = {
     busy = true; let createdVault = false;
     try {
       const dec = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
-      if (!dec.secrets.length) return { ok: false, error: dec.wrong ? 'INCORRECT_CODE' : 'No importable wallets in this QR code' };
+      if (!dec.secrets.length) return { ok: false, error: dec.wrong ? await qrWrongCode(m.stageId) : 'No importable wallets in this QR code' };
       { const cur = await readState(ctx); if (Object.keys(cur.state?.wallets ?? {}).length > 0 && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; }
       const v = await ensureVault(ctx, m.password); if (v.error) return { ok: false, error: v.error }; createdVault = v.created;
       let imported = 0, duplicates = 0, lastErr = '';
