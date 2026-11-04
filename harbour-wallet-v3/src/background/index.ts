@@ -10,6 +10,7 @@ installFailoverFetch(); // RPC failover, circuit breaking and retry for every JS
 import './globalShims';
 import browser from 'webextension-polyfill';
 import { getCore } from '../core/walletCore';
+import { migrateSecretsToSecureStore } from '../core/storage';
 import { VaultService } from '../core/vaultService';
 import { isInternalWalletSender } from './accessPolicy';
 import { loadSettings, applySidePanel, LOCK_ALARM } from './settingsService';
@@ -77,6 +78,7 @@ for (const m of [walletEvents, marketEvents, ...(featureEnabled('swap') ? [swapE
 
 // Boot: pre-migrations, wasm core, post-migrations, queue replay. Messages wait on this.
 const ready = bootWith([
+  { name: 'secure-store', run: async () => { await migrateSecretsToSecureStore().catch((e) => logError('secure store migration', e)); } }, // PT-11: key material out of chrome.storage.local
   { name: 'pre-migrations', run: () => runMigrations('pre') },
   { name: 'core', run: () => getCore() },
   { name: 'post-migrations', run: () => runMigrations('post') },

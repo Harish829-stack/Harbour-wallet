@@ -56,7 +56,10 @@ export class Biometrics {
       rp: { name: 'Harbour-Wallet-Extension', id: this.rpId },
       user: { id: random32(), name: 'Harbour-Wallet-Extension', displayName: 'Harbour Wallet' }, // random, not a secret
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }, { type: 'public-key', alg: -8 }],
-      authenticatorSelection: { requireResidentKey: true, residentKey: 'required', userVerification: 'required' },
+      // PT-01: "biometrics" means THIS device's built-in authenticator (Touch ID, Windows Hello face/fingerprint/PIN, Android screen
+      // lock). A roaming key or another phone cannot be enrolled; devices without one keep password-only unlock.
+      authenticatorSelection: { authenticatorAttachment: 'platform', requireResidentKey: true, residentKey: 'required', userVerification: 'required' },
+      hints: ['client-device'],
       extensions: { prf: {} },
       timeout: 60_000,
     } });

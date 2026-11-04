@@ -15,7 +15,7 @@ test('addWallet, qrSyncImport, importInitiate and qrImportAll require the add-wa
 });
 test('revealAuth grants per purpose and the grant is one-shot', () => {
   const w = read('background/modules/wallet.ts'); const r = read('background/reauth.ts');
-  assert.match(body(w, 'revealAuth: async'), /grantReauth\(purposeOf\(msg\.purpose\)\)/);
+  assert.match(body(w, 'revealAuth: async'), /grantReauth\(purposeOf\(msg\.purpose\), \{ method/);
   assert.match(r, /session\.remove\(KEY\[p\]\)/);
 });
 test('a page cannot skip the gate: the batch marker is a Symbol, not a message field', () => {

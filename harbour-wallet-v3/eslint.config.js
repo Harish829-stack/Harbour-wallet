@@ -23,6 +23,11 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true }],
       '@typescript-eslint/no-this-alias': 'off',
       'unused-imports/no-unused-imports': 'error',
+      // PT-11: no HTML sinks in extension pages (enforced at runtime too by the Trusted Types CSP in manifest.config.ts).
+      'no-restricted-syntax': ['error',
+        { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: 'HTML injection sink: render text/elements instead (Trusted Types CSP blocks it).' },
+        { selector: "MemberExpression[property.name=/^(innerHTML|outerHTML)$/]", message: 'HTML injection sink: use textContent / DOM APIs (Trusted Types CSP blocks it).' },
+        { selector: "CallExpression[callee.property.name='insertAdjacentHTML']", message: 'HTML injection sink (Trusted Types CSP blocks it).' }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
     },
   },

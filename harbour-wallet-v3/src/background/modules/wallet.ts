@@ -9,7 +9,12 @@ import { verifyPasskeySecret } from '../../core/passkeyService';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
 import type { HandlerMap } from '../handlers/types';
-import { grantReauth, consumeReauth, purposeOf } from '../reauth';
+import { grantReauth, consumeReauth, hasReauth, clearReauth, purposeOf } from '../reauth';
+
+/** Security-relevant change notice (shown by the OS even if the popup is closed), e.g. biometrics turned on. Best effort. */
+function securityNotice(title: string, message: string): void {
+  try { void chrome.notifications?.create(`harbour-security-${Date.now()}`, { type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon128.png'), title, message, priority: 2 }); } catch { /* notifications unavailable */ }
+}
 import { dropVaultKeys } from '../handlers/onboardingExtra';
 
 let creatingWallet = false;
@@ -39,8 +44,10 @@ export const handlers: HandlerMap = {
       creatingWallet = true;
       try {
         // Target order: SavePassword → GenerateHDWallet (create only) → import.
-        await removePasskey(); // a brand-new vault must never inherit an old biometric seal
+        // PT-05: refuse BEFORE touching the biometric seal: a call against an existing vault must change nothing.
+        if (await vault.exists()) return { ok: false, error: 'FORBIDDEN_REQUEST' };
         await vault.create(password, { wallets: {}, createdAt: Date.now() });
+        await removePasskey(); // a brand-new vault must never inherit an old biometric seal
         if (passkey) {
           try { await enrollPasskey(passkey.secret, passkey.credentialId, false); }
           catch (e) { await dropVaultKeys(); throw e; } // never leave a vault behind that nobody can unlock
@@ -58,6 +65,8 @@ export const handlers: HandlerMap = {
         await local.set(KEYS.wallets(vaultId), [walletId]);
         await vault.persist({ vaultId, activeWalletId: walletId, wallets: { [walletId]: { name, label: name, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated } }, createdAt: Date.now() });
         await armLockTimer().catch(() => {});
+        // The password was typed seconds ago: let onboarding offer biometrics without asking for it again (one-shot, 10 min).
+        await grantReauth('manage', { method: 'password', ttlMs: 10 * 60_000 });
         return { ok: true, addresses };
       } catch (cause) {
         return { ok: false, error: cause instanceof Error ? cause.message : 'WALLET_CREATION_FAILED' };
@@ -84,9 +93,13 @@ export const handlers: HandlerMap = {
       // Wallet must be unlocked: the unlock material being sealed is the live session's.
       try {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
-        // Re-enrolling a password-less legacy wallet keeps it password-less (its password is still unknown to the user).
+        // PT-01: adding (or replacing) an authenticator needs the PASSWORD just now (NIST 800-63B §6.1). Without this, anyone at an
+        // unlocked wallet could enrol their own authenticator and then use it to pass every biometric re-auth (reveal phrase, etc.).
         const prev = await passkeyMeta();
-        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), !!prev?.isPasswordGenerated);
+        if (prev?.isPasswordGenerated) return { ok: false, error: 'Add a password to this wallet first.' };
+        if (!(await consumeReauth('manage', { method: 'password' }))) return { ok: false, error: 'AUTH_REQUIRED' };
+        await enrollPasskey(String(msg.secret ?? ''), String(msg.credentialId ?? ''), false);
+        securityNotice('Biometric unlock turned on', prev ? 'Harbour now unlocks with a new biometric credential. If this was not you, turn it off in Settings › Security.' : 'Harbour can now be unlocked with biometrics. If this was not you, turn it off in Settings › Security.');
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
@@ -126,12 +139,13 @@ export const handlers: HandlerMap = {
       if (!(await vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
       const m = await passkeyMeta();
       if (m?.isPasswordGenerated) return { ok: false, error: 'This wallet has no password; biometrics are its only way to unlock.' };
-      await removePasskey(); return { ok: true };
+      if (!(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' }; // PT-04
+      await removePasskey(); securityNotice('Biometric unlock turned off', 'Harbour now unlocks with your password only.'); return { ok: true };
     }
   },
   lock: async (msg, ctx) => {
     const { vault } = ctx as any;
- await vault.lock(); await session.remove(KEYS.REVEAL); await clearLockTimer().catch(() => {}); return { ok: true };
+ await vault.lock(); await clearReauth(); await clearLockTimer().catch(() => {}); return { ok: true };
   },
   activity: async (msg, ctx) => {
     const { vault } = ctx as any;
@@ -275,7 +289,7 @@ export const handlers: HandlerMap = {
         state.wallets[walletId] = { name: label, label, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated };
         state.activeWalletId = walletId;
         await vault.persist(state);
-        if (newlyGenerated) await session.set(KEYS.REVEAL, Date.now() + 120_000); // the backup screen may show the new phrase once, without re-auth
+        if (newlyGenerated) await grantReauth('reveal', { method: 'created', walletId }); // PT-08: the backup screen may show THIS wallet's new phrase once, without re-auth
         return { ok: true, walletId, label, addresses, newlyGenerated, backupGranted: newlyGenerated };
       } catch (e: any) { return { ok: false, error: e?.message || 'Add wallet failed' }; }
       finally { creatingWallet = false; }
@@ -313,15 +327,18 @@ export const handlers: HandlerMap = {
       } catch (e: any) { return { ok: false, error: e?.message || 'List failed' }; }
     }
   },
+  /** Does a still-valid grant exist? Lets the UI ask for the password before a biometric ceremony (biometrics enrolment). */
+  reauthStatus: async (msg) => ({ ok: true, valid: await hasReauth(purposeOf(msg.purpose), msg.method === 'password' ? { method: 'password' } : {}) }),
   revealAuth: async (msg, ctx) => {
     const { vault } = ctx as any;
  {
       // Re-authenticate before the secret phrase can be shown. Grants a one-shot, 2-minute permission held in session storage.
       try {
         if (!(await vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
-        if (msg.method === 'passkey') await verifyPasskeySecret(String(msg.secret ?? ''));
+        const method = msg.method === 'passkey' ? 'passkey' as const : 'password' as const;
+        if (method === 'passkey') await verifyPasskeySecret(String(msg.secret ?? ''));
         else await vault.checkPassword(String(msg.password ?? ''));
-        await grantReauth(purposeOf(msg.purpose));
+        await grantReauth(purposeOf(msg.purpose), { method, ...(typeof msg.walletId === 'string' && msg.walletId ? { walletId: msg.walletId } : {}) });
         return { ok: true };
       } catch (e: any) { return { ok: false, error: e?.message || 'Verification failed' }; }
     }
@@ -350,6 +367,10 @@ export const handlers: HandlerMap = {
         const state: any = await vault.getState();
         if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
         if (Object.keys(state.wallets).length <= 1) return { ok: false, error: 'Cannot remove your only wallet' };
+        // PT-04: deleting a keystore is irreversible. A wallet whose phrase was never backed up would be lost with its funds, so the
+        // backup comes first; every removal needs the password or biometrics just now.
+        if (state.wallets[id].seedPhraseBackupRequired) return { ok: false, code: 'BACKUP_REQUIRED', error: 'Back up this wallet’s secret phrase before removing it. Without it the wallet and its funds cannot be recovered.' };
+        if (!(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' };
         delete state.wallets[id];
         await local.remove(id); // keystore lives at local[walletId]
         const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
@@ -383,17 +404,5 @@ export const handlers: HandlerMap = {
       } catch (e: any) { return { ok: false, error: e?.message || 'Rename failed' }; }
     }
   },
-  markBackedUp: async (msg, ctx) => {
-    const { vault } = ctx as any;
- {
-      try {
-        const state: any = await vault.getState();
-        const id = String(msg.walletId ?? activeEntry(state)?.[0] ?? '');
-        if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
-        state.wallets[id].seedPhraseBackupRequired = false;
-        await vault.persist(state);
-        return { ok: true, walletId: id };
-      } catch (e: any) { return { ok: false, error: e?.message || 'Update failed' }; }
-    }
-  },
+  // markBackedUp was removed (PT-04): clearing the backup flag without the phrase check let anyone skip the backup. Use backupFinish.
 };

@@ -2,7 +2,7 @@ import { logError } from '../../core/logger';
 // Provider wiring inside the service worker: content-script ports (one per frame), event fan-out, approval window, inpage registration.
 // This listener is separate from the internal wallet router (background/index.ts): ports named `harbour-provider` can only reach ProviderService.
 import browser from 'webextension-polyfill';
-import { local, session, KEYS } from '../../core/storage';
+import { local, session, KEYS, VAULT_REV } from '../../core/storage';
 import { VaultService } from '../../core/vaultService';
 import { WalletService } from '../../core/walletService';
 import { getCore } from '../../core/walletCore';
@@ -195,7 +195,7 @@ export function initProviderBackground(): void {
   // Refresh only public provider state; never forward storage values or session key material to the page.
   browser.storage.onChanged.addListener((changes, area) => {
     const relevant = area === 'session' ? KEYS.UNLOCK in changes : area === 'local' &&
-      [PKEYS.CONNECTIONS, PKEYS.BLACKLIST, PKEYS.PREFS, KEYS.VAULT].some((key) => key in changes);
+      [PKEYS.CONNECTIONS, PKEYS.BLACKLIST, PKEYS.PREFS, KEYS.VAULT, VAULT_REV].some((key) => key in changes); // the vault itself is in IndexedDB now (PT-11)
     if (!relevant) return;
     for (const entry of live.values()) void getProvider().initState(entry.sender.origin)
       .then((state) => { if (live.get(liveKey(entry.sender)) === entry) send(entry.port, { t: 'init', state }); })

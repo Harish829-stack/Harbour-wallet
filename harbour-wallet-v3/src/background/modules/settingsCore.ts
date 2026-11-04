@@ -4,6 +4,8 @@ import { loadSettings, saveSettings, sidePanelSupported, cachedRate } from '../s
 import { readEntries, sanitizeEntry, upsertEntry, removeEntry, type AddressBookCoin } from '../../core/addressBook';
 import type { HandlerMap } from '../handlers/types';
 import { defaultHiddenAssets } from './shared';
+import { consumeReauth } from '../reauth';
+import { weakensSecurity } from '../../core/settings';
 
 export const handlers: HandlerMap = {
   getSettings: async (msg, ctx) => {
@@ -21,6 +23,9 @@ export const handlers: HandlerMap = {
     const { vault } = ctx as any;
  {
       try {
+        // PT-04: a longer auto-lock or enabling eth_sign lowers protection, so it needs the password/biometrics just now.
+        // Tightening a setting never asks.
+        if (weakensSecurity(await loadSettings(), msg.patch) && !(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' };
         const r = await saveSettings(msg.patch);
         // notification choices drive the activity alarm and the gateway push registration
         if (r.ok && msg.patch && typeof msg.patch === 'object' && 'pushNotifications' in msg.patch) {

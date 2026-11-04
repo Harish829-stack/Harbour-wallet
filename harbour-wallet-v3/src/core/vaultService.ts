@@ -5,6 +5,8 @@ import { ARGON2_DEFAULT, deriveV2, isV2, v2Record, type Argon2Params, type KdfRe
 import { rekeyBlob, rekeyKeystore } from './keyMigration';
 const FREE_ATTEMPTS = 5, BASE_DELAY_MS = 5000, MAX_DELAY_MS = 300000;
 type Throttle = { failedAttempts: number; lockedUntil: number };
+/** One queue for every VaultService instance in this worker: unlock, password checks and re-keying never interleave. */
+let vaultQueue: Promise<unknown> = Promise.resolve();
 
 export class VaultService {
   private pw: PasswordService;
@@ -38,11 +40,11 @@ export class VaultService {
     await local.set(KEYS.VAULT, await passworder.encrypt(unlockKey, state));
   }
   // Password attempts are serialized (TW UnlockThrottleService.guard): without this, parallel guesses would all read the same
-  // failed-attempt counter before any of them arms the lockout, and the throttle could be bypassed.
-  private chain: Promise<unknown> = Promise.resolve();
+  // failed-attempt counter before any of them arms the lockout, and the throttle could be bypassed. The queue is MODULE-level
+  // (pentest PT-03): the worker builds a new VaultService per message, so a per-instance queue serialized nothing.
   private serial<R>(fn: () => Promise<R>): Promise<R> {
-    const run = this.chain.then(fn, fn);
-    this.chain = run.then(() => undefined, () => undefined);
+    const run = vaultQueue.then(fn, fn);
+    vaultQueue = run.then(() => undefined, () => undefined);
     return run;
   }
   unlock<T=any>(password: string): Promise<T> { return this.serial(() => this.unlockInner<T>(password)); }
@@ -155,7 +157,10 @@ export class VaultService {
     if (!blob) throw new Error('VAULT_IS_EMPTY');
     await passworder.decrypt(unlockKey, blob);
   }
-  async lock(): Promise<void> { await session.remove(KEYS.PASSWORD); await session.remove(KEYS.UNLOCK); }
+  async lock(): Promise<void> {
+    await session.remove(KEYS.PASSWORD); await session.remove(KEYS.UNLOCK);
+    for (const k of [KEYS.REVEAL, KEYS.ADD_WALLET, KEYS.MANAGE]) await session.remove(k); // re-auth grants never outlive the session
+  }
   async isUnlocked(): Promise<boolean> { return Boolean(await session.get(KEYS.UNLOCK)); }
 
   // Read the decrypted vault state using the live session unlock key (no password re-prompt).

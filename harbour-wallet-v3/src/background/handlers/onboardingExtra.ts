@@ -15,7 +15,7 @@ import { solanaRpcUrl } from '../../core/rpc';
 import { MAX_WALLETS, WALLET_LIMIT_ERROR, canCreateWallet, classifySecret, normalizeMnemonic, validatePrivateKey, hasDuplicateAddress, pickSolanaVariants, solanaHasHistory, evmFamily, validateWalletName, defaultWalletName, IMPORT_ERRORS, type SolanaVariant } from '../../core/importKey';
 import { onboardingMode } from '../../core/onboardingRules';
 import { decryptStoredKeys } from '../../core/qrImport';
-import { consumeReauth } from '../reauth';
+import { consumeReauth, grantReauth, clearReauth } from '../reauth';
 
 
 const PENDING_TTL_MS = 10 * 60_000;
@@ -37,7 +37,7 @@ const walletNames = (state: any): string[] => Object.values(state?.wallets ?? {}
 
 export async function dropVaultKeys() {
   for (const k of [KEYS.VAULT, KEYS.VAULT_ID, KEYS.PBKDF2, KEYS.THROTTLE]) await local.remove(k);
-  await session.remove(KEYS.PASSWORD); await session.remove(KEYS.UNLOCK); await session.remove(KEYS.REVEAL);
+  await session.remove(KEYS.PASSWORD); await session.remove(KEYS.UNLOCK); await clearReauth();
   await removePasskey().catch(() => {});
 }
 
@@ -93,6 +93,8 @@ async function ensureVault(ctx: HandlerCtx, password: unknown): Promise<{ create
   if (typeof password !== 'string' || !validatePassword(password).valid) return { created: false, error: 'INVALID_WALLET_INPUT' };
   await removePasskey().catch(() => {}); // a brand-new vault must never inherit an old biometric seal
   await ctx.vault.create(password, { wallets: {}, createdAt: Date.now() });
+  // The password was typed seconds ago: onboarding may offer biometrics without asking for it again (one-shot, 10 min; PT-01).
+  await grantReauth('manage', { method: 'password', ttlMs: 10 * 60_000 });
   return { created: true };
 }
 

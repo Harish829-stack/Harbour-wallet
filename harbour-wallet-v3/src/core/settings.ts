@@ -139,3 +139,10 @@ export const LOW_BALANCE_USD = 0.01;
 export function isLowBalance(usdValue: number | null | undefined): boolean {
   return typeof usdValue === 'number' && Number.isFinite(usdValue) && usdValue < LOW_BALANCE_USD;
 }
+
+/** True when `patch` would LOWER security (PT-04): a longer auto-lock, or turning on eth_sign (blind hash signing). */
+export function weakensSecurity(cur: Settings, patch: unknown): boolean {
+  if (!isObj(patch)) return false;
+  const next = applyPatch(cur, patch);
+  return next.lockTimeInMinutes > cur.lockTimeInMinutes || (!cur.developerSettings.isEthSignEnabled && next.developerSettings.isEthSignEnabled);
+}

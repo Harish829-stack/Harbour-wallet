@@ -16,7 +16,9 @@ export default defineManifest((env) => {
     icons: { '16':'icons/icon16.png','32':'icons/icon32.png','48':'icons/icon48.png','128':'icons/icon128.png' },
     background: { service_worker: 'src/background/index.ts', type: 'module' },
     side_panel: { default_path: 'src/popup/index.html' },
-    content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; base-uri 'none'" },
+    // PT-11: Trusted Types with NO policy: every HTML/script injection sink (innerHTML, insertAdjacentHTML, script.src from strings…) throws
+    // in extension pages, so an injected string can never become markup or code where the session keys are reachable.
+    content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'" },
     permissions: ['alarms', 'storage', 'clipboardWrite', 'notifications', 'scripting', 'sidePanel', 'gcm', 'idle', 'offscreen'],
     // Plain-http loopback access only in local builds that talk to a backend on this computer.
     host_permissions: ['https://*/*', ...(api.local ? ['http://localhost/*', 'http://127.0.0.1/*'] : [])],

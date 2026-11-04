@@ -16,6 +16,7 @@ import { renderPhraseGrid, renderWord, renderSecretBlock, sanitizeTheme } from '
 import { copySecretToClipboard } from '../clipboard';
 import { stageQrKeys } from '../qrStage';
 import { activeEntry } from '../walletState';
+import { consumeReauth } from '../reauth';
 
 const BACKUP_KEY = 'wallet:backupSession';
 const COPY_KEY = 'wallet:copyGrant';
@@ -28,10 +29,11 @@ const secureRandom = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 
 
 interface BackupSessionRecord { id: string; walletId: string; posClass: number[]; chipClass: Record<string, number>; exp: number }
 
-/** One-shot re-authentication grant (2 minutes) set by `revealAuth`; consumed by any reveal. */
-export async function consumeRevealGrant(): Promise<boolean> {
-  const grant = await session.get<number>(KEYS.REVEAL); await session.remove(KEYS.REVEAL);
-  return typeof grant === 'number' && grant >= Date.now();
+/** One-shot re-authentication grant (2 minutes) set by `revealAuth` (or by `addWallet` for its own new wallet); consumed by any reveal.
+ *  A grant bound to a wallet only reveals that wallet (PT-08). */
+export async function consumeRevealGrant(walletId: string): Promise<boolean> { return consumeReauth('reveal', { walletId }); }
+async function resolveWalletId(ctx: HandlerCtx, walletId: unknown): Promise<string> {
+  const st: any = await ctx.vault.getState(); return String(walletId ?? activeEntry(st)?.[0] ?? '');
 }
 
 /** Decrypts a seed-phrase wallet's mnemonic inside the worker. Callers must not return it. */
@@ -84,9 +86,10 @@ export const handlers: HandlerMap = {
   async backupBegin(m, ctx) {
     try {
       if (!(await ctx.vault.isUnlocked())) return { ok: false, error: 'LOCKED' };
-      if (!(await consumeRevealGrant())) return { ok: false, error: 'AUTH_REQUIRED' };
+      const target = await resolveWalletId(ctx, m.walletId);
+      if (!(await consumeRevealGrant(target))) return { ok: false, error: 'AUTH_REQUIRED' };
       const theme = sanitizeTheme(m.theme);
-      return await withMnemonic(ctx, m.walletId, async (walletId, words) => {
+      return await withMnemonic(ctx, target, async (walletId, words) => {
         const plan = planBackup(words, randomId, secureRandom);
         const grid = await renderPhraseGrid(words, theme);
         const chips = [];
@@ -121,7 +124,7 @@ export const handlers: HandlerMap = {
   async revealPrivateKey(m, ctx) {
     try {
       if (!(await ctx.vault.isUnlocked())) return { ok: false, error: 'Wallet is locked' };
-      if (!(await consumeRevealGrant())) return { ok: false, error: 'AUTH_REQUIRED' };
+      if (!(await consumeRevealGrant(String(m.walletId ?? '')))) return { ok: false, error: 'AUTH_REQUIRED' };
       const theme = sanitizeTheme(m.theme);
       return await withPrivateKey(ctx, m.walletId, async (key, meta) => {
         const view = await renderSecretBlock(key, theme, meta.format === 'hex' ? 32 : 30);

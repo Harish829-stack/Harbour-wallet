@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
 import { T } from './theme';
 import { Biometrics, biometricAvailability, isUserCancel } from '../core/passkey';
+import { RevealGate } from './wallet/revealGate';
 
 type Bg = (m: any) => Promise<any>;
 
@@ -50,7 +51,16 @@ export async function registerBiometrics(onStage: (s: EnrollStage) => void): Pro
   return { secret, credentialId: made.credentialId };
 }
 
-export const BiometricEnroll: React.FC<{ bg: Bg; name: string; onDone: () => void; onBack?: () => void }> = ({ bg, name, onDone, onBack }) => {
+// PT-01: turning biometrics on needs the password first (checked by the worker; asked for here BEFORE the OS biometric sheet so the
+// user never registers a credential that then cannot be saved). Onboarding already holds a fresh password grant and skips the prompt.
+export const BiometricEnroll: React.FC<{ bg: Bg; name: string; onDone: () => void; onBack?: () => void }> = (props) => {
+  const { bg } = props; const [authed, setAuthed] = useState<boolean | null>(null);
+  useEffect(() => { void bg({ type: 'reauthStatus', purpose: 'manage', method: 'password' }).then((r) => setAuthed(!!r?.valid)).catch(() => setAuthed(false)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  if (authed === null) return null;
+  if (!authed) return <div style={{ padding: 20, maxWidth: 420, margin: '0 auto' }}><RevealGate bg={bg} purpose="manage" passwordOnly message={`turn on ${props.name}`} onGranted={() => setAuthed(true)} onCancel={props.onBack ?? props.onDone}/></div>;
+  return <BiometricEnrollInner {...props}/>;
+};
+const BiometricEnrollInner: React.FC<{ bg: Bg; name: string; onDone: () => void; onBack?: () => void }> = ({ bg, name, onDone, onBack }) => {
   const [stage, setStage] = useState<EnrollStage>('idle'); const [err, setErr] = useState('');
   const busy = stage !== 'idle' && stage !== 'done';
   const label = { idle: `Set up ${name}`, register: 'Registering…', verify: 'Verifying…', save: 'Saving…', done: 'Done' }[stage];
@@ -60,7 +70,7 @@ export const BiometricEnroll: React.FC<{ bg: Bg; name: string; onDone: () => voi
       const { secret, credentialId } = await registerBiometrics(setStage);
       setStage('save');
       const r = await bg({ type: 'passkeyEnroll', secret, credentialId });
-      if (!r?.ok) throw new Error(r?.error === 'LOCKED' ? 'Unlock Harbour first.' : r?.error || 'Could not save biometrics');
+      if (!r?.ok) throw new Error(r?.error === 'LOCKED' ? 'Unlock Harbour first.' : r?.error === 'AUTH_REQUIRED' ? 'Your password confirmation expired. Go back and try again.' : r?.error || 'Could not save biometrics');
       setStage('done'); setTimeout(onDone, 900);
     } catch (e: any) { setStage('idle'); if (!isUserCancel(e)) setErr(e?.message || 'Biometrics failed'); }
   };

@@ -29,7 +29,20 @@ function connect(): browser.Runtime.Port | null {
   return port;
 }
 
-export const bg = (msg: any): Promise<any> => rawBg(msg).catch((e) => { throw new Error(friendlyMessage(e)); }); // transport failures read as plain sentences
+// Operations the worker guards with a one-shot "manage" re-authentication (PT-04). On AUTH_REQUIRED the popup asks for the password
+// (or biometrics) in place and retries once; a cancelled prompt returns the original refusal.
+const MANAGE_GUARDED: Record<string, string> = {
+  removeWallet: 'remove this wallet', passkeyDisable: 'turn off biometric unlock', setSettings: 'change this security setting',
+  providerPrefs: 'turn off biometric approval for sites',
+};
+async function guarded(msg: any): Promise<any> {
+  const r = await rawBg(msg);
+  if (r?.error !== 'AUTH_REQUIRED' || !msg || !MANAGE_GUARDED[msg.type] || typeof document === 'undefined') return r;
+  const { promptReauth } = await import('./reauthModal');
+  if (!(await promptReauth(rawBg, MANAGE_GUARDED[msg.type]))) return { ok: false, error: 'Cancelled.' };
+  return rawBg(msg);
+}
+export const bg = (msg: any): Promise<any> => guarded(msg).catch((e) => { throw new Error(friendlyMessage(e)); }); // transport failures read as plain sentences
 const rawBg = (msg: any): Promise<any> => {
   const p = connect();
   if (!p) return browser.runtime.sendMessage(msg) as Promise<any>;
