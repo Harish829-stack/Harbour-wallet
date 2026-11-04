@@ -103,7 +103,8 @@ export const handlers: HandlerMap = {
     if (connected) await disconnectOrigin(origin);
     return { ok: true };
   },
-  async providerBlacklistRemove(m) { return { ok: await perms.removeBlacklist(String(m.id ?? '')) }; },
+  // A8: unblocking weakens protection, so it needs the same fresh password/biometric as the other weakening actions.
+  async providerBlacklistRemove(m) { if (!(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' }; return { ok: await perms.removeBlacklist(String(m.id ?? '')) }; },
   async providerPrefs(m) {
     // PT-04: switching biometric approval OFF weakens dApp signing protection -> needs the password/biometrics just now.
     if (m.biometricApproval === false && (await perms.prefs()).biometricApproval && !(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' };

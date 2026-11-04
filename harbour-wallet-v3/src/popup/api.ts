@@ -33,7 +33,7 @@ function connect(): browser.Runtime.Port | null {
 // (or biometrics) in place and retries once; a cancelled prompt returns the original refusal.
 const MANAGE_GUARDED: Record<string, string> = {
   removeWallet: 'remove this wallet', passkeyDisable: 'turn off biometric unlock', setSettings: 'change this security setting',
-  providerPrefs: 'turn off biometric approval for sites',
+  providerPrefs: 'turn off biometric approval for sites', providerBlacklistRemove: 'unblock this site',
 };
 async function guarded(msg: any): Promise<any> {
   const r = await rawBg(msg);

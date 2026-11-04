@@ -10,11 +10,11 @@ export interface QrDecrypted { secrets: Array<QrSecret | QrKeySecret>; skipped: 
 export async function decryptStoredKeys(core: any, keys: unknown[], code: string): Promise<QrDecrypted> {
   const out: QrDecrypted = { secrets: [], skipped: 0, wrong: 0 };
   if (!ONE_TIME_CODE.test(code)) { out.wrong = keys.length; return out; }
-  const pw = new TextEncoder().encode(code);
+  const pw = new TextEncoder().encode(code); const kdfBudget = { spent: 0 };
   for (const k of keys as any[]) {
     if (!isWellFormedKey(k)) { out.skipped++; continue; }
     // wallet-core ABORTS the wasm runtime on a wrong password, so the MAC is checked first (see qrSync.codeMatchesKey).
-    if (!(await codeMatchesKey(k, code))) { out.wrong++; continue; }
+    if (!(await codeMatchesKey(k, code, kdfBudget))) { out.wrong++; continue; }
     let sk: any;
     try { sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(k))); } catch { out.skipped++; continue; }
     try {

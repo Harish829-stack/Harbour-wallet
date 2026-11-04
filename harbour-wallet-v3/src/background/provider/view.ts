@@ -157,6 +157,7 @@ async function txView(p: PendingRequest, d: ViewDeps) {
     } }
   if (decoded.kind === 'setApprovalForAll') warnings.add(decoded.approved ? 'setApprovalForAll' : 'revokeApprovalForAll');
   if (decoded.kind === 'unknown' && isContract === false && !delegated) warnings.add('dataToEoa');
+  if (decoded.kind === 'unknown' && !(isContract === false && !delegated)) warnings.add('unknownCall');
   // balance, gas, fees
   let balance: bigint | null = null; try { balance = BigInt(await d.rpc(chainId, 'eth_getBalance', [tx.from, 'latest'])); } catch { /* unavailable */ }
   out.balance = balance === null ? null : balance.toString();
@@ -178,7 +179,12 @@ async function txView(p: PendingRequest, d: ViewDeps) {
       return { ...ch, symbol: meta?.symbol ?? (ch.kind === 'nft' ? 'NFT' : ''), decimals: meta?.decimals ?? 0, formatted: meta ? formatUnits(BigInt(ch.amount), meta.decimals) : ch.amount };
     }));
     if (!simV1.ok) warnings.add('simulationFailed');
-  } else if (tx.data && tx.data !== '0x') out.simulationUnavailable = true;
+  } else if (tx.data && tx.data !== '0x') {
+    // A3: no balance-change preview means the user is approving blind. That is a warning in its own right, and a high-risk one
+    // (extra acknowledgement) when native value leaves the account or the call is not one we can decode.
+    out.simulationUnavailable = true; warnings.add('simulationUnavailable');
+    if (value > 0n || decoded.kind === 'unknown') warnings.add('blindCall');
+  }
   if (toRisk?.risky || (tx.to && (await addressRisk(tx.to, d.kv, d.fetch ?? fetch)) === 'scam')) { warnings.add('maliciousAddress'); out.addressFlags = toRisk?.flags ?? ['scamsniffer']; }
   if (spenderRisk?.risky) { warnings.add('maliciousSpender'); out.spenderFlags = spenderRisk.flags; }
   let fees: FeePresets | null = null; try { fees = await feePresets(chainId, d.rpc); } catch { fees = null; }

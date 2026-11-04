@@ -4,7 +4,7 @@ import { isUnlimited } from './decode';
 
 export interface TypedTreeNode { name: string; type: string; value?: string; children?: TypedTreeNode[] }
 export type TypedApproval = { token?: string; spender?: string; amount?: string; unlimited: boolean; expires?: string | null; allowed?: boolean; kind: 'permit' | 'daiPermit' | 'permit2' | 'permit2Transfer' | 'order' };
-export interface TypedSummary { domain: { name?: string; version?: string; chainId?: string; verifyingContract?: string; salt?: string }; primaryType: string; tree: TypedTreeNode[]; approvals: TypedApproval[]; warnings: Array<'order' | 'unlimited' | 'permit'> }
+export interface TypedSummary { domain: { name?: string; version?: string; chainId?: string; verifyingContract?: string; salt?: string }; primaryType: string; tree: TypedTreeNode[]; approvals: TypedApproval[]; warnings: Array<'order' | 'unlimited' | 'permit' | 'noChainId'> }
 
 const MAX_NODES = 500;
 const baseType = (t: string) => t.replace(/\[\d*\]$/, '');
@@ -27,7 +27,7 @@ const big = (v: unknown): bigint | null => { try { if (typeof v === 'bigint') re
 const iso = (v: unknown): string | null => { const n = big(v); if (n === null) return null; if (n === 0n) return null; if (n > 253402300799n) return 'never'; return new Date(Number(n) * 1000).toISOString(); };
 
 export function summarizeTypedData(td: { types: Record<string, Array<{ name: string; type: string }>>; primaryType: string; domain: Record<string, any>; message: Record<string, any> }): TypedSummary {
-  const d = td.domain ?? {}; const m = td.message ?? {}; const pt = td.primaryType; const approvals: TypedApproval[] = []; const warnings = new Set<'order' | 'unlimited' | 'permit'>();
+  const d = td.domain ?? {}; const m = td.message ?? {}; const pt = td.primaryType; const approvals: TypedApproval[] = []; const warnings = new Set<'order' | 'unlimited' | 'permit' | 'noChainId'>();
   const verifying = typeof d.verifyingContract === 'string' ? d.verifyingContract : undefined;
   if (pt === 'Permit' && 'spender' in m) {
     if ('allowed' in m) approvals.push({ kind: 'daiPermit', token: verifying, spender: String(m.spender), unlimited: m.allowed === true, allowed: m.allowed === true, expires: iso(m.expiry) });
@@ -42,6 +42,8 @@ export function summarizeTypedData(td: { types: Record<string, Array<{ name: str
   } else if (pt === 'OrderComponents' || pt === 'Order' || /^(Bulk)?Order/.test(pt) && ('offer' in m || 'consideration' in m)) {
     approvals.push({ kind: 'order', unlimited: false }); warnings.add('order');
   }
+  // A6: without domain.chainId the signature is valid on every chain (replayable); say so.
+  if (d.chainId === undefined || d.chainId === null || String(d.chainId).trim() === '') warnings.add('noChainId');
   if (approvals.some((a) => a.unlimited)) warnings.add('unlimited');
   if (approvals.some((a) => a.kind !== 'order')) warnings.add('permit');
   return {

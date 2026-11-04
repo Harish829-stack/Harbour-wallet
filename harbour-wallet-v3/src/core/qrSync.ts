@@ -65,11 +65,18 @@ export const ONE_TIME_CODE = /^[A-Za-z0-9]{6}$/;
 // wallet-core ABORTS the wasm runtime on a wrong password (it cannot be caught), so the one-time code is checked first with the
 // standard keystore MAC: keccak256(derivedKey[16..32] || ciphertext) == mac, derivedKey = scrypt(code, salt, N, r, p, dklen).
 const hex = (h: string): Uint8Array => { if (!/^([0-9a-f]{2})*$/i.test(h)) throw new Error('bad hex'); return Uint8Array.from(h.match(/../g) ?? [], (x) => parseInt(x, 16)); };
-export async function codeMatchesKey(key: ReturnType<typeof unminify>[number], code: string): Promise<boolean> {
+// A5: a scanned QR is hostile input. scrypt allocates 128*N*r bytes, so cap memory per key (64 MiB covers wallet-core's N=2^14..2^16, r=8)
+// and the total scrypt work across all keys of one import, so a crafted QR cannot hang or crash the worker.
+export const QR_MAX_KEY_BYTES = 64 * 1024 * 1024;
+export const QR_MAX_TOTAL_WORK = 2 ** 26; // sum of N*r*p over the import (a default key is 2^19, so ~128 default keys)
+export type QrKdfBudget = { spent: number };
+export async function codeMatchesKey(key: ReturnType<typeof unminify>[number], code: string, budget?: QrKdfBudget): Promise<boolean> {
   const c = key?.crypto; const kp = c?.kdfparams;
   if (!c || !kp || c.kdf !== 'scrypt') return false;
   const { n, r, p, dklen } = kp; const bounded = (v: number, max: number) => Number.isInteger(v) && v >= 1 && v <= max;
   if (!bounded(n, 1 << 20) || (n & (n - 1)) !== 0 || !bounded(r, 16) || !bounded(p, 8) || !bounded(dklen, 64) || dklen < 32) return false;
+  if (128 * n * r > QR_MAX_KEY_BYTES) return false;
+  if (budget) { budget.spent += n * r * p; if (budget.spent > QR_MAX_TOTAL_WORK) return false; }
   try {
     const dk = await scryptAsync(new TextEncoder().encode(code), hex(kp.salt), { N: n, r, p, dkLen: dklen });
     const ct = hex(c.ciphertext); const buf = new Uint8Array(16 + ct.length); buf.set(dk.subarray(16, 32)); buf.set(ct, 16);

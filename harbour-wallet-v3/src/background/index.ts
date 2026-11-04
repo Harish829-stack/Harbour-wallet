@@ -44,6 +44,10 @@ browser.runtime.onInstalled.addListener((d) => {
 // Auto-lock: the alarm fires `lockTimeInMinutes` after the last activity ping; it drops the session keys.
 // Unlock keys live in storage.session: pin it to trusted extension contexts so content scripts can never read it, even if the default changes.
 try { void (chrome.storage.session as any).setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' }); } catch { /* older Chrome */ }
+// A4: storage.local defaults to TRUSTED_AND_UNTRUSTED_CONTEXTS, so a content script (a compromised page context's bridge) could read or rewrite
+// the settings, permissions, pending-approval queue and vault metadata kept there. Pin it to extension pages and the worker only. Nothing in
+// content.ts / inpage touches storage (they talk to the worker by message), so this removes an attack surface and costs no feature.
+try { void Promise.resolve((chrome.storage.local as any).setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })).catch(() => {}); } catch { /* older Chrome */ }
 browser.alarms.create(CONFIG_ALARM, { periodInMinutes: 360 });
 browser.alarms.onAlarm.addListener(async (a) => {
   if (a.name === CONFIG_ALARM) { void applyRemoteConfig(); void syncRemotePush(vaultState); void syncAddresses(vaultState); return; }

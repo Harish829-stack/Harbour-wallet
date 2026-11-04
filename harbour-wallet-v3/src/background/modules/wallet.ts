@@ -228,10 +228,10 @@ export const handlers: HandlerMap = {
         const code = String(msg.code ?? ''); const keys = (await readQrStage(msg.stageId)) ?? [];
         if (!ONE_TIME_CODE.test(code)) return { ok: false, error: 'INCORRECT_CODE' };
         if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
-        const mnemonics: string[] = []; let skipped = 0; let wrong = 0;
+        const mnemonics: string[] = []; let skipped = 0; let wrong = 0; const kdfBudget = { spent: 0 };
         for (const k of keys) {
           if (!isWellFormedKey(k) || k.type !== 'mnemonic') { skipped++; continue; }
-          if (!(await codeMatchesKey(k, code))) { wrong++; continue; }
+          if (!(await codeMatchesKey(k, code, kdfBudget))) { wrong++; continue; }
           let sk: any;
           try { sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(k))); } catch { skipped++; continue; }
           try { if (sk.isMnemonic()) mnemonics.push(sk.decryptMnemonic(new TextEncoder().encode(code))); else skipped++; }

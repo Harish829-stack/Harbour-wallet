@@ -332,6 +332,18 @@ test('PT-07 / EIP-3326: typed data / tx naming another known chain switch the si
   assert.equal((await c3.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x38' }]))).outcome.error.code, -32602);
   assert.equal((await c3.pending.list()).length, 0); assert.equal((await c3.perms.get(s.origin)).chainId, 1);
 });
+test('A7 (enforced by the pending binding in needConn): typed data that carried a chain switch is refused when the connection moved while it waited', async () => {
+  const ctx = setup(); const s = sender(); await connect(ctx, s);
+  const td = { ...MAIL, domain: { ...MAIL.domain, chainId: 137 } };
+  assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(td)]))).done, false);
+  const pt = await pendingOf(ctx); assert.equal(pt.params.switchedFrom, 1);
+  await ctx.perms.update(s.origin, { chainId: 10 });   // the site (or another request) moved the connection meanwhile
+  const before = ctx.log.signed.length;
+  const r = await ctx.svc.resolve(pt.id, { approve: true });
+  assert.equal(ctx.log.signed.length, before, 'nothing was signed');
+  assert.notEqual((await ctx.perms.get(s.origin)).chainId, 137, 'the stale switch was not applied');
+  assert.ok(r.ok === false || ctx.log.delivered.at(-1)?.outcome?.error, 'the request failed');
+});
 test('PT-07 / EIP-3326: switching the network cancels the site\'s other waiting chain-bound requests', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.delivered.length = 0;
   await ctx.svc.handle(s, { ...req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }]), id: 'old' });
