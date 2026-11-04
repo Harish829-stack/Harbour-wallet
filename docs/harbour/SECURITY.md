@@ -308,6 +308,7 @@ Static read of the popup code; REA's source recovery was unavailable (needs a Wa
 
 - Editable spending limit on plain ERC-20 approve: pre-filled with the request, or the balance when the site asks for unlimited. The background rewrites the calldata and only accepts a limit lower than or equal to the request (`lowerApproveAmount`). Other calls cannot be rewritten.
 - "Balance changes could not be simulated" note when the RPC has no `eth_simulateV1`.
+  - Update 2026-11-04 (A3): this is now a warning, not just a note. `simulationUnavailable` makes the request "dangerous" (acknowledgement required), and `blindCall` (no preview and value above zero or an undecodable call) is high risk (second checkbox). New `unknownCall` warning for undecodable contract calls. `/v1/rpc` now allows `eth_simulateV1`.
 - Solana banner when one approval signs several transactions.
 - Second risk checkbox ("I accept the risk of losing funds...") for high-risk requests (flagged site or address, unlimited or hidden approvals, failed or missing simulation, raw hash signing).
 - Lending history rows show `-` for deposit/repay and `+` for withdraw/borrow.

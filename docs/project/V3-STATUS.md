@@ -1,6 +1,6 @@
 # Harbour Wallet v3 — Current Project Status
 
-Updated: 2026-11-03
+Updated: 2026-11-04
 
 This is the current status document for the implementation on branch
 `harbour-v3`. The older reverse-engineering and Harbour-v2 documents remain
@@ -33,6 +33,30 @@ claims are not current for v3.
 - Backend: `go vet` and `go test ./internal/api` pass on go1.26.10.
 - Live RPC/provider, deployed-backend, Chrome visual, and Ledger hardware
   verification are still incomplete.
+
+## Attacker review fixes (2026-11-04)
+
+An outside-attacker code review found nine items (A1-A9). Eight are closed in
+code with tests; A7 was a false positive (the pending-request binding in
+`needConn` already refuses a stale chain switch, so only a regression test was
+added). A9 (release/config/Firebase keys sitting in the REA folder) is a manual
+action and is still open. Full detail: `harbour-wallet-v3/docs/reference/security-attack-review-2026-11-04.md`.
+
+- A1/A2 backend gateway: strict JSON-RPC parse, forward only the validated
+  body, no raw broadcast, bounded `eth_getLogs` (`bf56077`).
+- A3 approval screen: `eth_simulateV1` allowed on `/v1/rpc`; `unknownCall`,
+  `simulationUnavailable` and `blindCall` warnings (`931a0ad`). **Restart the API
+  container so it loads `config/api.yaml`.**
+- A4 `chrome.storage.local` pinned to trusted contexts (verified in Chromium 153).
+- A5 QR scrypt memory and work caps. A6 `noChainId` typed-data warning.
+  A8 re-auth to unblock a site (`931a0ad`).
+- Go tests ran in a `golang:1.26.10-alpine` container against the compose
+  Postgres and Redis (`go vet`, `go build ./...`, `internal/api` pass); extension
+  tests ran in `node:22-alpine` (`tsc` clean, suite passes except
+  `chains.test.js`, which needs a file outside the repo).
+- The same changes also exist as commits in the stray nested repo inside
+  `harbour-wallet-v3/` (`0c1d006`, `b2b9770`, `b2dbc94`, `7724fc8`). That repo
+  has no remote; the REA root repository is the source of truth.
 
 ## Testnet Swap and Earn (2026-11-03)
 
