@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export { decodeCalldata, flattenCalls, lowerApproveAmount, encodeApprove } from './core/provider/decode'; export { looksLikeSolMessage } from './core/provider/solanaTx'; export { isPrivateNetworkUrl } from './core/provider/origin'; export { hasDangerousSelector } from './core/swap/safety'; export { validRecipient } from './core/sendService';`, resolveDir: root, sourcefile: 'entry.ts', loader: 'ts' }, bundle: true, write: false, format: 'esm', platform: 'node', external: ['webextension-polyfill'] });
+const out = await build({ stdin: { contents: `export { decodeCalldata, flattenCalls, setApproveAmount, encodeApprove, MAX_UINT256 } from './core/provider/decode'; export { looksLikeSolMessage } from './core/provider/solanaTx'; export { isPrivateNetworkUrl } from './core/provider/origin'; export { hasDangerousSelector } from './core/swap/safety'; export { validRecipient } from './core/sendService';`, resolveDir: root, sourcefile: 'entry.ts', loader: 'ts' }, bundle: true, write: false, format: 'esm', platform: 'node', external: ['webextension-polyfill'] });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
 const solMessage = () => { // legacy message: 1 signer, system transfer
@@ -134,13 +134,16 @@ test('decoder: Aave-style pool calls (supply / withdraw / borrow / repay)', () =
   assert.equal(M.decodeCalldata('0x573ade81' + w(asset) + w('0x1') + w('0x2') + w(me)).action, 'repay');
 });
 
-test('spending limit rewrite: only plain approve, only lower', () => {
+test('spending cap rewrite (MetaMask style): only plain approve, any amount 1..2^256-1 the user chose', () => {
   const sp = '0x' + '11'.repeat(20);
   const data = M.encodeApprove(sp, 1000n);
-  const lowered = M.lowerApproveAmount(data, 400n);
+  const lowered = M.setApproveAmount(data, 400n);
   assert.equal(M.decodeCalldata(lowered).amount, 400n);
   assert.equal(M.decodeCalldata(lowered).spender.toLowerCase(), sp);
-  assert.equal(M.lowerApproveAmount(data, 1001n), null);
-  assert.equal(M.lowerApproveAmount('0xa9059cbb' + '00'.repeat(64), 1n), null);
-  assert.equal(M.lowerApproveAmount(data, -1n), null);
+  assert.equal(M.decodeCalldata(M.setApproveAmount(data, 5000n)).amount, 5000n, 'higher than the site asked is the user\'s choice');
+  assert.equal(M.decodeCalldata(M.setApproveAmount(data, M.MAX_UINT256)).amount, M.MAX_UINT256);
+  assert.equal(M.setApproveAmount(data, M.MAX_UINT256 + 1n), null);
+  assert.equal(M.setApproveAmount(data, 0n), null);
+  assert.equal(M.setApproveAmount('0xa9059cbb' + '00'.repeat(64), 1n), null, 'transfer is never rewritten');
+  assert.equal(M.setApproveAmount(data, -1n), null);
 });

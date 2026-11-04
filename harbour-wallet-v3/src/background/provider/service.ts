@@ -9,7 +9,7 @@ import { EVM_METHODS, UNSUPPORTED_EVM, isHexData, normalizeAddChain, normalizeEt
 import { MAX_PENDING_PER_ORIGIN, MAX_PENDING_TOTAL, type Connection, type Outcome, type PendingKind, type PendingRequest, type PendingStore, type PermissionStore } from '../../core/provider/store';
 import { RateLimiter } from '../../core/provider/ratelimit';
 import { b58encode, b64ToBytes, bytesToB64 } from '../../core/provider/base58';
-import { decodeCalldata, decodeString, isUnlimited, lowerApproveAmount, SEL } from '../../core/provider/decode';
+import { decodeCalldata, decodeString, isUnlimited, setApproveAmount, SEL } from '../../core/provider/decode';
 import { parseSolTx, signerSlot, withSignature } from '../../core/provider/solanaTx';
 import { evmRecover, sha3, type SignMode, type TypedDataLike } from '../../core/provider/evmSign';
 import { validateNetwork, normalizeUrl } from '../../core/networks';
@@ -157,17 +157,19 @@ export class ProviderService {
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
           const dc = (n.typedData.domain as any)?.chainId;
           if (dc !== undefined && dc !== null && String(dc).length && !this.policy.isSigningEvmChain(dc)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-          let switchedFrom: number | undefined;
-          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { if (!(await this.autoSwitch(s.origin, evmConn, dc))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = Number(dc); }
-          return this.queue(s, req, 'typed', { ...n, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, (await this.d.perms.get(s.origin)) ?? evmConn);
+          // PT-07 / EIP-3326: a request for another known chain is queued with the switch; nothing changes until the user approves.
+          let switchedFrom: number | undefined; let switchTo: number | undefined;
+          if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { const t = this.switchTarget(dc); if (t === null) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; switchTo = t; }
+          return this.queue(s, req, 'typed', { ...n, ...(switchTo !== undefined ? { switchedFrom, switchTo } : {}) }, evmConn);
         }
         case 'tx': {
           const tx = normalizeSendTx(req.params, me);
+          // PT-07 / EIP-3326: validate the target chain BEFORE anything is written; the switch itself happens on approval.
           let switchedFrom: number | undefined;
-          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = Number(BigInt(tx.chainId)); if (!(await this.autoSwitch(s.origin, evmConn, want))) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = want; }
+          if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = this.switchTarget(tx.chainId); if (want === null) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
           if (!this.policy.isSigningEvmChain(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-          return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, (await this.d.perms.get(s.origin)) ?? evmConn);
+          return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, evmConn);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
@@ -302,15 +304,21 @@ export class ProviderService {
   /** A WalletConnect session proposal enters the same approval queue as an injected connect request. */
   /** Make `chainId` the connection's network and tell the site (EIP-1193 chainChanged + legacy networkChanged). `quiet` re-announces without a write. */
   private async applyChain(origin: string, chainId: number, same = false): Promise<void> {
-    if (!same) await this.d.perms.update(origin, { chainId });
+    if (!same) {
+      await this.d.perms.update(origin, { chainId });
+      // EIP-3326: a chain switch cancels this site's other chain-bound requests that are still waiting (they named the old chain).
+      await this.rejectWhere((p) => p.origin === origin && !p.internal && (p.kind === 'tx' || p.kind === 'typed') && p.binding?.chainId !== chainId,
+        new ProviderError(ERR.USER_REJECTED, 'The network changed while this request was waiting. Send it again.')).catch(() => 0);
+    }
     this.d.emit(origin, 'evm', 'chainChanged', hex(chainId)); this.d.emit(origin, 'evm', 'networkChanged', String(chainId));
   }
-  /** Trust Wallet `autoSwitchDappChain`: a connected site whose request names another known chain switches the wallet there first. */
-  private async autoSwitch(origin: string, conn: Connection | undefined, raw: unknown): Promise<boolean> {
-    if (!conn) return false;
-    let target: number; try { target = typeof raw === 'string' && /^0x/i.test(raw) ? Number(BigInt(raw)) : Number(raw); } catch { return false; }
-    if (!Number.isSafeInteger(target) || target <= 0 || !this.d.networks.get(target)) return false;
-    await this.applyChain(origin, target); return true;
+  /** Trust Wallet `autoSwitchDappChain` target: a request naming another KNOWN chain may switch there, but only once the user approves
+   *  that request (PT-07). Returns the chain id, or null when it is unknown / malformed. Never writes. */
+  private switchTarget(raw: unknown): number | null {
+    let target: number; try { target = typeof raw === 'string' && /^0x/i.test(raw) ? Number(BigInt(raw)) : Number(raw); } catch { return null; }
+    if (!Number.isSafeInteger(target) || target <= 0 || !this.d.networks.get(target)) return null;
+    if (!this.policy.isSigningEvmChain(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
+    return target;
   }
   async queueWcSession(s: SenderInfo, proposalId: number, params: Record<string, unknown>): Promise<void> {
     const req: PageRequest = { id: `proposal:${proposalId}`, ns: 'evm', method: 'wc_sessionProposal', params: [] };
@@ -352,9 +360,14 @@ export class ProviderService {
     }
     const st = await this.d.vaultStatus(); if (!st.unlocked) return { ok: false, locked: true, error: 'LOCKED' };
     // Sites on a phishing list are blocked: approving needs the deliberate override (the user typed the site's host), checked here and not only in the UI.
-    if (this.d.siteRisk && (await this.d.siteRisk(peek.origin).catch(() => 'unavailable' as const)) === 'high') {
-      let host = ''; try { host = new URL(peek.origin).host.toLowerCase(); } catch { /* opaque origin */ }
-      if (!host || String(decision.riskOverride ?? '').trim().toLowerCase() !== host) return { ok: false, error: 'This site is on a phishing list. Harbour blocked the request.' };
+    // PT-10: an embedded frame is judged by the page around it too; a flagged top page cannot borrow a clean dApp iframe.
+    if (this.d.siteRisk) {
+      const origins = [peek.origin, ...(!peek.isTopFrame && peek.topOrigin && peek.topOrigin !== peek.origin ? [peek.topOrigin] : [])];
+      for (const o of origins) {
+        if ((await this.d.siteRisk(o).catch(() => 'unavailable' as const)) !== 'high') continue;
+        let host = ''; try { host = new URL(o).host.toLowerCase(); } catch { /* opaque origin */ }
+        if (!host || String(decision.riskOverride ?? '').trim().toLowerCase() !== host) return { ok: false, error: 'This site is on a phishing list. Harbour blocked the request.' };
+      }
     }
     const p = await this.d.pending.claim(id); if (!p) return { ok: false, error: 'This request is no longer pending or is already executing.' };
     let outcome: Outcome; let message: string | undefined;
@@ -450,18 +463,25 @@ export class ProviderService {
         const conn = await this.needConn(p, 'evm'); const n = p.params;
         return this.d.signer.signMessage(conn, n.bytesHex, n.rawHash ? 'rawHash' : 'personal');
       }
-      case 'typed': { const conn = await this.needConn(p, 'evm'); return this.d.signer.signTypedData(conn, p.params.typedData); }
+      case 'typed': {
+        const conn = await this.needConn(p, 'evm'); const to = (p.params as { switchTo?: number }).switchTo;
+        if (to !== undefined) { if (!this.d.networks.get(to)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN); await this.applyChain(p.origin, to); } // approved: switch now
+        return this.d.signer.signTypedData(conn, p.params.typedData);
+      }
       case 'tx': {
         const conn = await this.needConn(p, 'evm');
         const { chainId } = p.params as { chainId: number }; let tx = (p.params as { tx: TxRequest }).tx;
-        // User-edited spending limit: only a plain approve(spender, amount) may be rewritten, and only to a LOWER amount.
+        // User-edited spending cap (MetaMask "custom spending cap"): only a plain approve(spender, amount) may be rewritten; the
+        // amount is the user's (1 … 2^256-1, higher or lower than the site's suggestion). What is signed is exactly what was shown.
         if (dec.allowanceLimit !== undefined) {
-          const nd = /^\d{1,78}$/.test(dec.allowanceLimit) ? lowerApproveAmount(tx.data ?? '0x', BigInt(dec.allowanceLimit)) : null;
+          const nd = /^\d{1,78}$/.test(dec.allowanceLimit) ? setApproveAmount(tx.data ?? '0x', BigInt(dec.allowanceLimit)) : null;
           if (!nd) throw new ProviderError(ERR.INVALID_PARAMS, 'The spending limit cannot be applied to this request.');
           tx = { ...tx, data: nd };
         }
-        if (conn.chainId !== chainId) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
+        const switchedFrom = (p.params as { switchedFrom?: number }).switchedFrom;
+        if (conn.chainId !== (switchedFrom ?? chainId)) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
         const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
+        if (switchedFrom !== undefined) await this.applyChain(p.origin, chainId); // approved: the network switch happens now (PT-07)
         const fee: FeeValues = {}; if (dec.fee?.maxFeePerGas) fee.maxFeePerGas = BigInt(dec.fee.maxFeePerGas); if (dec.fee?.maxPriorityFeePerGas) fee.maxPriorityFeePerGas = BigInt(dec.fee.maxPriorityFeePerGas); if (dec.fee?.gasPrice) fee.gasPrice = BigInt(dec.fee.gasPrice);
         // The fee must be the one the user saw: never let the node pick it at signing time (it could be anything).
         if (!Object.keys(fee).length && tx.maxFeePerGas === undefined && tx.gasPrice === undefined) throw new ProviderError(ERR.INVALID_PARAMS, 'The network fee could not be shown, so this transaction was not sent. Try again.');

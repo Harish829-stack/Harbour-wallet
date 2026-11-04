@@ -83,9 +83,11 @@ function setup(over = {}) {
 }
 const proposalEvent = (url = 'https://app.uniswap.org') => ({ id: 7, params: { id: 7, proposer: { metadata: { name: 'Uniswap', description: 'swap', url, icons: ['https://app.uniswap.org/i.png', 'http://bad/i.png'] } }, requiredNamespaces: { eip155: { chains: ['eip155:1'], methods: ['personal_sign'], events: [] } }, optionalNamespaces: {} }, verifyContext: { verified: { origin: url, validation: 'VALID', isScam: false } } });
 const flush = () => new Promise((r) => setTimeout(r, 20));
+// PT-06: WalletConnect permissions live under their own key, never the injected site's origin.
+const O = 'https://app.uniswap.org', K = O + '#walletconnect';
 const seedSession = async (t, chains = ['eip155:1', 'eip155:137'], methods = ['personal_sign', 'eth_sendTransaction']) => {
-  await t.kv.set(M.SESSIONS_KEY, { [TOPIC]: { topic: TOPIC, origin: 'https://app.uniswap.org', name: 'Uni', url: 'https://app.uniswap.org', chains, methods, connectedAt: 1 } });
-  await t.perms.connect({ origin: 'https://app.uniswap.org', walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm });
+  await t.kv.set(M.SESSIONS_KEY, { [TOPIC]: { topic: TOPIC, origin: K, name: 'Uni', url: O, chains, methods, connectedAt: 1 } });
+  await t.perms.connect({ origin: K, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm });
 };
 
 test('pair: refuses bad links and a missing project ID before touching the relay; otherwise pairs', async () => {
@@ -96,7 +98,7 @@ test('pair: refuses bad links and a missing project ID before touching the relay
 test('proposal: queued for approval as a synthetic WalletConnect sender; bad/blocked origins are rejected without a prompt', async () => {
   const t = setup(); await t.bridge.ensure(); t.kit.handlers.session_proposal(proposalEvent()); await flush();
   assert.equal(t.log.queued.length, 1); const q = t.log.queued[0];
-  assert.equal(q.id, 7); assert.equal(q.s.tabId, M.WC_TAB); assert.equal(q.s.origin, 'https://app.uniswap.org'); assert.equal(q.s.icon, 'https://app.uniswap.org/i.png');
+  assert.equal(q.id, 7); assert.equal(q.s.tabId, M.WC_TAB); assert.equal(q.s.origin, K); assert.equal(q.s.isTopFrame, true); assert.equal(q.s.icon, 'https://app.uniswap.org/i.png');
   assert.equal(q.p.verify.validation, 'VALID'); assert.equal(q.p.proposal.requiredNamespaces.eip155.chains[0], 'eip155:1');
   const bad = setup(); await bad.bridge.ensure(); bad.kit.handlers.session_proposal(proposalEvent('http://insecure.example')); await flush();
   assert.equal(bad.log.queued.length, 0); assert.equal(bad.kit.calls[0][0], 'reject');
@@ -116,8 +118,8 @@ test('proposal: scam-flagged sites, and unverified sites claiming an already-con
   assert.equal(fresh.log.queued.length, 1, 'an unverified NEW site still reaches the prompt (with a warning)');
 });
 test('host.approve sends the session and indexes it; a rejected proposal is answered on the relay', async () => {
-  const t = setup(); const topic = await t.bridge.host.approve(7, { eip155: { chains: ['eip155:1'], methods: ['personal_sign'], events: [], accounts: [`eip155:1:${A.evm}`] } }, { origin: 'https://app.uniswap.org', title: 'Uniswap', chains: ['eip155:1'] });
-  assert.equal(topic, TOPIC); const s = await t.bridge.sessions(); assert.equal(s.length, 1); assert.equal(s[0].origin, 'https://app.uniswap.org'); assert.deepEqual(s[0].chains, ['eip155:1']);
+  const t = setup(); const topic = await t.bridge.host.approve(7, { eip155: { chains: ['eip155:1'], methods: ['personal_sign'], events: [], accounts: [`eip155:1:${A.evm}`] } }, { origin: K, title: 'Uniswap', chains: ['eip155:1'] });
+  assert.equal(topic, TOPIC); const s = await t.bridge.sessions(); assert.equal(s.length, 1); assert.equal(s[0].origin, K); assert.deepEqual(s[0].chains, ['eip155:1']);
   assert.equal(await t.bridge.deliver('wc:proposal', 'proposal:7', { result: { topic } }), true); assert.equal(t.kit.calls.filter((c) => c[0] === 'reject').length, 0);
   assert.equal(await t.bridge.deliver('wc:proposal', 'proposal:8', { error: { code: 4001, message: 'x' } }), true);
   assert.deepEqual(t.kit.calls.at(-1), ['reject', { id: 8, reason: { code: 5000, message: 'User rejected.' } }]);
@@ -127,11 +129,11 @@ test('session_request: maps to the provider, binds the connection to the request
   const t = setup(); await seedSession(t); await t.bridge.ensure();
   t.kit.handlers.session_request({ id: 11, topic: TOPIC, params: { chainId: 'eip155:137', request: { method: 'personal_sign', params: ['0x68', A.evm] } } }); await flush();
   assert.equal(t.log.handled[0].req.method, 'personal_sign'); assert.equal(t.log.handled[0].s.tabId, M.WC_TAB); assert.equal(t.log.handled[0].s.documentId, `wc:${TOPIC}`);
-  assert.equal((await t.perms.get('https://app.uniswap.org')).chainId, 137);
+  assert.equal((await t.perms.get(K)).chainId, 137);
   assert.deepEqual(t.kit.calls.at(-1), ['respond', { topic: TOPIC, response: { id: 11, jsonrpc: '2.0', result: '0xsig' } }]);
 });
 test('network change: a new chain is added to the session (updateSession) before chainChanged is emitted; a known chain only emits', async () => {
-  const t = setup(); await seedSession(t, ['eip155:1']); await t.bridge.ensure(); const origin = 'https://app.uniswap.org';
+  const t = setup(); await seedSession(t, ['eip155:1']); await t.bridge.ensure(); const origin = K;
   const live = { eip155: { chains: ['eip155:1'], accounts: [`eip155:1:${A.evm}`], methods: ['personal_sign'], events: ['chainChanged', 'accountsChanged'] } };
   t.kit.getActiveSessions = () => ({ [TOPIC]: { namespaces: live } });
   t.kit.updateSession = async (a) => { t.kit.calls.push(['update', a]); live.eip155 = a.namespaces.eip155; };
@@ -154,7 +156,7 @@ test('session_request: refuses unknown sessions, unapproved methods/chains, unav
   assert.equal((await ask(2, 'eip155:1', 'eth_sendTransaction')).error.code, 5101);
   assert.equal((await ask(3, 'eip155:137', 'personal_sign')).error.code, 5100);
   assert.equal((await ask(4, 'eip155:56', 'personal_sign')).error.code, 4902, 'approved in the session but not a network Harbour has');
-  await t.perms.disconnect('https://app.uniswap.org');
+  await t.perms.disconnect(K);
   assert.equal((await ask(5, 'eip155:1', 'personal_sign')).error.code, 4100);
   assert.equal(t.log.handled.length, 0, 'none of the refused requests reached the provider');
 });
@@ -169,10 +171,10 @@ test('session_request: a request awaiting approval is answered when the provider
 test('disconnect and session_delete end the connection once the last session for the site is gone', async () => {
   const t = setup(); await seedSession(t); await t.bridge.ensure();
   t.kit.handlers.session_delete({ topic: TOPIC }); await flush();
-  assert.equal((await t.bridge.sessions()).length, 0); assert.deepEqual(t.log.disconnectedOrigins, ['https://app.uniswap.org']);
+  assert.equal((await t.bridge.sessions()).length, 0); assert.deepEqual(t.log.disconnectedOrigins, [K]);
   const u = setup(); await seedSession(u); await u.bridge.disconnect(TOPIC);
-  assert.equal(u.kit.calls.at(-1)[0], 'disconnect'); assert.deepEqual(u.log.disconnectedOrigins, ['https://app.uniswap.org']);
-  const v = setup(); await seedSession(v); await v.bridge.onOriginDisconnected('https://app.uniswap.org');
+  assert.equal(u.kit.calls.at(-1)[0], 'disconnect'); assert.deepEqual(u.log.disconnectedOrigins, [K]);
+  const v = setup(); await seedSession(v); await v.bridge.onOriginDisconnected(K);
   assert.equal((await v.bridge.sessions()).length, 0); assert.equal(v.kit.calls.at(-1)[0], 'disconnect');
 });
 test('expired sessions are not listed, and resume() only starts the relay when sessions exist', async () => {
@@ -182,4 +184,27 @@ test('expired sessions are not listed, and resume() only starts the relay when s
   await idle.resume(); assert.equal(started, 0);
   await seedSession(t); const busy = new M.WalletConnectBridge({ kv: t.kv, perms: t.perms, service: () => ({}), createKit: async () => { started++; return fakeKit(); }, projectId: async () => 'a'.repeat(32), networks: { get: () => ({}) }, disconnectOrigin: async () => {}, now: () => NOW * 1000 });
   await busy.resume(); assert.equal(started, 1);
+});
+
+test('PT-06: a WalletConnect session never shares or changes the real site\'s injected connection', async () => {
+  const t = setup(); await seedSession(t); await t.bridge.ensure();
+  await t.perms.connect({ origin: O, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm }); // the real site, injected
+  t.kit.handlers.session_request({ id: 31, topic: TOPIC, params: { chainId: 'eip155:137', request: { method: 'personal_sign', params: ['0x68', A.evm] } } }); await flush();
+  assert.equal(t.log.handled.at(-1).s.origin, K, 'WC requests carry the WalletConnect key');
+  assert.equal((await t.perms.get(K)).chainId, 137); assert.equal((await t.perms.get(O)).chainId, 1, 'the injected connection is untouched');
+  // an unverified peer claiming a site that is connected only through the injected provider gets its OWN (new) record after approval, never the site's
+  const u = setup(); await u.perms.connect({ origin: O, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm });
+  await u.bridge.ensure(); const ev = proposalEvent(); ev.verifyContext.verified.validation = 'UNKNOWN'; u.kit.handlers.session_proposal(ev); await flush();
+  assert.equal(u.log.queued.length, 1); assert.equal(u.log.queued[0].s.origin, K);
+});
+test('PT-06/PT-10: when Verify saw a different real origin, it is passed as the page around the request (phishing-checked too)', async () => {
+  const t = setup(); await t.bridge.ensure(); const ev = proposalEvent(); ev.verifyContext.verified = { origin: 'https://evil.example', validation: 'INVALID', isScam: false };
+  t.kit.handlers.session_proposal(ev); await flush();
+  const q = t.log.queued[0]; assert.equal(q.s.origin, K); assert.equal(q.s.topOrigin, 'https://evil.example'); assert.equal(q.s.isTopFrame, false);
+});
+test('PT-06 migration: sessions saved under the bare site origin (older builds) are ended once and their shared record removed', async () => {
+  const t = setup(); await t.kv.set(M.SESSIONS_KEY, { [TOPIC]: { topic: TOPIC, origin: O, name: 'Uni', url: O, chains: ['eip155:1'], methods: ['personal_sign'], connectedAt: 1 } });
+  await t.perms.connect({ origin: O, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm });
+  assert.equal((await t.bridge.sessions()).length, 0); assert.equal(await t.perms.get(O), undefined);
+  assert.deepEqual(await t.kv.get(M.SESSIONS_KEY), {});
 });

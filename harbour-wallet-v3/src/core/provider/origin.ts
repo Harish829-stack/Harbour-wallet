@@ -27,3 +27,10 @@ export function isPrivateNetworkUrl(raw: string): boolean {
   const [a, b] = [Number(m[1]), Number(m[2])];
   return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
 }
+
+// PT-06: WalletConnect peers DECLARE their URL, so their permissions live under a separate key (`<origin>#walletconnect`). A WC session
+// can never share, reuse or change the permission of the real site's injected connection (and vice versa).
+export const WC_SUFFIX = '#walletconnect';
+export const isWcKey = (o: string): boolean => typeof o === 'string' && o.endsWith(WC_SUFFIX);
+export const wcKey = (origin: string): string => (isWcKey(origin) ? origin : origin + WC_SUFFIX);
+export const baseOrigin = (o: string): string => (isWcKey(o) ? o.slice(0, -WC_SUFFIX.length) : o);

@@ -40,15 +40,26 @@ export async function openConnectionKeys(core: any, vault: VaultService, wallet:
   const derivationIndex = acct.derivationIndex ?? 0;
   const ks = await local.get<any>(conn.walletId); if (!ks) throw new ProviderError(ERR.INTERNAL, 'Wallet keystore not found.');
   const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));
-  const hd = sk.wallet(new TextEncoder().encode(passwordKey));
+  // PT-12: an imported private-key wallet has no HD wallet; wallet-core returns its single key for every coin (same as background/keys.ts).
+  const pwBytes = new TextEncoder().encode(passwordKey);
+  const isPrivateKeyWallet = (w.type ?? 'mnemonic') === 'privateKey';
+  let hd: any = null;
+  try { hd = isPrivateKeyWallet ? null : sk.wallet(pwBytes); } catch (e) { try { sk.delete(); } catch { /* */ } throw e; }
   const owned: any[] = []; const secrets: Uint8Array[] = [];
-  const keyFor = (coin: any) => (derivationIndex === 0 ? hd.getKeyForCoin(coin) : hd.getKey(coin, wallet.accountPath(coin, derivationIndex)));
+  const keyFor = (coin: any) => (isPrivateKeyWallet ? sk.privateKey(coin, pwBytes) : derivationIndex === 0 ? hd.getKeyForCoin(coin) : hd.getKey(coin, wallet.accountPath(coin, derivationIndex)));
   return {
-    evmPrivateKey() { const pk = keyFor(core.CoinType.ethereum); owned.push(pk); const b = new Uint8Array(pk.data()); secrets.push(b); return b; },
+    evmPrivateKey() {
+      const pk = keyFor(core.CoinType.ethereum); owned.push(pk);
+      // Defence in depth: the key must derive the very address the site was connected with.
+      const want = conn.evmAddress ?? evmOf(acct.addresses);
+      const got = String(core.CoinTypeExt.deriveAddress(core.CoinType.ethereum, pk));
+      if (!want || got.toLowerCase() !== want.toLowerCase()) throw new ProviderError(ERR.UNAUTHORIZED, 'The signing key does not match the connected account.');
+      const b = new Uint8Array(pk.data()); secrets.push(b); return b;
+    },
     solanaKey() {
       const coin = core.CoinType.solana; const want = conn.solanaAddress ?? acct.addresses?.solana;
       const candidates: any[] = [keyFor(coin)];
-      if (derivationIndex === 0) { try { candidates.push(hd.getKeyDerivation(coin, core.Derivation.solanaSolana)); } catch { /* optional */ } }
+      if (derivationIndex === 0 && hd) { try { candidates.push(hd.getKeyDerivation(coin, core.Derivation.solanaSolana)); } catch { /* optional */ } }
       owned.push(...candidates);
       for (const k of candidates) if (core.CoinTypeExt.deriveAddress(coin, k) === want) return { key: k, address: want as string };
       throw new ProviderError(ERR.INTERNAL, 'Solana key does not match the account address.');
@@ -57,7 +68,7 @@ export async function openConnectionKeys(core: any, vault: VaultService, wallet:
       const info = chainById(chain); if (!info || !MULTI_CHAINS[chain]) throw new ProviderError(ERR.INVALID_PARAMS, 'Unsupported chain.');
       const coin = core.CoinType[info.ct]; const key = keyFor(coin); owned.push(key);
       const address = core.CoinTypeExt.deriveAddress(coin, key) as string; const want = acct.addresses?.[chain];
-      if (want && address !== want) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.');
+      if (!want || address !== want) throw new ProviderError(ERR.INTERNAL, 'The key does not match the account address.');
       return { key, address };
     },
     dispose() { for (const b of secrets) b.fill(0); for (const k of owned) { try { k.delete(); } catch { /* freed */ } } try { hd.delete(); } catch { /* */ } try { sk.delete(); } catch { /* */ } },

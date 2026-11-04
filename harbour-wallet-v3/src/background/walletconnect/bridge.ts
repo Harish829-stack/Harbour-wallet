@@ -5,6 +5,7 @@ import type { PageRequest, SenderInfo } from '../../core/provider/protocol';
 import { ERR, serializeError } from '../../core/provider/errors';
 import { mapRequest, mapResult, originOfMetadata, parseWcUri, sanitizeText, summarizeProposal, WC_ERR, type SupportedNamespace } from '../../core/walletconnect';
 import type { ProviderService, WcHost } from '../provider/service';
+import { isWcKey, normalizeOrigin, wcKey } from '../../core/provider/origin';
 
 export const WC_TAB = -1;                       // synthetic tab id: replies for these requests go to the relay, not a content script
 export const SESSIONS_KEY = 'harbour:wc:sessions';
@@ -46,7 +47,14 @@ export class WalletConnectBridge {
   // ---------------------------------------------------------------- state
   async configured(): Promise<boolean> { return !!(await this.d.projectId()); }
   async sessions(): Promise<WcSessionRecord[]> {
-    const idx = (await this.d.kv.get<Record<string, WcSessionRecord>>(SESSIONS_KEY)) ?? {}; const t = Math.floor(this.now() / 1000);
+    let idx = (await this.d.kv.get<Record<string, WcSessionRecord>>(SESSIONS_KEY)) ?? {}; const t = Math.floor(this.now() / 1000);
+    // PT-06 migration: sessions created before the WalletConnect-only permission key shared the injected site's record. They are ended
+    // (and that shared record removed) once; the site simply connects again.
+    const legacy = Object.values(idx).filter((s) => !isWcKey(s.origin));
+    if (legacy.length) {
+      for (const s of legacy) { delete idx[s.topic]; void this.kit?.disconnectSession({ topic: s.topic, reason: userRejected }).catch(() => {}); await this.d.perms.disconnect(s.origin).catch(() => undefined); }
+      await this.d.kv.set(SESSIONS_KEY, idx); idx = { ...idx };
+    }
     return Object.values(idx).filter((s) => !s.expiry || s.expiry > t).sort((a, b) => b.connectedAt - a.connectedAt);
   }
   private async putSession(r: WcSessionRecord) { const idx = (await this.d.kv.get<Record<string, WcSessionRecord>>(SESSIONS_KEY)) ?? {}; idx[r.topic] = r; await this.d.kv.set(SESSIONS_KEY, idx); }
@@ -87,13 +95,16 @@ export class WalletConnectBridge {
     const meta = p.proposer?.metadata ?? {}; const origin = originOfMetadata(meta.url);
     if (!origin) return void (await reject(WC_ERR.USER_REJECTED, 'The site did not provide a valid https:// address.'));
     if (await this.d.perms.isBlacklisted(origin)) return void (await reject(WC_ERR.USER_REJECTED, 'This site is blocked in Harbour.'));
-    // The dApp's URL is self-declared. Never let an unverified proposal borrow the identity (and saved permission) of a site already connected,
-    // and never prompt for a site the relay's Verify API flags as malicious.
-    const verify = verifyOf(e);
+    // The dApp's URL is self-declared. Its permission is kept under a WalletConnect-only key (PT-06), so it can never borrow or change the real
+    // site's injected connection. An unverified proposal may not take over an existing WalletConnect connection for that address either,
+    // and a site the relay's Verify API flags as malicious is never shown.
+    const verify = verifyOf(e); const key = wcKey(origin);
     if (verify?.isScam) return void (await reject(WC_ERR.USER_REJECTED, 'This site was flagged as malicious.'));
-    if (verify?.validation !== 'VALID' && (await this.d.perms.get(origin))) return void (await reject(WC_ERR.USER_REJECTED, 'A site with this address is already connected to Harbour and WalletConnect could not verify this request. Disconnect the site first.'));
+    if (verify?.validation !== 'VALID' && (await this.d.perms.get(key))) return void (await reject(WC_ERR.USER_REJECTED, 'A site with this address is already connected to Harbour and WalletConnect could not verify this request. Disconnect the site first.'));
+    // When Verify saw a different real origin, it is checked against the phishing list as the "page around" the request (PT-10 path).
+    const seen = verify?.origin ? normalizeOrigin(verify.origin) : null; const other = seen && seen !== origin ? seen : null;
     const icon = Array.isArray(meta.icons) ? meta.icons.find((i: unknown) => typeof i === 'string' && /^https:\/\//.test(i)) : undefined;
-    const sender: SenderInfo = { tabId: WC_TAB, frameId: 0, documentId: `wc:proposal`, origin, topOrigin: origin, isTopFrame: true, title: sanitizeText(meta.name, 80) || undefined, icon };
+    const sender: SenderInfo = { tabId: WC_TAB, frameId: 0, documentId: `wc:proposal`, origin: key, topOrigin: other ?? key, isTopFrame: !other, title: sanitizeText(meta.name, 80) || undefined, icon };
     const proposal = { requiredNamespaces: p.requiredNamespaces ?? {}, optionalNamespaces: p.optionalNamespaces ?? {} };
     try { await this.d.service().queueWcSession(sender, id, { proposal, summary: summarizeProposal(proposal), verify, description: sanitizeText(meta.description, 200), declaredUrl: sanitizeText(meta.url, 200) }); }
     catch (err) { await reject(WC_ERR.USER_REJECTED, serializeError(err).message); }

@@ -310,19 +310,35 @@ test('personal_sign / eth_sign / typed data require a connection, the connected 
   await ctx.svc.handle(s, req('eth_sign', [ADDR0, '0x' + 'ee'.repeat(32)])); p = await pendingOf(ctx); await ctx.svc.resolve(p.id, { approve: true }); assert.equal(ctx.log.signed.at(-1)[3], 'rawHash');
   await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(MAIL)])); p = await pendingOf(ctx); assert.equal(p.kind, 'typed'); await ctx.svc.resolve(p.id, { approve: true }); assert.equal(ctx.log.delivered.at(-1).outcome.result, '0xtyped');
 });
-test('typed data / tx naming another known chain switch a connected site there first; unknown chains are refused (-32602)', async () => {
+test('PT-07 / EIP-3326: typed data / tx naming another known chain switch the site only when the user approves; unknown chains are refused (-32602)', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.events.length = 0;
   const td = { ...MAIL, domain: { ...MAIL.domain, chainId: 137 } };
   assert.equal((await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(td)]))).done, false);
-  assert.equal((await ctx.perms.get(s.origin)).chainId, 137); assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
-  assert.equal((await pendingOf(ctx)).kind, 'typed');
+  assert.equal((await ctx.perms.get(s.origin)).chainId, 1, 'nothing switches before approval');
+  assert.equal(ctx.log.events.find((e) => e[2] === 'chainChanged'), undefined, 'no chainChanged before approval');
+  const pt = await pendingOf(ctx); assert.equal(pt.kind, 'typed'); assert.equal(pt.params.switchTo, 137); assert.equal(pt.params.switchedFrom, 1);
+  assert.equal((await ctx.svc.resolve(pt.id, { approve: true })).ok, true);
+  assert.equal((await ctx.perms.get(s.origin)).chainId, 137, 'approved: switched'); assert.deepEqual(ctx.log.events.find((e) => e[2] === 'chainChanged'), [s.origin, 'evm', 'chainChanged', '0x89']);
+  // tx: rejecting keeps the old chain; approving switches then signs on the new chain
   const c2 = setup(); await connect(c2, s);
   assert.equal((await c2.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x89' }]))).done, false);
-  assert.equal((await c2.perms.get(s.origin)).chainId, 137); assert.equal((await pendingOf(c2)).kind, 'tx');
+  assert.equal((await c2.perms.get(s.origin)).chainId, 1); const p2 = await pendingOf(c2); assert.equal(p2.kind, 'tx');
+  await c2.svc.resolve(p2.id, { approve: false }); assert.equal((await c2.perms.get(s.origin)).chainId, 1, 'rejected: chain unchanged');
+  assert.equal((await c2.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x89' }]))).done, false);
+  const p3 = await pendingOf(c2); assert.equal((await c2.svc.resolve(p3.id, { approve: true, fee: { gasPrice: '1' } })).ok, true);
+  assert.equal((await c2.perms.get(s.origin)).chainId, 137); assert.equal(c2.log.signed.at(-1)[2], 137, 'signed on the approved chain');
   const c3 = setup(); await connect(c3, s);
   assert.equal((await c3.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify({ ...MAIL, domain: { ...MAIL.domain, chainId: 56 } })]))).outcome.error.code, -32602);
   assert.equal((await c3.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x38' }]))).outcome.error.code, -32602);
   assert.equal((await c3.pending.list()).length, 0); assert.equal((await c3.perms.get(s.origin)).chainId, 1);
+});
+test('PT-07 / EIP-3326: switching the network cancels the site\'s other waiting chain-bound requests', async () => {
+  const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.delivered.length = 0;
+  await ctx.svc.handle(s, { ...req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }]), id: 'old' });
+  await ctx.svc.handle(s, { ...req('wallet_switchEthereumChain', [{ chainId: '0x89' }]), id: 'sw' });
+  const sw = (await ctx.pending.list()).find((p) => p.kind === 'switchChain'); assert.equal((await ctx.svc.resolve(sw.id, { approve: true })).ok, true);
+  assert.equal((await ctx.pending.list()).length, 0, 'the old-chain tx was cancelled');
+  const old = ctx.log.delivered.find((d) => d.reqId === 'old'); assert.equal(old.outcome.error.code, 4001);
 });
 test('eth_sendTransaction: approval signs/broadcasts with the connected account and tracks approve() calls', async () => {
   const ctx = setup(); const s = sender(); await connect(ctx, s); ctx.log.delivered.length = 0;
@@ -791,4 +807,31 @@ test('HW-009: evmAccountFromBytes signs identically to privateKeyToAccount', asy
   assert.equal(await b.signTransaction(ltx), await a.signTransaction(ltx));
   assert.equal(await M.evmSignMessage(bytes, '0x68656c6c6f', 'personal'), await a.signMessage({ message: 'hello' }));
   M.zero(bytes); assert.ok(bytes.every((x) => x === 0));
+});
+
+// ------------------------------------------------------------------ pentest 2026-11-03 (PT-02, PT-10)
+test('PT-02: the user\'s custom spending cap (MetaMask style: lower OR higher) is exactly what gets signed', async () => {
+  const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+  const unlimited = '0x095ea7b3' + ADDR1.slice(2).toLowerCase().padStart(64, '0') + 'f'.repeat(64);
+  const amountOf = (data) => BigInt('0x' + data.slice(-64));
+  for (const cap of ['1000000', String(2n ** 255n)]) {
+    const ctx = setup(); const s = sender(); await connect(ctx, s);
+    await ctx.svc.handle(s, req('eth_sendTransaction', [{ from: ADDR0, to: token, data: unlimited }]));
+    const r = await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true, gasLimit: '60000', fee: { gasPrice: '1' }, allowanceLimit: cap });
+    assert.equal(r.ok, true); assert.equal(amountOf(ctx.log.signed.at(-1)[3].data), BigInt(cap));
+  }
+  const ctx = setup(); const s = sender(); await connect(ctx, s);
+  await ctx.svc.handle(s, req('eth_sendTransaction', [{ from: ADDR0, to: token, data: unlimited }]));
+  assert.equal((await ctx.svc.resolve((await pendingOf(ctx)).id, { approve: true, fee: { gasPrice: '1' }, allowanceLimit: '0' })).ok, false, 'a zero cap is refused, nothing signed');
+  assert.equal(ctx.log.signed.filter((x) => x[0] === 'tx').length, 0);
+});
+test('PT-10: a clean dApp iframe inside a phishing-listed page is blocked unless the user types the flagged page\'s host', async () => {
+  const flagged = new Set(['https://evil.example']);
+  const ctx = setup({ siteRisk: async (o) => (flagged.has(o) ? 'high' : 'ok') });
+  const s = sender('https://app.example', { frameId: 3, isTopFrame: false, topOrigin: 'https://evil.example' }); await connect(ctx, s).catch(() => {});
+  await ctx.svc.handle(s, req('personal_sign', ['0x68', ADDR0]));
+  const p = (await ctx.pending.list()).find((x) => x.kind === 'sign' || x.kind === 'connect');
+  const blocked = await ctx.svc.resolve(p.id, { approve: true, riskOverride: 'app.example' });
+  assert.equal(blocked.ok, false); assert.match(blocked.error, /phishing list/);
+  assert.equal((await ctx.svc.resolve(p.id, { approve: true, riskOverride: 'evil.example' })).ok, true);
 });

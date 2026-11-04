@@ -5,11 +5,12 @@ import type { HandlerMap } from './types';
 import { announceChain, disconnectOrigin, getProvider, pending, perms, rpc, viewDeps, wrapSigner } from '../provider/index';
 import { buildView } from '../provider/view';
 import { evmNetwork } from '../provider/networks';
-import { normalizeOrigin, displayHost } from '../../core/provider/origin';
+import { normalizeOrigin, displayHost, baseOrigin, isWcKey } from '../../core/provider/origin';
 import { decodeString, encodeAllowanceCall, encodeApprove, isUnlimited, SEL } from '../../core/provider/decode';
 import { ERR, serializeError, ProviderError } from '../../core/provider/errors';
 import { passkeyMeta, verifyPasskeySecret } from '../../core/passkeyService';
 import { session } from '../../core/storage';
+import { consumeReauth } from '../reauth';
 
 // Biometric approval: a verified proof is bound to ONE pending request and expires in 60 s; connect-type requests never need it.
 const BIO_KEY = 'wallet:provider:bioProof'; const BIO_TTL = 60_000;
@@ -20,7 +21,7 @@ async function bioRequirement(kind: string, params?: any): Promise<{ required: b
   const meta = await passkeyMeta(); return { required: !!meta && !meta.legacy, credentialId: meta && !meta.legacy ? meta.credentialId : null }; // HW-001: legacy seals cannot gate approvals
 }
 
-const conView = (c: any) => ({ id: c.id, origin: c.origin, host: displayHost(c.origin), title: c.title, icon: c.icon ?? null, walletName: c.walletName, accountName: c.accountName, accountIndex: c.accountIndex, walletId: c.walletId, evmAddress: c.evmAddress ?? null, solanaAddress: c.solanaAddress ?? null, chainId: c.chainId, chainName: evmNetwork(c.chainId)?.name ?? `Chain ${c.chainId}`, namespaces: c.namespaces, connectedAt: c.connectedAt, lastUsedAt: c.lastUsedAt });
+const conView = (c: any) => ({ id: c.id, origin: baseOrigin(c.origin), via: isWcKey(c.origin) ? 'walletconnect' : 'injected', host: displayHost(c.origin), title: c.title, icon: c.icon ?? null, walletName: c.walletName, accountName: c.accountName, accountIndex: c.accountIndex, walletId: c.walletId, evmAddress: c.evmAddress ?? null, solanaAddress: c.solanaAddress ?? null, chainId: c.chainId, chainName: evmNetwork(c.chainId)?.name ?? `Chain ${c.chainId}`, namespaces: c.namespaces, connectedAt: c.connectedAt, lastUsedAt: c.lastUsedAt });
 const bad = (error: string) => ({ ok: false, error });
 
 export const handlers: HandlerMap = {
@@ -42,7 +43,10 @@ export const handlers: HandlerMap = {
     const d = m.decision ?? {};
     const decision = { approve: d.approve === true, accountIndex: Number.isInteger(d.accountIndex) ? d.accountIndex : undefined, chainId: Number.isSafeInteger(d.chainId) ? d.chainId : undefined,
       gasLimit: typeof d.gasLimit === 'string' && /^\d{1,20}$/.test(d.gasLimit) ? d.gasLimit : undefined, feeLevel: ['safe', 'average', 'fast'].includes(d.feeLevel) ? d.feeLevel : undefined,
-      fee: d.fee && typeof d.fee === 'object' ? Object.fromEntries(['maxFeePerGas', 'maxPriorityFeePerGas', 'gasPrice'].filter((k) => typeof d.fee[k] === 'string' && /^\d{1,30}$/.test(d.fee[k])).map((k) => [k, d.fee[k]])) : undefined };
+      fee: d.fee && typeof d.fee === 'object' ? Object.fromEntries(['maxFeePerGas', 'maxPriorityFeePerGas', 'gasPrice'].filter((k) => typeof d.fee[k] === 'string' && /^\d{1,30}$/.test(d.fee[k])).map((k) => [k, d.fee[k]])) : undefined,
+      // PT-02: the user's spending cap and the typed phishing override must reach the service (they were silently dropped here).
+      allowanceLimit: typeof d.allowanceLimit === 'string' && /^\d{1,78}$/.test(d.allowanceLimit) ? d.allowanceLimit : undefined,
+      riskOverride: typeof d.riskOverride === 'string' && d.riskOverride.length <= 253 ? d.riskOverride.trim() : undefined };
     const id = String(m.id ?? '');
     if (decision.approve) {
       const p = await pending.get(id);
@@ -100,7 +104,10 @@ export const handlers: HandlerMap = {
     return { ok: true };
   },
   async providerBlacklistRemove(m) { return { ok: await perms.removeBlacklist(String(m.id ?? '')) }; },
-  async providerPrefs(m) { const prefs = typeof m.defaultWallet === 'boolean' || typeof m.biometricApproval === 'boolean' ? await perms.setPrefs({ ...(typeof m.defaultWallet === 'boolean' ? { defaultWallet: m.defaultWallet } : {}), ...(typeof m.biometricApproval === 'boolean' ? { biometricApproval: m.biometricApproval } : {}) }) : await perms.prefs(); return { ok: true, prefs }; },
+  async providerPrefs(m) {
+    // PT-04: switching biometric approval OFF weakens dApp signing protection -> needs the password/biometrics just now.
+    if (m.biometricApproval === false && (await perms.prefs()).biometricApproval && !(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' };
+    const prefs = typeof m.defaultWallet === 'boolean' || typeof m.biometricApproval === 'boolean' ? await perms.setPrefs({ ...(typeof m.defaultWallet === 'boolean' ? { defaultWallet: m.defaultWallet } : {}), ...(typeof m.biometricApproval === 'boolean' ? { biometricApproval: m.biometricApproval } : {}) }) : await perms.prefs(); return { ok: true, prefs }; },
 
   // ---- Home > Approvals (token allowances granted through Harbour, re-verified on chain)
   async providerApprovals() {

@@ -69,12 +69,13 @@ export const encodeAllowanceCall = (owner: string, spender: string): string => S
 export const encodeBalanceCall = (owner: string): string => SEL.balanceOf + owner.slice(2).toLowerCase().padStart(64, '0');
 export const encodeApprove = (spender: string, amount: bigint): string => '0x095ea7b3' + spender.slice(2).toLowerCase().padStart(64, '0') + amount.toString(16).padStart(64, '0');
 
-/** Rewrite the amount of a plain ERC-20 approve(spender, amount) call. Only the plain selector is rewritable; the new amount can only be LOWER than the requested one. Returns null otherwise. */
-export function lowerApproveAmount(data: string, limit: bigint): string | null {
+/** MetaMask-style custom spending cap: a plain `approve(spender, amount)` is rewritten to the amount the USER chose (higher or lower
+ *  than the site's suggestion, 1 … 2^256-1). Anything else (increaseAllowance, permit, multicall) cannot be rewritten -> null. */
+export function setApproveAmount(data: string, amount: bigint): string | null {
   const c = decodeCalldata(data);
   if (c.kind !== 'approve' || c.increase || c.decrease || !data.toLowerCase().startsWith('0x095ea7b3')) return null;
-  if (limit < 0n || limit > c.amount) return null;
-  return encodeApprove(c.spender, limit);
+  if (amount <= 0n || amount > MAX_UINT256) return null;
+  return encodeApprove(c.spender, amount);
 }
 
 /** Flatten a decoded call (looking inside multicalls, one level of nesting max is enough in practice but recursion is bounded by MULTI_MAX per level and calldata size). */

@@ -11,7 +11,7 @@ import { describeSolTx, parseSolTx, resolveLookupTables } from '../../core/provi
 import { simulateSolTx, solAccountData } from '../../core/provider/solSim';
 import { MULTI_CHAINS } from '../../core/provider/multi';
 import { b64ToBytes } from '../../core/provider/base58';
-import { displayHost, hostnameOf, isInsecureOrigin, isPunycodeHost } from '../../core/provider/origin';
+import { baseOrigin, displayHost, hostnameOf, isInsecureOrigin, isPunycodeHost, isWcKey } from '../../core/provider/origin';
 import { negotiate, summarizeProposal } from '../../core/walletconnect';
 import { siteRisk, addressRisk } from '../../core/provider/phishing';
 import { readSimulation, simulateParams, NATIVE_PSEUDO } from '../../core/provider/simulate';
@@ -30,10 +30,17 @@ const MAX_UINT = (1n << 256n) - 1n;
 
 export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
   const host = displayHost(p.origin);
-  const risk = await siteRisk(p.origin, d.kv, d.fetch ?? fetch).catch(() => ({ level: 'unavailable' as const }));
+  let risk: { level: string } = await siteRisk(p.origin, d.kv, d.fetch ?? fetch).catch(() => ({ level: 'unavailable' as const }));
+  let riskOrigin = p.origin;
+  // PT-10: an embedded frame is judged by its top page too (a flagged page must not borrow a clean dApp iframe).
+  if (risk.level !== 'high' && !p.isTopFrame && p.topOrigin && p.topOrigin !== p.origin) {
+    const top = await siteRisk(p.topOrigin, d.kv, d.fetch ?? fetch).catch(() => ({ level: 'unavailable' as const }));
+    if (top.level === 'high') { risk = top; riskOrigin = p.topOrigin; }
+  }
   const base: any = {
-    id: p.id, kind: p.kind, ns: p.ns, method: p.method, origin: p.origin, host, title: p.title || host, icon: p.icon ?? null, topOrigin: p.topOrigin, embedded: !p.isTopFrame, createdAt: p.createdAt,
-    site: { risk: risk.level, insecure: isInsecureOrigin(p.origin), lookalike: isPunycodeHost(hostnameOf(p.origin)) },
+    // PT-06: a WalletConnect permission key is shown as the address the peer declared, labelled as WalletConnect.
+    id: p.id, kind: p.kind, ns: p.ns, method: p.method, origin: baseOrigin(p.origin), via: isWcKey(p.origin) ? 'walletconnect' : 'injected', host, title: p.title || host, icon: p.icon ?? null, topOrigin: p.topOrigin, embedded: !p.isTopFrame, createdAt: p.createdAt,
+    site: { risk: risk.level, riskOrigin, insecure: isInsecureOrigin(p.origin), lookalike: isPunycodeHost(hostnameOf(p.origin)) },
   };
   const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? DEFAULT_EVM_CHAIN; const net = d.networks.get(chainId);
   base.chain = net ? netView(net) : { chainId, name: `Chain ${chainId}`, symbol: '', testnet: false, custom: false, explorer: null };
