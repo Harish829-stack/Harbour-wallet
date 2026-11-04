@@ -46,3 +46,8 @@ vite.config.ts.timestamp-*.mjs
 audit/flows.mitm
 .kdfprobe.mjs
 .bench.mjs
+
+# local captures and scratch archives (network traffic, may contain session data)
+*.mitm
+3novlog.3novlog
+testdefi*.zip
