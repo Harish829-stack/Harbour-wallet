@@ -27,6 +27,8 @@ export const NATIVE_TOKEN: Address = zeroAddress;
 const PERIPHERY: Record<number, { addressesProvider: Address; gateway: Address }> = {
   84532: { addressesProvider: '0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00', gateway: '0x0568130e794429D2eEBC4dafE18f25Ff1a1ed8b6' },
 };
+/** Aave WETH gateway for a chain (the spender of the aWETH approval made by a native withdraw), if the market has one. */
+export const aaveGateway = (chainId: number): Address | undefined => PERIPHERY[chainId]?.gateway;
 export const gatewayAbi = parseAbi([
   'function depositETH(address,address onBehalfOf,uint16 referralCode) payable',
   'function withdrawETH(address,uint256 amount,address to)',

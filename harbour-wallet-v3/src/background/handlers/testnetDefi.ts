@@ -6,6 +6,8 @@ import { openActiveKeys } from '../keys';
 import { evmAccountFromBytes } from '../../core/provider/evmAccount';
 import { assertFeature, assertSigningEvmChain } from '../../core/harbour/policy';
 import { local, KEYS } from '../../core/storage';
+import { decodeCalldata, isUnlimited } from '../../core/provider/decode';
+import { perms } from '../provider/index';
 import { aaveDeployment, assertTestnetNetwork, PLAN_TTL_MS, SEPOLIA } from '../../integrations/testnet-defi/config';
 import { readToken, sameAddress, tokenAddress } from '../../integrations/testnet-defi/rpc';
 import { defiClient } from '../../integrations/testnet-defi/client';
@@ -142,6 +144,9 @@ export const handlers: HandlerMap = {
         const hash = await c.client.sendRawTransaction({ serializedTransaction }); hashes.push(hash);
         const receipt = await c.client.waitForTransactionReceipt({ hash, timeout: 120_000 });
         if (receipt.status !== 'success') throw new Error('The transaction reverted. No further transactions were sent.');
+        // Approval ledger (Settings > Token approvals): remember every allowance Harbour itself granted, even for a token the user never added.
+        const granted = decodeCalldata(call.data);
+        if (granted.kind === 'approve' && !granted.decrease && granted.amount > 0n) void perms.trackApproval({ chainId: c.deployment.chainId, token: call.to, spender: granted.spender, owner: c.address, origin: '', source: kind, txHash: hash, amount: granted.amount.toString(), unlimited: isUnlimited(granted.amount) }).catch(() => {});
       }
       return { ok: true, hashes, explorerUrl: `${c.deployment.id === 'base-sepolia' ? 'https://sepolia.basescan.org' : 'https://sepolia.etherscan.io'}/tx/${hashes[hashes.length - 1]}` };
     } catch (error) {

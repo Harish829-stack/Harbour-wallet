@@ -5,7 +5,13 @@ import { decodeFunctionResult, encodeFunctionData, erc20Abi, formatUnits } from 
 import type { Fetcher } from './chains/adapters/types';
 import { ethCall } from './staking/evm';
 
-export const APPROVAL_CHAINS: Record<string, number> = { ethereum: 1, smartchain: 56, polygon: 137, arbitrum: 42161, base: 8453, optimism: 10, avalanchec: 43114 };
+/** Networks whose approvals this build scans, by registry chain id (the networks the Harbour backend serves). Anything else is
+ *  refused with APPROVAL_UNSUPPORTED; the scan reads allowances on chain through the Harbour RPC (core/approvalScan.ts). */
+export const APPROVAL_CHAINS: Record<string, number> = { sepolia: 11155111, 'base-sepolia': 84532 };
+export const APPROVAL_UNSUPPORTED = "Approval scanning isn't available on this network.";
+/** Mainnet discovery through GoPlus (third-party, keyless). Not enabled in this build; kept so mainnets can be switched on later
+ *  by moving the entries into APPROVAL_CHAINS. */
+export const GOPLUS_CHAINS: Record<string, number> = { ethereum: 1, smartchain: 56, polygon: 137, arbitrum: 42161, base: 8453, optimism: 10, avalanchec: 43114 };
 const MAX = (1n << 256n) - 1n;
 export interface Approval { chainId: string; token: string; symbol: string; name: string; decimals: number; spender: string; spenderName?: string; allowance: string; formatted: string; unlimited: boolean; risky: boolean; riskNotes: string[]; approvedAt?: number }
 
@@ -27,7 +33,7 @@ export function parseGoPlus(chainId: string, body: any): Omit<Approval, 'allowan
 }
 
 export async function scanApprovals(owner: string, chainId: string, rpcUrls: string[], f: Fetcher = fetch): Promise<Approval[]> {
-  const evm = APPROVAL_CHAINS[chainId]; if (!evm) return [];
+  const evm = GOPLUS_CHAINS[chainId]; if (!evm) return [];
   const r = await f(`https://api.gopluslabs.io/api/v2/token_approval_security/${evm}?addresses=${owner.toLowerCase()}`, { signal: AbortSignal.timeout(12000) });
   if (!r.ok) throw new Error(`Approval scan failed (HTTP ${r.status})`);
   const found = parseGoPlus(chainId, await r.json()).slice(0, 60);

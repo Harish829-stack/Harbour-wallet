@@ -24,7 +24,7 @@ export interface Connection {
   connectedAt: number; lastUsedAt: number;
 }
 export interface BlacklistItem { id: string; origin: string; title?: string; icon?: string; addedAt: number }
-export interface TrackedApproval { id: string; chainId: number; token: string; spender: string; owner: string; origin: string; txHash?: string; amount: string; unlimited: boolean; at: number }
+export interface TrackedApproval { id: string; chainId: number; token: string; spender: string; owner: string; origin: string; /** Set when Harbour itself signed it (no site): 'swap' | 'earn'. */ source?: 'swap' | 'earn'; txHash?: string; amount: string; unlimited: boolean; at: number }
 export interface ProviderPrefs { defaultWallet: boolean; /** Require a fresh biometric check before signing/sending requests from sites (needs biometrics set up). */ biometricApproval: boolean }
 export const DEFAULT_PREFS: ProviderPrefs = { defaultWallet: false, biometricApproval: false };
 const MAX_CONNECTIONS = 200; const MAX_BLACKLIST = 500; const MAX_APPROVALS = 300;

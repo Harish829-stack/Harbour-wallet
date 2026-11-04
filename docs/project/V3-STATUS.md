@@ -51,6 +51,10 @@ its own record in `harbour-wallet-v3/docs/reference/`.
   warning, press-and-hold (1.2 s) reveal. No extension can stop screenshots or
   keyloggers; QR or Ledger import is the real defence.
 - **Attacker review A1-A9** (below).
+- **Token approvals scan** (2026-11-04, `harbour-wallet-v3/docs/reference/approval-scan.md`): Sepolia and Base
+  Sepolia only, other networks say "Approval scanning isn't available on this network."; allowances are read on
+  chain (through `/v1/rpc`) for added tokens x known spenders plus a ledger of approvals this wallet signed (Swap,
+  Earn, sites); the screen states what was checked. Log-based "Deep scan" is deferred and documented there.
 - Not tested here: real Touch ID or Windows Hello hardware; the Go backend
   tests for the latest gateway commits were run by the other session in docker.
 

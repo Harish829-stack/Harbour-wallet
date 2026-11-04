@@ -119,7 +119,7 @@ export const handlers: HandlerMap = {
         const raw = await rpc(a.chainId, 'eth_call', [{ to: a.token, data: encodeAllowanceCall(a.owner, a.spender) }, 'latest']); const allowance = BigInt(raw);
         if (allowance === 0n) { await perms.untrackApproval(a.id); return; }
         let symbol = '', decimals = 18; try { symbol = decodeString(await rpc(a.chainId, 'eth_call', [{ to: a.token, data: SEL.symbol }, 'latest'])); decimals = Number(BigInt(await rpc(a.chainId, 'eth_call', [{ to: a.token, data: SEL.decimals }, 'latest']))); } catch { /* label unavailable */ }
-        out.push({ id: a.id, chainId: a.chainId, chainName: net.name, nativeSymbol: net.symbol, token: a.token, symbol: symbol || 'Unknown token', decimals, spender: a.spender, owner: a.owner, origin: a.origin, host: a.origin ? displayHost(a.origin) : '', allowance: allowance.toString(), formatted: formatUnits(allowance, decimals), unlimited: isUnlimited(allowance), at: a.at });
+        out.push({ id: a.id, chainId: a.chainId, chainName: net.name, nativeSymbol: net.symbol, token: a.token, symbol: symbol || 'Unknown token', decimals, spender: a.spender, owner: a.owner, origin: a.origin, host: a.origin ? displayHost(a.origin) : a.source === 'swap' ? 'Harbour Swap' : a.source === 'earn' ? 'Harbour Earn' : '', allowance: allowance.toString(), formatted: formatUnits(allowance, decimals), unlimited: isUnlimited(allowance), at: a.at });
       } catch { out.push({ id: a.id, chainId: a.chainId, chainName: evmNetwork(a.chainId)?.name ?? '', token: a.token, symbol: 'Unknown token', spender: a.spender, owner: a.owner, unavailable: true, at: a.at, host: '' }); }
     }));
     return { ok: true, items: out.sort((x, y) => y.at - x.at) };
