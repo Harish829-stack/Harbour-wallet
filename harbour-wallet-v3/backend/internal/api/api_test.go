@@ -176,6 +176,14 @@ func TestDeviceFlow(t *testing.T) {
 	if rr["error"] == nil || gwHits != 1 {
 		t.Fatalf("write method passed allow-list: %v", rr)
 	}
+	// Audit A3: the approval screen's balance-change preview needs eth_simulateV1 through the hardened route.
+	hitsBefore := gwHits
+	rr = nil
+	_, err = c.Do(ctx, "POST", "/v1/rpc/base", []byte(`{"jsonrpc":"2.0","id":2,"method":"eth_simulateV1","params":[{"blockStateCalls":[{"calls":[{"from":"0x1111111111111111111111111111111111111111","to":"0x2222222222222222222222222222222222222222","input":"0x"}]}],"traceTransfers":true},"latest"]}`), &rr, nil)
+	must(t, err)
+	if rr["error"] != nil || gwHits != hitsBefore+1 {
+		t.Fatalf("eth_simulateV1 not forwarded: %v hits=%d", rr, gwHits)
+	}
 	wantStatus(t, status(c.Do(ctx, "POST", "/v1/rpc/solana", []byte(`{}`), nil, nil)), 404)
 
 	// Challenge single use: registering again with the same public key is refused.

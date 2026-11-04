@@ -20,6 +20,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,7 +129,7 @@ var solRPCMethods = setOf("getBalance", "getAccountInfo", "getMultipleAccounts",
 	"getProgramAccounts", "getInflationRate", "getInflationReward", "getSupply", "getStakeMinimumDelegation", "getSlot", "getBlockHeight", "getTokenSupply",
 	"getAsset", "getAssetsByOwner", "getAssetsByGroup", "getAssetBatch", "getAssetProof", "searchAssets", "getTokenAccounts", "getTokenLargestAccounts", "getBlockTime")
 
-var evmRPCMethods = setOf("eth_chainId", "eth_blockNumber", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "eth_feeHistory", "eth_getTransactionCount", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode", "eth_getLogs", "eth_getStorageAt", "eth_sendRawTransaction", "eth_simulateV1", "net_version", "alchemy_getTokenBalances", "alchemy_getTokenMetadata", "alchemy_getAssetTransfers")
+var evmRPCMethods = setOf("eth_chainId", "eth_blockNumber", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "eth_feeHistory", "eth_getTransactionCount", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode", "eth_getLogs", "eth_getStorageAt", "eth_simulateV1", "net_version", "alchemy_getTokenBalances", "alchemy_getTokenMetadata", "alchemy_getAssetTransfers")
 
 var aaRPCMethods = setOf("pimlico_getUserOperationGasPrice", "pm_sponsorUserOperation", "eth_sendUserOperation", "eth_getUserOperationReceipt", "eth_estimateUserOperationGas", "eth_supportedEntryPoints")
 
@@ -176,33 +177,147 @@ func newGateway(keys GatewayKeys, hosts GatewayHosts, alchemy map[uint64]string,
 	}}
 }
 
-// jsonRPCGuard accepts a JSON-RPC object or a batch of at most 50 whose methods are all allowed.
-func jsonRPCGuard(body []byte, allowed map[string]bool) *gwReject {
-	if len(body) == 0 || len(body) > 200_000 {
-		return errBadRequest
+// rpcCall is the only shape the gateway forwards: exactly these four lowercase members. Everything the guard checked is what the
+// upstream receives, because the forwarded body is re-marshalled from this struct, never the caller's bytes (audit A1: Go matches
+// JSON keys case-insensitively and takes the last duplicate, other parsers do not, so a body such as
+// {"method":"debug_x","Method":"eth_chainId"} passed the guard as eth_chainId while the upstream ran debug_x).
+type rpcCall struct {
+	JSONRPC string          `json:"jsonrpc,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params,omitempty"`
+}
+
+var rpcKeys = map[string]bool{"jsonrpc": true, "id": true, "method": true, "params": true}
+
+// parseRPCObject reads one JSON-RPC request object. Unknown keys, differently-cased keys, duplicate keys, a non-string method and
+// trailing data are all refused.
+func parseRPCObject(raw []byte) (rpcCall, bool) {
+	var c rpcCall
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
+		return c, false
 	}
-	var one struct {
-		Method string `json:"method"`
+	seen := map[string]bool{}
+	for dec.More() {
+		kt, err := dec.Token()
+		k, isStr := kt.(string)
+		if err != nil || !isStr || !rpcKeys[k] || seen[k] {
+			return c, false
+		}
+		seen[k] = true
+		var v json.RawMessage
+		if dec.Decode(&v) != nil {
+			return c, false
+		}
+		switch k {
+		case "jsonrpc":
+			if json.Unmarshal(v, &c.JSONRPC) != nil {
+				return c, false
+			}
+		case "id":
+			c.ID = v
+		case "method":
+			if json.Unmarshal(v, &c.Method) != nil || c.Method == "" {
+				return c, false
+			}
+		case "params":
+			c.Params = v
+		}
+	}
+	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
+		return c, false
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return c, false
+	}
+	return c, seen["method"]
+}
+
+// jsonRPCClean accepts a JSON-RPC object or a batch of at most 50 whose methods are all allowed (and pass `check`, when given) and
+// returns the body to forward, rebuilt from the validated fields.
+func jsonRPCClean(body []byte, allowed map[string]bool, check func(rpcCall) *gwReject) ([]byte, *gwReject) {
+	if len(body) == 0 || len(body) > 200_000 {
+		return nil, errBadRequest
 	}
 	trim := bytes.TrimSpace(body)
-	if len(trim) > 0 && trim[0] == '[' {
-		var many []struct {
-			Method string `json:"method"`
+	var raws []json.RawMessage
+	batch := len(trim) > 0 && trim[0] == '['
+	if batch {
+		if json.Unmarshal(trim, &raws) != nil || len(raws) == 0 || len(raws) > 50 {
+			return nil, errBadRequest
 		}
-		if json.Unmarshal(trim, &many) != nil || len(many) == 0 || len(many) > 50 {
-			return errBadRequest
+	} else {
+		raws = []json.RawMessage{trim}
+	}
+	calls := make([]rpcCall, 0, len(raws))
+	for _, r := range raws {
+		c, ok := parseRPCObject(r)
+		if !ok {
+			return nil, errBadRequest
 		}
-		for _, c := range many {
-			if !allowed[c.Method] {
-				return errNotAllowed
+		if !allowed[c.Method] {
+			return nil, errNotAllowed
+		}
+		if check != nil {
+			if rej := check(c); rej != nil {
+				return nil, rej
 			}
 		}
+		calls = append(calls, c)
+	}
+	var out []byte
+	var err error
+	if batch {
+		out, err = json.Marshal(calls)
+	} else {
+		out, err = json.Marshal(calls[0])
+	}
+	if err != nil {
+		return nil, errBadRequest
+	}
+	return out, nil
+}
+
+// jsonRPCGuard is the check-only form of jsonRPCClean.
+func jsonRPCGuard(body []byte, allowed map[string]bool) *gwReject {
+	_, rej := jsonRPCClean(body, allowed, nil)
+	return rej
+}
+
+// gwLogsMaxSpan is the widest eth_getLogs block range the gateway forwards (same bound as the strictest chain in chains.yaml x2).
+const gwLogsMaxSpan = 2000
+
+// boundedLogs applies the /v1/rpc eth_getLogs policy to the gateway route (audit A2): an address or topic filter is required, and the
+// range must be a blockHash or two explicit hex block numbers at most gwLogsMaxSpan apart.
+func boundedLogs(c rpcCall) *gwReject {
+	if c.Method != "eth_getLogs" {
 		return nil
 	}
-	if json.Unmarshal(trim, &one) != nil {
-		return errBadRequest
+	if !filteredLogs(c.Params) {
+		return errNotAllowed
 	}
-	if !allowed[one.Method] {
+	var p []struct {
+		FromBlock string `json:"fromBlock"`
+		ToBlock   string `json:"toBlock"`
+		BlockHash string `json:"blockHash"`
+	}
+	if json.Unmarshal(c.Params, &p) != nil || len(p) != 1 {
+		return errNotAllowed
+	}
+	if p[0].BlockHash != "" {
+		return nil
+	}
+	num := func(s string) (uint64, bool) {
+		if !strings.HasPrefix(s, "0x") || len(s) < 3 || len(s) > 18 {
+			return 0, false
+		}
+		n, err := strconv.ParseUint(s[2:], 16, 64)
+		return n, err == nil
+	}
+	from, ok1 := num(p[0].FromBlock)
+	to, ok2 := num(p[0].ToBlock)
+	if !ok1 || !ok2 || to < from || to-from > gwLogsMaxSpan {
 		return errNotAllowed
 	}
 	return nil
@@ -476,20 +591,22 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		if method != http.MethodPost || g.keys.Helius == "" {
 			return nil, errUnavailable
 		}
-		if rej := jsonRPCGuard(body, solRPCMethods); rej != nil {
+		clean, rej := jsonRPCClean(body, solRPCMethods, nil)
+		if rej != nil {
 			return nil, rej
 		}
-		return &gwCall{method: http.MethodPost, url: g.hosts.Helius + "/?api-key=" + url.QueryEscape(g.keys.Helius), body: body, header: jsonH(nil), secrets: []string{g.keys.Helius}}, nil
+		return &gwCall{method: http.MethodPost, url: g.hosts.Helius + "/?api-key=" + url.QueryEscape(g.keys.Helius), body: clean, header: jsonH(nil), secrets: []string{g.keys.Helius}}, nil
 	case reAlchRPC.MatchString(path):
 		m := reAlchRPC.FindStringSubmatch(path)
 		slug := g.alchemySlug(m[1])
 		if method != http.MethodPost || slug == "" || g.keys.Alchemy == "" {
 			return nil, errUnavailable
 		}
-		if rej := jsonRPCGuard(body, evmRPCMethods); rej != nil {
+		clean, rej := jsonRPCClean(body, evmRPCMethods, boundedLogs)
+		if rej != nil {
 			return nil, rej
 		}
-		return &gwCall{method: http.MethodPost, url: fmt.Sprintf(g.hosts.Alchemy, slug) + "/v2/" + g.keys.Alchemy, body: body, header: jsonH(nil), secrets: []string{g.keys.Alchemy}}, nil
+		return &gwCall{method: http.MethodPost, url: fmt.Sprintf(g.hosts.Alchemy, slug) + "/v2/" + g.keys.Alchemy, body: clean, header: jsonH(nil), secrets: []string{g.keys.Alchemy}}, nil
 	case reAlchNFT.MatchString(path):
 		m := reAlchNFT.FindStringSubmatch(path)
 		slug := g.alchemySlug(m[1])
@@ -549,10 +666,11 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		if method != http.MethodPost || g.keys.Pimlico == "" {
 			return nil, errUnavailable
 		}
-		if rej := jsonRPCGuard(body, aaRPCMethods); rej != nil {
+		clean, rej := jsonRPCClean(body, aaRPCMethods, nil)
+		if rej != nil {
 			return nil, rej
 		}
-		return &gwCall{method: http.MethodPost, url: g.hosts.Pimlico + "/" + m[1] + "/rpc?apikey=" + url.QueryEscape(g.keys.Pimlico), body: body, header: jsonH(nil), secrets: []string{g.keys.Pimlico}}, nil
+		return &gwCall{method: http.MethodPost, url: g.hosts.Pimlico + "/" + m[1] + "/rpc?apikey=" + url.QueryEscape(g.keys.Pimlico), body: clean, header: jsonH(nil), secrets: []string{g.keys.Pimlico}}, nil
 	}
 	return nil, errNotFound
 }

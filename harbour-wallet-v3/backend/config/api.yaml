@@ -36,6 +36,7 @@ api:
     - eth_getLogs
     - eth_getBlockReceipts
     - eth_createAccessList
+    - eth_simulateV1
     - eth_getBlockTransactionCountByNumber
     - eth_getBlockTransactionCountByHash
     - eth_getTransactionByBlockNumberAndIndex
