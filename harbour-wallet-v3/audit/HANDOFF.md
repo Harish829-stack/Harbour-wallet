@@ -41,6 +41,11 @@ Last updated 2026-11-02. Every referenced document is in this repository (sectio
 7. **Postgres TLS follow-up.** The first `make up` after the change failed because the certificates did not exist yet.
    - Fixed: the certificates were generated, `backend/.env` was switched to `verify-full`, and the Compose file and `pg-certs.sh` now guard against this.
    - `make up` and `run.sh` both create the certificates automatically now.
+8. **Later review rounds (2026-11-03 and 2026-11-04, after the audit above).** Three attacker-style rounds on the extension and gateway, all fixed and tested; they are tracked in their own records, not in `findings.md`:
+   - Pentest PT-01..PT-12 (biometric enrolment, spending cap, throttle, re-auth, WalletConnect, IndexedDB vault, Trusted Types): `docs/reference/security-pentest-2026-11-03-fixes.md`.
+   - Seed typing and reveal hardening (threat-model 1.1): `docs/reference/security-pentest-2026-11-04-seed-typing.md`.
+   - Attacker review A1-A9 (gateway parser bypass, approval preview, `storage.local` pinned, QR scrypt cap): `docs/reference/security-attack-review-2026-11-04.md`. A9 (keys in the REA root folder) is open.
+   - Status index: `docs/project/V3-STATUS.md`. Full suite 558/558 on `931a0ad`.
 
 ## 3. Reference documents
 

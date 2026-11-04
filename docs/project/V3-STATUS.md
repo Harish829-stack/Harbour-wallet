@@ -20,19 +20,39 @@ claims are not current for v3.
 ## Verified local state
 
 - Branch: `harbour-v3` in the `REA` repository root, tracking
-  `origin/harbour-v3`; the 2026-11-03 work is pushed (HEAD `d63e439`).
+  `origin/harbour-v3`; the 2026-11-03 work is pushed (`d63e439`); the 2026-11-04 security and Swap commits (`89a93c1` through `0c6bdd1`) are local and not pushed.
   `harbour-wallet-v3/` also contains a stray local-only `.git` with no remote;
   commit from the repository root.
 - TypeScript: `npm exec tsc -- --noEmit` passes.
 - Lint: `npx eslint . --max-warnings 0` passes (2026-11-03).
-- Tests: the testnet DeFi suites (`testnet-defi`, `testnet-defi-handlers`,
-  `aavekit`) pass (20). The full `npm test` has not been re-run on macOS since
-  `@uniswap/sdk-core` was removed; run `npm install` first. The last full run
-  (2026-11-02) had 497 results: 496 passed and 1 failed only because the
-  sandbox refused its localhost listener (`provider.test.js`).
+- Tests: full `npm test` passes 558/558 on `931a0ad` (2026-11-04, Linux, node 22,
+  clean `npm ci`; `chains.test.js` needs an `evidences/` folder beside the repo).
+  Not re-run on macOS. `tsc --noEmit` is clean at the same commit.
 - Backend: `go vet` and `go test ./internal/api` pass on go1.26.10.
 - Live RPC/provider, deployed-backend, Chrome visual, and Ledger hardware
   verification are still incomplete.
+
+## Security rounds (2026-11-03 and 2026-11-04)
+
+Three attacker-style rounds on the extension, all closed with tests; each has
+its own record in `harbour-wallet-v3/docs/reference/`.
+
+- **Pentest PT-01..PT-12** (`security-pentest-2026-11-03-fixes.md`; commits
+  `127797a`, `30ab742`, record `678375f`): biometric enrolment needs the
+  password and a platform authenticator; the spending-cap edit now reaches the
+  signer (MetaMask-style cap); module-level unlock queue; `manage` re-auth for
+  destructive or weakening actions; WalletConnect permissions kept apart from
+  the real site's; chain switch only on approve; 800 ms approve arming delay;
+  top-origin phishing check; vault and keystores in IndexedDB; Trusted Types
+  CSP; private-key wallets sign for dApps.
+- **Seed typing and reveal** (`security-pentest-2026-11-04-seed-typing.md`,
+  `0c5511a`): QR stage 5 min and destroyed after 5 wrong codes, masked inputs,
+  local BIP39 word check, re-mask on blur, idle wipe, clipboard clear and
+  warning, press-and-hold (1.2 s) reveal. No extension can stop screenshots or
+  keyloggers; QR or Ledger import is the real defence.
+- **Attacker review A1-A9** (below).
+- Not tested here: real Touch ID or Windows Hello hardware; the Go backend
+  tests for the latest gateway commits were run by the other session in docker.
 
 ## Attacker review fixes (2026-11-04)
 
@@ -63,9 +83,12 @@ action and is still open. Full detail: `harbour-wallet-v3/docs/reference/securit
 - Swap on Ethereum Sepolia uses the Uniswap Trading API through the backend
   gateway (`UNISWAP_API_KEY`; that route accepts only chain 11155111). Approvals
   cover only the exact input amount. Quotes outside the user's slippage, or
-  with an unexpected ETH value or target, are rejected before review. Open:
-  the swap recipient is not decoded, because the proxy's calldata format is
-  not public; the slippage and value checks plus simulation before signing
+  with an unexpected ETH value or target, are rejected before review. Native-ETH
+  input goes straight to the Universal Router and its calldata is verified by
+  `checkUniversalRouterSwap` before review (`89a93c1`; fixes "Uniswap returned
+  an invalid or unexpected transaction"); token input keeps the no-Permit2
+  proxy. Open: on the proxy path the swap recipient is not decoded, because the
+  proxy's calldata format is not public; the slippage and value checks plus simulation before signing
   limit the risk.
 - Earn on Base Sepolia uses AaveKit (`api.v3.aave.com`), including native ETH
   through the WETH gateway. Every returned transaction is decoded and checked

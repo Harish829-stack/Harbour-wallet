@@ -7,6 +7,9 @@ Order: newest and most relevant first. "Historical" docs describe earlier states
 | File | Title | Written | Status | Original |
 | --- | --- | --- | --- | --- |
 | [audit-framework-shared.md](audit-framework-shared.md) | Harbour Wallet — Security Audit Framework & Checklist | 2026-10-30 | current (shared copy of audit/FRAMEWORK.md) | https://claude.ai/artifact/Jd31QzSXNn6CgXojxXhrWt |
+| [security-attack-review-2026-11-04.md](security-attack-review-2026-11-04.md) | Harbour v3 — attacker code review A1–A9 and fixes | 2026-11-04 | current (A1–A8 closed, A9 open) | Project doc `claude/v3-attack-review-2026-11-04.md` + `claude/v3-attack-review-fixes-2026-11-04.md` |
+| [security-pentest-2026-11-04-seed-typing.md](security-pentest-2026-11-04-seed-typing.md) | Seed typing and reveal hardening (threat-model 1.1) | 2026-11-04 | current | Repo only |
+| [security-pentest-2026-11-03-fixes.md](security-pentest-2026-11-03-fixes.md) | Harbour v3 — pentest PT-01…PT-12: fixes and verification | 2026-11-03 | current (all 12 fixed) | Project doc `claude/v3-pentest-fixes-2026-11-03.md` |
 | [new-developer-guide.md](new-developer-guide.md) | Harbour v3 — New Developer Guide | 2026-10-30 | current (banner added 2026-11-02 for the TLS change) | https://claude.ai/artifact/6x85gJ2duGXZ3ax9p3RMku |
 | [production-readiness-report-v3.md](production-readiness-report-v3.md) | Harbour v3 — Production Readiness Report | 2026-10-29 | snapshot before the audit; banner lists what is out of date | https://claude.ai/artifact/ERWMnUGTgEuPAJWbVhbExp |
 | [development-progress-report.md](development-progress-report.md) | Harbour Wallet — Development Progress Report | 2026-10-28 | historical (written for v2; has unfilled placeholders) | https://claude.ai/artifact/8aBZqg2gnsF9QJaXBCkDPo |
