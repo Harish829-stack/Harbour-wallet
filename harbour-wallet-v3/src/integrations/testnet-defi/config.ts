@@ -8,10 +8,15 @@ export const SEPOLIA = Object.freeze({
   id: 'sepolia', chainId: 11155111, name: 'Ethereum Sepolia',
   pool: '0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951',
   dataProvider: '0x3e9708d80f7B3e43118013075F7e95CE3AB31F31',
-  // Uniswap Trading API proxy used when Permit2 is disabled (the gateway sends x-permit2-disabled: true).
-  // It is both the approval spender and the swap target. Same address on every supported chain:
+  // Uniswap Trading API proxy used for TOKEN input when Permit2 is disabled (the gateway sends x-permit2-disabled: true).
+  // It is both the approval spender and the swap target. Current CREATE2 address (same on every chain); the API may still
+  // return the deprecated one, so both are accepted, and the swap must target the very proxy the approval named:
   // https://developers.uniswap.org/docs/trading/swapping-api/concepts/no-permit2-workflow
-  apiRouter: '0x02E5be68D46DAc0B524905bfF209cf47EE6dB2a9',
+  apiRouter: '0x0000000085E102724e78eCd2F45DC9cA239Affad',
+  apiRouterLegacy: '0x02E5be68D46DAc0B524905bfF209cf47EE6dB2a9',
+  // Native ETH input needs no approval, so the API targets the Universal Router directly (Sepolia deployment:
+  // https://developers.uniswap.org/deployments). Its calldata is decoded and checked in universalRouter.ts.
+  universalRouter: '0x7E4f6c5e954Da5c61B3423D81E2277431Ac043f3',
   // Verified against SwapRouter02.WETH9() and the Uniswap Core SDK WETH9 registry.
   weth: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
 } as const);

@@ -6,6 +6,10 @@ import { readToken, sameAddress } from './rpc';
 import type { DefiClient } from './rpc';
 import type { DefiToken, PreparedDefi, SwapCatalog } from './types';
 import { GATEWAY_URL } from '../../kit/endpoints';
+import { checkUniversalRouterSwap } from './universalRouter';
+
+/** No-Permit2 proxies the Trading API may name (current CREATE2 address first, then the deprecated one). */
+const PROXIES: readonly Address[] = [SEPOLIA.apiRouter, SEPOLIA.apiRouterLegacy];
 
 // Token seeds for Sepolia; quotes always go to Uniswap's API, which checks the requested amount and live route.
 const BASES: readonly Address[] = SWAP_BASES;
@@ -57,27 +61,36 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   // The review shows the API's minimum, so it must honour the user's slippage (and never exceed the expected output).
   if (BigInt(minimum) > BigInt(expected) || BigInt(minimum) < minimumOutput(output, BigInt(expected), slippageBps)) throw new Error('Uniswap returned a quote outside your slippage tolerance. Refresh and try again.');
   const calls = [] as PreparedDefi['calls'];
+  // Token input: the approval names the proxy, and the swap must target that same proxy (never an address the API picks later).
+  let proxy: Address | null = null;
   if (!nativeIn && quoteResponse.isTokenApprovalApplicable !== false) {
     const approvalResponse = await endpoint('check_approval', { walletAddress: owner, amount: amount.toString(), token: from, chainId: SEPOLIA.chainId, tokenOut: to, tokenOutChainId: SEPOLIA.chainId });
     // Some tokens (USDT-style) need the old allowance reset to 0 first; the API returns that as `cancel`.
     if (approvalResponse?.cancel) {
-      const spender = approvedSpender(validateApiTransaction(approvalResponse.cancel, owner, 'Reset token approval', from));
+      const spender = approvedSpender(validateApiTransaction(approvalResponse.cancel, owner, 'Reset token approval', [from]));
       if (spender.amount !== 0n) throw new Error('Uniswap returned an invalid approval reset. Nothing was submitted.');
-      calls.push({ to: getAddress(from), value: 0n, label: 'Reset token approval', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [SEPOLIA.apiRouter, 0n] }) });
+      proxy = spender.spender;
+      calls.push({ to: getAddress(from), value: 0n, label: 'Reset token approval', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [spender.spender, 0n] }) });
     }
     if (approvalResponse?.approval) {
-      approvedSpender(validateApiTransaction(approvalResponse.approval, owner, 'Approve input token', from));
+      const spender = approvedSpender(validateApiTransaction(approvalResponse.approval, owner, 'Approve input token', [from]));
+      if (proxy && !sameAddress(proxy, spender.spender)) throw new Error('Uniswap requested an unexpected approval target. Nothing was submitted.');
+      proxy = spender.spender;
       // The API asks for an unlimited allowance. Harbour approves only this swap's exact input amount.
-      calls.push({ to: getAddress(from), value: 0n, label: 'Approve input token', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [SEPOLIA.apiRouter, amount] }) });
+      calls.push({ to: getAddress(from), value: 0n, label: 'Approve input token', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [spender.spender, amount] }) });
     }
   }
   const built = await endpoint('swap', { quote, deadline });
   const transaction = built?.swap ?? built?.swapTransaction;
   if (!transaction) throw new Error('Uniswap did not return transaction data. Refresh and review again.');
-  const swap = validateApiTransaction(transaction, owner, 'Swap with Uniswap', SEPOLIA.apiRouter);
-  // ETH input sends exactly the reviewed amount; token input sends no ETH. The proxy's calldata format is
-  // not public, so its recipient/minimum are enforced by the quote checks above and by simulation before signing.
+  // Native ETH input: the API targets the Universal Router directly (no approval, so no proxy); its calldata is decoded and every
+  // step checked (recipient = the user, reviewed minimum enforced, exact input). Token input: the proxy named by the approval.
+  const swap = validateApiTransaction(transaction, owner, 'Swap with Uniswap', nativeIn ? [SEPOLIA.universalRouter] : proxy ? [proxy] : PROXIES);
+  // ETH input sends exactly the reviewed amount; token input sends no ETH.
   if (swap.value !== (nativeIn ? amount : 0n)) throw new Error('Uniswap returned a swap with an unexpected ETH amount. Nothing was submitted.');
+  if (nativeIn) checkUniversalRouterSwap(swap.data, { owner, tokenIn: from, tokenOut: to, amountIn: amount, minimumOut: BigInt(minimum), weth: SEPOLIA.weth, nowSec: Math.floor(Date.now() / 1000) });
+  // The proxy's calldata format is not public, so for token input the recipient/minimum are enforced by the quote checks above
+  // and by simulation before signing.
   calls.push(swap);
   return { calls, review: { action: 'swap', symbol: input.symbol, decimals: input.decimals, amount: amount.toString(), outputSymbol: output.symbol, outputDecimals: output.decimals,
     expectedOutput: expected, minimumOutput: minimum } };
@@ -94,16 +107,17 @@ export function uniswapError(data: any): string {
 }
 
 /** Decodes an API approval and checks it targets the Uniswap proxy; returns the requested amount. */
-function approvedSpender(call: { data: `0x${string}`; value: bigint }): { amount: bigint } {
+function approvedSpender(call: { data: `0x${string}`; value: bigint }): { amount: bigint; spender: Address } {
   let decoded: ReturnType<typeof decodeFunctionData>;
   try { decoded = decodeFunctionData({ abi: tokenAbi, data: call.data }); } catch { throw new Error('Uniswap returned an invalid token approval. Nothing was submitted.'); }
-  if (decoded.functionName !== 'approve' || call.value !== 0n || !sameAddress(String(decoded.args?.[0] ?? ''), SEPOLIA.apiRouter)) throw new Error('Uniswap requested an unexpected approval target. Nothing was submitted.');
-  return { amount: BigInt(String(decoded.args?.[1] ?? '0')) };
+  const spender = PROXIES.find((p) => sameAddress(String(decoded.args?.[0] ?? ''), p));
+  if (decoded.functionName !== 'approve' || call.value !== 0n || !spender) throw new Error('Uniswap requested an unexpected approval target. Nothing was submitted.');
+  return { amount: BigInt(String(decoded.args?.[1] ?? '0')), spender: getAddress(spender) };
 }
 
-function validateApiTransaction(value: any, owner: Address, label: string, expectedTo: Address | string) {
+function validateApiTransaction(value: any, owner: Address, label: string, expectedTo: readonly (Address | string)[]) {
   if (Number(value?.chainId) !== SEPOLIA.chainId || !isAddress(String(value?.to ?? ''), { strict: false }) || !isAddress(String(value?.from ?? ''), { strict: false }) || !sameAddress(value.from, owner)
-    || !sameAddress(value.to, expectedTo) || typeof value?.data !== 'string' || !/^0x[0-9a-fA-F]{8,}$/.test(value.data)) throw new Error('Uniswap returned an invalid or unexpected transaction. Nothing was submitted.');
+    || !expectedTo.some((t) => sameAddress(value.to, t)) || typeof value?.data !== 'string' || !/^0x[0-9a-fA-F]{8,}$/.test(value.data)) throw new Error('Uniswap returned an invalid or unexpected transaction. Nothing was submitted.');
   let callValue: bigint;
   try { callValue = BigInt(value.value ?? '0'); } catch { throw new Error('Uniswap returned an invalid transaction value.'); }
   return { to: getAddress(value.to), data: value.data as `0x${string}`, value: callValue, label };

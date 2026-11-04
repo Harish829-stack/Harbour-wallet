@@ -125,6 +125,53 @@ test('Uniswap API swap: proxy target, exact approval, wrong spender or target re
   await assert.rejects(run({ status: 404, error: { errorCode: 'NO_ROUTE', detail: 'No quotes available 0xdead' } }), (e) => /No Uniswap route/.test(e.message) && !/0xdead/.test(e.message));
   await assert.rejects(run({ status: 503, error: { error: { code: 'uniswap_not_configured', message: 'Uniswap Trading API is not configured.' } } }), /not configured/);
 });
+test('Uniswap API swap: the approval names a known proxy and the swap must target that same proxy', async () => {
+  const MAX = (1n << 256n) - 1n; const approveData = (spender, amt) => encodeFunctionData({ abi: M.tokenAbi, functionName: 'approve', args: [spender, amt] });
+  const run = async (spender, swapTo) => {
+    const real = globalThis.fetch;
+    globalThis.fetch = async (url) => { const path = String(url).split('/uniswap/v1/')[1]; const json = (body) => ({ ok: true, status: 200, json: async () => body });
+      if (path === 'quote') return json({ routing: 'CLASSIC', quote: { output: { amount: '1000', minimumAmount: '995' } } });
+      if (path === 'check_approval') return json({ approval: { to: TOKEN, from: OWNER, chainId: 11155111, value: '0x00', data: approveData(spender, MAX) } });
+      return json({ swap: { to: swapTo, from: OWNER, chainId: 11155111, value: '0x00', data: '0x2894adf900' } }); };
+    try { return await M.prepareSwap(fakeClient(), OWNER, TOKEN, OUTPUT, 1_000_000n, 50, 123456); } finally { globalThis.fetch = real; }
+  };
+  const legacy = await run(M.SEPOLIA.apiRouterLegacy, M.SEPOLIA.apiRouterLegacy);
+  assert.equal(decodeFunctionData({ abi: M.tokenAbi, data: legacy.calls[0].data }).args[0], M.SEPOLIA.apiRouterLegacy);
+  await assert.rejects(run(M.SEPOLIA.apiRouterLegacy, M.SEPOLIA.apiRouter), /invalid or unexpected transaction/, 'swap target must be the approved proxy');
+  await assert.rejects(run(M.SEPOLIA.apiRouter, M.SEPOLIA.universalRouter), /invalid or unexpected transaction/, 'token input never goes to the router directly');
+});
+
+// Real Trading API responses for native-ETH input on Sepolia (2026-11-04 HAR): the API targets the Universal Router directly.
+import { readFileSync } from 'node:fs';
+const FX = JSON.parse(readFileSync(new URL('./fixtures/uniswap-sepolia-ur.json', import.meta.url), 'utf8'));
+async function runNative(fx, mutate = (sw) => sw, minimum = fx.minimum) {
+  const realFetch = globalThis.fetch, realNow = Date.now;
+  const deadline = Number(BigInt('0x' + fx.swap.data.slice(10 + 128, 10 + 192)));
+  Date.now = () => (deadline - 600) * 1000;
+  globalThis.fetch = async (url) => { const path = String(url).split('/uniswap/v1/')[1]; const json = (body) => ({ ok: true, status: 200, json: async () => body });
+    if (path === 'quote') return json({ routing: 'CLASSIC', isTokenApprovalApplicable: false, quote: { output: { amount: fx.expected, minimumAmount: minimum } } });
+    if (path === 'swap') return json({ swap: mutate({ ...fx.swap }) });
+    throw new Error('unexpected ' + path); };
+  try { return await M.prepareSwap(fakeClient(), fx.swapper, zeroAddress, fx.tokenOut, BigInt(fx.amountIn), 50, deadline); }
+  finally { globalThis.fetch = realFetch; Date.now = realNow; }
+}
+test('Uniswap native-ETH swaps: real V4 and V3 Universal Router responses are accepted', async () => {
+  for (const [k, fx] of Object.entries(FX)) {
+    const built = await runNative(fx);
+    assert.equal(built.calls.length, 1, k); assert.equal(built.calls[0].to.toLowerCase(), M.SEPOLIA.universalRouter.toLowerCase(), k);
+    assert.equal(built.calls[0].value, BigInt(fx.amountIn), k);
+  }
+});
+test('Uniswap native-ETH swaps: tampered router calldata is refused (recipient, minimum, extra commands, deadline, target)', async () => {
+  const fx = FX['13']; const me = fx.swapper.slice(2).toLowerCase(); const attacker = '9'.repeat(40);
+  await assert.rejects(runNative(fx, (sw) => ({ ...sw, data: sw.data.replace(me, attacker) })), /recipient|cannot verify/);
+  await assert.rejects(runNative(fx, (sw) => sw, (BigInt(fx.minimum) + 1n).toString()), /slippage|cannot verify/, 'calldata minimum below the reviewed minimum');
+  // a TRANSFER (0x05) command spliced in front of the swap
+  await assert.rejects(runNative(fx, (sw) => ({ ...sw, data: sw.data.replace(/(0{62})(01)(10)/, '$10205$3') })), /cannot verify|invalid/);
+  const v3 = FX['97']; await assert.rejects(runNative(v3, (sw) => ({ ...sw, data: sw.data.replace(v3.swapper.slice(2).toLowerCase(), attacker) })), /recipient|cannot verify/);
+  await assert.rejects(runNative(fx, (sw) => ({ ...sw, to: M.SEPOLIA.apiRouter })), /invalid or unexpected transaction/);
+  await assert.rejects(runNative(fx, (sw) => ({ ...sw, value: '0x1' })), /unexpected ETH amount/);
+});
 test('ETH wrapping uses the canonical contract and equal input/output without a swap quote', async () => {
   const built = await M.prepareWrap(fakeClient(), OWNER, 100n, 'wrap');
   assert.equal(built.calls[0].to, M.SEPOLIA.weth); assert.equal(built.calls[0].value, 100n);

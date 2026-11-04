@@ -8,7 +8,7 @@ const out = await build({ stdin: { contents: `export * from './aave'; export * f
 const m = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com', { timeout: 20000, retryCount: 0 }) });
 if (await client.getChainId() !== m.SEPOLIA.chainId) throw new Error('RPC chain mismatch');
-for (const key of ['pool', 'dataProvider', 'apiRouter', 'weth']) {
+for (const key of ['pool', 'dataProvider', 'apiRouter', 'apiRouterLegacy', 'universalRouter', 'weth']) {
   const code = await client.getCode({ address: m.SEPOLIA[key] });
   if (!code || code === '0x') throw new Error(`Missing ${key} contract`);
 }
