@@ -78,6 +78,7 @@ type Server struct {
 	rpcAllow map[string]bool
 	deny     map[string]bool
 	devCache sync.Map // device id -> cachedDevice
+	touched  sync.Map // device id -> unix nanos of the last last_seen_at write
 	http     *http.Client
 	media    *http.Client
 	gw       *gateway

@@ -40,6 +40,8 @@ type Tracker struct {
 	// MaxAge after which an unseen transaction is reported dropped.
 	MaxAge time.Duration
 	Every  time.Duration
+	// IdleEvery is the poll interval when nothing was due (default 5 s).
+	IdleEvery time.Duration
 }
 
 // BuildChains constructs a chain client per configured chain via the registry.
@@ -61,18 +63,24 @@ func BuildChains(cfg *config.Config, rpcURL, rpcToken string) (map[string]Chain,
 	return out, nil
 }
 
-// Run polls until ctx ends.
+// Run polls until ctx ends: every Every (1 s) while transactions are being checked, every IdleEvery (5 s) when the
+// last pass found nothing due, so an idle tracker is not a query per second.
 func (t *Tracker) Run(ctx context.Context) {
 	every := t.Every
 	if every <= 0 {
 		every = time.Second
 	}
-	tick := time.NewTicker(every)
-	defer tick.Stop()
+	idle := t.IdleEvery
+	if idle <= 0 {
+		idle = 5 * time.Second
+	}
 	lastPrune := time.Time{}
 	for {
-		if _, err := t.RunOnce(ctx); err != nil && ctx.Err() == nil {
+		wait := idle
+		if n, err := t.runDue(ctx); err != nil && ctx.Err() == nil {
 			t.Log.Warn("tx check failed", "err", err)
+		} else if n > 0 {
+			wait = every
 		}
 		// Privacy: settled sends lose their device link after an hour and disappear after 30 days.
 		if time.Since(lastPrune) > 10*time.Minute {
@@ -82,19 +90,31 @@ func (t *Tracker) Run(ctx context.Context) {
 				t.Log.Warn("prune pending failed", "err", err)
 			}
 		}
+		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-tick.C:
+		case <-timer.C:
 		}
 	}
 }
 
 // RunOnce checks every due transaction and returns how many changed state.
 func (t *Tracker) RunOnce(ctx context.Context) (int, error) {
+	changed, _, err := t.runOnce(ctx)
+	return changed, err
+}
+
+func (t *Tracker) runDue(ctx context.Context) (int, error) {
+	_, due, err := t.runOnce(ctx)
+	return due, err
+}
+
+func (t *Tracker) runOnce(ctx context.Context) (int, int, error) {
 	due, err := t.St.DuePending(ctx, 100)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	changed := 0
 	for _, p := range due {
@@ -108,7 +128,7 @@ func (t *Tracker) RunOnce(ctx context.Context) (int, error) {
 			changed++
 		}
 	}
-	return changed, nil
+	return changed, len(due), nil
 }
 
 func (t *Tracker) backoff(c Chain, checks int) time.Duration {

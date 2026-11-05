@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -149,6 +150,16 @@ type gateway struct {
 	alchemy map[uint64]string
 	client  *http.Client
 	cache   gwCache
+
+	// Identical cacheable calls in flight at once share one upstream request.
+	flightMu sync.Mutex
+	flights  map[string]*gwFlight
+}
+
+type gwFlight struct {
+	done chan struct{}
+	res  *gwResult
+	err  error
 }
 
 type gwCache interface {
@@ -724,6 +735,45 @@ func (g *gateway) run(ctx context.Context, c *gwCall) (*gwResult, error) {
 			}
 		}
 	}
+	if key == "" {
+		return g.fetch(ctx, c, "")
+	}
+	g.flightMu.Lock()
+	if f, ok := g.flights[key]; ok {
+		g.flightMu.Unlock()
+		select {
+		case <-f.done:
+			if f.err != nil {
+				return nil, f.err
+			}
+			cp := *f.res
+			return &cp, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if g.flights == nil {
+		g.flights = map[string]*gwFlight{}
+	}
+	f := &gwFlight{done: make(chan struct{})}
+	g.flights[key] = f
+	g.flightMu.Unlock()
+	defer func() {
+		g.flightMu.Lock()
+		delete(g.flights, key)
+		g.flightMu.Unlock()
+		close(f.done)
+	}()
+	f.res, f.err = g.fetch(ctx, c, key)
+	if f.err != nil {
+		return nil, f.err
+	}
+	cp := *f.res
+	return &cp, nil
+}
+
+// fetch calls the upstream and caches a cacheable answer under key ("" = not cached).
+func (g *gateway) fetch(ctx context.Context, c *gwCall, key string) (*gwResult, error) {
 	var rd io.Reader
 	if len(c.body) > 0 {
 		rd = bytes.NewReader(c.body)
@@ -744,7 +794,7 @@ func (g *gateway) run(ctx context.Context, c *gwCall) (*gwResult, error) {
 	if err != nil || len(b) > gwMaxBody {
 		return nil, fmt.Errorf("gateway upstream: bad body")
 	}
-	b = []byte(scrub(string(b), c.secrets))
+	b = scrubBytes(b, c.secrets)
 	status := resp.StatusCode
 	if status == http.StatusUnauthorized || status == http.StatusForbidden || status >= 500 {
 		return nil, fmt.Errorf("gateway upstream: status %d", status)
@@ -762,12 +812,22 @@ func (g *gateway) run(ctx context.Context, c *gwCall) (*gwResult, error) {
 		ct = "application/json"
 	}
 	res := &gwResult{Status: status, Type: ct, Body: b}
-	if status == http.StatusOK && c.ttl > 0 && g.cache != nil && len(b) <= 512<<10 {
+	if status == http.StatusOK && key != "" && len(b) <= 512<<10 {
 		if enc, err := json.Marshal(res); err == nil {
 			g.cache.Set(ctx, key, enc, c.ttl)
 		}
 	}
 	return res, nil
+}
+
+// scrubBytes removes provider keys from a body; bodies that contain none (nearly all) are returned without a copy.
+func scrubBytes(b []byte, secrets []string) []byte {
+	for _, k := range secrets {
+		if len(k) >= 6 && bytes.Contains(b, []byte(k)) {
+			b = bytes.ReplaceAll(b, []byte(k), []byte("***"))
+		}
+	}
+	return b
 }
 
 func scrub(s string, secrets []string) string {

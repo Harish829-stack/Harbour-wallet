@@ -182,6 +182,19 @@ func (s *Server) effectiveTier(tier string, created, now time.Time) string {
 
 // ---------- signed requests ----------
 
+// touchEvery bounds how often a device's last_seen_at is written: once per window per API process instead of a query
+// on every signed request.
+const touchEvery = 5 * time.Minute
+
+func (s *Server) shouldTouch(dev string) bool {
+	now := s.opt.Now().UnixNano()
+	if v, ok := s.touched.Load(dev); ok && time.Duration(now-v.(int64)) < touchEvery {
+		return false
+	}
+	s.touched.Store(dev, now)
+	return true
+}
+
 func (s *Server) lookupDevice(ctx context.Context, id string) (cachedDevice, error) {
 	now := s.opt.Now()
 	if v, ok := s.devCache.Load(id); ok {
@@ -280,7 +293,9 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 			unauth()
 			return
 		}
-		go s.opt.Store.TouchDevice(context.WithoutCancel(ctx), dev) //nolint:errcheck
+		if s.shouldTouch(dev) {
+			go s.opt.Store.TouchDevice(context.WithoutCancel(ctx), dev) //nolint:errcheck
+		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, AuthDevice{ID: dev, Tier: s.effectiveTier(cd.tier, cd.created, s.opt.Now())})))
 	})
 }
@@ -298,20 +313,25 @@ func (s *Server) counter(ctx context.Context, key string, add int64, limit int) 
 }
 
 // dailyCounter adds n to today's counter and reports whether it stays within limit.
-// Over-limit attempts are rolled back so they don't consume tomorrow's room.
+// Over-limit attempts are rolled back so they don't consume tomorrow's room. One round trip (a Lua script) instead of
+// INCRBY + EXPIRE (+ DECRBY).
 func (s *Server) dailyCounter(ctx context.Context, key string, n int64, limit int) (bool, error) {
 	k := fmt.Sprintf("%s:%s", key, s.opt.Now().UTC().Format("20060102"))
-	v, err := s.opt.Redis.IncrBy(ctx, k, n).Result()
+	v, err := dailyCounterScript.Run(ctx, s.opt.Redis, []string{k}, n, limit, int((48 * time.Hour).Seconds())).Int()
 	if err != nil {
 		return false, err
 	}
-	s.opt.Redis.Expire(ctx, k, 48*time.Hour)
-	if v > int64(limit) {
-		s.opt.Redis.DecrBy(ctx, k, n)
-		return false, nil
-	}
-	return true, nil
+	return v == 1, nil
 }
+
+var dailyCounterScript = redis.NewScript(`
+local v = redis.call('INCRBY', KEYS[1], ARGV[1])
+if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[3]) end
+if v > tonumber(ARGV[2]) then
+  redis.call('DECRBY', KEYS[1], ARGV[1])
+  return 0
+end
+return 1`)
 
 func (s *Server) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
