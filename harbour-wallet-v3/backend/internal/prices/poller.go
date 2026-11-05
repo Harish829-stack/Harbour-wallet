@@ -34,6 +34,28 @@ type Poller struct {
 	Cfg     config.Prices
 	Log     *slog.Logger
 	Now     func() time.Time
+
+	// HeldAssets is an aggregate over every balance row; the top run (every minute) reuses the list for heldMaxAge.
+	held   []store.HeldAsset
+	heldAt time.Time
+	// Ticks are stored in 5-minute buckets: one write per asset and bucket instead of one per poll.
+	tickBucket map[int64]int64
+}
+
+// heldMaxAge bounds how long a newly held token can wait before it is priced.
+const heldMaxAge = 5 * time.Minute
+
+func (p *Poller) heldAssets(ctx context.Context) ([]store.HeldAsset, error) {
+	now := p.now()
+	if p.held != nil && now.Sub(p.heldAt) < heldMaxAge && !now.Before(p.heldAt) {
+		return p.held, nil
+	}
+	held, err := p.St.HeldAssets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p.held, p.heldAt = held, now
+	return held, nil
 }
 
 // TickMessage is the price.tick payload.
@@ -44,7 +66,7 @@ type TickMessage struct {
 
 // RunOnce prices the most-held TopN assets (top=true) or the rest.
 func (p *Poller) RunOnce(ctx context.Context, top bool) (int, error) {
-	held, err := p.St.HeldAssets(ctx)
+	held, err := p.heldAssets(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -124,10 +146,16 @@ func (p *Poller) RunOnce(ctx context.Context, top bool) (int, error) {
 	pipe := p.Redis.Pipeline()
 	var ticks []store.Tick
 	msg := TickMessage{At: now, Prices: map[string]float64{}}
+	if p.tickBucket == nil {
+		p.tickBucket = map[int64]int64{}
+	}
+	bucket := now.Unix() / 300
 	for id, c := range results {
 		b, _ := json.Marshal(c)
 		pipe.Set(ctx, Key(id), b, p.Cfg.CacheTTL)
-		ticks = append(ticks, store.Tick{AssetID: id, At: now, PriceUSD: c.USD, LiquidityUSD: c.LiquidityUSD})
+		if p.tickBucket[id] != bucket {
+			ticks = append(ticks, store.Tick{AssetID: id, At: now, PriceUSD: c.USD, LiquidityUSD: c.LiquidityUSD})
+		}
 		if c.Flag == FlagOK {
 			msg.Prices[jsonID(id)] = c.USD
 		}
@@ -137,6 +165,9 @@ func (p *Poller) RunOnce(ctx context.Context, top bool) (int, error) {
 	}
 	if err := p.St.InsertTicks(ctx, ticks); err != nil {
 		return 0, err
+	}
+	for _, t := range ticks {
+		p.tickBucket[t.AssetID] = bucket
 	}
 	if len(msg.Prices) > 0 && p.Bus != nil {
 		b, _ := json.Marshal(msg)

@@ -71,6 +71,11 @@ func main() {
 			die(log, "maintain", err)
 		}
 		log.Info("partitions maintained")
+		ticks, snaps, err := st.PruneTimeSeries(ctx)
+		if err != nil {
+			die(log, "prune", err)
+		}
+		log.Info("time series pruned", "price_ticks", ticks, "balance_snapshots", snaps)
 	}
 }
 

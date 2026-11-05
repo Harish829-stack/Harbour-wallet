@@ -331,18 +331,36 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 	if o.Assets != nil {
 		txCache = o.Assets.child()
 	}
+	// The writes are pipelined in a few round trips (dedupe keys, assets, facts) instead of 4-6 sequential statements
+	// per event. Order within each batch is the event order, so duplicates inside one call resolve exactly as before:
+	// the first occurrence wins.
+	for _, ev := range evs {
+		if ev.Chain != o.Chain || ev.TxHash == "" || ev.EventRef == "" || !validAmount(ev.AmountRaw) {
+			return res, fmt.Errorf("invalid event %s/%s", ev.TxHash, ev.EventRef)
+		}
+	}
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var q Querier = tx
+		// 1. Dedupe keys: one per event.
+		b := &pgx.Batch{}
 		for _, ev := range evs {
-			if ev.Chain != o.Chain || ev.TxHash == "" || ev.EventRef == "" || !validAmount(ev.AmountRaw) {
-				return fmt.Errorf("invalid event %s/%s", ev.TxHash, ev.EventRef)
-			}
-			tag, err := tx.Exec(ctx, `INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
 				o.Chain, ev.TxHash, ev.EventRef)
-			if err != nil {
-				return err
-			}
-			if tag.RowsAffected() == 0 {
+		}
+		isNew := make([]bool, len(evs))
+		if err := execBatch(ctx, tx, b, func(i int, tag pgconn.CommandTag) { isNew[i] = tag.RowsAffected() == 1 }); err != nil {
+			return err
+		}
+		type prepared struct {
+			ev      index.ActivityEvent
+			asset   AssetInput
+			assetID int64
+			tokenID string
+			fin     string
+		}
+		var fresh []prepared
+		for i, ev := range evs {
+			if !isNew[i] {
 				res.Duplicates++
 				continue
 			}
@@ -372,43 +390,71 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 					a.SpamScore = o.Spam(sym, "", dec)
 				}
 			}
-			assetID, err := s.UpsertAsset(ctx, q, txCache, a)
-			if err != nil {
-				return err
-			}
 			fin := "confirmed"
 			if o.Classify != nil {
 				fin = o.Classify(ev.BlockNumber)
 			}
-			if _, err := tx.Exec(ctx, `INSERT INTO transfers (chain_id, chain_family, tx_hash, event_ref, block_number, block_hash,
+			fresh = append(fresh, prepared{ev: ev, asset: a, tokenID: tokenID, fin: fin})
+		}
+		if len(fresh) == 0 {
+			return nil
+		}
+		// 2. Assets: one upsert per distinct asset and metadata in this call (was one per event).
+		seen := map[string]int64{}
+		for i := range fresh {
+			a := fresh[i].asset
+			k := assetInputKey(a)
+			id, ok := seen[k]
+			if !ok {
+				var err error
+				if id, err = s.UpsertAsset(ctx, q, txCache, a); err != nil {
+					return err
+				}
+				seen[k] = id
+			}
+			fresh[i].assetID = id
+		}
+		// 3. Fact rows and the per-transaction dedupe key.
+		b = &pgx.Batch{}
+		for _, f := range fresh {
+			ev := f.ev
+			b.Queue(`INSERT INTO transfers (chain_id, chain_family, tx_hash, event_ref, block_number, block_hash,
 				block_time, asset_id, "from", "to", amount_raw, kind, finality, details)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::numeric,$12,$13,COALESCE($14::jsonb,'{}'::jsonb))`,
-				o.Chain, o.Family, ev.TxHash, ev.EventRef, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, assetID,
-				nullStr(ev.From), nullStr(ev.To), ev.AmountRaw, string(ev.Kind), fin, nullJSON(ev.Details)); err != nil {
-				return err
+				o.Chain, o.Family, ev.TxHash, ev.EventRef, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, f.assetID,
+				nullStr(ev.From), nullStr(ev.To), ev.AmountRaw, string(ev.Kind), f.fin, nullJSON(ev.Details))
+			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,'tx') ON CONFLICT DO NOTHING`, o.Chain, ev.TxHash)
+		}
+		newTx := make([]bool, len(fresh))
+		if err := execBatch(ctx, tx, b, func(i int, tag pgconn.CommandTag) {
+			if i%2 == 1 {
+				newTx[i/2] = tag.RowsAffected() == 1
 			}
-			// One transactions row per tx, deduped the same way.
-			tag, err = tx.Exec(ctx, `INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,'tx') ON CONFLICT DO NOTHING`, o.Chain, ev.TxHash)
-			if err != nil {
-				return err
-			}
-			if tag.RowsAffected() == 1 {
+		}); err != nil {
+			return err
+		}
+		// 4. One transactions row per new tx, and activity rows for every tracked party.
+		b = &pgx.Batch{}
+		for i, f := range fresh {
+			ev := f.ev
+			if newTx[i] {
 				var from, to any
 				if ev.Kind == index.KindNative {
 					from, to = nullStr(ev.From), nullStr(ev.To)
 				}
-				if _, err := tx.Exec(ctx, `INSERT INTO transactions (chain_id, chain_family, tx_hash, block_number, block_hash, block_time, "from", "to", finality)
-					VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, o.Chain, o.Family, ev.TxHash, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, from, to, fin); err != nil {
-					return err
-				}
+				b.Queue(`INSERT INTO transactions (chain_id, chain_family, tx_hash, block_number, block_hash, block_time, "from", "to", finality)
+					VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, o.Chain, o.Family, ev.TxHash, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, from, to, f.fin)
 			}
-			// Activity rows for every tracked party.
-			for party, dir := range map[string]string{ev.To: "in", ev.From: "out"} {
-				id, ok := tracked[party]
-				if !ok || party == "" {
+			for _, side := range [2]struct{ party, dir string }{{ev.To, "in"}, {ev.From, "out"}} {
+				id, ok := tracked[side.party]
+				if !ok || side.party == "" {
 					continue
 				}
+				dir := side.dir
 				if ev.From == ev.To {
+					if side.dir == "out" {
+						continue // one "self" row, as the map-keyed loop produced
+					}
 					dir = "self"
 				}
 				counter := ev.From
@@ -416,8 +462,8 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 					counter = ev.To
 				}
 				item, _ := json.Marshal([]summaryItem{{EventRef: ev.EventRef, Asset: ev.Asset, AmountRaw: ev.AmountRaw,
-					Kind: string(ev.Kind), Direction: dir, TokenID: tokenID, Counter: counter}})
-				if _, err := tx.Exec(ctx, `INSERT INTO address_activity (tracked_address_id, block_time, tx_hash, chain_id, direction, summary)
+					Kind: string(ev.Kind), Direction: dir, TokenID: f.tokenID, Counter: counter}})
+				b.Queue(`INSERT INTO address_activity (tracked_address_id, block_time, tx_hash, chain_id, direction, summary)
 					VALUES ($1,$2,$3,$4,$5, jsonb_build_object('transfers', $6::jsonb))
 					ON CONFLICT (tracked_address_id, tx_hash) DO UPDATE SET
 						direction = CASE WHEN address_activity.direction = EXCLUDED.direction THEN address_activity.direction
@@ -425,13 +471,12 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 						                 ELSE 'out' END,
 						summary = jsonb_set(address_activity.summary, '{transfers}',
 						          COALESCE(address_activity.summary->'transfers', '[]'::jsonb) || (EXCLUDED.summary->'transfers'))`,
-					id, ev.BlockTime, ev.TxHash, o.Chain, dir, string(item)); err != nil {
-					return err
-				}
+					id, ev.BlockTime, ev.TxHash, o.Chain, dir, string(item))
 				res.Parties[id] = true
+				a := f.asset
 				if dir == "in" {
 					res.Incoming = append(res.Incoming, Incoming{TrackedID: id, TxHash: ev.TxHash, Asset: ev.Asset, Kind: string(ev.Kind),
-						AmountRaw: ev.AmountRaw, Symbol: a.Symbol, Decimals: a.Decimals, TokenID: tokenID, SpamScore: a.SpamScore, BlockTime: ev.BlockTime})
+						AmountRaw: ev.AmountRaw, Symbol: a.Symbol, Decimals: a.Decimals, TokenID: f.tokenID, SpamScore: a.SpamScore, BlockTime: ev.BlockTime})
 				}
 				if ev.Kind == index.KindNFT || ev.Kind == index.KindMulti {
 					res.NFTParties[id] = true
@@ -444,7 +489,7 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 				}
 			}
 		}
-		return nil
+		return execBatch(ctx, tx, b, nil)
 	})
 	if err != nil {
 		return IngestResult{}, err
@@ -453,6 +498,34 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 		txCache.mergeInto(o.Assets)
 	}
 	return res, nil
+}
+
+// execBatch sends a batch in one round trip and reports each statement's command tag in order.
+func execBatch(ctx context.Context, tx pgx.Tx, b *pgx.Batch, each func(i int, tag pgconn.CommandTag)) error {
+	if b.Len() == 0 {
+		return nil
+	}
+	br := tx.SendBatch(ctx, b)
+	for i := 0; i < b.Len(); i++ {
+		tag, err := br.Exec()
+		if err != nil {
+			br.Close()
+			return err
+		}
+		if each != nil {
+			each(i, tag)
+		}
+	}
+	return br.Close()
+}
+
+// assetInputKey identifies one asset upsert (same ref and same metadata) within a call.
+func assetInputKey(a AssetInput) string {
+	dec := -1
+	if a.Decimals != nil {
+		dec = *a.Decimals
+	}
+	return fmt.Sprintf("%s|%s|%s|%s|%d|%d|%t", a.Ref, a.Kind, a.Symbol, a.Name, dec, a.SpamScore, a.Verified)
 }
 
 func nullJSON(b json.RawMessage) any {

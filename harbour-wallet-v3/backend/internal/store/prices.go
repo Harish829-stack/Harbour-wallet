@@ -51,7 +51,8 @@ func (s *Store) InsertTicks(ctx context.Context, ticks []Tick) error {
 		}
 		b.Queue(`INSERT INTO price_ticks (asset_id, ts, price_usd, liquidity_usd)
 			VALUES ($1, to_timestamp(floor(extract(epoch FROM $2::timestamptz) / 300) * 300), $3, $4)
-			ON CONFLICT (asset_id, ts) DO UPDATE SET price_usd = EXCLUDED.price_usd, liquidity_usd = EXCLUDED.liquidity_usd`,
+			ON CONFLICT (asset_id, ts) DO UPDATE SET price_usd = EXCLUDED.price_usd, liquidity_usd = EXCLUDED.liquidity_usd
+			WHERE (price_ticks.price_usd, price_ticks.liquidity_usd) IS DISTINCT FROM (EXCLUDED.price_usd, EXCLUDED.liquidity_usd)`,
 			t.AssetID, t.At, t.PriceUSD, liq)
 	}
 	return s.Pool.SendBatch(ctx, b).Close()
@@ -63,6 +64,36 @@ func (s *Store) SnapshotBalances(ctx context.Context, day time.Time) (int64, err
 	tag, err := s.Pool.Exec(ctx, `INSERT INTO balance_snapshots (tracked_address_id, day, asset_id, amount_raw)
 		SELECT b.tracked_address_id, $1::date, b.asset_id, b.amount_raw FROM balances b
 		JOIN assets a ON a.id = b.asset_id WHERE a.kind IN ('native','token')
-		ON CONFLICT (tracked_address_id, day, asset_id) DO UPDATE SET amount_raw = EXCLUDED.amount_raw`, day.UTC().Format("2006-01-02"))
+		ON CONFLICT (tracked_address_id, day, asset_id) DO UPDATE SET amount_raw = EXCLUDED.amount_raw
+		WHERE balance_snapshots.amount_raw IS DISTINCT FROM EXCLUDED.amount_raw`, day.UTC().Format("2006-01-02"))
 	return tag.RowsAffected(), err
 }
+
+// PruneTimeSeries thins old price history and drops snapshots no chart can show. Price ticks keep their 5-minute
+// buckets for PriceFineFor, then the last tick of each hour until PriceHourlyFor, then the last of each day. Charts
+// pick the last tick at or before each point, so thinning never changes a plotted value at hour/day resolution.
+func (s *Store) PruneTimeSeries(ctx context.Context) (ticks, snaps int64, err error) {
+	for _, step := range []struct{ unit, olderThan string }{{"hour", PriceFineFor}, {"day", PriceHourlyFor}} {
+		tag, err := s.Pool.Exec(ctx, `DELETE FROM price_ticks p USING (
+				SELECT asset_id, date_trunc($1, ts) AS b, max(ts) AS keep FROM price_ticks
+				WHERE ts < now() - $2::interval GROUP BY 1, 2) k
+			WHERE p.asset_id = k.asset_id AND p.ts < now() - $2::interval AND date_trunc($1, p.ts) = k.b AND p.ts <> k.keep`,
+			step.unit, step.olderThan)
+		if err != nil {
+			return ticks, snaps, err
+		}
+		ticks += tag.RowsAffected()
+	}
+	tag, err := s.Pool.Exec(ctx, `DELETE FROM balance_snapshots WHERE day < (now() - $1::interval)::date`, SnapshotsFor)
+	if err != nil {
+		return ticks, snaps, err
+	}
+	return ticks, tag.RowsAffected(), nil
+}
+
+// Retention for PruneTimeSeries (the longest chart range is one year).
+const (
+	PriceFineFor   = "7 days"
+	PriceHourlyFor = "90 days"
+	SnapshotsFor   = "400 days"
+)
