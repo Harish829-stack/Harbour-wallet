@@ -28,7 +28,7 @@ make lint      # golangci-lint v2 with depguard, plus the provider-name check
 | `indexer` | 8083 (health) | Backfills tracked addresses, reads balances from chain via Multicall3, syncs NFTs, publishes `balance.changed.<chain>` |
 | `webhook-ingest` | 8082 | Verifies provider webhooks (HMAC), stores the raw payload 7 days, publishes `chain.<chain>.activity.raw`, returns 200 |
 | `price-poller` | – | Prices held tokens every 60 s (top 2,000) / 5 min (tail), caches them in Redis, writes `price_ticks`, takes hourly balance snapshots |
-| `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions (run daily) |
+| `migrate` | – | Applies `migrations/*.sql`; `-maintain` premakes monthly partitions and thins old `price_ticks` (5-min for 7 days, hourly to 90 days, then daily) and drops `balance_snapshots` older than 400 days (run daily) |
 | `tx-tracker` | – | Follows broadcast transactions to confirmed / failed / dropped (receipt polling with backoff; a used nonce without a receipt means dropped), publishes `tx.status.<chain>` |
 | `realtime-bridge` | – | Relays `balance.changed.*` and `tx.status.*` to Centrifugo channels `balances:<chain>.<address>` and `tx:<chain>.<hash>` |
 | `notifier` | – | Web Push for incoming transfers (`activity.new.*`, spam and old events skipped) and settled sends; deduped per device and transaction in Redis |
@@ -57,8 +57,11 @@ The extension side is `clients/ts/hbclient.ts` (WebCrypto Ed25519, sync SHA-256 
 
 - **Routing**: weighted random over healthy upstreams; score = weight × (1−error rate)² ÷ (1 + p90/250 ms) ÷ (1 + block lag/2), over a sliding window.
 - **Failover**: retryable (timeout, 401/403/429/5xx, "header not found", null block the pool has) moves on; deterministic (revert, invalid params, nonce too low) returns at once.
-- **Circuit breaker**: opens at ≥50 % errors over ≥10 samples or 5 consecutive failures; half-open probes after 30 s. Head polling doubles as the probe, so a revoked key is detected without traffic.
-- **Budgets**: token bucket per key (`rps` in `providers.yaml`); load sheds to the next key before the provider returns 429.
+- **Circuit breaker**: opens at ≥50 % errors over ≥10 samples or 5 consecutive failures; half-open probes after 30 s. Head probes double as health checks, so a revoked key is detected without traffic.
+- **Head tracking**: every upstream is polled once at start; then only the best-scored upstream (the follower) polls every block, with latest and finalized in one JSON-RPC batch. The others are probed every `head_probe_every` (30 s). A chain with no request for `idle_after` (10 min) polls every `idle_poll_every` (60 s) until a request wakes it. `eth_blockNumber` is answered from the tracked head and `eth_chainId` from `chains.yaml`, without an upstream call.
+- **Budgets**: one token bucket per provider key (`rps` in `providers.yaml`), shared by every chain the key serves; load sheds to the next key before the provider returns 429.
+- **Coalescing**: identical reads in flight at the same moment share one upstream call (session-pinned calls excluded).
+- **Spend metric**: `hb_upstream_calls_total{chain,provider,method}` counts the calls providers bill (head polls as `head_poll`).
 - **Cache**: finalized-block results forever (LRU), `latest` for one block time, `pending` never.
 - **Hedging**: only for `X-HB-Priority: user`, after the upstream's p90 (50 ms–2 s). Background calls never hedge.
 - **Sends**: `eth_sendRawTransaction` goes to two upstreams at once; "already known" counts as success.
@@ -82,7 +85,7 @@ The plan suggests eRPC; its module graph can't be vendored here, so the gateway 
 
 - **Webhooks:** the indexer creates one Address Activity webhook per chain pointing at `WEBHOOK_PUBLIC_URL/webhooks/alchemy`, adds every device-tracked address in batches of 500, removes addresses no device tracks, and opens another webhook past 100,000 addresses. Signing keys are stored encrypted. If `WEBHOOK_PUBLIC_URL` changes (a new dev tunnel), the old webhook is deleted and addresses move to a new one. Needs `ALCHEMY_NOTIFY_TOKEN`; a Postgres advisory lock keeps it to one replica at a time.
 - **Deliveries:** `webhook-ingest` checks `X-Alchemy-Signature`, stores the body, publishes it and answers 200. The indexer turns it into `ActivityEvent`s, writes them through `event_keys` (so replays and retries change nothing), refreshes balances 2 s after the last event for an address, and resyncs NFTs when one moved. `removed: true` deletes the event and refreshes.
-- **Gap-fill:** every 3 minutes, addresses active in the last 7 days (or not on a webhook yet) are re-read from `last_seen_block` with the Transfers API; `last_seen_block` then moves to the head minus about 2 minutes, the window the source may not have indexed. With no `WEBHOOK_PUBLIC_URL`, gap-fill covers every address and is the live path.
+- **Gap-fill:** webhooks are the live path; gap-fill re-reads from `last_seen_block` with the Transfers API only where a delivery could be missing. Every 3 minutes: addresses not on a webhook yet. Every 30 minutes: subscribed addresses active (or added) in the last 24 hours. Once a day: every subscribed address. `last_seen_block` then moves to the head minus about 2 minutes, the window the source may not have indexed. With no `WEBHOOK_PUBLIC_URL`, the 3-minute pass covers every address and is the live path. Heads are only read when a chain has candidates, and reorg repair skips chains with nothing unfinalized.
 - **After downtime:** `webhook-ingest` beats every 15 s; on start, a gap of more than a minute publishes `chain.gapfill` and the indexer gap-fills every tracked address.
 - **Reorgs and finality:** every minute, rows at or below the chain's `finalized` block become `finalized`. For newer rows, the canonical hash of each block is compared with the stored one; on a mismatch (or a backfilled row with no hash yet) the receipt decides: still mined somewhere → position updated; gone for 3 blocks (12 without a stored hash) → events removed and balances refreshed.
 
@@ -100,7 +103,7 @@ Keep `cloudflared tunnel --url http://localhost:8082` running in development; `.
 | `GET /v1/tx/{chain}/{hash}` | `transactions` → `pending_transactions` → the chain (only for hashes Harbour never saw) |
 | `GET /v1/media/{key}` (unsigned, for `<img>`) | Fetches the stored NFT image server-side, refuses private addresses, decodes PNG/JPEG/GIF/WebP only (no SVG), downsizes to 512 px, re-encodes PNG, caches 24 h |
 
-**Prices:** `price_sources` in `providers.yaml` are tried in order (CoinGecko, then Alchemy). Native coins use `native.price_ids`; tokens use the chain's `prices:` options. Liquidity comes from 24 h volume or DEX pool reserves; below `min_liquidity_usd` the price is flagged `thin` and the UI shows "no price". Spam-scored tokens are never priced. Testnets have no prices.
+**Prices:** `price_sources` in `providers.yaml` are tried in order (CoinGecko, then Alchemy). Native coins use `native.price_ids`; tokens use the chain's `prices:` options. Liquidity comes from 24 h volume or DEX pool reserves; below `min_liquidity_usd` the price is flagged `thin` and the UI shows "no price". Spam-scored tokens are never priced. Testnets have no prices. The held-asset list is recomputed at most every 5 minutes, one tick per asset is written per 5-minute bucket, and unchanged snapshot rows are not rewritten.
 
 ## Send path, realtime and push (phase 6)
 

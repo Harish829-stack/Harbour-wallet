@@ -35,12 +35,21 @@ type RawDelivery struct {
 type LiveOptions struct {
 	// PublicURL is the HTTPS base the provider delivers to; webhooks
 	// point at PublicURL + "/webhooks/<source>". Empty disables management.
-	PublicURL    string
-	Box          *store.SecretBox // encrypts signing keys at rest
+	PublicURL string
+	Box       *store.SecretBox // encrypts signing keys at rest
+	// GapFillEvery re-reads addresses that are not on a webhook (for them it is the live path; with no PublicURL that
+	// is every address).
 	GapFillEvery time.Duration
+	// SafetyEvery re-reads subscribed addresses active (or added) within ActiveWithin, in case a webhook delivery was
+	// lost. Webhooks are the live path for them, so this runs far less often than GapFillEvery.
+	SafetyEvery  time.Duration
 	ActiveWithin time.Duration
-	RepairEvery  time.Duration
-	ManageEvery  time.Duration
+	// FullEvery re-reads every subscribed address (0 = default 24h, negative = never). Ingest downtime triggers a full
+	// pass on its own.
+	FullEvery   time.Duration
+	RepairEvery time.Duration
+	// ManageEvery syncs webhook subscriptions; new addresses also wake it at once.
+	ManageEvery time.Duration
 }
 
 // EnableLive turns on webhook management, delivery handling, gap-fill and repair.
@@ -48,14 +57,20 @@ func (ix *Indexer) EnableLive(o LiveOptions) {
 	if o.GapFillEvery == 0 {
 		o.GapFillEvery = 3 * time.Minute
 	}
+	if o.SafetyEvery == 0 {
+		o.SafetyEvery = 30 * time.Minute
+	}
 	if o.ActiveWithin == 0 {
-		o.ActiveWithin = 7 * 24 * time.Hour
+		o.ActiveWithin = 24 * time.Hour
+	}
+	if o.FullEvery == 0 {
+		o.FullEvery = 24 * time.Hour
 	}
 	if o.RepairEvery == 0 {
 		o.RepairEvery = time.Minute
 	}
 	if o.ManageEvery == 0 {
-		o.ManageEvery = 15 * time.Second
+		o.ManageEvery = 5 * time.Minute
 	}
 	ix.live = &o
 }
@@ -65,14 +80,16 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		return
 	}
 	o := ix.live
-	loop := func(every time.Duration, wake <-chan struct{}, f func(context.Context)) {
+	loopFrom := func(first bool, every time.Duration, wake <-chan struct{}, f func(context.Context)) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			t := time.NewTicker(every)
 			defer t.Stop()
-			for {
-				f(ctx)
+			for run := first; ; run = true {
+				if run {
+					f(ctx)
+				}
 				select {
 				case <-ctx.Done():
 					return
@@ -82,6 +99,11 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}()
 	}
+	loop := func(every time.Duration, wake <-chan struct{}, f func(context.Context)) {
+		loopFrom(true, every, wake, f)
+	}
+	// The safety and daily passes wait one interval: a restart must not re-read every address.
+	later := func(every time.Duration, f func(context.Context)) { loopFrom(false, every, nil, f) }
 	loop(o.ManageEvery, ix.manageWake, func(ctx context.Context) {
 		for _, c := range ix.sortedChains() {
 			if err := ix.ManageWebhooks(ctx, c); err != nil && ctx.Err() == nil {
@@ -90,10 +112,28 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		}
 	})
 	loop(o.GapFillEvery, nil, func(ctx context.Context) {
-		if err := ix.GapFill(ctx, false); err != nil && ctx.Err() == nil {
+		scope := store.GapUnsubscribed
+		if o.PublicURL == "" {
+			scope = store.GapAll // no webhooks at all: gap-fill is the only live path
+		}
+		if err := ix.GapFill(ctx, scope); err != nil && ctx.Err() == nil {
 			ix.log.Warn("gap-fill failed", "err", err)
 		}
 	})
+	if o.PublicURL != "" {
+		later(o.SafetyEvery, func(ctx context.Context) {
+			if err := ix.GapFill(ctx, store.GapActive); err != nil && ctx.Err() == nil {
+				ix.log.Warn("safety gap-fill failed", "err", err)
+			}
+		})
+		if o.FullEvery > 0 {
+			later(o.FullEvery, func(ctx context.Context) {
+				if err := ix.GapFill(ctx, store.GapAll); err != nil && ctx.Err() == nil {
+					ix.log.Warn("daily gap-fill failed", "err", err)
+				}
+			})
+		}
+	}
 	loop(o.RepairEvery, nil, func(ctx context.Context) {
 		for _, c := range ix.sortedChains() {
 			if err := ix.Repair(ctx, c); err != nil && ctx.Err() == nil {
@@ -115,7 +155,7 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
 		err := ix.bus.Consume(ctx, "indexer-gapfill", SubjectGapFill, func(ctx context.Context, _ []byte) error {
 			ix.log.Info("full gap-fill requested (ingest was down)")
-			return ix.GapFill(ctx, true)
+			return ix.GapFill(ctx, store.GapAll)
 		})
 		if err != nil && ctx.Err() == nil {
 			ix.log.Error("consume gapfill", "err", err)
@@ -388,42 +428,44 @@ func safetyMargin(c *Chain) uint64 {
 // GapFill fetches anything the live path missed since each address's
 // last_seen_block. all=false limits it to addresses active in the last week;
 // all=true (after ingest downtime) covers every tracked address.
-func (ix *Indexer) GapFill(ctx context.Context, all bool) error {
+func (ix *Indexer) GapFill(ctx context.Context, scope store.GapScope) error {
 	var errs []error
 	for _, c := range ix.sortedChains() {
-		if err := ix.gapFillChain(ctx, c, all); err != nil {
+		if err := ix.gapFillChain(ctx, c, scope); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", c.Name, err))
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func (ix *Indexer) gapFillChain(ctx context.Context, c *Chain, all bool) error {
-	latest, finalized, err := c.FreshHeads(ctx)
-	if err != nil {
-		return err
-	}
-	if latest <= safetyMargin(c) {
-		return nil
-	}
-	target := latest - safetyMargin(c)
-	within := 7 * 24 * time.Hour
+func (ix *Indexer) gapFillChain(ctx context.Context, c *Chain, scope store.GapScope) error {
+	within := 24 * time.Hour
 	if ix.live != nil {
 		within = ix.live.ActiveWithin
-		if ix.live.PublicURL == "" {
-			all = true // no webhooks at all: gap-fill is the only live path
-		}
 	}
 	var after int64
 	var firstErr error
 	var mu sync.Mutex
+	var target, latest, finalized uint64
+	headsRead := false
 	for {
-		rows, err := ix.st.GapFillCandidates(ctx, c.Name, within, all, after, 200)
+		rows, err := ix.st.GapFillCandidates(ctx, c.Name, scope, within, after, 200)
 		if err != nil {
 			return err
 		}
 		if len(rows) == 0 {
 			return firstErr
+		}
+		// Heads are read only once there is something to check: idle chains cost no RPC.
+		if !headsRead {
+			if latest, finalized, err = c.FreshHeads(ctx); err != nil {
+				return err
+			}
+			if latest <= safetyMargin(c) {
+				return nil
+			}
+			target = latest - safetyMargin(c)
+			headsRead = true
 		}
 		sem := make(chan struct{}, 4)
 		var wg sync.WaitGroup
@@ -502,12 +544,15 @@ func mergeResult(dst *store.IngestResult, src store.IngestResult) {
 // It costs one block lookup per distinct non-final block, and a receipt only
 // for rows without a hash or whose block hash no longer matches.
 func (ix *Indexer) Repair(ctx context.Context, c *Chain) error {
-	latest, finalized, err := c.FreshHeads(ctx)
+	const batch = 300
+	txs, err := ix.st.UnfinalTxs(ctx, c.Name, batch)
 	if err != nil {
 		return err
 	}
-	const batch = 300
-	txs, err := ix.st.UnfinalTxs(ctx, c.Name, batch)
+	if len(txs) == 0 {
+		return nil // nothing unfinalized: no RPC
+	}
+	latest, finalized, err := c.FreshHeads(ctx)
 	if err != nil {
 		return err
 	}

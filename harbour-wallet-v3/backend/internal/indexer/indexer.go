@@ -536,10 +536,15 @@ type debouncer struct {
 	m    map[int64]*time.Timer
 	refs map[int64]map[string]bool
 	sem  chan struct{}
+	// inflight counts refreshes running (timer-fired or flushed); Flush waits for them so "flushed" means written.
+	inflight int
+	idle     *sync.Cond
 }
 
 func newDebouncer(d time.Duration, f func(context.Context, int64, []string)) *debouncer {
-	return &debouncer{d: d, f: f, m: map[int64]*time.Timer{}, refs: map[int64]map[string]bool{}, sem: make(chan struct{}, 8)}
+	db := &debouncer{d: d, f: f, m: map[int64]*time.Timer{}, refs: map[int64]map[string]bool{}, sem: make(chan struct{}, 8)}
+	db.idle = sync.NewCond(&db.mu)
+	return db
 }
 
 // Trigger runs f(id, refs) once, d after the last trigger for id; refs from
@@ -560,6 +565,7 @@ func (db *debouncer) Trigger(ctx context.Context, id int64, refs ...string) {
 	db.m[id] = time.AfterFunc(db.d, func() { db.fire(ctx, id) })
 }
 
+// take claims id's pending refresh; a claimed refresh counts as in flight until done is called.
 func (db *debouncer) take(id int64) ([]string, bool) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -571,12 +577,26 @@ func (db *debouncer) take(id int64) ([]string, bool) {
 	delete(db.m, id)
 	refs := keys(db.refs[id])
 	delete(db.refs, id)
+	db.inflight++
 	return refs, true
+}
+
+func (db *debouncer) done() {
+	db.mu.Lock()
+	db.inflight--
+	if db.inflight == 0 {
+		db.idle.Broadcast()
+	}
+	db.mu.Unlock()
 }
 
 func (db *debouncer) fire(ctx context.Context, id int64) {
 	refs, ok := db.take(id)
-	if !ok || ctx.Err() != nil {
+	if !ok {
+		return
+	}
+	defer db.done()
+	if ctx.Err() != nil {
 		return
 	}
 	db.sem <- struct{}{}
@@ -597,4 +617,10 @@ func (db *debouncer) Flush(ctx context.Context) {
 	for _, id := range ids {
 		db.fire(ctx, id)
 	}
+	// A timer may have claimed a refresh just before Flush looked: wait until it is written too.
+	db.mu.Lock()
+	for db.inflight > 0 {
+		db.idle.Wait()
+	}
+	db.mu.Unlock()
 }

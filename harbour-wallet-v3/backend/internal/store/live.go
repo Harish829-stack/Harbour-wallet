@@ -163,14 +163,28 @@ type GapRow struct {
 	LastSeen int64
 }
 
-// GapFillCandidates returns synced, device-tracked addresses: all of them, or
-// those active (or added) within activeWithin plus any without a webhook.
-func (s *Store) GapFillCandidates(ctx context.Context, chain string, activeWithin time.Duration, all bool, afterID int64, limit int) ([]GapRow, error) {
+// GapScope selects which addresses a gap-fill pass re-reads.
+type GapScope int
+
+const (
+	// GapUnsubscribed: addresses not (yet) on a webhook. For them gap-fill is the live path.
+	GapUnsubscribed GapScope = iota
+	// GapActive: subscribed addresses with activity (or added) within the window: the safety net for a lost delivery.
+	GapActive
+	// GapAll: every synced address (after ingest downtime, or the daily sweep, or when there are no webhooks at all).
+	GapAll
+)
+
+// GapFillCandidates returns synced, device-tracked addresses in the given scope, keyset-paginated by id.
+func (s *Store) GapFillCandidates(ctx context.Context, chain string, scope GapScope, activeWithin time.Duration, afterID int64, limit int) ([]GapRow, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT id, address, last_seen_block FROM tracked_addresses
 		WHERE chain_id=$1 AND id > $5 AND device_count > 0 AND last_seen_block IS NOT NULL
 		  AND backfill_state IN ('done','capped','skipped')
-		  AND ($3 OR webhook_id IS NULL OR last_activity_at > now() - $2::interval OR created_at > now() - $2::interval)
-		ORDER BY id LIMIT $4`, chain, fmt.Sprintf("%d seconds", int(activeWithin.Seconds())), all, limit, afterID)
+		  AND CASE $3::int
+		        WHEN 0 THEN webhook_id IS NULL
+		        WHEN 1 THEN webhook_id IS NOT NULL AND (last_activity_at > now() - $2::interval OR created_at > now() - $2::interval)
+		        ELSE true END
+		ORDER BY id LIMIT $4`, chain, fmt.Sprintf("%d seconds", int(activeWithin.Seconds())), int(scope), limit, afterID)
 	if err != nil {
 		return nil, err
 	}

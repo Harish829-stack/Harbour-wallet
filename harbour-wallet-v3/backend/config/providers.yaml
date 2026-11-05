@@ -101,7 +101,10 @@ gateway:
   sticky_ttl: 60s           # X-HB-Session pins a call sequence to one upstream
   max_batch: 100
   broadcast_fanout: 2       # eth_sendRawTransaction goes to this many upstreams
-  head_poll_min: 4s         # head polls every max(block_time, this); finalized every 30s
+  head_poll_min: 4s         # the head follower polls every max(block_time, this); finalized every 30s (same batch)
+  head_probe_every: 30s     # non-follower upstreams are probed this often (breaker, lag); was every block
+  idle_after: 10m           # a chain with no request for this long ...
+  idle_poll_every: 60s      # ... polls its head this often until a request wakes it
 
 # Push delivery channels, keyed by the channel name stored with each device's
 # subscription. Web Push keys come from scripts/setup.sh (cmd/hbkeys vapid).
