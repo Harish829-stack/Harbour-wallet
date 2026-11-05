@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/crypto/sha3"
@@ -31,6 +32,8 @@ type Gateway struct {
 	cache *cache
 	log   *slog.Logger
 	stats sync.Map // chain|result -> *atomicCounter
+	calls sync.Map // chain|provider|method -> *atomic.Uint64: upstream calls actually made (what the providers bill)
+	group flightGroup
 }
 
 // CallOptions describe the caller.
@@ -46,6 +49,9 @@ type CallOptions struct {
 // Chains with no usable upstream are skipped with a warning.
 func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gateway, error) {
 	g := &Gateway{cfg: cfg, pools: map[string]*Pool{}, cache: newCacheFor(cfg.Gateway), log: log}
+	// One token bucket per provider key, shared by every chain that key serves: providers rate-limit the key, so a
+	// per-chain budget would let one key run at rps x chains.
+	budgets := map[string]*bucket{}
 	for _, name := range cfg.ChainNames() {
 		res, skipped := cfg.Upstreams(name, getenv)
 		if len(skipped) > 0 {
@@ -53,6 +59,7 @@ func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gat
 		}
 		var ups []rpc.Upstream
 		var weights, rps []float64
+		var shared []*bucket
 		for _, r := range res {
 			f, err := registry.RPCUpstreams.Get(r.Adapter)
 			if err != nil {
@@ -65,12 +72,27 @@ func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gat
 			ups = append(ups, u)
 			weights = append(weights, r.Weight)
 			rps = append(rps, r.RPS)
+			key := r.BudgetKey
+			if key == "" {
+				key = r.Config.ID
+			}
+			b, ok := budgets[key]
+			if !ok {
+				b = newBucket(r.RPS)
+				budgets[key] = b
+			}
+			shared = append(shared, b)
 		}
 		if len(ups) == 0 {
 			log.Warn("chain has no usable upstreams; disabled", "chain", name)
 			continue
 		}
-		g.pools[name] = NewPool(name, cfg.Chains[name], cfg.Gateway, ups, weights, rps, log)
+		p := NewPool(name, cfg.Chains[name], cfg.Gateway, ups, weights, rps, log)
+		for i, m := range p.members {
+			m.bkt = shared[i]
+		}
+		p.onCall = g.countCall
+		g.pools[name] = p
 	}
 	if len(g.pools) == 0 {
 		return nil, fmt.Errorf("gateway: no chain has a usable upstream (set provider keys in .env)")
@@ -80,7 +102,11 @@ func New(cfg *config.Config, getenv func(string) string, log *slog.Logger) (*Gat
 
 // NewWithPools is for tests: supply pools directly.
 func NewWithPools(cfg *config.Config, pools map[string]*Pool, log *slog.Logger) *Gateway {
-	return &Gateway{cfg: cfg, pools: pools, cache: newCacheFor(cfg.Gateway), log: log}
+	g := &Gateway{cfg: cfg, pools: pools, cache: newCacheFor(cfg.Gateway), log: log}
+	for _, p := range pools {
+		p.onCall = g.countCall
+	}
+	return g
 }
 
 // Pool returns a chain's pool.
@@ -138,11 +164,25 @@ func (g *Gateway) handle(ctx context.Context, chain string, req *rpc.Request, op
 	if req.Method == "" {
 		return rpc.NewGatewayError(req.ID, rpc.CodeBadRequest, "bad_request", "Invalid request", false, nil)
 	}
+	p.touch()
 	switch rpc.MethodKind(req.Method) {
 	case rpc.KindForbidden:
 		return rpc.NewGatewayError(req.ID, rpc.CodeMethodNotAllowed, "method_not_allowed", "Method not available", false, nil)
 	case rpc.KindWrite:
 		return g.broadcast(ctx, p, req)
+	}
+	// Answered from head tracking / config: no upstream call.
+	switch req.Method {
+	case "eth_blockNumber":
+		if h, ok := p.LocalHead(); ok {
+			g.count(chain, "local")
+			return &rpc.Response{Result: json.RawMessage(strconv.Quote("0x" + strconv.FormatUint(h, 16)))}
+		}
+	case "eth_chainId":
+		if id := p.cfg.EVMChainID; id > 0 {
+			g.count(chain, "local")
+			return &rpc.Response{Result: json.RawMessage(strconv.Quote("0x" + strconv.FormatUint(id, 16)))}
+		}
 	}
 	params := splitParams(req.Params)
 	if req.Method == "eth_getLogs" && !noSplit {
@@ -159,13 +199,34 @@ func (g *Gateway) handle(ctx context.Context, chain string, req *rpc.Request, op
 	if ref, has := requestBlock(req.Method, params); has && ref.numeric() {
 		minBlock = ref.num
 	}
-	resp := g.execute(ctx, p, req, opt, minBlock)
-	if resp.Error == nil {
-		if ttl, forever, ok := cachePolicy(req.Method, params, resp.Result, p.Finalized(), p.cfg.BlockTime); ok {
-			g.cache.put(key, resp.Result, ttl, forever)
+	fetch := func(ctx context.Context) *rpc.Response {
+		resp := g.execute(ctx, p, req, opt, minBlock)
+		if resp.Error == nil {
+			if ttl, forever, ok := cachePolicy(req.Method, params, resp.Result, p.Finalized(), p.cfg.BlockTime); ok {
+				g.cache.put(key, resp.Result, ttl, forever)
+			}
 		}
+		return resp
+	}
+	// Identical reads in flight at the same moment share one upstream call. Session-pinned sequences (estimate ->
+	// nonce -> send) keep their own call so they stay on their upstream.
+	if opt.Session != "" {
+		return fetch(ctx)
+	}
+	resp, shared := g.group.do(ctx, key, fetch)
+	if shared {
+		g.count(chain, "coalesced")
 	}
 	return resp
+}
+
+func (g *Gateway) countCall(m *member, method string) {
+	k := m.up.Chain() + "|" + m.up.Provider() + "|" + method
+	v, ok := g.calls.Load(k)
+	if !ok {
+		v, _ = g.calls.LoadOrStore(k, new(atomic.Uint64))
+	}
+	v.(*atomic.Uint64).Add(1)
 }
 
 func compact(raw json.RawMessage) []byte {
@@ -190,6 +251,7 @@ type outcome struct {
 func (g *Gateway) call(ctx context.Context, p *Pool, m *member, req *rpc.Request, minBlock uint64) outcome {
 	start := time.Now()
 	resp, err := m.up.Call(ctx, req)
+	g.countCall(m, req.Method)
 	class := rpc.Classify(resp, err)
 	// Empty result for a block the pool says exists means this node is behind.
 	if class == rpc.OK && req.Method == "eth_getBlockByNumber" && minBlock > 0 && string(resp.Result) == "null" {

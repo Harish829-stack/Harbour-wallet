@@ -20,7 +20,14 @@ type window struct {
 	next   int
 	full   bool
 	maxAge time.Duration
+
+	// Percentiles need a sort; scoring reads them on every pick, so they are recomputed at most every statsEvery.
+	cached   windowStats
+	cachedAt time.Time
 }
+
+// statsEvery bounds how stale the latency percentiles used for scoring and hedging may be.
+const statsEvery = 250 * time.Millisecond
 
 func newWindow(size int, maxAge time.Duration) *window {
 	return &window{buf: make([]sample, size), maxAge: maxAge}
@@ -39,6 +46,7 @@ func (w *window) record(at time.Time, lat time.Duration, ok bool) {
 func (w *window) reset() {
 	w.mu.Lock()
 	w.next, w.full = 0, false
+	w.cachedAt = time.Time{}
 	w.mu.Unlock()
 }
 
@@ -48,8 +56,41 @@ type windowStats struct {
 	p50, p90, p99 time.Duration
 }
 
+// counts is the sample count and error rate in the window: no allocation and no sort, so the breaker can read it on
+// every call.
+func (w *window) counts(now time.Time) windowStats {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := w.next
+	if w.full {
+		n = len(w.buf)
+	}
+	var st windowStats
+	errs := 0
+	for i := 0; i < n; i++ {
+		s := &w.buf[i]
+		if now.Sub(s.at) > w.maxAge {
+			continue
+		}
+		st.n++
+		if !s.ok {
+			errs++
+		}
+	}
+	if st.n > 0 {
+		st.errRate = float64(errs) / float64(st.n)
+	}
+	return st
+}
+
+// stats adds latency percentiles; the result is reused for statsEvery.
 func (w *window) stats(now time.Time) windowStats {
 	w.mu.Lock()
+	if !w.cachedAt.IsZero() && now.Sub(w.cachedAt) < statsEvery && now.After(w.cachedAt) {
+		st := w.cached
+		w.mu.Unlock()
+		return st
+	}
 	n := w.next
 	if w.full {
 		n = len(w.buf)
@@ -67,7 +108,6 @@ func (w *window) stats(now time.Time) windowStats {
 			errs++
 		}
 	}
-	w.mu.Unlock()
 	st := windowStats{n: len(lats) + errs}
 	if st.n > 0 {
 		st.errRate = float64(errs) / float64(st.n)
@@ -77,6 +117,8 @@ func (w *window) stats(now time.Time) windowStats {
 		q := func(p float64) time.Duration { return lats[int(p*float64(len(lats)-1))] }
 		st.p50, st.p90, st.p99 = q(0.5), q(0.9), q(0.99)
 	}
+	w.cached, w.cachedAt = st, now
+	w.mu.Unlock()
 	return st
 }
 

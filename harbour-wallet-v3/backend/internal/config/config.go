@@ -132,6 +132,11 @@ type Gateway struct {
 	MaxBatch          int           `yaml:"max_batch"`
 	BroadcastFanout   int           `yaml:"broadcast_fanout"`
 	HeadPollMin       time.Duration `yaml:"head_poll_min"`
+	// Head tracking: one upstream per chain (the best-scored) follows the head every block; the others are only
+	// probed every HeadProbeEvery. A chain with no request for IdleAfter polls every IdlePollEvery until used again.
+	HeadProbeEvery time.Duration `yaml:"head_probe_every"`
+	IdleAfter      time.Duration `yaml:"idle_after"`
+	IdlePollEvery  time.Duration `yaml:"idle_poll_every"`
 }
 
 // Tier is one quota tier (api.yaml).
@@ -258,6 +263,9 @@ func (c *Config) defaults() {
 	def(&g.MaxBatch, 100)
 	def(&g.BroadcastFanout, 2)
 	defD(&g.HeadPollMin, 4*time.Second)
+	defD(&g.HeadProbeEvery, 30*time.Second)
+	defD(&g.IdleAfter, 10*time.Minute)
+	defD(&g.IdlePollEvery, 60*time.Second)
 	pr := &c.Prices
 	defD(&pr.TopEvery, time.Minute)
 	def(&pr.TopN, 2000)
@@ -372,6 +380,9 @@ type ResolvedUpstream struct {
 	Config  rpc.UpstreamConfig
 	Weight  float64
 	RPS     float64
+	// BudgetKey names the rate budget this upstream draws from. A provider key is one budget across every chain it
+	// serves (the provider enforces its limit per key, not per chain); fixed public endpoints each have their own.
+	BudgetKey string
 }
 
 // Upstreams resolves a chain's upstream list against the environment.
@@ -410,7 +421,11 @@ func (c *Config) Upstreams(chainName string, getenv func(string) string) ([]Reso
 		if w == 0 {
 			w = float64(n - i) // priority order
 		}
-		out = append(out, ResolvedUpstream{Adapter: p.Adapter, Config: uc, Weight: w, RPS: k.RPS})
+		budget := u.Provider + "/" + u.Key
+		if u.URL != "" {
+			budget += "#" + u.URL
+		}
+		out = append(out, ResolvedUpstream{Adapter: p.Adapter, Config: uc, Weight: w, RPS: k.RPS, BudgetKey: budget})
 	}
 	return out, skipped
 }

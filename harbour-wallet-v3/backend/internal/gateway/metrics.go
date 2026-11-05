@@ -142,6 +142,18 @@ func (g *Gateway) WriteMetrics(w io.Writer) {
 		chain, result, _ := strings.Cut(k, "|")
 		fmt.Fprintf(w, "hb_gateway_requests_total{chain=%q,result=%q} %d\n", chain, result, v.(*atomic.Uint64).Load())
 	}
+	counter("hb_upstream_calls_total", "Upstream JSON-RPC calls made, by chain, provider and method (head polls count as eth_blockNumber).")
+	var ck []string
+	g.calls.Range(func(k, _ any) bool { ck = append(ck, k.(string)); return true })
+	sort.Strings(ck)
+	for _, k := range ck {
+		v, _ := g.calls.Load(k)
+		parts := strings.SplitN(k, "|", 3)
+		if len(parts) != 3 {
+			continue
+		}
+		fmt.Fprintf(w, "hb_upstream_calls_total{chain=%q,provider=%q,method=%q} %d\n", parts[0], parts[1], parts[2], v.(*atomic.Uint64).Load())
+	}
 	gauge("hb_gateway_cache_entries", "Entries in the response cache.")
 	fmt.Fprintf(w, "hb_gateway_cache_entries %d\n", g.cache.len())
 	counter("hb_gateway_cache_lookups_total", "Cache lookups by result.")

@@ -34,6 +34,7 @@ type Upstream struct {
 	mu        sync.Mutex
 	finalized uint64
 	finAt     time.Time
+	noBatch   bool // the endpoint refused a JSON-RPC batch once: send head calls separately
 	cfg       rpc.UpstreamConfig
 	url       string
 	opt       Options
@@ -144,46 +145,143 @@ func snippet(b []byte) string {
 	return strings.TrimSpace(string(b))
 }
 
-// Head returns latest and finalized block numbers.
+// Head returns latest and finalized block numbers. When the finalized block is due (every FinalizedEvery) both are
+// asked in one JSON-RPC batch, so a head poll is one HTTP round trip.
 func (u *Upstream) Head(ctx context.Context) (rpc.Head, error) {
 	h := rpc.Head{At: time.Now()}
-	resp, err := u.Call(ctx, &rpc.Request{Method: "eth_blockNumber", Params: json.RawMessage("[]")})
-	if err != nil {
-		return h, err
-	}
-	if resp.Error != nil {
-		return h, resp.Error
-	}
-	if h.Latest, err = ParseQuantity(resp.Result); err != nil {
-		return h, err
-	}
-	// The finalized block moves slowly (minutes on L2s); refresh it at most
-	// every FinalizedEvery to keep head polling cheap.
 	u.mu.Lock()
-	fin, fresh := u.finalized, time.Since(u.finAt) < FinalizedEvery
+	fin, fresh, noBatch := u.finalized, time.Since(u.finAt) < FinalizedEvery, u.noBatch
 	u.mu.Unlock()
 	if fresh {
-		h.Finalized = fin
+		latest, err := u.blockNumber(ctx)
+		if err != nil {
+			return h, err
+		}
+		h.Latest, h.Finalized = latest, fin
 		return h, nil
 	}
-	resp, err = u.Call(ctx, &rpc.Request{Method: "eth_getBlockByNumber", Params: json.RawMessage(`["finalized",false]`)})
-	if err == nil && resp.Error == nil {
-		var blk struct {
-			Number string `json:"number"`
-		}
-		if json.Unmarshal(resp.Result, &blk) == nil && blk.Number != "" {
-			h.Finalized, _ = strconv.ParseUint(strings.TrimPrefix(blk.Number, "0x"), 16, 64)
+	var latest, finalized uint64
+	var err error
+	batched := false
+	if !noBatch {
+		latest, finalized, batched, err = u.headBatch(ctx)
+		if err != nil {
+			return h, err
 		}
 	}
+	if !batched {
+		if latest, err = u.blockNumber(ctx); err != nil {
+			return h, err
+		}
+		finalized = u.finalizedBlock(ctx)
+	}
+	h.Latest = latest
 	u.mu.Lock()
-	if h.Finalized > 0 {
-		u.finalized = h.Finalized
-	} else {
-		h.Finalized = u.finalized
+	if finalized > 0 {
+		u.finalized = finalized
 	}
+	h.Finalized = u.finalized
 	u.finAt = time.Now() // also back off on chains without a finalized tag
 	u.mu.Unlock()
 	return h, nil
+}
+
+func (u *Upstream) blockNumber(ctx context.Context) (uint64, error) {
+	resp, err := u.Call(ctx, &rpc.Request{Method: "eth_blockNumber", Params: json.RawMessage("[]")})
+	if err != nil {
+		return 0, err
+	}
+	if resp.Error != nil {
+		return 0, resp.Error
+	}
+	return ParseQuantity(resp.Result)
+}
+
+func (u *Upstream) finalizedBlock(ctx context.Context) uint64 {
+	resp, err := u.Call(ctx, &rpc.Request{Method: "eth_getBlockByNumber", Params: json.RawMessage(`["finalized",false]`)})
+	if err != nil || resp.Error != nil {
+		return 0
+	}
+	return parseBlockNumber(resp.Result)
+}
+
+func parseBlockNumber(raw json.RawMessage) uint64 {
+	var blk struct {
+		Number string `json:"number"`
+	}
+	if json.Unmarshal(raw, &blk) != nil || blk.Number == "" {
+		return 0
+	}
+	n, _ := strconv.ParseUint(strings.TrimPrefix(blk.Number, "0x"), 16, 64)
+	return n
+}
+
+// headBatch sends eth_blockNumber and the finalized block as one batch. batched=false (with no error) means the
+// endpoint does not take batches; it is then remembered and the caller falls back to two calls.
+func (u *Upstream) headBatch(ctx context.Context) (latest, finalized uint64, batched bool, err error) {
+	body := []byte(`[{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]},` +
+		`{"jsonrpc":"2.0","id":2,"method":"eth_getBlockByNumber","params":["finalized",false]}]`)
+	rb, status, err := u.post(ctx, body)
+	if err != nil {
+		return 0, 0, false, &rpc.TransportError{Status: status, Err: err}
+	}
+	var out []rpc.Response
+	if status != http.StatusOK || json.Unmarshal(rb, &out) != nil || len(out) == 0 {
+		if status == http.StatusTooManyRequests || status == http.StatusUnauthorized || status == http.StatusForbidden || status >= 500 {
+			return 0, 0, false, &rpc.TransportError{Status: status, Err: errors.New(snippet(rb))}
+		}
+		u.mu.Lock()
+		u.noBatch = true
+		u.mu.Unlock()
+		return 0, 0, false, nil
+	}
+	gotLatest := false
+	for _, r := range out {
+		switch strings.TrimSpace(string(r.ID)) {
+		case "1":
+			if r.Error != nil {
+				return 0, 0, true, r.Error
+			}
+			if latest, err = ParseQuantity(r.Result); err != nil {
+				return 0, 0, true, err
+			}
+			gotLatest = true
+		case "2":
+			if r.Error == nil {
+				finalized = parseBlockNumber(r.Result)
+			}
+		}
+	}
+	if !gotLatest {
+		return 0, 0, true, errors.New("batch answer without eth_blockNumber")
+	}
+	return latest, finalized, true, nil
+}
+
+// post sends a raw JSON-RPC body and returns the response body and HTTP status.
+func (u *Upstream) post(ctx context.Context, body []byte) ([]byte, int, error) {
+	hreq, err := http.NewRequestWithContext(ctx, http.MethodPost, u.url, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	hreq.Header.Set("Content-Type", "application/json")
+	for k, v := range u.opt.Headers {
+		hreq.Header.Set(k, v)
+	}
+	if u.opt.BasicAuthPassword != "" {
+		hreq.SetBasicAuth("", u.opt.BasicAuthPassword)
+	}
+	resp, err := u.client.Do(hreq)
+	if err != nil {
+		var ue interface{ Unwrap() error }
+		if errors.As(err, &ue) && ue.Unwrap() != nil {
+			err = ue.Unwrap() // never leak the URL (it contains the key)
+		}
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	rb, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	return rb, resp.StatusCode, err
 }
 
 // Health probes eth_chainId.

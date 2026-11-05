@@ -23,7 +23,9 @@ type member struct {
 
 	latest    atomic.Uint64
 	finalized atomic.Uint64
-	headAt    atomic.Int64 // unix nanos of last good head
+	headAt    atomic.Int64  // unix nanos of last good head
+	probedAt  atomic.Int64  // unix nanos of last head poll attempt
+	lag       atomic.Uint64 // blocks behind the pool's best head when last polled
 
 	ok, retryable, deterministic atomic.Uint64
 }
@@ -39,7 +41,7 @@ func (m *member) record(now time.Time, lat time.Duration, class rpc.Class) {
 	default:
 		m.deterministic.Add(1)
 	}
-	if m.br.result(now, good, m.win.stats(now)) {
+	if m.br.result(now, good, m.win.counts(now)) {
 		m.win.reset()
 	}
 }
@@ -54,6 +56,10 @@ type Pool struct {
 	pins    atomic.Uint64
 	log     *slog.Logger
 	rnd     func() float64
+
+	lastUse atomic.Int64  // unix nanos of the last request for this chain
+	wake    chan struct{} // wakes an idle head loop
+	onCall  func(m *member, method string)
 }
 
 type stickyEntry struct {
@@ -63,7 +69,8 @@ type stickyEntry struct {
 
 // NewPool builds a pool; upstreams are already constructed.
 func NewPool(chain string, cfg config.Chain, gcfg config.Gateway, ups []rpc.Upstream, weights, rps []float64, log *slog.Logger) *Pool {
-	p := &Pool{Chain: chain, cfg: cfg, gcfg: gcfg, log: log, rnd: rand.Float64}
+	p := &Pool{Chain: chain, cfg: cfg, gcfg: gcfg, log: log, rnd: rand.Float64, wake: make(chan struct{}, 1)}
+	p.lastUse.Store(time.Now().UnixNano()) // start active: the first minutes after a deploy see traffic
 	for i, u := range ups {
 		p.members = append(p.members, &member{
 			up: u, weight: weights[i],
@@ -78,7 +85,16 @@ func NewPool(chain string, cfg config.Chain, gcfg config.Gateway, ups []rpc.Upst
 
 func (p *Pool) headFresh(m *member, now time.Time) bool {
 	at := m.headAt.Load()
-	return at != 0 && now.Sub(time.Unix(0, at)) < 10*p.cfg.BlockTime+30*time.Second
+	limit := 10*p.cfg.BlockTime + 30*time.Second
+	// Non-follower upstreams are only probed every HeadProbeEvery (IdlePollEvery when idle): their head stays usable
+	// for lag scoring in between.
+	if l := 2*p.gcfg.HeadProbeEvery + 10*time.Second; l > limit {
+		limit = l
+	}
+	if l := 2*p.gcfg.IdlePollEvery + 10*time.Second; l > limit {
+		limit = l
+	}
+	return at != 0 && now.Sub(time.Unix(0, at)) < limit
 }
 
 // BestHead is the highest latest block among upstreams that are not open.
@@ -109,14 +125,31 @@ func (p *Pool) Finalized() uint64 {
 	return best
 }
 
+// estLatest is the upstream's head extrapolated by block time since it was last polled (only the follower is polled
+// every block).
+func (p *Pool) estLatest(m *member, now time.Time) uint64 {
+	l := m.latest.Load()
+	at := m.headAt.Load()
+	bt := p.cfg.BlockTime
+	if l == 0 || at == 0 || bt <= 0 {
+		return l
+	}
+	if el := now.Sub(time.Unix(0, at)); el > bt {
+		l += uint64(el / bt)
+	}
+	return l
+}
+
 func (p *Pool) score(m *member, now time.Time, best uint64) float64 {
 	st := m.win.stats(now)
 	s := m.weight * math.Pow(1-st.errRate, 2)
 	p90ms := float64(st.p90) / float64(time.Millisecond)
 	s /= 1 + p90ms/250
+	// Lag as observed at this upstream's last poll: non-follower heads are only refreshed every probe, so comparing
+	// their stored head with the follower's live one would make every non-follower look behind.
 	if best > 0 {
-		if l := m.latest.Load(); l > 0 && l < best {
-			s /= 1 + float64(best-l)/2
+		if lag := m.lag.Load(); lag > 0 {
+			s /= 1 + float64(lag)/2
 		}
 	}
 	if s < 1e-6 {
@@ -142,7 +175,7 @@ func (p *Pool) pick(ctx context.Context, exclude map[*member]bool, minBlock uint
 			if exclude[m] || !m.br.eligible(now) {
 				continue
 			}
-			if minBlock > 0 && m.latest.Load() < minBlock {
+			if minBlock > 0 && p.estLatest(m, now) < minBlock {
 				continue
 			}
 			if !m.bkt.available(now) {
@@ -208,7 +241,7 @@ func (p *Pool) pinned(session string, exclude map[*member]bool, minBlock uint64)
 		p.sticky.Delete(session)
 		return nil
 	}
-	if exclude[e.m] || (minBlock > 0 && e.m.latest.Load() < minBlock) {
+	if exclude[e.m] || (minBlock > 0 && p.estLatest(e.m, now) < minBlock) {
 		return nil
 	}
 	if !e.m.bkt.take(now) {
@@ -237,9 +270,24 @@ func (p *Pool) pin(session string, m *member) {
 	}
 }
 
-// RunHeads polls every upstream's head until ctx ends. Polls double as
-// health probes, so a dead key is detected even without traffic.
-func (p *Pool) RunHeads(ctx context.Context) {
+// touch marks the chain as in use (any request); an idle chain's head loop is woken so the head is fresh again.
+func (p *Pool) touch() {
+	now := time.Now().UnixNano()
+	prev := p.lastUse.Swap(now)
+	if time.Duration(now-prev) >= p.gcfg.IdleAfter {
+		select {
+		case p.wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (p *Pool) idle(now time.Time) bool {
+	return now.Sub(time.Unix(0, p.lastUse.Load())) >= p.gcfg.IdleAfter
+}
+
+// headInterval is how often the head follower polls: one block (at least HeadPollMin, at most 12 s).
+func (p *Pool) headInterval() time.Duration {
 	interval := p.cfg.BlockTime
 	if interval < p.gcfg.HeadPollMin {
 		interval = p.gcfg.HeadPollMin
@@ -247,47 +295,124 @@ func (p *Pool) RunHeads(ctx context.Context) {
 	if interval > 12*time.Second {
 		interval = 12 * time.Second
 	}
-	var wg sync.WaitGroup
+	return interval
+}
+
+// LocalHead returns the best head if a healthy upstream reported it within two poll intervals (so eth_blockNumber can
+// be answered without an upstream call).
+func (p *Pool) LocalHead() (uint64, bool) {
+	now := time.Now()
+	limit := 2*p.headInterval() + time.Second
+	var best uint64
 	for _, m := range p.members {
-		wg.Add(1)
-		go func(m *member) {
-			defer wg.Done()
-			p.pollHead(ctx, m)
-			t := time.NewTicker(interval)
-			defer t.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-t.C:
-					p.pollHead(ctx, m)
-				}
+		at := m.headAt.Load()
+		if m.br.current() == open || at == 0 || now.Sub(time.Unix(0, at)) > limit {
+			continue
+		}
+		if l := m.latest.Load(); l > best {
+			best = l
+		}
+	}
+	return best, best > 0
+}
+
+// RunHeads tracks the chain head until ctx ends. Every upstream is polled once at start. After that only the
+// best-scored upstream (the follower) is polled every block; the others are probed every HeadProbeEvery, which keeps
+// their block lag and breaker state current (a revoked key is still noticed without traffic) at a fraction of the cost.
+// A chain nobody has used for IdleAfter is polled every IdlePollEvery until a request wakes it.
+func (p *Pool) RunHeads(ctx context.Context) {
+	p.pollAll(ctx, p.members)
+	for {
+		now := time.Now()
+		wait := p.headInterval()
+		probeEvery := p.gcfg.HeadProbeEvery
+		if p.idle(now) {
+			wait = p.gcfg.IdlePollEvery
+			if probeEvery < wait {
+				probeEvery = wait
 			}
-		}(m)
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		case <-p.wake:
+			timer.Stop()
+		}
+		now = time.Now()
+		follower := p.follower(now)
+		var probes []*member
+		for _, m := range p.members {
+			if m == follower {
+				continue
+			}
+			if now.Sub(time.Unix(0, m.probedAt.Load())) >= probeEvery {
+				probes = append(probes, m)
+			}
+		}
+		if follower != nil && !p.pollHead(ctx, follower) {
+			// The follower failed: try the next best now rather than serve a stale head for a whole interval.
+			if next := p.follower(time.Now()); next != nil && next != follower {
+				p.pollHead(ctx, next)
+			}
+		}
+		if len(probes) > 0 {
+			go p.pollAll(ctx, probes)
+		}
+	}
+}
+
+// follower is the upstream that tracks the head: the best score among members whose breaker allows a call.
+func (p *Pool) follower(now time.Time) *member {
+	best := p.BestHead()
+	var pick *member
+	var ps float64
+	for _, m := range p.members {
+		if !m.br.eligible(now) {
+			continue
+		}
+		if s := p.score(m, now, best); pick == nil || s > ps {
+			pick, ps = m, s
+		}
+	}
+	return pick
+}
+
+func (p *Pool) pollAll(ctx context.Context, ms []*member) {
+	var wg sync.WaitGroup
+	for _, m := range ms {
+		wg.Add(1)
+		go func(m *member) { defer wg.Done(); p.pollHead(ctx, m) }(m)
 	}
 	wg.Wait()
 }
 
-func (p *Pool) pollHead(ctx context.Context, m *member) {
+func (p *Pool) pollHead(ctx context.Context, m *member) bool {
 	now := time.Now()
+	m.probedAt.Store(now.UnixNano())
 	if !m.br.acquire(now) {
-		return
+		return false
 	}
 	if !m.bkt.take(now) {
 		m.br.release() // budget exhausted: no health signal
-		return
+		return false
 	}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	start := time.Now()
 	h, err := m.up.Head(cctx)
+	if p.onCall != nil {
+		p.onCall(m, "head_poll")
+	}
 	if ctx.Err() != nil {
-		return
+		return false
 	}
 	if err != nil {
 		m.record(time.Now(), time.Since(start), rpc.Retryable)
 		p.log.Debug("head poll failed", "upstream", m.up.ID(), "err", err)
-		return
+		return false
 	}
 	m.record(time.Now(), time.Since(start)/2, rpc.OK)
 	if h.Latest > m.latest.Load() || h.Latest+64 < m.latest.Load() {
@@ -297,4 +422,10 @@ func (p *Pool) pollHead(ctx context.Context, m *member) {
 		m.finalized.Store(h.Finalized)
 	}
 	m.headAt.Store(time.Now().UnixNano())
+	if best := p.BestHead(); best > h.Latest {
+		m.lag.Store(best - h.Latest)
+	} else {
+		m.lag.Store(0)
+	}
+	return true
 }

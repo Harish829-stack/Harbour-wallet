@@ -32,6 +32,7 @@ type fakeNode struct {
 	calls     sync.Map     // method -> *atomic.Int64
 	total     atomic.Int64
 	sendResp  atomic.Value // string: JSON for eth_sendRawTransaction ("result" or "error" object)
+	batches   atomic.Int64
 }
 
 func (n *fakeNode) count(m string) int64 {
@@ -49,6 +50,23 @@ func (n *fakeNode) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var req rpc.Request
 	body, _ := io.ReadAll(r.Body)
+	if len(body) > 0 && body[0] == '[' { // batch: answer each item through this same handler
+		var reqs []json.RawMessage
+		if err := json.Unmarshal(body, &reqs); err != nil {
+			http.Error(w, "bad", 400)
+			return
+		}
+		n.batches.Add(1)
+		var parts []string
+		for _, one := range reqs {
+			rec := httptest.NewRecorder()
+			n.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(one))))
+			parts = append(parts, strings.TrimSpace(rec.Body.String()))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "["+strings.Join(parts, ",")+"]")
+		return
+	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "bad", 400)
 		return
@@ -163,7 +181,7 @@ func newRig(t *testing.T, rps float64, mutate func(*config.Config)) *rig {
 		},
 		API: config.API{DefaultTier: "d", Tiers: map[string]config.Tier{"d": {}}},
 	}
-	cfg.Gateway = config.Gateway{BreakerCooldown: 300 * time.Millisecond, HeadPollMin: time.Second}
+	cfg.Gateway = config.Gateway{BreakerCooldown: 300 * time.Millisecond, HeadPollMin: time.Second, HeadProbeEvery: time.Second}
 	if mutate != nil {
 		mutate(cfg)
 	}
