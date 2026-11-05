@@ -63,7 +63,7 @@ func TestGapFillScopes(t *testing.T) {
 	_, err = st.Pool.Exec(ctx, `UPDATE tracked_addresses SET last_activity_at=now()-interval '1 hour' WHERE address=$1`, carolAddr)
 	ok(t, err)
 	got := func(scope store.GapScope) []string {
-		rows, err := st.GapFillCandidates(ctx, "base", scope, 24*time.Hour, 0, 100)
+		rows, err := st.GapFillCandidates(ctx, "base", scope, false, 24*time.Hour, 0, 100)
 		ok(t, err)
 		var out []string
 		for _, r := range rows {

@@ -175,16 +175,18 @@ const (
 	GapAll
 )
 
-// GapFillCandidates returns synced, device-tracked addresses in the given scope, keyset-paginated by id.
-func (s *Store) GapFillCandidates(ctx context.Context, chain string, scope GapScope, activeWithin time.Duration, afterID int64, limit int) ([]GapRow, error) {
+// GapFillCandidates returns synced, device-tracked addresses in the given scope, keyset-paginated by id. Dormant
+// addresses (no activity at backfill time) are included only when includeDormant is set: for them a gap-fill hit means
+// "first activity", which promotes them to a full backfill.
+func (s *Store) GapFillCandidates(ctx context.Context, chain string, scope GapScope, includeDormant bool, activeWithin time.Duration, afterID int64, limit int) ([]GapRow, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT id, address, last_seen_block FROM tracked_addresses
 		WHERE chain_id=$1 AND id > $5 AND device_count > 0 AND last_seen_block IS NOT NULL
-		  AND backfill_state IN ('done','capped','skipped')
+		  AND (backfill_state IN ('done','capped','skipped') OR ($6 AND backfill_state = 'dormant'))
 		  AND CASE $3::int
 		        WHEN 0 THEN webhook_id IS NULL
 		        WHEN 1 THEN webhook_id IS NOT NULL AND (last_activity_at > now() - $2::interval OR created_at > now() - $2::interval)
 		        ELSE true END
-		ORDER BY id LIMIT $4`, chain, fmt.Sprintf("%d seconds", int(activeWithin.Seconds())), int(scope), limit, afterID)
+		ORDER BY id LIMIT $4`, chain, fmt.Sprintf("%d seconds", int(activeWithin.Seconds())), int(scope), limit, afterID, includeDormant)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +203,50 @@ func (s *Store) AdvanceLastSeen(ctx context.Context, id int64, block uint64) err
 }
 
 // TouchActivity marks addresses as recently active (gap-fill priority).
+// PromoteDormant moves dormant addresses that just showed activity back to 'pending', so a normal backfill fetches
+// their history. It returns how many were promoted.
+func (s *Store) PromoteDormant(ctx context.Context, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	tag, err := s.Pool.Exec(ctx, `UPDATE tracked_addresses SET backfill_state = 'pending', backfill_error = NULL
+		WHERE id = ANY($1) AND backfill_state = 'dormant'`, ids)
+	return tag.RowsAffected(), err
+}
+
+// MarkNFTsMoved flags the NFT lists of these addresses as stale and returns the ones whose NFTs were synced (viewed)
+// within recentWithin: those are resynced right away, the rest wait until the user opens their NFTs.
+func (s *Store) MarkNFTsMoved(ctx context.Context, ids []int64, recentWithin time.Duration) ([]int64, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := s.Pool.Query(ctx, `UPDATE tracked_addresses SET nft_dirty = true WHERE id = ANY($1)
+		RETURNING id, COALESCE(nft_synced_at > now() - $2::interval, false)`, ids, fmt.Sprintf("%d seconds", int(recentWithin.Seconds())))
+	if err != nil {
+		return nil, err
+	}
+	var now []int64
+	for rows.Next() {
+		var id int64
+		var recent bool
+		if err := rows.Scan(&id, &recent); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if recent {
+			now = append(now, id)
+		}
+	}
+	rows.Close()
+	return now, rows.Err()
+}
+
+// NFTsSynced records a completed NFT sync.
+func (s *Store) NFTsSynced(ctx context.Context, id int64) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE tracked_addresses SET nft_dirty = false, nft_synced_at = now() WHERE id = $1`, id)
+	return err
+}
+
 func (s *Store) TouchActivity(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return nil

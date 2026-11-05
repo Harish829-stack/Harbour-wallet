@@ -163,9 +163,15 @@ export function nftCollections(list: NftView[]): NftCollection[] {
   }
   return [...byId.values()];
 }
+const NFT_SYNC_POLLS = 6; const NFT_SYNC_WAIT_MS = 1500;
 export async function fetchHarbourNfts(evmAddress: string, registryIds: string[]): Promise<NftCollection[]> {
   const refs = refsFor(evmAddress).filter((r) => registryIds.includes(chainIdOfBackend(r.chain) ?? ''));
   if (!refs.length) return [];
-  const r = await withTracking(refs, async () => { await ensureTracked(refs); return getNfts(refs); });
+  // The backend lists NFTs when they are first viewed (or after one moved): while `syncing`, poll briefly for the fresh list.
+  let r = await withTracking(refs, async () => { await ensureTracked(refs); return getNfts(refs); });
+  for (let i = 0; r.syncing && i < NFT_SYNC_POLLS; i++) {
+    await new Promise((res) => setTimeout(res, NFT_SYNC_WAIT_MS));
+    r = await getNfts(refs);
+  }
   return nftCollections(r.nfts);
 }

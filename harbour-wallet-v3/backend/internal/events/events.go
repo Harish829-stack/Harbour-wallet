@@ -17,9 +17,10 @@ import (
 const (
 	SubjectAddressAdded = "address.added"
 	SubjectHistoryMore  = "address.history.more"
-	SubjectBalance      = "balance.changed" // + "." + chain
-	SubjectActivityNew  = "activity.new"    // + "." + chain: incoming transfers (push)
-	SubjectTxStatus     = "tx.status"       // + "." + chain
+	SubjectNFTSync      = "address.nfts.sync" // API -> indexer: refresh a stale NFT list the user is looking at
+	SubjectBalance      = "balance.changed"   // + "." + chain
+	SubjectActivityNew  = "activity.new"      // + "." + chain: incoming transfers (push)
+	SubjectTxStatus     = "tx.status"         // + "." + chain
 	StreamName          = "HARBOUR"
 )
 

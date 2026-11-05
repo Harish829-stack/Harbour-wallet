@@ -110,6 +110,9 @@ type Indexer struct {
 	IdleSweepAfter       time.Duration `yaml:"idle_sweep_after"`
 	NFTMaxPages          int           `yaml:"nft_max_pages"`
 	Workers              int           `yaml:"workers"`
+	// DormantProbe: before backfilling a new address on a chain, check it was ever used there (nonce, native balance,
+	// incoming transfers); unused addresses wait on the webhook instead of being backfilled. Default on.
+	DormantProbe bool `yaml:"dormant_probe"`
 }
 
 // Gateway tuning (providers.yaml "gateway:").

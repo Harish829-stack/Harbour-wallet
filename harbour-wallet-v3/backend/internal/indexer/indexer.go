@@ -122,7 +122,7 @@ func (ix *Indexer) Wake() {
 // Run blocks until ctx ends.
 func (ix *Indexer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
-	wg.Add(3 + ix.cfg.Workers)
+	wg.Add(4 + ix.cfg.Workers)
 	go func() {
 		defer wg.Done()
 		err := ix.bus.Consume(ctx, "indexer-address-added", events.SubjectAddressAdded, func(context.Context, []byte) error {
@@ -146,6 +146,21 @@ func (ix *Indexer) Run(ctx context.Context) {
 		})
 		if err != nil && ctx.Err() == nil {
 			ix.log.Error("consume address.history.more", "err", err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		err := ix.bus.Consume(ctx, "indexer-nfts-sync", events.SubjectNFTSync, func(ctx context.Context, b []byte) error {
+			var m struct {
+				TrackedAddressID int64 `json:"tracked_address_id"`
+			}
+			if json.Unmarshal(b, &m) != nil || m.TrackedAddressID == 0 {
+				return nil // malformed: drop
+			}
+			return ix.SyncNFTsByID(ctx, m.TrackedAddressID)
+		})
+		if err != nil && ctx.Err() == nil {
+			ix.log.Error("consume address.nfts.sync", "err", err)
 		}
 	}()
 	go func() { defer wg.Done(); ix.sweepLoop(ctx) }()
@@ -259,6 +274,19 @@ func (ix *Indexer) backfill(ctx context.Context, job store.BackfillJob) (string,
 	if err != nil {
 		return "", 0, err
 	}
+	// Probe only addresses never synced before: a promoted dormant address (synced_to_block set) just showed activity
+	// that the transfers source may not list yet.
+	if !job.DenyBackfill && job.SyncedTo == nil {
+		if dormant, err := ix.probeDormant(ctx, c, job, latest); err != nil {
+			ix.log.Warn("activity probe failed; running a full backfill", "tracked_address_id", job.ID, "err", err)
+		} else if dormant {
+			lastSeen := uint64(0)
+			if latest > safetyMargin(c) {
+				lastSeen = latest - safetyMargin(c)
+			}
+			return "dormant", 0, ix.st.FinishBackfill(ctx, job.ID, "dormant", latest, lastSeen, 0, false, "")
+		}
+	}
 	refs := map[string]bool{}
 	others := map[int64]map[string]bool{} // other tracked parties these events touched
 	newEvents := 0
@@ -328,16 +356,82 @@ func (ix *Indexer) backfill(ctx context.Context, job store.BackfillJob) (string,
 	for id, as := range others {
 		ix.deb.Trigger(ctx, id, keys(as)...)
 	}
-	if c.Holdings != nil && !job.DenyBackfill {
-		if err := ix.SyncNFTs(ctx, c, job.ID, job.Address); err != nil {
-			ix.log.Warn("nft sync failed", "tracked_address_id", job.ID, "err", err)
-		}
-	}
+	// NFTs are not synced here: the list is synced when the user opens NFTs (address.nfts.sync), so wallets that never
+	// look at NFTs never pay for an NFT listing.
 	lastSeen := uint64(0)
 	if latest > safetyMargin(c) {
 		lastSeen = latest - safetyMargin(c) // gap-fill re-checks the last blocks the source may not have indexed yet
 	}
 	return state, newEvents, ix.st.FinishBackfill(ctx, job.ID, state, latest, lastSeen, oldest, complete, "")
+}
+
+// ActivityProber is an optional index.Source capability: does this address have any incoming transfer on the chain?
+type ActivityProber interface {
+	HasIncoming(ctx context.Context, chain, address string) (bool, error)
+}
+
+// probeDormant decides whether a newly tracked address has never been used on this chain: no sent transaction (nonce),
+// no native balance and (when the source can tell) no incoming transfer. Such an address is not backfilled; it stays on
+// the webhook and is promoted to a full backfill on its first activity. Cost: one nonce read and one multicall, plus
+// one transfers lookup only when both are zero, instead of a full backfill, token discovery and NFT listing.
+func (ix *Indexer) probeDormant(ctx context.Context, c *Chain, job store.BackfillJob, latest uint64) (bool, error) {
+	if !ix.cfg.DormantProbe {
+		return false, nil
+	}
+	nonce, err := c.Client.Nonce(ctx, job.Address)
+	if err != nil {
+		return false, err
+	}
+	if nonce > 0 {
+		return false, nil
+	}
+	bals, block, err := c.Client.Balances(ctx, job.Address, nil, latest)
+	if err != nil {
+		return false, err
+	}
+	if len(bals) == 0 || bals[0].Failed || bals[0].AmountRaw == nil {
+		return false, nil
+	}
+	if bals[0].AmountRaw.Sign() > 0 {
+		return false, nil
+	}
+	p, ok := c.Source.(ActivityProber)
+	if !ok {
+		return false, nil // cannot rule out token-only deposits: index normally
+	}
+	in, err := p.HasIncoming(ctx, c.Name, job.Address)
+	if err != nil || in {
+		return false, err
+	}
+	// Record the zero native balance so the portfolio shows the coin rather than "loading".
+	nd := c.Native.Decimals
+	id, err := ix.st.UpsertAsset(ctx, ix.st.Pool, ix.assets, store.AssetInput{Chain: c.Name, Ref: "native", Kind: "native",
+		Symbol: c.Native.Symbol, Decimals: &nd, Verified: true})
+	if err != nil {
+		return false, err
+	}
+	if _, err := ix.st.UpsertBalances(ctx, job.ID, block, []store.BalanceRow{{AssetID: id, AssetRef: "native", AmountRaw: "0"}}); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// SyncNFTsByID refreshes one tracked address's NFT list (the API asks when the user opens NFTs and the list is stale).
+func (ix *Indexer) SyncNFTsByID(ctx context.Context, trackedID int64) error {
+	j, err := ix.st.GetTracked(ctx, trackedID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	c, ok := ix.chains[j.Chain]
+	if !ok || c.Holdings == nil || j.DenyBackfill {
+		return ix.st.NFTsSynced(ctx, trackedID) // nothing to list for this chain
+	}
+	if err := ix.SyncNFTs(ctx, c, trackedID, j.Address); err != nil {
+		return err
+	}
+	return ix.st.NFTsSynced(ctx, trackedID)
 }
 
 // LoadOlder fetches one page of history older than what is stored (the API

@@ -740,3 +740,31 @@ func (s *Source) NFTs(ctx context.Context, chain, address, cursorStr string) (in
 	}
 	return page, nil
 }
+
+// HasIncoming reports whether the address ever received a transfer on chain (one Transfers API call, one result).
+// The indexer uses it to tell an unused address (dormant: not backfilled) from a receive-only one.
+func (s *Source) HasIncoming(ctx context.Context, chain, address string) (bool, error) {
+	o, err := s.opts(chain)
+	if err != nil {
+		return false, err
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		p := map[string]any{"fromBlock": "0x0", "toBlock": "latest", "toAddress": strings.ToLower(address), "maxCount": "0x1",
+			"category": s.categories(chain, o), "withMetadata": false, "excludeZeroValue": false}
+		var r transfersResult
+		err = s.rpc(ctx, o, "alchemy_getAssetTransfers", []any{p}, &r)
+		var ae *APIError
+		if attempt == 0 && errors.As(err, &ae) && strings.Contains(strings.ToLower(ae.Message), "internal") &&
+			containsStr(p["category"].([]string), "internal") {
+			s.mu.Lock()
+			s.noInternal[chain] = true // this network does not support internal transfers
+			s.mu.Unlock()
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		return len(r.Transfers) > 0, nil
+	}
+	return false, err
+}

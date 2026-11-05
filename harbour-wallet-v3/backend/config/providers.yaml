@@ -84,6 +84,7 @@ indexer:
   idle_sweep_after: 24h            # daily balance sweep for idle addresses
   nft_max_pages: 10                # 100 NFTs per page
   workers: 4                       # concurrent backfills
+  dormant_probe: true              # skip backfill for addresses never used on a chain; first activity promotes them
 
 # rpc-gateway tuning; all optional (defaults in internal/config).
 gateway:

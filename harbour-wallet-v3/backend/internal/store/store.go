@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -23,6 +24,9 @@ import (
 // Store wraps a pgx pool.
 type Store struct {
 	Pool *pgxpool.Pool
+	// ensured caches month partitions known to exist in this database ("parent|YYYYMM"); per Store, so a process that
+	// opens another database (tests) never assumes that one's partitions exist.
+	ensured sync.Map
 }
 
 // requireTLS (HW-2026-007, CIS PostgreSQL / CCSS H-05): a non-loopback database must use verified TLS (sslmode=verify-full,

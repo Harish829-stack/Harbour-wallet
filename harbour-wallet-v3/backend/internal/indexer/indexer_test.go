@@ -331,7 +331,8 @@ func TestNewWalletMatchesChain(t *testing.T) {
 		t.Fatalf("spam scores: spam=%d usdc=%d", spam, usdcSpam)
 	}
 
-	// NFTs.
+	// NFTs: listed on demand (the API asks when the user opens NFTs), not during backfill.
+	must(t, ix.SyncNFTsByID(ctx, idA))
 	var nfts int
 	must(t, st.Pool.QueryRow(ctx, `SELECT count(*) FROM nft_holdings WHERE tracked_address_id=$1`, idA).Scan(&nfts))
 	if nfts != 2 {

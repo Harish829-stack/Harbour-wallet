@@ -46,14 +46,15 @@ export function checkHistory(h: unknown, refs?: AddressRef[]): History {
   return h as History;
 }
 
-export function checkNfts(n: unknown, refs?: AddressRef[]): { nfts: NftView[] } {
+export function checkNfts(n: unknown, refs?: AddressRef[]): { nfts: NftView[]; syncing?: boolean } {
   const ok = allowedSet(refs);
   if (!isObj(n) || !arr(n.nfts, 10_000)) return bad('NFT list');
   for (const x of n.nfts as any[]) {
     if (!isObj(x) || !str(x.chain, 64) || !str(x.address, 128) || !str(x.contract, 128) || !str(x.token_id, 100) || !decStr(x.amount) || !str(x.standard, 32) || !strOrNull(x.name, 512) || !strOrNull(x.collection, 512) || !strOrNull(x.image_url, 2048) || typeof x.spam !== 'boolean') return bad('NFT');
     if (ok && !ok.has(refKey(x.chain, x.address))) return bad('NFT list (address not requested)');
   }
-  return n as { nfts: NftView[] };
+  if (n.syncing !== undefined && typeof n.syncing !== 'boolean') return bad('NFT list');
+  return n as { nfts: NftView[]; syncing?: boolean };
 }
 
 export function checkAddresses(a: unknown): { addresses: Array<AddressRef & { backfill_state: string; synced: boolean }> } {

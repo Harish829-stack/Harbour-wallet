@@ -112,23 +112,25 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		}
 	})
 	loop(o.GapFillEvery, nil, func(ctx context.Context) {
+		// Addresses not on a webhook (with no WEBHOOK_PUBLIC_URL that is every address): gap-fill is their live path,
+		// dormant ones included (a hit promotes them).
 		scope := store.GapUnsubscribed
 		if o.PublicURL == "" {
-			scope = store.GapAll // no webhooks at all: gap-fill is the only live path
+			scope = store.GapAll
 		}
-		if err := ix.GapFill(ctx, scope); err != nil && ctx.Err() == nil {
+		if err := ix.GapFill(ctx, scope, true); err != nil && ctx.Err() == nil {
 			ix.log.Warn("gap-fill failed", "err", err)
 		}
 	})
 	if o.PublicURL != "" {
 		later(o.SafetyEvery, func(ctx context.Context) {
-			if err := ix.GapFill(ctx, store.GapActive); err != nil && ctx.Err() == nil {
+			if err := ix.GapFill(ctx, store.GapActive, false); err != nil && ctx.Err() == nil {
 				ix.log.Warn("safety gap-fill failed", "err", err)
 			}
 		})
 		if o.FullEvery > 0 {
 			later(o.FullEvery, func(ctx context.Context) {
-				if err := ix.GapFill(ctx, store.GapAll); err != nil && ctx.Err() == nil {
+				if err := ix.GapFill(ctx, store.GapAll, false); err != nil && ctx.Err() == nil {
 					ix.log.Warn("daily gap-fill failed", "err", err)
 				}
 			})
@@ -155,7 +157,7 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
 		err := ix.bus.Consume(ctx, "indexer-gapfill", SubjectGapFill, func(ctx context.Context, _ []byte) error {
 			ix.log.Info("full gap-fill requested (ingest was down)")
-			return ix.GapFill(ctx, store.GapAll)
+			return ix.GapFill(ctx, store.GapAll, true) // deliveries may have been lost for dormant addresses too
 		})
 		if err != nil && ctx.Err() == nil {
 			ix.log.Error("consume gapfill", "err", err)
@@ -364,20 +366,37 @@ func (ix *Indexer) afterIngest(ctx context.Context, c *Chain, res store.IngestRe
 		ix.deb.Trigger(ctx, id, refs...)
 	}
 	_ = ix.st.TouchActivity(ctx, ids)
+	// A dormant address just showed its first activity: run a normal backfill for it.
+	if n, err := ix.st.PromoteDormant(ctx, ids); err != nil {
+		ix.log.Warn("promote dormant failed", "err", err)
+	} else if n > 0 {
+		ix.log.Info("dormant addresses became active", "chain", c.Name, "count", n)
+		ix.Wake()
+	}
 	ix.publishIncoming(ctx, c, res.Incoming)
-	if c.Holdings == nil {
+	if c.Holdings == nil || len(res.NFTParties) == 0 {
 		return
 	}
+	// An NFT moved: the list is flagged stale and resynced now only if its owner looked at NFTs recently; everyone else
+	// gets a fresh list the next time they open NFTs.
+	nftIDs := make([]int64, 0, len(res.NFTParties))
 	for id := range res.NFTParties {
-		j, err := ix.st.GetTracked(ctx, id)
-		if err != nil || j.DenyBackfill {
-			continue
-		}
-		if err := ix.SyncNFTs(ctx, c, id, j.Address); err != nil {
+		nftIDs = append(nftIDs, id)
+	}
+	now, err := ix.st.MarkNFTsMoved(ctx, nftIDs, nftRecentlyViewed)
+	if err != nil {
+		ix.log.Warn("mark nfts moved failed", "err", err)
+		return
+	}
+	for _, id := range now {
+		if err := ix.SyncNFTsByID(ctx, id); err != nil {
 			ix.log.Warn("nft resync failed", "tracked_address_id", id, "err", err)
 		}
 	}
 }
+
+// nftRecentlyViewed: NFT lists synced (on view) within this window are kept live on every NFT movement.
+const nftRecentlyViewed = 7 * 24 * time.Hour
 
 // ActivityNew is published on activity.new.<chain> for fresh incoming
 // transfers; the notifier turns it into push notifications.
@@ -428,17 +447,17 @@ func safetyMargin(c *Chain) uint64 {
 // GapFill fetches anything the live path missed since each address's
 // last_seen_block. all=false limits it to addresses active in the last week;
 // all=true (after ingest downtime) covers every tracked address.
-func (ix *Indexer) GapFill(ctx context.Context, scope store.GapScope) error {
+func (ix *Indexer) GapFill(ctx context.Context, scope store.GapScope, includeDormant bool) error {
 	var errs []error
 	for _, c := range ix.sortedChains() {
-		if err := ix.gapFillChain(ctx, c, scope); err != nil {
+		if err := ix.gapFillChain(ctx, c, scope, includeDormant); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", c.Name, err))
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func (ix *Indexer) gapFillChain(ctx context.Context, c *Chain, scope store.GapScope) error {
+func (ix *Indexer) gapFillChain(ctx context.Context, c *Chain, scope store.GapScope, includeDormant bool) error {
 	within := 24 * time.Hour
 	if ix.live != nil {
 		within = ix.live.ActiveWithin
@@ -449,7 +468,7 @@ func (ix *Indexer) gapFillChain(ctx context.Context, c *Chain, scope store.GapSc
 	var target, latest, finalized uint64
 	headsRead := false
 	for {
-		rows, err := ix.st.GapFillCandidates(ctx, c.Name, scope, within, after, 200)
+		rows, err := ix.st.GapFillCandidates(ctx, c.Name, scope, includeDormant, within, after, 200)
 		if err != nil {
 			return err
 		}

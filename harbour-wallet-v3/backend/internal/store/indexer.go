@@ -255,20 +255,18 @@ type Incoming struct {
 	BlockTime time.Time
 }
 
-var ensuredMonths sync.Map // "parent|YYYYMM" -> true
-
 func (s *Store) ensurePartitions(ctx context.Context, evs []index.ActivityEvent) error {
 	for _, ev := range evs {
 		m := ev.BlockTime.UTC().Format("200601")
 		for _, parent := range []string{"transfers", "transactions"} {
 			k := parent + "|" + m
-			if _, ok := ensuredMonths.Load(k); ok {
+			if _, ok := s.ensured.Load(k); ok {
 				continue
 			}
 			if _, err := s.Pool.Exec(ctx, `SELECT harbour_ensure_partition($1, $2)`, parent, ev.BlockTime); err != nil {
 				return fmt.Errorf("ensure partition %s %s: %w", parent, m, err)
 			}
-			ensuredMonths.Store(k, true)
+			s.ensured.Store(k, true)
 		}
 	}
 	return nil

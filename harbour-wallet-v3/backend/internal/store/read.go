@@ -20,18 +20,19 @@ type TrackedState struct {
 	SyncedTo        *int64
 	HistoryFrom     *int64
 	HistoryComplete bool
+	NFTDirty        bool // NFT list may be stale: synced on demand
 }
 
 // TrackedStates loads several tracked addresses.
 func (s *Store) TrackedStates(ctx context.Context, ids []int64) ([]TrackedState, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id, chain_id, address, backfill_state, synced_to_block, history_from_block, history_complete
+	rows, err := s.Pool.Query(ctx, `SELECT id, chain_id, address, backfill_state, synced_to_block, history_from_block, history_complete, nft_dirty
 		FROM tracked_addresses WHERE id = ANY($1) ORDER BY chain_id, address`, ids)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (TrackedState, error) {
 		var t TrackedState
-		return t, r.Scan(&t.ID, &t.Chain, &t.Address, &t.BackfillState, &t.SyncedTo, &t.HistoryFrom, &t.HistoryComplete)
+		return t, r.Scan(&t.ID, &t.Chain, &t.Address, &t.BackfillState, &t.SyncedTo, &t.HistoryFrom, &t.HistoryComplete, &t.NFTDirty)
 	})
 }
 

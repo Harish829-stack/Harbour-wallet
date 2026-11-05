@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"harbour/backend/internal/events"
 	"harbour/backend/internal/prices"
 	"harbour/backend/internal/store"
 )
@@ -166,7 +167,11 @@ type addressPortfolio struct {
 	Assets        []holdingView `json:"assets"`
 }
 
-func synced(state string) bool { return state == "done" || state == "capped" || state == "skipped" }
+// synced: history and balances are as complete as they will get. A dormant address had no activity when it was added,
+// so its (empty) history is complete too.
+func synced(state string) bool {
+	return state == "done" || state == "capped" || state == "skipped" || state == "dormant"
+}
 
 func (s *Server) cacheKey(r *http.Request, kind string) string {
 	h := sha256.Sum256([]byte(r.URL.RawQuery))
@@ -174,7 +179,7 @@ func (s *Server) cacheKey(r *http.Request, kind string) string {
 }
 
 func (s *Server) cached(w http.ResponseWriter, r *http.Request, key string) bool {
-	b, err := s.opt.Redis.Get(r.Context(), key).Bytes()
+	b, err := s.opt.CacheRedis.Get(r.Context(), key).Bytes()
 	if err != nil {
 		return false
 	}
@@ -186,7 +191,7 @@ func (s *Server) cached(w http.ResponseWriter, r *http.Request, key string) bool
 
 func (s *Server) writeCached(w http.ResponseWriter, r *http.Request, key string, ttl time.Duration, v any) {
 	b, _ := json.Marshal(v)
-	s.opt.Redis.Set(context.WithoutCancel(r.Context()), key, b, ttl)
+	s.opt.CacheRedis.Set(context.WithoutCancel(r.Context()), key, b, ttl)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
@@ -470,7 +475,32 @@ func (s *Server) handleNFTs(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, v)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"nfts": out})
+	writeJSON(w, http.StatusOK, map[string]any{"nfts": out, "syncing": s.requestNFTSync(r.Context(), tracked)})
+}
+
+// requestNFTSync asks the indexer to refresh NFT lists that may be stale (never synced, or an NFT moved since). NFTs are
+// synced when someone looks at them instead of for every address on every backfill. Reports whether a sync is pending.
+func (s *Server) requestNFTSync(ctx context.Context, tracked []store.TrackedAddress) bool {
+	states, err := s.opt.Store.TrackedStates(ctx, ids(tracked))
+	if err != nil {
+		s.opt.Log.Warn("nft sync state lookup failed", "err", err)
+		return false
+	}
+	pending := false
+	for _, st := range states {
+		if !st.NFTDirty || st.BackfillState == "pending" || st.BackfillState == "running" {
+			continue // backfill in progress: its live path will flag the list again if an NFT moves
+		}
+		pending = true
+		// At most one request a minute per address; the indexer clears the flag when done.
+		if ok, _ := s.opt.Redis.SetNX(ctx, "hb:nftsync:"+strconv.FormatInt(st.ID, 10), 1, time.Minute).Result(); ok {
+			b, _ := json.Marshal(map[string]int64{"tracked_address_id": st.ID})
+			if err := s.opt.Events.Publish(ctx, events.SubjectNFTSync, b); err != nil {
+				s.opt.Log.Warn("publish nfts.sync failed", "err", err)
+			}
+		}
+	}
+	return pending
 }
 
 // ---------- chart ----------
