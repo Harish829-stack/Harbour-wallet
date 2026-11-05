@@ -272,11 +272,11 @@ func (s *Store) RemoveEvents(ctx context.Context, chain string, keys []EventKey)
 		for _, k := range keys {
 			var asset string
 			err := tx.QueryRow(ctx, `DELETE FROM transfers t USING assets a
-				WHERE t.chain_id=$1 AND t.tx_hash=$2 AND t.event_ref=$3 AND a.id = t.asset_id RETURNING a.asset_ref`,
+				WHERE t.chain_id=$1 AND t.tx_hash=hb_ref($2) AND t.event_ref=$3 AND a.id = t.asset_id RETURNING hb_ref_text(a.asset_ref)`,
 				chain, k.TxHash, k.EventRef).Scan(&asset)
 			if errors.Is(err, pgx.ErrNoRows) {
 				// Never stored (or already removed): drop the key so a re-include is accepted.
-				if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=$2 AND event_ref=$3`, chain, k.TxHash, k.EventRef); err != nil {
+				if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=hb_ref($2) AND event_ref=$3`, chain, k.TxHash, k.EventRef); err != nil {
 					return err
 				}
 				continue
@@ -284,12 +284,12 @@ func (s *Store) RemoveEvents(ctx context.Context, chain string, keys []EventKey)
 			if err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=$2 AND event_ref=$3`, chain, k.TxHash, k.EventRef); err != nil {
+			if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=hb_ref($2) AND event_ref=$3`, chain, k.TxHash, k.EventRef); err != nil {
 				return err
 			}
 			rows, err := tx.Query(ctx, `UPDATE address_activity SET summary = jsonb_set(summary, '{transfers}',
-					COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(summary->'transfers') e WHERE e->>'event_ref' <> $3), '[]'::jsonb))
-				WHERE chain_id=$1 AND tx_hash=$2 RETURNING tracked_address_id`, chain, k.TxHash, k.EventRef)
+					COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(summary->'transfers') e WHERE e->>'e' <> $3), '[]'::jsonb))
+				WHERE chain_id=$1 AND tx_hash=hb_ref($2) RETURNING tracked_address_id`, chain, k.TxHash, k.EventRef)
 			if err != nil {
 				return err
 			}
@@ -303,19 +303,19 @@ func (s *Store) RemoveEvents(ctx context.Context, chain string, keys []EventKey)
 				}
 				touched[id][asset] = true
 			}
-			if _, err := tx.Exec(ctx, `DELETE FROM address_activity WHERE chain_id=$1 AND tx_hash=$2
+			if _, err := tx.Exec(ctx, `DELETE FROM address_activity WHERE chain_id=$1 AND tx_hash=hb_ref($2)
 				AND jsonb_array_length(summary->'transfers') = 0`, chain, k.TxHash); err != nil {
 				return err
 			}
 			var left bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transfers WHERE chain_id=$1 AND tx_hash=$2)`, chain, k.TxHash).Scan(&left); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transfers WHERE chain_id=$1 AND tx_hash=hb_ref($2))`, chain, k.TxHash).Scan(&left); err != nil {
 				return err
 			}
 			if !left {
-				if _, err := tx.Exec(ctx, `DELETE FROM transactions WHERE chain_id=$1 AND tx_hash=$2`, chain, k.TxHash); err != nil {
+				if _, err := tx.Exec(ctx, `DELETE FROM transactions WHERE chain_id=$1 AND tx_hash=hb_ref($2)`, chain, k.TxHash); err != nil {
 					return err
 				}
-				if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=$2 AND event_ref='tx'`, chain, k.TxHash); err != nil {
+				if _, err := tx.Exec(ctx, `DELETE FROM event_keys WHERE chain_id=$1 AND tx_hash=hb_ref($2) AND event_ref='tx'`, chain, k.TxHash); err != nil {
 					return err
 				}
 			}
@@ -327,7 +327,7 @@ func (s *Store) RemoveEvents(ctx context.Context, chain string, keys []EventKey)
 
 // TxEventKeys lists the stored events of a transaction.
 func (s *Store) TxEventKeys(ctx context.Context, chain, txHash string) ([]EventKey, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT tx_hash, event_ref FROM transfers WHERE chain_id=$1 AND tx_hash=$2`, chain, txHash)
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(tx_hash), event_ref FROM transfers WHERE chain_id=$1 AND tx_hash=hb_ref($2)`, chain, txHash)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ type UnfinalTx struct {
 
 // UnfinalTxs lists distinct non-final transactions, oldest first.
 func (s *Store) UnfinalTxs(ctx context.Context, chain string, limit int) ([]UnfinalTx, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT tx_hash, min(block_number), max(block_hash) FROM transfers
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(tx_hash), min(block_number), max(hb_ref_text(block_hash)) FROM transfers
 		WHERE chain_id=$1 AND finality <> 'finalized' GROUP BY tx_hash ORDER BY 2 LIMIT $2`, chain, limit)
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func (s *Store) UnfinalTxs(ctx context.Context, chain string, limit int) ([]Unfi
 // SetTxBlock records a transaction's (new) block after a check or reorg.
 func (s *Store) SetTxBlock(ctx context.Context, chain, txHash string, block uint64, blockHash string) error {
 	for _, t := range []string{"transfers", "transactions"} {
-		if _, err := s.Pool.Exec(ctx, `UPDATE `+t+` SET block_number=$3, block_hash=$4 WHERE chain_id=$1 AND tx_hash=$2`,
+		if _, err := s.Pool.Exec(ctx, `UPDATE `+t+` SET block_number=$3, block_hash=hb_ref($4) WHERE chain_id=$1 AND tx_hash=hb_ref($2)`,
 			chain, txHash, int64(block), blockHash); err != nil {
 			return err
 		}

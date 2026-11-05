@@ -13,7 +13,7 @@ import (
 // InsertPending records a broadcast transaction (idempotent by hash).
 func (s *Store) InsertPending(ctx context.Context, chain, hash, from string, nonce uint64, deviceID string) error {
 	_, err := s.Pool.Exec(ctx, `INSERT INTO pending_transactions (chain_id, tx_hash, "from", nonce, device_id)
-		VALUES ($1,$2,$3,$4,$5::uuid) ON CONFLICT (chain_id, tx_hash) DO NOTHING`, chain, hash, from, int64(nonce), deviceID)
+		VALUES ($1,hb_ref($2),hb_ref($3),$4,$5::uuid) ON CONFLICT (chain_id, tx_hash) DO NOTHING`, chain, hash, from, int64(nonce), deviceID)
 	return err
 }
 
@@ -29,7 +29,7 @@ type PendingRef struct {
 
 // DevicePending lists a device's still-pending transactions.
 func (s *Store) DevicePending(ctx context.Context, deviceID string) ([]PendingRef, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT chain_id, tx_hash, "from", COALESCE(nonce,0)::bigint, checks, submitted_at FROM pending_transactions
+	rows, err := s.Pool.Query(ctx, `SELECT chain_id, hb_ref_text(tx_hash), hb_ref_text("from"), COALESCE(nonce,0)::bigint, checks, submitted_at FROM pending_transactions
 		WHERE device_id=$1::uuid AND state='pending' ORDER BY submitted_at DESC LIMIT 50`, deviceID)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (s *Store) DuePending(ctx context.Context, limit int) ([]PendingRef, error)
 	rows, err := s.Pool.Query(ctx, `UPDATE pending_transactions p SET next_check_at = now() + interval '30 seconds'
 		WHERE (chain_id, tx_hash) IN (SELECT chain_id, tx_hash FROM pending_transactions
 			WHERE state='pending' AND next_check_at <= now() ORDER BY next_check_at LIMIT $1 FOR UPDATE SKIP LOCKED)
-		RETURNING chain_id, tx_hash, "from", COALESCE(nonce,0)::bigint, checks, submitted_at`, limit)
+		RETURNING chain_id, hb_ref_text(tx_hash), hb_ref_text("from"), COALESCE(nonce,0)::bigint, checks, submitted_at`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (s *Store) UpdatePending(ctx context.Context, chain, hash, state string, bl
 		b = int64(block)
 	}
 	tag, err := s.Pool.Exec(ctx, `UPDATE pending_transactions SET state=$3, block_number=COALESCE($4, block_number), checks = checks + 1,
-		next_check_at = now() + $5::interval, updated_at = now() WHERE chain_id=$1 AND tx_hash=$2 AND state='pending'`,
+		next_check_at = now() + $5::interval, updated_at = now() WHERE chain_id=$1 AND tx_hash=hb_ref($2) AND state='pending'`,
 		chain, hash, state, b, next.String())
 	return tag.RowsAffected() == 1, err
 }
@@ -80,7 +80,7 @@ func (s *Store) UpdatePending(ctx context.Context, chain, hash, state string, bl
 // PendingDevice returns the device that broadcast a transaction ("" if none).
 func (s *Store) PendingDevice(ctx context.Context, chain, hash string) (string, error) {
 	var d *string
-	err := s.Pool.QueryRow(ctx, `SELECT device_id::text FROM pending_transactions WHERE chain_id=$1 AND tx_hash=$2`, chain, hash).Scan(&d)
+	err := s.Pool.QueryRow(ctx, `SELECT device_id::text FROM pending_transactions WHERE chain_id=$1 AND tx_hash=hb_ref($2)`, chain, hash).Scan(&d)
 	if errors.Is(err, pgx.ErrNoRows) || d == nil {
 		return "", nil
 	}
@@ -186,7 +186,7 @@ type AssetTrust struct {
 // AssetTrust reads an asset's stored spam score and verified flag.
 func (s *Store) AssetTrust(ctx context.Context, chain, ref string) (AssetTrust, error) {
 	var t AssetTrust
-	err := s.Pool.QueryRow(ctx, `SELECT spam_score, verified FROM assets WHERE chain_id=$1 AND asset_ref=$2`, chain, ref).Scan(&t.SpamScore, &t.Verified)
+	err := s.Pool.QueryRow(ctx, `SELECT spam_score, verified FROM assets WHERE chain_id=$1 AND asset_ref=hb_ref($2)`, chain, ref).Scan(&t.SpamScore, &t.Verified)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return t, ErrNotFound
 	}

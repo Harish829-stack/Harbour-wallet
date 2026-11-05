@@ -317,9 +317,9 @@ func TestLivePath(t *testing.T) {
 	if code := post(t, hookURL, "whsec_1", deliveryBody("wh_1", "whevt_3", hookActivity(1002, "0xd2", 7, 1_000_000, "0xh1002", true))); code != 200 {
 		t.Fatal("removed delivery rejected")
 	}
-	waitUntil(t, "reorged event removed", func() bool { return count(`SELECT count(*) FROM transfers WHERE tx_hash='0xd2'`) == 0 })
+	waitUntil(t, "reorged event removed", func() bool { return count(`SELECT count(*) FROM transfers WHERE tx_hash=hb_ref('0xd2')`) == 0 })
 	waitUntil(t, "balance after reorg", func() bool { return balances(t, st, idA)[USDC] == "20000000" })
-	if count(`SELECT count(*) FROM address_activity WHERE tx_hash='0xd2'`) != 0 || count(`SELECT count(*) FROM transactions WHERE tx_hash='0xd2'`) != 0 {
+	if count(`SELECT count(*) FROM address_activity WHERE tx_hash=hb_ref('0xd2')`) != 0 || count(`SELECT count(*) FROM transactions WHERE tx_hash=hb_ref('0xd2')`) != 0 {
 		t.Fatal("reorged tx left activity or transaction rows")
 	}
 
@@ -332,13 +332,13 @@ func TestLivePath(t *testing.T) {
 	fc.inclusion["0xmissed2"] = chain.Inclusion{Found: true, BlockNumber: 1201, BlockHash: "0xh1201", Success: true} // re-mined one block later
 	fc.mu.Unlock()
 	must(t, ix.Repair(ctx, c))
-	if count(`SELECT count(*) FROM transfers WHERE tx_hash='0xd1'`) != 0 {
+	if count(`SELECT count(*) FROM transfers WHERE tx_hash=hb_ref('0xd1')`) != 0 {
 		t.Fatal("reorged-out tx not removed by repair")
 	}
 	var h string
 	var bn int64
-	must(t, st.Pool.QueryRow(ctx, `SELECT block_hash FROM transfers WHERE tx_hash='0xmissed1'`).Scan(&h))
-	must(t, st.Pool.QueryRow(ctx, `SELECT block_number FROM transfers WHERE tx_hash='0xmissed2'`).Scan(&bn))
+	must(t, st.Pool.QueryRow(ctx, `SELECT hb_ref_text(block_hash) FROM transfers WHERE tx_hash=hb_ref('0xmissed1')`).Scan(&h))
+	must(t, st.Pool.QueryRow(ctx, `SELECT block_number FROM transfers WHERE tx_hash=hb_ref('0xmissed2')`).Scan(&bn))
 	if h != "0xh1100" || bn != 1201 {
 		t.Fatalf("repair did not update positions: hash=%q block=%d", h, bn)
 	}
@@ -346,7 +346,7 @@ func TestLivePath(t *testing.T) {
 	if code := post(t, hookURL, "whsec_1", deliveryBody("wh_1", "whevt_4", hookActivity(1305, "0xd1", 1, 10_000_000, "0xh1305", false))); code != 200 {
 		t.Fatal("re-include rejected")
 	}
-	waitUntil(t, "re-included event stored", func() bool { return count(`SELECT count(*) FROM transfers WHERE tx_hash='0xd1'`) == 1 })
+	waitUntil(t, "re-included event stored", func() bool { return count(`SELECT count(*) FROM transfers WHERE tx_hash=hb_ref('0xd1')`) == 1 })
 
 	// 7. Public URL changes (new dev tunnel): webhook replaced, A moved over.
 	ix.EnableLive(indexer.LiveOptions{PublicURL: "https://tunnel-two.example", Box: box,

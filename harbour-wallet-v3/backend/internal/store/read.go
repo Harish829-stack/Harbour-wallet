@@ -50,7 +50,7 @@ type AssetRow struct {
 	Verified  bool
 }
 
-const assetCols = `a.id, a.chain_id, a.asset_ref, a.kind, a.symbol, a.name, a.decimals, a.logo_url, a.spam_score, a.verified`
+const assetCols = `a.id, a.chain_id, hb_ref_text(a.asset_ref), a.kind, a.symbol, a.name, a.decimals, a.logo_url, a.spam_score, a.verified`
 
 func scanAsset(r pgx.Row, a *AssetRow, extra ...any) error {
 	return r.Scan(append([]any{&a.ID, &a.Chain, &a.Ref, &a.Kind, &a.Symbol, &a.Name, &a.Decimals, &a.LogoURL, &a.SpamScore, &a.Verified}, extra...)...)
@@ -107,12 +107,20 @@ type ActivityRow struct {
 func (s *Store) Activity(ctx context.Context, ids []int64, after *ActivityCursor, limit int) ([]ActivityRow, error) {
 	var rows pgx.Rows
 	var err error
-	q := `SELECT tracked_address_id, chain_id, tx_hash, block_time, direction, summary FROM address_activity
-		WHERE tracked_address_id = ANY($1) %s ORDER BY block_time DESC, tx_hash DESC, tracked_address_id DESC LIMIT $2`
+	// The stored summary is compact (asset id, one-letter keys); it is expanded here to the shape the API reads:
+	// {"transfers":[{"event_ref","asset","amount_raw","kind","direction","token_id"?,"counterparty"?}]}.
+	q := `SELECT aa.tracked_address_id, aa.chain_id, hb_ref_text(aa.tx_hash), aa.block_time, aa.direction,
+		jsonb_build_object('transfers', COALESCE((
+			SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object('event_ref', x.e->>'e', 'asset', hb_ref_text(a.asset_ref),
+				'amount_raw', x.e->>'v', 'kind', x.e->>'k', 'direction', x.e->>'d', 'token_id', x.e->>'t', 'counterparty', x.e->>'c')) ORDER BY x.o)
+			FROM jsonb_array_elements(aa.summary->'transfers') WITH ORDINALITY AS x(e, o)
+			LEFT JOIN assets a ON a.id = (x.e->>'a')::bigint), '[]'::jsonb))
+		FROM address_activity aa
+		WHERE aa.tracked_address_id = ANY($1) %s ORDER BY aa.block_time DESC, aa.tx_hash DESC, aa.tracked_address_id DESC LIMIT $2`
 	if after == nil {
 		rows, err = s.Pool.Query(ctx, sprintf(q, ""), ids, limit)
 	} else {
-		rows, err = s.Pool.Query(ctx, sprintf(q, "AND (block_time, tx_hash, tracked_address_id) < ($3, $4, $5)"),
+		rows, err = s.Pool.Query(ctx, sprintf(q, "AND (aa.block_time, aa.tx_hash, aa.tracked_address_id) < ($3, hb_ref($4), $5)"),
 			ids, limit, after.BlockTime, after.TxHash, after.TrackedID)
 	}
 	if err != nil {
@@ -127,7 +135,7 @@ func (s *Store) Activity(ctx context.Context, ids []int64, after *ActivityCursor
 // AssetsByRef loads assets for (chain, ref) pairs.
 func (s *Store) AssetsByRef(ctx context.Context, chains, refs []string) ([]AssetRow, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT `+assetCols+` FROM assets a
-		JOIN unnest($1::text[], $2::text[]) AS q(chain_id, asset_ref) ON q.chain_id = a.chain_id AND q.asset_ref = a.asset_ref`, chains, refs)
+		JOIN unnest($1::text[], $2::text[]) AS q(chain_id, asset_ref) ON q.chain_id = a.chain_id AND hb_ref(q.asset_ref) = a.asset_ref`, chains, refs)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +154,7 @@ func (s *Store) AssetsByRef(ctx context.Context, chains, refs []string) ([]Asset
 // Asset loads one asset.
 func (s *Store) Asset(ctx context.Context, chain, ref string) (AssetRow, error) {
 	var a AssetRow
-	err := scanAsset(s.Pool.QueryRow(ctx, `SELECT `+assetCols+` FROM assets a WHERE a.chain_id=$1 AND a.asset_ref=$2`, chain, ref), &a)
+	err := scanAsset(s.Pool.QueryRow(ctx, `SELECT `+assetCols+` FROM assets a WHERE a.chain_id=$1 AND a.asset_ref=hb_ref($2)`, chain, ref), &a)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, ErrNotFound
 	}
@@ -155,7 +163,7 @@ func (s *Store) Asset(ctx context.Context, chain, ref string) (AssetRow, error) 
 
 // TxFinality returns finality and status for tx hashes on a chain.
 func (s *Store) TxFinality(ctx context.Context, chain string, hashes []string) (map[string]string, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT tx_hash, finality FROM transactions WHERE chain_id=$1 AND tx_hash = ANY($2)`, chain, hashes)
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(tx_hash), finality FROM transactions WHERE chain_id=$1 AND tx_hash = ANY(hb_refs($2))`, chain, hashes)
 	if err != nil {
 		return nil, err
 	}
@@ -288,8 +296,8 @@ type TxTransfer struct {
 // Tx loads a stored transaction (ErrNotFound if unknown).
 func (s *Store) Tx(ctx context.Context, chain, hash string) (TxRow, error) {
 	var t TxRow
-	err := s.Pool.QueryRow(ctx, `SELECT chain_id, tx_hash, block_number, block_time, "from", "to", finality
-		FROM transactions WHERE chain_id=$1 AND tx_hash=$2`, chain, hash).
+	err := s.Pool.QueryRow(ctx, `SELECT chain_id, hb_ref_text(tx_hash), block_number, block_time, hb_ref_text("from"), hb_ref_text("to"), finality
+		FROM transactions WHERE chain_id=$1 AND tx_hash=hb_ref($2)`, chain, hash).
 		Scan(&t.Chain, &t.TxHash, &t.BlockNumber, &t.BlockTime, &t.From, &t.To, &t.Finality)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return t, ErrNotFound
@@ -297,8 +305,8 @@ func (s *Store) Tx(ctx context.Context, chain, hash string) (TxRow, error) {
 	if err != nil {
 		return t, err
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT t.event_ref, t."from", t."to", t.amount_raw::text, t.kind, `+assetCols+`
-		FROM transfers t JOIN assets a ON a.id = t.asset_id WHERE t.chain_id=$1 AND t.tx_hash=$2 ORDER BY t.event_ref`, chain, hash)
+	rows, err := s.Pool.Query(ctx, `SELECT t.event_ref, hb_ref_text(t."from"), hb_ref_text(t."to"), t.amount_raw::text, t.kind, `+assetCols+`
+		FROM transfers t JOIN assets a ON a.id = t.asset_id WHERE t.chain_id=$1 AND t.tx_hash=hb_ref($2) ORDER BY t.event_ref`, chain, hash)
 	if err != nil {
 		return t, err
 	}
@@ -325,7 +333,7 @@ type PendingTx struct {
 // Pending loads a pending transaction (ErrNotFound if unknown).
 func (s *Store) Pending(ctx context.Context, chain, hash string) (PendingTx, error) {
 	var p PendingTx
-	err := s.Pool.QueryRow(ctx, `SELECT "from", nonce::text, submitted_at, state FROM pending_transactions WHERE chain_id=$1 AND tx_hash=$2`,
+	err := s.Pool.QueryRow(ctx, `SELECT hb_ref_text("from"), nonce::text, submitted_at, state FROM pending_transactions WHERE chain_id=$1 AND tx_hash=hb_ref($2)`,
 		chain, hash).Scan(&p.From, &p.Nonce, &p.SubmittedAt, &p.State)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, ErrNotFound

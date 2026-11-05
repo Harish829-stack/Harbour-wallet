@@ -298,11 +298,11 @@ func TestNewWalletMatchesChain(t *testing.T) {
 	}
 	dir := func(id int64, tx string) string {
 		var d string
-		_ = st.Pool.QueryRow(ctx, `SELECT direction FROM address_activity WHERE tracked_address_id=$1 AND tx_hash=$2`, id, tx).Scan(&d)
+		_ = st.Pool.QueryRow(ctx, `SELECT direction FROM address_activity WHERE tracked_address_id=$1 AND tx_hash=hb_ref($2)`, id, tx).Scan(&d)
 		return d
 	}
 	var n0xt3 int
-	must(t, st.Pool.QueryRow(ctx, `SELECT jsonb_array_length(summary->'transfers') FROM address_activity WHERE tracked_address_id=$1 AND tx_hash='0xt3'`, idA).Scan(&n0xt3))
+	must(t, st.Pool.QueryRow(ctx, `SELECT jsonb_array_length(summary->'transfers') FROM address_activity WHERE tracked_address_id=$1 AND tx_hash=hb_ref('0xt3')`, idA).Scan(&n0xt3))
 	if n0xt3 != 2 {
 		t.Fatalf("activity for a tx with two transfers has %d items", n0xt3)
 	}
@@ -310,7 +310,7 @@ func TestNewWalletMatchesChain(t *testing.T) {
 		t.Fatalf("directions: %s %s %s %s", dir(idA, "0xt4"), dir(idB, "0xt4"), dir(idA, "0xt7"), dir(idA, "0xt3"))
 	}
 	var fin string
-	must(t, st.Pool.QueryRow(ctx, `SELECT finality FROM transfers WHERE tx_hash='0xt1'`).Scan(&fin))
+	must(t, st.Pool.QueryRow(ctx, `SELECT finality FROM transfers WHERE tx_hash=hb_ref('0xt1')`).Scan(&fin))
 	if fin != "finalized" {
 		t.Fatalf("block 11 <= finalized 13 but finality=%s", fin)
 	}
@@ -324,9 +324,9 @@ func TestNewWalletMatchesChain(t *testing.T) {
 
 	// Spam and metadata.
 	var spam int
-	must(t, st.Pool.QueryRow(ctx, `SELECT spam_score FROM assets WHERE asset_ref=$1`, SPAM).Scan(&spam))
+	must(t, st.Pool.QueryRow(ctx, `SELECT spam_score FROM assets WHERE asset_ref=hb_ref($1)`, SPAM).Scan(&spam))
 	var usdcSpam int
-	must(t, st.Pool.QueryRow(ctx, `SELECT spam_score FROM assets WHERE asset_ref=$1`, USDC).Scan(&usdcSpam))
+	must(t, st.Pool.QueryRow(ctx, `SELECT spam_score FROM assets WHERE asset_ref=hb_ref($1)`, USDC).Scan(&usdcSpam))
 	if spam < 50 || usdcSpam >= 50 {
 		t.Fatalf("spam scores: spam=%d usdc=%d", spam, usdcSpam)
 	}
@@ -361,7 +361,7 @@ func TestNewWalletMatchesChain(t *testing.T) {
 
 	// An older read can't overwrite a newer balance.
 	var usdcID int64
-	must(t, st.Pool.QueryRow(ctx, `SELECT id FROM assets WHERE asset_ref=$1`, USDC).Scan(&usdcID))
+	must(t, st.Pool.QueryRow(ctx, `SELECT id FROM assets WHERE asset_ref=hb_ref($1)`, USDC).Scan(&usdcID))
 	changed, err := st.UpsertBalances(ctx, idA, 99, []store.BalanceRow{{AssetID: usdcID, AssetRef: USDC, AmountRaw: "1"}})
 	must(t, err)
 	if len(changed) != 0 || balances(t, st, idA)[USDC] != "40000000" {

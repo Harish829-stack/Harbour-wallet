@@ -129,17 +129,17 @@ func TestIngestEventsBatched(t *testing.T) {
 	}
 	var dir string
 	ok(t, st.Pool.QueryRow(ctx, `SELECT a.direction FROM address_activity a JOIN tracked_addresses t ON t.id=a.tracked_address_id
-		WHERE t.address=$1 AND a.tx_hash='0xt1'`, aliceAddr).Scan(&dir))
+		WHERE t.address=$1 AND a.tx_hash=hb_ref('0xt1')`, aliceAddr).Scan(&dir))
 	if dir != "out" { // received in log:1 and sent in log:2 of the same tx
 		t.Fatalf("alice t1 direction %s", dir)
 	}
 	ok(t, st.Pool.QueryRow(ctx, `SELECT a.direction FROM address_activity a JOIN tracked_addresses t ON t.id=a.tracked_address_id
-		WHERE t.address=$1 AND a.tx_hash='0xt2'`, aliceAddr).Scan(&dir))
+		WHERE t.address=$1 AND a.tx_hash=hb_ref('0xt2')`, aliceAddr).Scan(&dir))
 	if dir != "self" {
 		t.Fatalf("self direction %s", dir)
 	}
 	if n := count(`SELECT jsonb_array_length(summary->'transfers') FROM address_activity a JOIN tracked_addresses t ON t.id=a.tracked_address_id
-		WHERE t.address=$1 AND a.tx_hash='0xt1'`, aliceAddr); n != 2 {
+		WHERE t.address=$1 AND a.tx_hash=hb_ref('0xt1')`, aliceAddr); n != 2 {
 		t.Fatalf("alice t1 summary items %d", n)
 	}
 	// Replaying the whole call changes nothing.
@@ -175,5 +175,36 @@ func TestPruneTimeSeries(t *testing.T) {
 	ok(t, st.Pool.QueryRow(ctx, `SELECT price_usd FROM price_ticks WHERE ts < now() - interval '7 days' AND ts > now() - interval '90 days'`).Scan(&last))
 	if last != 12 { // the hour keeps its last tick
 		t.Fatalf("kept tick %v", last)
+	}
+}
+
+// hb_ref / hb_ref_text: EVM hex is stored as raw bytes (lowercased), anything else as tagged text; both round-trip.
+func TestRefCodec(t *testing.T) {
+	st, ctx := open(t, "store_refcodec")
+	addr := "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" // mixed-case checksum form
+	hash := "0x" + strings.Repeat("ab", 32)
+	cases := map[string]string{
+		addr:     strings.ToLower(addr),
+		hash:     hash,
+		"native": "native",
+		"So11111111111111111111111111111111111111112": "So11111111111111111111111111111111111111112", // Solana mint
+		"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t":          "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",          // Tron
+		"0xabc":                                       "0xabc",                                       // odd-length: kept as text
+		"0xt1":                                        "0xt1",                                        // not hex: kept as text
+		"":                                            "",
+	}
+	for in, want := range cases {
+		var got string
+		var n int
+		ok(t, st.Pool.QueryRow(ctx, `SELECT hb_ref_text(hb_ref($1)), length(hb_ref($1))`, in).Scan(&got, &n))
+		if got != want {
+			t.Errorf("%q -> %q, want %q", in, got, want)
+		}
+		if in == addr && n != 21 {
+			t.Errorf("address stored in %d bytes, want 21", n)
+		}
+		if in == hash && n != 33 {
+			t.Errorf("hash stored in %d bytes, want 33", n)
+		}
 	}
 }

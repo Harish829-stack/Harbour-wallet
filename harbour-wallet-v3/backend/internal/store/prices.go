@@ -20,7 +20,7 @@ type HeldAsset struct {
 // HeldAssets lists native and fungible assets with a positive balance on a
 // device-tracked address, excluding likely spam, most-held first.
 func (s *Store) HeldAssets(ctx context.Context) ([]HeldAsset, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT a.id, a.chain_id, a.asset_ref, a.kind, a.verified, count(*)
+	rows, err := s.Pool.Query(ctx, `SELECT a.id, a.chain_id, hb_ref_text(a.asset_ref), a.kind, a.verified, count(*)
 		FROM balances b JOIN assets a ON a.id = b.asset_id JOIN tracked_addresses t ON t.id = b.tracked_address_id
 		WHERE b.amount_raw > 0 AND a.kind IN ('native','token') AND a.spam_score < 50 AND t.device_count > 0
 		GROUP BY a.id ORDER BY count(*) DESC, a.id`)

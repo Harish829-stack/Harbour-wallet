@@ -167,7 +167,7 @@ func (s *Store) UpsertAsset(ctx context.Context, q Querier, c *AssetCache, a Ass
 	var id int64
 	err := q.QueryRow(ctx, `
 		INSERT INTO assets (chain_id, asset_ref, kind, symbol, name, decimals, spam_score, verified)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, hb_ref($2), $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (chain_id, asset_ref) DO UPDATE SET
 			symbol = COALESCE(assets.symbol, EXCLUDED.symbol),
 			name = COALESCE(assets.name, EXCLUDED.name),
@@ -193,14 +193,14 @@ func (s *Store) SetTokenInfo(ctx context.Context, chain, ref, symbol, name strin
 		dec = *decimals
 	}
 	_, err := s.Pool.Exec(ctx, `UPDATE assets SET symbol = COALESCE($3, symbol), name = COALESCE($4, name),
-		decimals = COALESCE($5, decimals), spam_score = $6 WHERE chain_id = $1 AND asset_ref = $2`,
+		decimals = COALESCE($5, decimals), spam_score = $6 WHERE chain_id = $1 AND asset_ref = hb_ref($2)`,
 		chain, ref, nullStr(symbol), nullStr(name), dec, spam)
 	return err
 }
 
 // AssetsMissingInfo returns token refs among refs that have no decimals yet.
 func (s *Store) AssetsMissingInfo(ctx context.Context, chain string, refs []string) ([]string, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT asset_ref FROM assets WHERE chain_id = $1 AND asset_ref = ANY($2)
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(asset_ref) FROM assets WHERE chain_id = $1 AND asset_ref = ANY(hb_refs($2))
 		AND kind = 'token' AND (decimals IS NULL OR symbol IS NULL)`, chain, refs)
 	if err != nil {
 		return nil, err
@@ -277,14 +277,17 @@ func validAmount(s string) bool {
 	return ok && !strings.HasPrefix(s, "-")
 }
 
+// summaryItem is one transfer in an address_activity summary, stored compactly (asset id instead of the contract
+// address, one-letter keys); Store.Activity expands it back to event_ref/asset/amount_raw/kind/direction/token_id/
+// counterparty.
 type summaryItem struct {
-	EventRef  string `json:"event_ref"`
-	Asset     string `json:"asset"`
-	AmountRaw string `json:"amount_raw"`
-	Kind      string `json:"kind"`
-	Direction string `json:"direction"`
-	TokenID   string `json:"token_id,omitempty"`
-	Counter   string `json:"counterparty,omitempty"`
+	EventRef  string `json:"e"`
+	AssetID   int64  `json:"a"`
+	AmountRaw string `json:"v"`
+	Kind      string `json:"k"`
+	Direction string `json:"d"`
+	TokenID   string `json:"t,omitempty"`
+	Counter   string `json:"c,omitempty"`
 }
 
 // IngestEvents writes events idempotently. For each event the dedupe key
@@ -342,7 +345,7 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 		// 1. Dedupe keys: one per event.
 		b := &pgx.Batch{}
 		for _, ev := range evs {
-			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,hb_ref($2),$3) ON CONFLICT DO NOTHING`,
 				o.Chain, ev.TxHash, ev.EventRef)
 		}
 		isNew := make([]bool, len(evs))
@@ -418,10 +421,10 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 			ev := f.ev
 			b.Queue(`INSERT INTO transfers (chain_id, chain_family, tx_hash, event_ref, block_number, block_hash,
 				block_time, asset_id, "from", "to", amount_raw, kind, finality, details)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::numeric,$12,$13,COALESCE($14::jsonb,'{}'::jsonb))`,
+				VALUES ($1,$2,hb_ref($3),$4,$5,hb_ref($6),$7,$8,hb_ref($9),hb_ref($10),$11::numeric,$12,$13,COALESCE($14::jsonb,'{}'::jsonb))`,
 				o.Chain, o.Family, ev.TxHash, ev.EventRef, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, f.assetID,
 				nullStr(ev.From), nullStr(ev.To), ev.AmountRaw, string(ev.Kind), f.fin, nullJSON(ev.Details))
-			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,$2,'tx') ON CONFLICT DO NOTHING`, o.Chain, ev.TxHash)
+			b.Queue(`INSERT INTO event_keys (chain_id, tx_hash, event_ref) VALUES ($1,hb_ref($2),'tx') ON CONFLICT DO NOTHING`, o.Chain, ev.TxHash)
 		}
 		newTx := make([]bool, len(fresh))
 		if err := execBatch(ctx, tx, b, func(i int, tag pgconn.CommandTag) {
@@ -441,7 +444,7 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 					from, to = nullStr(ev.From), nullStr(ev.To)
 				}
 				b.Queue(`INSERT INTO transactions (chain_id, chain_family, tx_hash, block_number, block_hash, block_time, "from", "to", finality)
-					VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, o.Chain, o.Family, ev.TxHash, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, from, to, f.fin)
+					VALUES ($1,$2,hb_ref($3),$4,hb_ref($5),$6,hb_ref($7),hb_ref($8),$9)`, o.Chain, o.Family, ev.TxHash, int64(ev.BlockNumber), ev.BlockHash, ev.BlockTime, from, to, f.fin)
 			}
 			for _, side := range [2]struct{ party, dir string }{{ev.To, "in"}, {ev.From, "out"}} {
 				id, ok := tracked[side.party]
@@ -459,10 +462,10 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 				if dir == "out" {
 					counter = ev.To
 				}
-				item, _ := json.Marshal([]summaryItem{{EventRef: ev.EventRef, Asset: ev.Asset, AmountRaw: ev.AmountRaw,
+				item, _ := json.Marshal([]summaryItem{{EventRef: ev.EventRef, AssetID: f.assetID, AmountRaw: ev.AmountRaw,
 					Kind: string(ev.Kind), Direction: dir, TokenID: f.tokenID, Counter: counter}})
 				b.Queue(`INSERT INTO address_activity (tracked_address_id, block_time, tx_hash, chain_id, direction, summary)
-					VALUES ($1,$2,$3,$4,$5, jsonb_build_object('transfers', $6::jsonb))
+					VALUES ($1,$2,hb_ref($3),$4,$5, jsonb_build_object('transfers', $6::jsonb))
 					ON CONFLICT (tracked_address_id, tx_hash) DO UPDATE SET
 						direction = CASE WHEN address_activity.direction = EXCLUDED.direction THEN address_activity.direction
 						                 WHEN 'self' IN (address_activity.direction, EXCLUDED.direction) THEN 'self'
@@ -574,7 +577,7 @@ func (s *Store) UpsertBalances(ctx context.Context, trackedID int64, asOfBlock u
 
 // HeldTokenRefs returns fungible token refs that have a balance row.
 func (s *Store) HeldTokenRefs(ctx context.Context, trackedID int64) ([]string, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT a.asset_ref FROM balances b JOIN assets a ON a.id = b.asset_id
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(a.asset_ref) FROM balances b JOIN assets a ON a.id = b.asset_id
 		WHERE b.tracked_address_id = $1 AND a.kind = 'token'`, trackedID)
 	if err != nil {
 		return nil, err
@@ -607,7 +610,7 @@ type StoredBalance struct {
 
 // Balances lists a tracked address's balances.
 func (s *Store) Balances(ctx context.Context, trackedID int64) ([]StoredBalance, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT a.asset_ref, a.symbol, a.decimals, a.kind, b.amount_raw::text, b.as_of_block, a.spam_score
+	rows, err := s.Pool.Query(ctx, `SELECT hb_ref_text(a.asset_ref), a.symbol, a.decimals, a.kind, b.amount_raw::text, b.as_of_block, a.spam_score
 		FROM balances b JOIN assets a ON a.id = b.asset_id WHERE b.tracked_address_id = $1 ORDER BY a.kind, a.asset_ref`, trackedID)
 	if err != nil {
 		return nil, err
