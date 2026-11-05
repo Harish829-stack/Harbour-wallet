@@ -76,8 +76,32 @@ Decided against, with reasons:
 - Merging services into fewer processes: per-service Postgres/NATS logins from the security audit are kept; the single
   image already removes the build cost.
 
+## Phase 3: compact identifiers (migration 0010)
+
+Every repeated chain identifier is now stored as bytes instead of text:
+
+| Column | Tables | Before | After |
+|---|---|---|---|
+| tx hash | transfers, transactions, address_activity, event_keys, pending_transactions | 66 chars | 33 bytes |
+| block hash | transfers, transactions | 66 chars | 33 bytes |
+| sender / receiver | transfers, transactions, pending_transactions | 42 chars | 21 bytes |
+| token / NFT contract (`asset_ref`) | assets | 42 chars | 21 bytes |
+| activity summary item | address_activity (JSON) | asset address + long keys | asset id + one-letter keys |
+
+- Encoding: `0x01` + raw bytes for 0x-hex (lowercased), `0x00` + UTF-8 for anything else ('native', Solana / Tron / TON
+  addresses), empty for empty. SQL functions `hb_ref(text)`, `hb_ref_text(bytea)`, `hb_refs(text[])` are IMMUTABLE and
+  inlined, so lookups still use the indexes. For debugging: `SELECT hb_ref_text(tx_hash) FROM transfers`.
+- Go changes are only SQL text in `internal/store`; API responses are unchanged.
+- Verification: all unit and integration tests pass (new codec test: EVM, Solana, Tron, invalid/odd hex, empty;
+  21/33-byte sizes). Live: migration 0010 ran on the local stack's data (12k transfers, 10k transactions,
+  22k event keys); the same device's `/v1/me/history`, `/v1/tx/{hash}`, `/v1/me/portfolio` and `/v1/me/nfts`
+  responses were byte-for-byte identical before and after. Table sizes (both measured after VACUUM FULL):
+  22.5 MB -> 16.8 MB (-25%): event_keys -31%, activity -25%, transfers -24%, transactions -23%, assets -18%.
+  The rest of each row (times, amounts, JSON details, chain ids, per-row overhead) is unchanged, so the saving per
+  table is about a quarter to a third rather than a half.
+
 ## Still open
 
-- Normalised address/transaction tables (ids instead of repeated hex strings): a schema migration best done before
-  production data; plan separately.
+- Full normalisation (address / tx-hash lookup tables with numeric ids): further saving on top of the byte encoding;
+  only worth it at millions of rows.
 - RDS Proxy (AWS) in front of the API.
