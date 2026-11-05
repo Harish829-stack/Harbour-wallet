@@ -204,7 +204,9 @@ func (in *Ingest) receive(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if _, err := in.o.Store.InsertDelivery(ctx, name, d.ID, wid, d.Chain, body); err != nil {
+	// The delivery row is the dedupe/audit record; the body itself travels (and is retained 7 days) in the JetStream
+	// stream, so it is not stored a second time in Postgres. Unparseable deliveries above keep their body for debugging.
+	if _, err := in.o.Store.InsertDelivery(ctx, name, d.ID, wid, d.Chain, []byte{}); err != nil {
 		in.o.Log.Error("store delivery", "err", err)
 		http.Error(w, "unavailable", http.StatusServiceUnavailable) // provider retries
 		return

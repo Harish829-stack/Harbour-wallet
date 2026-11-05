@@ -65,7 +65,7 @@ func TestGatewayRPCCannotBeSteeredPastTheAllowlist(t *testing.T) {
 	keys := api.GatewayKeys{Alchemy: "alchemy-secret", Helius: "helius-secret", Pimlico: "pimlico-secret"}
 
 	srv := api.New(api.Options{Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		GatewayURL: "http://127.0.0.1:1", PowDifficulty: 8, GatewayKeys: &keys, GatewayHosts: &hosts})
+		GatewayURL: up.URL + "/gw", PowDifficulty: 8, GatewayKeys: &keys, GatewayHosts: &hosts})
 	hs := httptest.NewServer(srv.Handler())
 	defer hs.Close()
 	c := hbclient.New(hs.URL)
@@ -118,7 +118,9 @@ func TestGatewayRPCCannotBeSteeredPastTheAllowlist(t *testing.T) {
 	if count() != 2 {
 		t.Fatalf("upstream hits = %d, want 2", count())
 	}
-	if hits[0].path != "/alch/eth-mainnet/v2/alchemy-secret" || hits[0].body != `{"jsonrpc":"2.0","id":3,"method":"eth_blockNumber","params":[]}` {
+	// Ethereum is served by rpc-gateway, so the validated body goes there (cache, failover, shared budgets), not straight
+	// to one provider key.
+	if hits[0].path != "/gw/rpc/ethereum" || hits[0].body != `{"jsonrpc":"2.0","id":3,"method":"eth_blockNumber","params":[]}` {
 		t.Fatalf("upstream received %+v", hits[0])
 	}
 }

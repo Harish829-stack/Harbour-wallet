@@ -41,9 +41,12 @@ func (p LogPublisher) Publish(_ context.Context, subject string, data []byte) er
 
 // Options configure a Server.
 type Options struct {
-	Config       *config.Config
-	Store        *store.Store
-	Redis        *redis.Client
+	Config *config.Config
+	Store  *store.Store
+	Redis  *redis.Client
+	// CacheRedis holds disposable response caches (/v1/gw answers, short read caches). It may evict freely; nonces,
+	// quotas and idempotency records stay on Redis. Nil = use Redis.
+	CacheRedis   *redis.Client
 	LinkCrypto   *store.LinkCrypto
 	Log          *slog.Logger
 	Events       Publisher
@@ -100,6 +103,9 @@ func New(opt Options) *Server {
 	if opt.Events == nil {
 		opt.Events = LogPublisher{Log: opt.Log}
 	}
+	if opt.CacheRedis == nil {
+		opt.CacheRedis = opt.Redis
+	}
 	s := &Server{opt: opt, cfg: opt.Config, rpcAllow: map[string]bool{}, deny: map[string]bool{},
 		http: &http.Client{Timeout: 30 * time.Second}, media: newMediaClient(opt.AllowPrivateMedia)}
 	keys, hosts := GatewayKeysFromEnv(), DefaultGatewayHosts()
@@ -110,10 +116,19 @@ func New(opt Options) *Server {
 		hosts = *opt.GatewayHosts
 	}
 	var cache gwCache
-	if opt.Redis != nil {
-		cache = redisGWCache{rdb: opt.Redis}
+	if opt.CacheRedis != nil {
+		cache = redisGWCache{rdb: opt.CacheRedis}
 	}
 	s.gw = newGateway(keys, hosts, alchemySlugs(opt.Config), cache)
+	if opt.GatewayURL != "" && opt.Config != nil {
+		route := &rpcRoute{url: opt.GatewayURL, token: opt.GatewayToken, chains: map[uint64]string{}}
+		for name, c := range opt.Config.Chains {
+			if c.Family == "evm" && c.EVMChainID > 0 {
+				route.chains[c.EVMChainID] = name
+			}
+		}
+		s.gw.rpcGW = route
+	}
 	for _, m := range opt.Config.API.RPCAllowedMethods {
 		s.rpcAllow[m] = true
 	}

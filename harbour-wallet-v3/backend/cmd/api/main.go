@@ -71,6 +71,21 @@ func main() {
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		fail("redis", err)
 	}
+	// Optional separate cache Redis (no persistence, LRU eviction). Unset = response caches share REDIS_URL.
+	var cacheRDB *redis.Client
+	if u := os.Getenv("REDIS_CACHE_URL"); u != "" {
+		copt, err := redis.ParseURL(u)
+		if err != nil {
+			fail("redis cache url", err)
+		}
+		if p := os.Getenv("REDIS_PASSWORD"); p != "" && copt.Password == "" {
+			copt.Password = p
+		}
+		cacheRDB = redis.NewClient(copt)
+		if err := cacheRDB.Ping(ctx).Err(); err != nil {
+			fail("redis cache", err)
+		}
+	}
 	key, err := config.DecodeKey("ADDRESS_LINK_ENCRYPTION_KEY", os.Getenv("ADDRESS_LINK_ENCRYPTION_KEY"), 32)
 	if err != nil {
 		fail("secrets", err)
@@ -114,7 +129,7 @@ func main() {
 		os.Exit(1)
 	}
 	srv := api.New(api.Options{
-		Config: cfg, Store: st, Redis: rdb, LinkCrypto: lc, Log: log, Events: pub,
+		Config: cfg, Store: st, Redis: rdb, CacheRedis: cacheRDB, LinkCrypto: lc, Log: log, Events: pub,
 		GatewayURL:     config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
 		GatewayToken:   os.Getenv("GATEWAY_INTERNAL_TOKEN"),
 		TrustProxy:     os.Getenv("TRUST_PROXY_HEADERS") == "1",

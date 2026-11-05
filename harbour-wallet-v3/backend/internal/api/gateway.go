@@ -151,6 +151,10 @@ type gateway struct {
 	client  *http.Client
 	cache   gwCache
 
+	// rpcGW routes Alchemy JSON-RPC (/v1/gw/alchemy/{id}/rpc) through rpc-gateway for chains it serves, so those calls
+	// get its cache, request coalescing, failover and shared key budgets instead of going straight to one provider.
+	rpcGW *rpcRoute
+
 	// Identical cacheable calls in flight at once share one upstream request.
 	flightMu sync.Mutex
 	flights  map[string]*gwFlight
@@ -160,6 +164,12 @@ type gwFlight struct {
 	done chan struct{}
 	res  *gwResult
 	err  error
+}
+
+type rpcRoute struct {
+	url    string            // rpc-gateway base URL
+	token  string            // GATEWAY_INTERNAL_TOKEN
+	chains map[uint64]string // EVM chain id -> rpc-gateway chain name
 }
 
 type gwCache interface {
@@ -616,6 +626,21 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		clean, rej := jsonRPCClean(body, evmRPCMethods, boundedLogs)
 		if rej != nil {
 			return nil, rej
+		}
+		// Same validated body either way; for chains rpc-gateway serves it goes through the gateway.
+		if g.rpcGW != nil {
+			if id, err := strconv.ParseUint(m[1], 10, 64); err == nil {
+				if name := g.rpcGW.chains[id]; name != "" {
+					h := jsonH(map[string]string{"X-HB-Priority": "user"})
+					var secrets []string
+					if g.rpcGW.token != "" {
+						h["Authorization"] = "Bearer " + g.rpcGW.token
+						secrets = []string{g.rpcGW.token}
+					}
+					return &gwCall{method: http.MethodPost, url: strings.TrimRight(g.rpcGW.url, "/") + "/rpc/" + name, body: clean,
+						header: h, secrets: secrets, post: func(b []byte) ([]byte, error) { return stripGatewayInternals(b), nil }}, nil
+				}
+			}
 		}
 		return &gwCall{method: http.MethodPost, url: fmt.Sprintf(g.hosts.Alchemy, slug) + "/v2/" + g.keys.Alchemy, body: clean, header: jsonH(nil), secrets: []string{g.keys.Alchemy}}, nil
 	case reAlchNFT.MatchString(path):
