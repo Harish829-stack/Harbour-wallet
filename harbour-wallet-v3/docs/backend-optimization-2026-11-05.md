@@ -33,8 +33,8 @@ without changing API behaviour. Background and the full list of findings: projec
   Postgres/Redis: all pass. Indexer/store/prices integration ran 6 times in a row: 6/6.
 - New tests: `gateway_opt_test.go` (follower-only polling, batched head, local answers, shared budget across chains,
   coalesced reads) and `store/optimize_test.go` (gap-fill scopes, batched ingest semantics, pruning).
-- Live smoke against Sepolia / Base Sepolia (real keys from `.env`): 65 s after start Base Sepolia made 17 head calls
-  (2 upstreams; previously about 36), `eth_blockNumber` x5 and `eth_chainId` were answered locally (0 upstream calls),
+- Live smoke against Sepolia / Base Sepolia (real keys from `.env`): in the first 65 s Base Sepolia made 17 head calls and
+  Sepolia 8 (the old loop makes about 40 and 18 for the same 2 upstreams), `eth_blockNumber` x5 and `eth_chainId` were answered locally (0 upstream calls),
   `eth_getBalance` went upstream once.
 
 ## Rough effect at the full MVP chain set (all of chains.yaml)
@@ -44,10 +44,34 @@ without changing API behaviour. Background and the full list of findings: projec
 - Gap-fill for a new user (18 chains): from about 17,280 Transfers calls/day for 7 days to about 1,700/day on the first
   day (48 passes x 2 calls x 18 chains), then 36/day (daily pass) unless the address is active.
 
-## Not done here (needs a product or infra decision)
+## Phase 2: industry-standard follow-ups (same branch)
 
-- Index only the chains an address uses (needs extension + API change; product rule).
-- Restrict balance reads / NFT sync to native + user-added assets (product rule).
-- Route `/v1/gw/alchemy/{id}/rpc` through rpc-gateway (security-audited path; extension should move to `/v1/rpc`).
-- BYTEA hashes/addresses migration; PgBouncer; split cache vs nonce Redis; fewer deployables.
-- Alchemy key in `.env` fails on Sepolia/Base Sepolia (every call retryable); Infura serves everything. Check the key.
+| Change | What other wallets do | Harbour now | Where |
+|---|---|---|---|
+| Index only chains a wallet uses | Rabby/DeBank `used_chain_list`, Moralis "active chains", GoldRush address activity; MetaMask Accounts API with RPC fallback | Before backfilling an address on a chain, one nonce read + one multicall (+ one Transfers lookup only if both are zero). Unused addresses become `dormant`: no backfill, no gap-fill or sweeps, zero native balance stored, still on the chain's webhook. First activity (webhook or a gap-fill that includes dormant rows) promotes them to a normal backfill. `indexer.dormant_probe: true` in providers.yaml. | `indexer.probeDormant`, `store.PromoteDormant`, migration 0009 |
+| NFTs only when looked at | Rainbow buys NFT data instead of listing it for every wallet; MetaMask detects in the background but shows on demand | NFT lists are no longer fetched during backfill (`getNFTsForOwner` is 480 CU per page). `/v1/me/nfts` returns `syncing: true` and asks the indexer (`address.nfts.sync`) when a list is stale; the extension polls briefly. When an NFT moves, the list is resynced at once only if it was viewed in the last 7 days, otherwise just flagged stale. | `api.requestNFTSync`, `indexer.SyncNFTsByID`, `src/core/harbour/data.ts` |
+| One RPC path | One proxy layer for all RPC (eRPC model) | `/v1/gw/alchemy/{id}/rpc` keeps its audited validation but, for chains rpc-gateway serves, forwards the validated body to rpc-gateway (cache, coalescing, failover, shared budgets) instead of straight to one Alchemy key. | `api/gateway.go` (`rpcRoute`) |
+| Don't store payloads twice | Coinbase ChainStorage / CoinDesk keep raw payloads out of the relational index | Parsed webhook bodies are no longer copied into `webhook_deliveries` (the 7-day JetStream stream already holds them); the row stays as the dedupe/audit record. Unparseable bodies are still kept. | `ingest.go` |
+| Cache vs state Redis | Disposable caches must be allowed to evict; nonces/quotas must not | New `redis-cache` (no persistence, 256 MB, allkeys-lru) for `/v1/gw` and read caches (`REDIS_CACHE_URL`); `redis` keeps nonces, quotas, idempotency, prices with AOF. | `docker-compose.yml`, `cmd/api` |
+| Connection budgets | Explicit pool sizes behind a pooler | `pool_max_conns` per service (api 10, indexer 8, prices 4, others 2). | `docker-compose.yml` |
+| One image | Build once, run many roles | `migrate` builds `harbour-backend:local`; the other 8 services reuse it (was 9 identical builds). | `docker-compose.yml` |
+| Realtime engine | Redis engine only for multi-node | Centrifugo runs the in-memory engine (single node). | `docker-compose.yml` |
+
+Also fixed: month-partition cache was global per process (wrong when one process opens two databases, which made an
+indexer test order-dependent); it is now per `Store`.
+
+Decided against, with reasons:
+- Skipping balance reads for spam tokens: balances are one multicall regardless of token count, so the saving is
+  negligible, and a false-positive spam score would hide a token the user added.
+- Pruning `event_keys`: it is the dedupe guard when old history is re-read (promotion, older pages); dropping keys
+  could duplicate transfers. Revisit with a unique index on the fact tables.
+- PgBouncer in the local stack: the indexer holds session advisory locks (one webhook manager) and services require
+  verify-full TLS; on AWS use RDS Proxy in front of the API only.
+- Merging services into fewer processes: per-service Postgres/NATS logins from the security audit are kept; the single
+  image already removes the build cost.
+
+## Still open
+
+- Normalised address/transaction tables (ids instead of repeated hex strings): a schema migration best done before
+  production data; plan separately.
+- RDS Proxy (AWS) in front of the API.
