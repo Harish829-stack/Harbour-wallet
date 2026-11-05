@@ -57,6 +57,12 @@ without changing API behaviour. Background and the full list of findings: projec
 | One image | Build once, run many roles | `migrate` builds `harbour-backend:local`; the other 8 services reuse it (was 9 identical builds). | `docker-compose.yml` |
 | Realtime engine | Redis engine only for multi-node | Centrifugo runs the in-memory engine (single node). | `docker-compose.yml` |
 
+Phase 2 verification: vet, build, unit and integration tests pass (new: dormant probe and promotion, on-demand NFT
+sync, gw RPC routed to rpc-gateway); extension `tsc` and eslint clean, JS suite 564/565 (the one failure reads
+`../evidences`, outside the test container). Live: the stack was rebuilt with the new compose (one image, redis-cache,
+migration 0009 applied); a never-used Sepolia address went `dormant` in 1.8 s with a 0 ETH balance shown, a used one ran
+a full backfill (`capped`, 969 events), `/v1/me/nfts` answered `syncing: true` and then the listed NFTs.
+
 Also fixed: month-partition cache was global per process (wrong when one process opens two databases, which made an
 indexer test order-dependent); it is now per `Store`.
 
