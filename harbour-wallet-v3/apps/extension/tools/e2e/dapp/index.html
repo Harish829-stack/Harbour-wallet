@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harbour audit dApp</title>
+<style>body{font:16px system-ui;margin:2rem;max-width:55rem}button{margin:.25rem;padding:.5rem}.out{white-space:pre-wrap;background:#f4f4f4;padding:1rem}</style>
+<h1>Harbour audit dApp</h1>
+<p>This page is a local audit harness. It never sends real value.</p>
+<div id="buttons"></div>
+<pre class="out" id="out">Ready.</pre>
+<script>
+  const out = document.querySelector('#out');
+  const write = (value) => { out.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2); };
+  const request = async (method, params = []) => {
+    if (!window.ethereum) return write({ method, error: 'no injected EVM provider' });
+    try { write({ method, result: await window.ethereum.request({ method, params }) }); }
+    catch (error) { write({ method, error: String(error?.message || error) }); }
+  };
+  const add = (label, method, params = []) => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.onclick = () => request(method, params);
+    document.querySelector('#buttons').append(button);
+  };
+  add('eth_accounts', 'eth_accounts');
+  add('eth_requestAccounts', 'eth_requestAccounts');
+  add('personal_sign', 'personal_sign', ['0x61756469742063616e617279', '0x0000000000000000000000000000000000000000']);
+  add('eth_sign', 'eth_sign', ['0x0000000000000000000000000000000000000000', '0x61756469742063616e617279']);
+  add('eth_signTypedData_v4', 'eth_signTypedData_v4', ['0x0000000000000000000000000000000000000000', JSON.stringify({domain:{name:'Audit',version:'1',chainId:1,verifyingContract:'0x0000000000000000000000000000000000000000'},types:{EIP712Domain:[{name:'name',type:'string'},{name:'version',type:'string'},{name:'chainId',type:'uint256'},{name:'verifyingContract',type:'address'}],Message:[{name:'value',type:'string'}]},primaryType:'Message',message:{value:'audit canary'}})]);
+  add('wallet_requestPermissions', 'wallet_requestPermissions', [{ eth_accounts: {} }]);
+  add('wallet_revokePermissions', 'wallet_revokePermissions', [{ eth_accounts: {} }]);
+  add('wallet_watchAsset', 'wallet_watchAsset', [{ type:'ERC20', options:{ address:'0x0000000000000000000000000000000000000001', symbol:'AUD', decimals:18, image:'https://dapp.test/audit-token.png' } }]);
+  add('wallet_sendCalls', 'wallet_sendCalls', [{ version:'1.0', from:'0x0000000000000000000000000000000000000000', calls:[] }]);
+  add('wallet_switchEthereumChain', 'wallet_switchEthereumChain', [{ chainId:'0x1' }]);
+  add('wallet_addEthereumChain', 'wallet_addEthereumChain', [{ chainId:'0x539', chainName:'Harbour Audit', nativeCurrency:{name:'Audit ETH',symbol:'AETH',decimals:18}, rpcUrls:['https://dapp.test/rpc'], blockExplorerUrls:[] }]);
+  const fuzz = document.createElement('button');
+  fuzz.textContent = 'raw postMessage';
+  fuzz.onclick = () => { window.postMessage({ type:'HARBOUR_AUDIT_FUZZ', payload:{ '__proto__': { polluted:true }, value:'audit canary' } }, '*'); write({ posted:true }); };
+  document.querySelector('#buttons').append(fuzz);
+  window.addEventListener('message', event => write({ messageEvent:{ origin:event.origin, dataType:typeof event.data } }));
+</script>

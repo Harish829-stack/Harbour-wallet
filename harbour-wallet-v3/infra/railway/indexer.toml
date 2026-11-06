@@ -1,0 +1,10 @@
+# Root directory: harbour-wallet-v3/apps/backend   Variables: SERVICE=indexer PORT=8083   Public domain: NO
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

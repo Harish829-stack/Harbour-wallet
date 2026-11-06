@@ -1,0 +1,20 @@
+# Keep secrets and local state out of the build context (and therefore out of image layers).
+.env
+.env.*
+!.env.example
+.hbdevice.json
+dump.rdb
+deploy/postgres/certs/
+bin/
+# Not needed to compile or run the services.
+.git
+.gitignore
+.golangci.yml
+.dockerignore
+Dockerfile
+Makefile
+run.sh
+*.md
+clients/
+scripts/
+deploy/

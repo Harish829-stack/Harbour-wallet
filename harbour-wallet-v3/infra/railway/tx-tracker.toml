@@ -1,0 +1,8 @@
+# Root directory: harbour-wallet-v3/apps/backend   Variables: SERVICE=tx-tracker   Public domain: NO (background worker, no port)
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

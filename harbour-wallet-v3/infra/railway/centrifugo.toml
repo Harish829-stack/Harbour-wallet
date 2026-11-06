@@ -1,0 +1,8 @@
+# Root directory: harbour-wallet-v3/apps/backend/deploy/centrifugo   Variables: PORT=8000   Public domain: yes (the wss:// URL goes into REALTIME_PUBLIC_URL)
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

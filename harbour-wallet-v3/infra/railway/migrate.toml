@@ -1,0 +1,8 @@
+# Root directory: harbour-wallet-v3/apps/backend   Variables: SERVICE=migrate   Runs to completion and exits: applies migrations, creates the per-service database logins, premakes partitions. Daily cron keeps partitions ahead; also run it once after the first deploy and after every release that adds a migration.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "NEVER"
+cronSchedule = "0 3 * * *"

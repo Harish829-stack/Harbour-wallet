@@ -1,0 +1,8 @@
+# Root directory: harbour-wallet-v3/apps/backend/deploy/redis-cache   Variables: REDIS_PASSWORD   Public domain: NO
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

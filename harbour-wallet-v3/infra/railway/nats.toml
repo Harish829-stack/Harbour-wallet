@@ -1,0 +1,8 @@
+# Root directory: harbour-wallet-v3/apps/backend/deploy/nats   Volume: mount at /data   Public domain: NO
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

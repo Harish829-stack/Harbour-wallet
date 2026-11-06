@@ -2,13 +2,13 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /harbour-wallet-v3/backend
+    directory: /harbour-wallet-v3/apps/backend
     schedule: { interval: weekly }
   - package-ecosystem: docker
-    directory: /harbour-wallet-v3/backend
+    directory: /harbour-wallet-v3/apps/backend
     schedule: { interval: weekly }
   - package-ecosystem: npm
-    directory: /harbour-wallet-v3
+    directory: /harbour-wallet-v3/apps/extension
     schedule: { interval: weekly }
   - package-ecosystem: github-actions
     directory: /

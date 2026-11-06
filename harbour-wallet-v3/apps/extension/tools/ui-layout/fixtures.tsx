@@ -1,0 +1,37 @@
+// Isolated layout fixtures. No production entry point imports this file.
+import './src/popup/wallet/screens';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Wallet } from './src/popup/wallet/Wallet';
+import { SCREENS } from './src/popup/wallet/screens';
+import { TestnetDefiTab } from './src/popup/wallet/defi/TestnetDefiTab';
+import { injectStyles } from './src/popup/wallet/ui';
+import { DEFAULT_SETTINGS } from './src/core/settings';
+import './src/popup/design/system.css';
+import './src/popup/wallet/layout.css';
+const address='0x1234567890123456789012345678901234567890';
+const wallet={id:'fixture',label:'Main wallet with a longer display name',kind:'mnemonic',activeAccount:0,accounts:[{index:0,name:'Account 1',addresses:{ethereum:address}}]};
+const token={address:'0x810D46F9a9027F28F9B01F75F2bdde839dA61115',symbol:'LINK',decimals:18,balance:'1000000000000000000000',supplied:'0',availableLiquidity:'184713673667197300870583',apy:0.03,canSupply:true,canWithdraw:false};
+const settings=DEFAULT_SETTINGS('en');settings.colorMode='dark';
+window.__reply=async(m:any)=>{
+ if(m.type==='helpConfigGet')return{ok:true,config:{helpCenterUrl:'',guideUrl:'',announcementsUrl:''},faq:[]};
+ if(m.type==='announcements')return{ok:true,items:[]};
+ if(m.type==='nftList')return{ok:true,active:[],hidden:[],errors:[]};
+ if(m.type==='nftCollections')return{ok:true,active:[],hidden:[]};
+ if(m.type==='getSettings')return{ok:true,settings,sidePanelSupported:true};
+ if(m.type==='listWallets')return{ok:true,wallets:[wallet],activeWalletId:'fixture'};
+ if(m.type==='getUiPrefs')return{ok:true,hiddenAssets:[]};
+ if(m.type==='passkeyStatus')return{ok:true,enabled:false};
+ if(m.type==='defiCatalog')return{ok:true,account:address,assets:[token],tokens:[token,{...token,address:'0x2345678901234567890123456789012345678901',symbol:'USDC'}]};
+ if(m.type==='providerConnections')return{ok:true,items:[]};
+ if(m.type==='providerConnection')return{ok:true,item:{id:'site',title:'Example application',host:'example.test',origin:'https://example.test',walletName:wallet.label,accountName:'Account 1',chainName:'Ethereum',evmAddress:address,namespaces:['evm'],chainId:1,connectedAt:0,lastUsedAt:0},networks:[{chainId:1,name:'Ethereum'}]};
+ if(m.type==='providerBlacklist')return{ok:true,items:[]};
+ if(m.type==='addressBookList')return{ok:true,items:[]};
+ return{ok:true,items:[],active:[],hidden:[],sessions:[],builtin:[],custom:[],wallets:[wallet],activeWalletId:'fixture'};
+};
+injectStyles();document.documentElement.dataset.theme=new URLSearchParams(location.search).get('theme')||'dark';
+const route=new URLSearchParams(location.search).get('screen')||'settings';
+const nav={pop:()=>{},push:()=>{},home:()=>{},lock:()=>{},backup:()=>{}};
+const c={nav,bg:window.__reply,params:{assetId:'sepolia',walletId:'fixture',label:wallet.label,index:0,source:'fixture',destination:'other'},addrs:{ethereum:address},balances:{},accounts:wallet.accounts,activeAccount:0,hiddenAssets:[],refresh:()=>{}};
+const S=SCREENS[route==='searchDapps'?'search':route];
+createRoot(document.getElementById('root')!).render(<div className="hb-root" style={{position:'relative',height:'100dvh',background:'var(--hb-surface)',color:'var(--hb-ink)',overflow:'hidden'}}>{route==='fixtureHome'?<Wallet addrs={{ethereum:address}} balances={{}} totalUsd={null} loading={false} accounts={wallet.accounts} activeAccount={0} hiddenAssets={[]} onRefresh={()=>{}} onLock={()=>{}} />:route==='fixtureSwap'||route==='fixtureEarn'?<div style={{height:'100%',overflowY:'auto',padding:'16px'}}><TestnetDefiTab kind={route==='fixtureEarn'?'earn':'swap'} networkId={route==='fixtureEarn'?'base-sepolia':'sepolia'} nav={nav} accountKey="fixture" /></div>:S?<S {...c}/>:<div>Unknown fixture {route}</div>}</div>);

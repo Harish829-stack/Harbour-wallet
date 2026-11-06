@@ -1,44 +1,43 @@
-# Harbour Wallet
+# Harbour Wallet (REA repository)
 
-Self-custody crypto wallet for Chrome (Manifest V3), built on `@trustwallet/wallet-core`, plus a small Cloudflare Worker gateway that holds provider API keys.
+Self-custody crypto wallet: a Chrome (Manifest V3) extension plus a Go backend. This repository also holds the reverse-engineering research the wallet was built from.
 
-## Repository layout
+```
+.
+├── harbour-wallet-v3/        The product
+│   ├── apps/extension/       Chrome MV3 extension (TypeScript, React, Vite)
+│   ├── apps/backend/         Go services: api, rpc-gateway, indexer, webhook-ingest, price-poller, tx-tracker, notifier, realtime-bridge, migrate
+│   └── infra/railway/        Railway config-as-code, one file per service
+├── documentation/            Every document: product, architecture, security, operations, Trust Wallet RE write-ups. Start at documentation/README.md
+├── research/                 Reverse-engineering material (not needed to build or deploy)
+│   ├── evidences/            Captured evidence, extension reference copy, chain registry data
+│   └── tools/                RE and verification scripts
+├── scripts/git-hooks/        Pre-commit secret guard
+└── .github/workflows/        CI: extension.yml, backend.yml; dependabot.yml
+```
 
-| Path | What it is |
-| --- | --- |
-| `harbour-wallet-v2/` | The product: extension source (`src/`), gateway (`gateway/`), scripts, tests |
-| `docs/` | All documentation. See [docs/README.md](docs/README.md) |
-| `evidences/` | Reverse-engineering evidence, extension reference copy, network captures, audit data. See [evidences/README.md](evidences/README.md) |
-| `tools/` | Reverse-engineering and verification scripts |
+Secrets and local state (git-ignored, never committed): `harbour-keys.env`, `harbour-config-key.json`, `harbour-release-key.json`, the Firebase service-account file, every `.env`. `assets/` is a local clone of an icon library used only by `apps/extension/scripts/import-assets.py`. `_to_delete/` holds files taken out of the tree during the restructuring; delete it when you are happy.
 
-## Setup
+## Quick start
 
-Requires Node 22 and npm.
+Extension (Node 22):
 
 ```bash
-cd harbour-wallet-v2
+cd harbour-wallet-v3/apps/extension
 npm ci
 cp .env.example .env.production   # fill in the public build settings
-npm run build                     # outputs dist/
+npm run build                     # dist/ -> chrome://extensions -> Load unpacked
+npm run verify                    # lint, type-check, tests, build, audit gate, secret scan
 ```
 
-Load the extension: open `chrome://extensions`, turn on Developer mode, choose **Load unpacked**, and select `harbour-wallet-v2/dist`.
-
-For live development run `npm run dev`.
-
-## Checks
+Backend (Go, Docker):
 
 ```bash
-npm run verify    # lint (zero warnings), type-check, tests, gateway type-check, production build, secret scan
-npm run lint      # lint only
-npm test          # unit tests only
-npm run check:rpc # probe every configured RPC endpoint (needs internet)
+cd harbour-wallet-v3/apps/backend
+make setup && make up             # local stack with Docker Compose
+make test                         # unit tests
 ```
 
-## Gateway and secrets
+Deploying the backend to Railway: [documentation/harbour-v3/operations/railway-deployment.md](documentation/harbour-v3/operations/railway-deployment.md).
 
-Provider API keys never go into the extension. Copy `harbour-keys.env.example` to `harbour-keys.env` and fill it in. Gateway health: `GET /health`. Failover design and endpoint order: [docs/harbour/RELIABILITY.md](docs/harbour/RELIABILITY.md). They live in Cloudflare Worker secrets, set by `scripts/deploy-gateway.mjs` from a local `harbour-keys.env` kept at the repository root (git-ignored; never commit it). Signing keys (`harbour-config-key.json`, `harbour-release-key.json`) and service-account files are git-ignored in the same way.
-
-## Releasing
-
-See [docs/harbour/RELEASE.md](docs/harbour/RELEASE.md). Security model: [docs/harbour/SECURITY.md](docs/harbour/SECURITY.md).
+Install the pre-commit guard once: `ln -s ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit`.
