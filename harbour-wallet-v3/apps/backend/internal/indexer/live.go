@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -50,7 +51,18 @@ type LiveOptions struct {
 	RepairEvery time.Duration
 	// ManageEvery syncs webhook subscriptions; new addresses also wake it at once.
 	ManageEvery time.Duration
+	// Probe checks that PublicURL answers (GET <PublicURL>/healthz). While it fails, deliveries cannot arrive (a dead or
+	// moved tunnel, DNS, TLS), so gap-fill polls every address instead of only the unsubscribed ones. nil = HTTP probe.
+	Probe func(ctx context.Context, publicURL string) error
+	// SettledRefresh lists when an address is re-read after one of its own transactions settles (tx.status from
+	// tx-tracker), so the wallet's balance and history follow its own sends and swaps even if a webhook delivery is
+	// late or lost. nil = 10s and 45s; empty = off.
+	SettledRefresh []time.Duration
 }
+
+// safetyBeat is the service_heartbeats row that records the last completed safety gap-fill, so a restart runs an
+// overdue pass at once instead of waiting another full interval.
+const safetyBeat = "indexer-safety-gapfill"
 
 // EnableLive turns on webhook management, delivery handling, gap-fill and repair.
 func (ix *Indexer) EnableLive(o LiveOptions) {
@@ -72,7 +84,57 @@ func (ix *Indexer) EnableLive(o LiveOptions) {
 	if o.ManageEvery == 0 {
 		o.ManageEvery = 5 * time.Minute
 	}
+	if o.Probe == nil {
+		o.Probe = probeURL
+	}
+	if o.SettledRefresh == nil {
+		o.SettledRefresh = []time.Duration{10 * time.Second, 45 * time.Second}
+	}
 	ix.live = &o
+}
+
+// probeURL reports whether <publicURL>/healthz answers 2xx within 5 seconds.
+func probeURL(ctx context.Context, publicURL string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// #nosec G704 -- the URL is the operator's own WEBHOOK_PUBLIC_URL, not user input
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(publicURL, "/")+"/healthz", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- see above
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("healthz answered %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// webhookPath tracks whether webhook deliveries can reach us, logging only when that changes.
+type webhookPath struct {
+	mu   sync.Mutex
+	down bool
+}
+
+// check probes the public URL; it returns false (poll everything) while the URL does not answer.
+func (p *webhookPath) check(ctx context.Context, ix *Indexer, o *LiveOptions) bool {
+	err := o.Probe(ctx, o.PublicURL)
+	if ctx.Err() != nil {
+		return true // shutting down: not a webhook problem
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	switch {
+	case err != nil && !p.down:
+		ix.log.Warn("webhook URL unreachable: polling every address until it is back", "url", o.PublicURL, "err", err)
+	case err == nil && p.down:
+		ix.log.Info("webhook URL reachable again: back to webhooks", "url", o.PublicURL)
+	}
+	p.down = err != nil
+	return err == nil
 }
 
 func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
@@ -111,21 +173,44 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}
 	})
+	// Start-up: re-read balances of recently active addresses once. A balance written from a lagging upstream (or while
+	// a service was down) is otherwise kept until the address moves again.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ix.refreshActiveBalances(ctx, o.ActiveWithin)
+	}()
+	path := &webhookPath{}
 	loop(o.GapFillEvery, nil, func(ctx context.Context) {
 		// Addresses not on a webhook (with no WEBHOOK_PUBLIC_URL that is every address): gap-fill is their live path,
-		// dormant ones included (a hit promotes them).
+		// dormant ones included (a hit promotes them). While the public URL does not answer, no delivery can arrive,
+		// so every address is polled until it is back.
 		scope := store.GapUnsubscribed
-		if o.PublicURL == "" {
+		full := ix.fullGapPending.Swap(false) // a full pass after ingest downtime that has not completed yet
+		if full || o.PublicURL == "" || !path.check(ctx, ix, o) {
 			scope = store.GapAll
 		}
-		if err := ix.GapFill(ctx, scope, true); err != nil && ctx.Err() == nil {
-			ix.log.Warn("gap-fill failed", "err", err)
+		if err := ix.GapFill(ctx, scope, true); err != nil {
+			if full {
+				ix.fullGapPending.Store(true)
+			}
+			if ctx.Err() == nil {
+				ix.log.Warn("gap-fill failed", "err", err)
+			}
 		}
 	})
 	if o.PublicURL != "" {
-		later(o.SafetyEvery, func(ctx context.Context) {
-			if err := ix.GapFill(ctx, store.GapActive, false); err != nil && ctx.Err() == nil {
-				ix.log.Warn("safety gap-fill failed", "err", err)
+		// Runs at start-up only if the last completed pass is older than SafetyEvery (frequent restarts must not
+		// re-read every active address, but must not postpone the safety net forever either).
+		loopFrom(ix.safetyOverdue(ctx, o.SafetyEvery), o.SafetyEvery, nil, func(ctx context.Context) {
+			if err := ix.GapFill(ctx, store.GapActive, false); err != nil {
+				if ctx.Err() == nil {
+					ix.log.Warn("safety gap-fill failed", "err", err)
+				}
+				return
+			}
+			if _, err := ix.st.Heartbeat(ctx, safetyBeat, time.Now()); err != nil && ctx.Err() == nil {
+				ix.log.Warn("record safety gap-fill failed", "err", err)
 			}
 		})
 		if o.FullEvery > 0 {
@@ -143,7 +228,18 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}
 	})
-	wg.Add(2)
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		settled := newSettledRefresher(ix, o.SettledRefresh)
+		err := ix.bus.Consume(ctx, "indexer-txstatus", "tx.status.*", func(ctx context.Context, b []byte) error {
+			settled.handle(ctx, b)
+			return nil // best effort: never redeliver
+		})
+		if err != nil && ctx.Err() == nil {
+			ix.log.Error("consume tx status", "err", err)
+		}
+	}()
 	go func() {
 		defer wg.Done()
 		err := ix.bus.Consume(ctx, "indexer-activity", "chain.*.activity.raw", func(ctx context.Context, b []byte) error {
@@ -157,7 +253,15 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
 		err := ix.bus.Consume(ctx, "indexer-gapfill", SubjectGapFill, func(ctx context.Context, _ []byte) error {
 			ix.log.Info("full gap-fill requested (ingest was down)")
-			return ix.GapFill(ctx, store.GapAll, true) // deliveries may have been lost for dormant addresses too
+			// Deliveries may have been lost for dormant addresses too. A failure (often the provider's rate limit) is not
+			// redelivered every few seconds, which only hits the limit again: the 3-minute gap-fill loop owns the retry.
+			if err := ix.GapFill(ctx, store.GapAll, true); err != nil {
+				ix.fullGapPending.Store(true)
+				if ctx.Err() == nil {
+					ix.log.Warn("full gap-fill failed; retrying with the next gap-fill pass", "err", err)
+				}
+			}
+			return nil
 		})
 		if err != nil && ctx.Err() == nil {
 			ix.log.Error("consume gapfill", "err", err)
@@ -363,6 +467,7 @@ func (ix *Indexer) afterIngest(ctx context.Context, c *Chain, res store.IngestRe
 				refs = append(refs, a)
 			}
 		}
+		ix.needBlock(id, res.AtBlock[id])
 		ix.deb.Trigger(ctx, id, refs...)
 	}
 	_ = ix.st.TouchActivity(ctx, ids)
@@ -550,6 +655,9 @@ func mergeResult(dst *store.IngestResult, src store.IngestResult) {
 	}
 	for id := range src.Parties {
 		dst.Parties[id] = true
+	}
+	for id, n := range src.AtBlock {
+		dst.NoteBlock(id, n)
 	}
 	for id := range src.NFTParties {
 		dst.NFTParties[id] = true

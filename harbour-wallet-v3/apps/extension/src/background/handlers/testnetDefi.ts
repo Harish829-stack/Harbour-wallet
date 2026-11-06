@@ -11,6 +11,8 @@ import { perms } from '../provider/index';
 import { aaveDeployment, assertTestnetNetwork, PLAN_TTL_MS, SEPOLIA } from '../../integrations/testnet-defi/config';
 import { readToken, sameAddress, tokenAddress } from '../../integrations/testnet-defi/rpc';
 import { defiClient } from '../../integrations/testnet-defi/client';
+import { broadcastSigned } from '../../integrations/testnet-defi/broadcast';
+import { HB_API_URL, backendChainOf, isIndexedChain } from '../../core/harbour/config';
 import { listEarnAssets, prepareEarn } from '../../integrations/testnet-defi/aave';
 import { AaveKitUnavailable, EARN_PROVIDER, NATIVE_TOKEN, listEarnAssetsKit, prepareEarnKit } from '../../integrations/testnet-defi/aavekit';
 import { prepareSwap, prepareWrap, swapCatalog } from '../../integrations/testnet-defi/uniswap';
@@ -141,7 +143,11 @@ export const handlers: HandlerMap = {
           if (!sameAddress(account.address, c.address)) throw new Error('Signing account does not match the reviewed account.');
           serializedTransaction = await account.signTransaction({ chainId: c.deployment.chainId, to: call.to, data: call.data, value: call.value, gas: gas * 12n / 10n, nonce, type: 'eip1559', maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas });
         } finally { bytes?.fill(0); keys.dispose(); }
-        const hash = await c.client.sendRawTransaction({ serializedTransaction }); hashes.push(hash);
+        // Through the Harbour API on indexed networks (tracked as pending, balances refreshed when it settles); public RPC otherwise.
+        const backend = isIndexedChain(c.deployment.id) ? backendChainOf(c.deployment.id) : undefined;
+        const hash = await broadcastSigned(serializedTransaction, { fetch: (...a) => globalThis.fetch(...a), harbourRpcUrl: backend ? `${HB_API_URL}/v1/rpc/${backend}` : undefined,
+          sendPublic: (raw) => c.client.sendRawTransaction({ serializedTransaction: raw }) });
+        hashes.push(hash);
         const receipt = await c.client.waitForTransactionReceipt({ hash, timeout: 120_000 });
         if (receipt.status !== 'success') throw new Error('The transaction reverted. No further transactions were sent.');
         // Approval ledger (Settings > Token approvals): remember every allowance Harbour itself granted, even for a token the user never added.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -163,6 +164,16 @@ type GapRow struct {
 	LastSeen int64
 }
 
+// LastHeartbeat returns a service's last recorded beat without writing one (zero time when there is none).
+func (s *Store) LastHeartbeat(ctx context.Context, service string) (time.Time, error) {
+	var t time.Time
+	err := s.Pool.QueryRow(ctx, `SELECT last_beat FROM service_heartbeats WHERE service=$1`, service).Scan(&t)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	return t, err
+}
+
 // GapScope selects which addresses a gap-fill pass re-reads.
 type GapScope int
 
@@ -194,6 +205,19 @@ func (s *Store) GapFillCandidates(ctx context.Context, chain string, scope GapSc
 		var x GapRow
 		return x, r.Scan(&x.ID, &x.Address, &x.LastSeen)
 	})
+}
+
+// GapRowFor returns one tracked address as a gap-fill row, if it is synced (same rules as GapFillCandidates, dormant
+// excluded). ErrNotFound when it is not tracked or still backfilling.
+func (s *Store) GapRowFor(ctx context.Context, chain, address string) (GapRow, error) {
+	var x GapRow
+	err := s.Pool.QueryRow(ctx, `SELECT id, address, last_seen_block FROM tracked_addresses
+		WHERE chain_id=$1 AND address=$2 AND device_count > 0 AND last_seen_block IS NOT NULL
+		  AND backfill_state IN ('done','capped','skipped')`, chain, strings.ToLower(address)).Scan(&x.ID, &x.Address, &x.LastSeen)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return GapRow{}, ErrNotFound
+	}
+	return x, err
 }
 
 // AdvanceLastSeen moves the "complete up to" block forward only.

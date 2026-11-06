@@ -201,7 +201,8 @@ func TestLivePath(t *testing.T) {
 		IdleSweepAfter: time.Hour, NFTMaxPages: 1, Workers: 1}
 	ix := indexer.New(st, cfg, bus, map[string]*indexer.Chain{"base": c}, log)
 	ix.EnableLive(indexer.LiveOptions{PublicURL: "https://tunnel-one.example", Box: box,
-		GapFillEvery: time.Hour, RepairEvery: time.Hour, ManageEvery: time.Hour})
+		GapFillEvery: time.Hour, RepairEvery: time.Hour, ManageEvery: time.Hour,
+		Probe: func(context.Context, string) error { return nil }, SettledRefresh: []time.Duration{}})
 
 	// A device tracks A; its backfill finds nothing yet.
 	lc, _ := store.NewLinkCrypto([]byte(strings.Repeat("k", 32)))
@@ -215,6 +216,9 @@ func TestLivePath(t *testing.T) {
 	}
 	idA, _ := st.TrackedID(ctx, "base", A)
 
+	// A safety gap-fill "just ran": this test drives gap-fill itself, so none may run at start-up.
+	_, err = st.Heartbeat(ctx, "indexer-safety-gapfill", time.Now())
+	must(t, err)
 	runCtx, stopRun := context.WithCancel(ctx)
 	runDone := make(chan struct{})
 	go func() { ix.Run(runCtx); close(runDone) }()
@@ -350,7 +354,8 @@ func TestLivePath(t *testing.T) {
 
 	// 7. Public URL changes (new dev tunnel): webhook replaced, A moved over.
 	ix.EnableLive(indexer.LiveOptions{PublicURL: "https://tunnel-two.example", Box: box,
-		GapFillEvery: time.Hour, RepairEvery: time.Hour, ManageEvery: time.Hour})
+		GapFillEvery: time.Hour, RepairEvery: time.Hour, ManageEvery: time.Hour,
+		Probe: func(context.Context, string) error { return nil }, SettledRefresh: []time.Duration{}})
 	must(t, ix.ManageWebhooks(ctx, c))
 	fa.mu.Lock()
 	_, oldAlive := fa.hooks["wh_1"]

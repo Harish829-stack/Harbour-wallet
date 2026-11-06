@@ -10,11 +10,17 @@ import { VaultService } from '../core/vaultService';
 import { activeEntry } from './walletState';
 import { addedKeys, readAdded } from '../core/nfts/added';
 import { installBroadcastTap } from '../core/activity/broadcastTap';
+import { invalidatePortfolio } from '../core/harbour/data';
+import { store as uiStore, actions } from './store';
 
 export const ACTIVITY_PENDING_ALARM = 'harbour:activity-pending';
 const store = { get: <T,>(k: string) => local.get<T>(k), set: (k: string, v: unknown) => local.set(k, v) };
+let hadPending = false;
 export const activityEngine = () => startActivityEngine(store, (has) => {
   if (has) void browser.alarms.create(ACTIVITY_PENDING_ALARM, { delayInMinutes: 0.5, periodInMinutes: 1 }); else void browser.alarms.clear(ACTIVITY_PENDING_ALARM);
+  // My own transaction just settled: refresh balances now instead of waiting for a realtime push that may never come.
+  if (hadPending && !has) { invalidatePortfolio(); const live = (uiStore.getState() as any).live ?? {}; uiStore.dispatch(actions.live.patch({ txTick: (live.txTick ?? 0) + 1 })); }
+  hadPending = has;
 });
 /** Call once, AFTER installFailoverFetch(), so the tap observes the final response of every broadcast. */
 // What the feed may show beyond the native coin: tokens in the wallet's token list and imported NFTs (never airdrops the user did not add).

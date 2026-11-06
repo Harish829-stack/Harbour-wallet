@@ -239,6 +239,18 @@ type IngestResult struct {
 	NFTParties map[int64]bool
 	// Incoming lists new transfers received by a tracked address (for push).
 	Incoming []Incoming
+	// AtBlock is the highest block of the new events per tracked address: a balance read must be at least this fresh.
+	AtBlock map[int64]uint64
+}
+
+// NoteBlock records that tracked address id moved in block n (keeps the highest).
+func (r *IngestResult) NoteBlock(id int64, n uint64) {
+	if r.AtBlock == nil {
+		r.AtBlock = map[int64]uint64{}
+	}
+	if n > r.AtBlock[id] {
+		r.AtBlock[id] = n
+	}
 }
 
 // Incoming is one newly indexed transfer into a tracked address.
@@ -474,6 +486,7 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 						          COALESCE(address_activity.summary->'transfers', '[]'::jsonb) || (EXCLUDED.summary->'transfers'))`,
 					id, ev.BlockTime, ev.TxHash, o.Chain, dir, string(item))
 				res.Parties[id] = true
+				res.NoteBlock(id, ev.BlockNumber)
 				a := f.asset
 				if dir == "in" {
 					res.Incoming = append(res.Incoming, Incoming{TrackedID: id, TxHash: ev.TxHash, Asset: ev.Asset, Kind: string(ev.Kind),

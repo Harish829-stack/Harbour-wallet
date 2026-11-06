@@ -18,6 +18,10 @@ import { Brand, PasswordField } from './design/components';
 import { AddPassword } from './wallet/addPassword';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
 import { useSecretField } from './secureField';
+
+/** Home balance re-read interval without / with a live (realtime) connection. */
+const BALANCE_POLL_MS = 30_000;
+const BALANCE_POLL_LIVE_MS = 120_000;
 injectStyles(); // shared motion/keyframe CSS for lock, unlock and setup screens too
 
 // Harbour Wallet — light UI, Trust Wallet-style layout (dummy branding). RE §3, §6.1.
@@ -118,6 +122,27 @@ function WalletApp() {
     }, 300); // coalesce bursts (a send moves balance and status at once)
     return () => { cancelled = true; clearTimeout(t); };
   }, [liveTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Safety net for missed pushes (the side panel stays open for hours; the realtime socket drops when Chrome restarts the
+  // service worker or a tunnel moves): re-read quietly while Home is visible, more often without a live connection, and at
+  // once when the panel or popup comes back into view.
+  const rtConnected = useWorkerState((s) => !!s.live?.connected);
+  useEffect(() => {
+    if (screen !== 'home') return;
+    let cancelled = false; let busy = false;
+    const pull = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      try {
+        const res = await bg({ type: 'getBalances', addresses: addrs }).catch(() => null);
+        if (!cancelled && res?.ok) { setBalances(res.balances ?? {}); setTotalUsd(res.pricesAvailable ? res.totalUsd : null); }
+      } finally { busy = false; }
+    };
+    const id = setInterval(() => void pull(), rtConnected ? BALANCE_POLL_LIVE_MS : BALANCE_POLL_MS);
+    const onShow = () => { if (document.visibilityState === 'visible') void pull(); };
+    document.addEventListener('visibilitychange', onShow); window.addEventListener('focus', onShow);
+    return () => { cancelled = true; clearInterval(id); document.removeEventListener('visibilitychange', onShow); window.removeEventListener('focus', onShow); };
+  }, [screen, rtConnected, addrs]);
 
   const doBiometric = async () => {
     if (!passkey.credentialId || bioBusy) return;

@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"harbour/backend/internal/config"
@@ -83,6 +84,62 @@ type Indexer struct {
 
 	live       *LiveOptions
 	manageWake chan struct{}
+
+	// fresh: per tracked address, the block a balance read must reach (the newest event seen) and how many reads came
+	// back older (a load-balanced upstream can trail the head by a block or two; such a read would store pre-event
+	// balances that nothing re-reads).
+	freshMu sync.Mutex
+	fresh   map[int64]*freshNeed
+
+	// fullGapPending: a requested full gap-fill (after ingest downtime) failed; the next gap-fill pass runs it instead.
+	fullGapPending atomic.Bool
+}
+
+type freshNeed struct {
+	block uint64
+	tries int
+}
+
+// staleRetries bounds how long a refresh waits for the upstream to reach the event's block (staleRetry apart).
+const (
+	staleRetries = 10
+	staleRetry   = 2 * time.Second
+)
+
+// needBlock records that the next balance read for id must be at block n or newer.
+func (ix *Indexer) needBlock(id int64, n uint64) {
+	if n == 0 {
+		return
+	}
+	ix.freshMu.Lock()
+	defer ix.freshMu.Unlock()
+	if ix.fresh == nil {
+		ix.fresh = map[int64]*freshNeed{}
+	}
+	if f := ix.fresh[id]; f == nil || n > f.block {
+		ix.fresh[id] = &freshNeed{block: n}
+	}
+}
+
+// balanceReadStale reports whether a read at block is older than what id needs; if so it counts the attempt and answers
+// true while retries remain. A fresh enough read (or giving up) clears the need.
+func (ix *Indexer) balanceReadStale(id int64, block uint64) (stale bool, want uint64) {
+	ix.freshMu.Lock()
+	defer ix.freshMu.Unlock()
+	f := ix.fresh[id]
+	if f == nil {
+		return false, 0
+	}
+	if block >= f.block {
+		delete(ix.fresh, id)
+		return false, f.block
+	}
+	f.tries++
+	if f.tries > staleRetries {
+		delete(ix.fresh, id)
+		return false, f.block
+	}
+	return true, f.block
 }
 
 // New builds an indexer over the given chains.
@@ -546,6 +603,15 @@ func (ix *Indexer) RefreshBalances(ctx context.Context, trackedID int64, extraRe
 	bals, block, err := c.Client.Balances(ctx, job.Address, refs, 0)
 	if err != nil {
 		return err
+	}
+	if stale, want := ix.balanceReadStale(trackedID, block); stale {
+		// The upstream has not reached the block the activity is in yet: read again shortly instead of storing pre-event
+		// balances (nothing else would re-read them until the next activity).
+		retryCtx := context.WithoutCancel(ctx)
+		time.AfterFunc(staleRetry, func() { ix.deb.Trigger(retryCtx, trackedID, refs...) })
+		return nil
+	} else if want > block {
+		ix.log.Warn("balance read still behind the activity block; storing it", "chain", c.Name, "tracked_address_id", trackedID, "read", block, "want", want)
 	}
 	nd := c.Native.Decimals
 	var rows []store.BalanceRow

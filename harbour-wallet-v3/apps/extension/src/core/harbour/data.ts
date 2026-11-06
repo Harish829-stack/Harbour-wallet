@@ -16,20 +16,28 @@ export const refsFor = (evmAddress: string | undefined): AddressRef[] =>
 // ---------- tracking ----------
 const tracked = new Set<string>();
 const key = (r: AddressRef) => `${r.chain}:${r.address}`;
+/** Refs the API refused as unsupported (a backend serving fewer networks): not offered again until this time. Without it every
+ *  refresh repeated the failed batch plus one PUT per network. Retried later in case the backend gains the network. */
+const refused = new Map<string, number>();
+export const REFUSED_RETRY_MS = 30 * 60_000;
+const isRefused = (r: AddressRef) => { const until = refused.get(key(r)); if (until === undefined) return false; if (Date.now() < until) return true; refused.delete(key(r)); return false; };
 /** One PUT, and if the API refuses the batch because it does not serve one of the networks (a stale or smaller backend), retry network by
  *  network so the supported ones are still tracked. Returns the refs the API accepted. */
 async function putResilient(add: AddressRef[], remove: AddressRef[]): Promise<AddressRef[]> {
   try { await putAddresses(add, remove); return add; } catch (e) {
-    if (!(e instanceof HarbourApiError) || e.code !== 'bad_address' || add.length + remove.length < 2) throw e;
+    if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e;
+    if (add.length + remove.length < 2) { for (const r of add) refused.set(key(r), Date.now() + REFUSED_RETRY_MS); return []; }
   }
   const ok: AddressRef[] = [];
-  for (const r of add) { try { await putAddresses([r], []); ok.push(r); } catch (e) { if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e; } }
+  for (const r of add) { try { await putAddresses([r], []); ok.push(r); } catch (e) { if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e; refused.set(key(r), Date.now() + REFUSED_RETRY_MS); } }
   for (const r of remove) { try { await putAddresses([], [r]); } catch (e) { if (!(e instanceof HarbourApiError) || e.code !== 'bad_address') throw e; } }
   return ok;
 }
+/** Test hook: forget tracked and refused refs. */
+export const resetTrackingForTests = (): void => { tracked.clear(); refused.clear(); };
 /** Makes sure the device tracks these refs (cheap no-op once known). */
 export async function ensureTracked(refs: AddressRef[]): Promise<void> {
-  const missing = refs.filter((r) => !tracked.has(key(r)));
+  const missing = refs.filter((r) => !tracked.has(key(r)) && !isRefused(r));
   if (!missing.length) return;
   for (const r of await putResilient(missing, [])) tracked.add(key(r));
 }
@@ -37,7 +45,7 @@ export async function ensureTracked(refs: AddressRef[]): Promise<void> {
 export async function syncTracked(want: AddressRef[]): Promise<{ added: number; removed: number }> {
   const have = (await listAddresses()).addresses.map((a) => ({ chain: a.chain, address: lc(a.address) }));
   const wantKeys = new Set(want.map(key)); const haveKeys = new Set(have.map(key));
-  const add = want.filter((r) => !haveKeys.has(key(r))); const remove = have.filter((r) => !wantKeys.has(key(r)));
+  const add = want.filter((r) => !haveKeys.has(key(r)) && !isRefused(r)); const remove = have.filter((r) => !wantKeys.has(key(r)));
   const accepted = new Set<string>(have.filter((r) => wantKeys.has(key(r))).map(key));
   for (let i = 0; i < Math.max(add.length, remove.length); i += 100) for (const r of await putResilient(add.slice(i, i + 100), remove.slice(i, i + 100))) accepted.add(key(r));
   tracked.clear(); for (const r of want) if (accepted.has(key(r))) tracked.add(key(r));
