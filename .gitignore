@@ -51,10 +51,6 @@ harbour-release-key.json
 # harbour-wallet-v3/apps/extension/scripts/import-assets.py is committed.
 /assets/
 
-# ---- security audit working files: kept local, not published ----
-# Files already tracked stay tracked; new, untracked reports in this folder are not picked up by `git add`.
-/documentation/harbour-v3/security/audit-v3/
-
 # ---- scratch / tool work dirs ----
 .rea-work/
 *.log

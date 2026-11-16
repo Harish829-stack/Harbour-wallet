@@ -1,6 +1,6 @@
 # Harbour extension
 
-Chrome Manifest V3 wallet. TypeScript, React, Vite (`@crxjs/vite-plugin`), `@trustwallet/wallet-core` (WASM) for cryptography.
+Chrome Manifest V3 wallet. Full guide: [documentation/extension.md](../../../documentation/extension.md); running it: [documentation/how-to-run.md](../../../documentation/how-to-run.md). TypeScript, React, Vite (`@crxjs/vite-plugin`), `@trustwallet/wallet-core` (WASM) for cryptography.
 
 | Path | What it is |
 | --- | --- |
@@ -22,7 +22,7 @@ cp .env.example .env.production   # VITE_HB_API_URL must be https:// for a relea
 npm run dev                       # live development
 npm run build                     # dist/
 npm run verify                    # lint, tsc, tests, build, npm audit gate, secret scan
-node scripts/release.mjs          # signed release zip; see documentation/harbour-v3/operations/release.md
+node scripts/release.mjs          # signed release zip; see documentation/release.md
 ```
 
 Scripts that read research data (`gen-chain-registry.mjs`, `gen-extra-chains.mjs`, `test/chains.test.js`) read from `../../../research/evidences/`. Release and gateway scripts read local key files (`harbour-release-key.json`, `harbour-keys.env`) from the repository root.

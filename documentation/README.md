@@ -1,31 +1,30 @@
-# Documentation
+# Harbour documentation
 
-All project documents live here. Nothing else in the repository is documentation, apart from each app's README.
+Start here. Each guide has one job; read them in this order if you are new.
 
-| Folder | Contents |
+| Guide | Read it to |
 | --- | --- |
-| `harbour-v3/overview/` | How it works, tech stack, chains, developer guide, feature matrix, current status (`v3-status.md` is the authoritative status) |
-| `harbour-v3/planning/` | Implementation plan, build log, rebuild tracker, agent charter |
-| `harbour-v3/architecture/` | Backend plans, database design, optimization, reliability, readiness reports |
-| `harbour-v3/security/` | Security model, audit framework, pentest and attack-review fixes, approval scan; `audit-v3/` holds the full audit working files |
-| `harbour-v3/operations/` | Release process, store listing, hosting comparison, **Railway deployment guide** |
-| `trust-wallet-re/analysis/` | Reverse-engineering findings on the Trust Wallet extension |
-| `trust-wallet-re/architecture/` | Architecture write-up of the reference extension and the parity plan |
-| `media/` | Demo video |
-| `_old-docs-index.md`, `_old-reference-index.md` | The previous index files, kept because they carry original source links and dates |
+| [how-to-run.md](how-to-run.md) | install the prerequisites, start the backend, build and load the extension, run the tests, fix common problems |
+| [architecture.md](architecture.md) | understand how the extension and backend fit together and why, with the main request flows and the tech stack |
+| [backend-services.md](backend-services.md) | learn what each Go service does, its API, ports, events, configuration and data, and how to extend it |
+| [extension.md](extension.md) | find your way around the extension code, build settings, the dApp request path and key behaviours |
+| [chains-and-providers.md](chains-and-providers.md) | see which chains are served and how, which providers are used, and how to add a chain |
+| [security.md](security.md) | understand the security model, audit status, open items and the hardware test matrix |
+| [deployment-railway.md](deployment-railway.md) | deploy the backend to Railway, service by service |
+| [release.md](release.md) | cut a signed extension release and publish it to the Chrome Web Store |
+| [contributing.md](contributing.md) | follow the branch, test, CI and documentation rules |
 
-Many older documents (especially under `architecture/` and `trust-wallet-re/`) describe `harbour-wallet-v2` and use its paths. They are historical context and are not rewritten.
+`media/harbour-demo.mp4` is a short demo of the wallet.
 
-## Where things moved (2026-11-06 restructuring)
+## Other places with documentation
 
-| Before | Now |
-| --- | --- |
-| `harbour-wallet-v3/src`, `scripts`, `test`, `public-production`, `package.json`, … | `harbour-wallet-v3/apps/extension/…` |
-| `harbour-wallet-v3/backend` | `harbour-wallet-v3/apps/backend` |
-| `harbour-wallet-v3/gateway` (legacy Cloudflare Worker, still covered by tests) | `harbour-wallet-v3/apps/extension/gateway` |
-| `harbour-wallet-v3/audit/{e2e,ui-layout}` | `harbour-wallet-v3/apps/extension/tools/{e2e,ui-layout}` |
-| `docs/`, `harbour-wallet-v3/docs`, `harbour-wallet-v3/audit/*.md`, `Harbour-v3-audit/`, `Claude outputs/` | `documentation/…` |
-| `evidences/`, `tools/` | `research/evidences/`, `research/tools/` |
-| `harbour-wallet-v2/` | removed from the branch (still on `main` and in history; local copy in `_to_delete/`) |
-| `harbour-wallet-v3/ci/`, `backend/ci/` (copies of the workflows) | `.github/workflows/` (single source) |
-| `harbour-wallet-v3/.gitleaks.toml`, `scripts/pre-commit` | `.gitleaks.toml`, `scripts/git-hooks/pre-commit` |
+- Each app has a short README that points back here: `harbour-wallet-v3/apps/extension/README.md`, `harbour-wallet-v3/apps/backend/README.md`, `harbour-wallet-v3/infra/railway/README.md`.
+- `apps/extension/src/integrations/testnet-defi/README.md` describes the testnet Swap and Earn code.
+- `apps/backend/.env.example` documents every backend environment variable; `apps/extension/.env.example` documents the build settings.
+- `research/` holds the Trust Wallet reverse-engineering evidence and write-ups (`research/docs/`). It is not needed to build, run or deploy Harbour.
+
+## Conventions
+
+- Commands are written relative to the repository root unless a path starts with `apps/`.
+- There are no secrets in this folder. Never paste real keys or tokens into a guide.
+- Past versions of removed documents (build logs, plans, audit reports, earlier status pages) remain available in git history.

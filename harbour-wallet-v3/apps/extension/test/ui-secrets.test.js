@@ -2,7 +2,7 @@
 //  1. Worker side: backup verification by opaque chip ids (core/backupSession) and the response firewall (core/uiSafe).
 //  2. Static guards over the sources: no handler returns key material, the popup never asks for it, never renders it as text
 //     and never binds a secret field to React state (controlled inputs mirror the value into the DOM).
-// The runtime check (heap, DOM, accessibility tree, storage) of the built extension is documented in docs/harbour/UI-SECRET-BOUNDARY.md.
+// The runtime check (heap, DOM, accessibility tree, storage) of the built extension is described in documentation/security.md (trust boundaries).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';

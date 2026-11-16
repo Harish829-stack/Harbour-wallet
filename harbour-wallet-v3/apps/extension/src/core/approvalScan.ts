@@ -5,7 +5,7 @@
 //   3. the local approval ledger (every approve signed by this wallet: Swap, Earn, connected sites).
 // Every pair is read in batched Multicall3 calls (about 100 per RPC request) and nothing is shown unless the chain says the
 // allowance is above zero. Approvals to unknown spenders for tokens that were never added or signed here are NOT found
-// (that needs event-log discovery, a deferred "Deep scan", see docs/reference/approval-scan.md).
+// (that needs event-log discovery, a deferred "Deep scan", see documentation/extension.md).
 import { decodeFunctionResult, encodeFunctionData, erc20Abi, formatUnits } from 'viem';
 import type { Fetcher } from './chains/adapters/types';
 import { multicall } from './staking/evm';

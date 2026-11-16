@@ -1,10 +1,10 @@
 # Deploying Harbour v3 to Railway
 
-Written 2026-11-06 for the `codebase-structuring` layout. What is verified and what is not is listed at the end: read that first if this is your first deploy.
+Written for the `apps/backend` + `infra/railway` layout. What was verified and what was not is listed at the end; read that first if this is your first deploy. For what each service does see [backend-services.md](backend-services.md).
 
 ## What goes on Railway, and what does not
 
-The **backend** goes on Railway: nine Go services plus Postgres, two Redis, NATS and Centrifugo (14 Railway services in one project). The **Chrome extension is not hosted anywhere**: you build it, point it at the API's public URL, and upload the signed zip to the Chrome Web Store (see `release.md`).
+The **backend** goes on Railway: nine Go services plus Postgres, two Redis, NATS and Centrifugo (14 Railway services in one project). The **Chrome extension is not hosted anywhere**: you build it, point it at the API's public URL, and upload the signed zip to the Chrome Web Store (see [release.md](release.md)).
 
 | Railway service | Source (Root Directory) | Config file (config-as-code path) | Public domain | Port |
 | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Every Go service (including `migrate` and `rpc-gateway`) uses the **same Dockerf
 
 ## Steps
 
-1. Push `codebase-structuring` (or merge it) to GitHub and create a Railway project from the repo.
+1. Push the branch you deploy from (normally `main`) to GitHub and create a Railway project from the repo.
 2. Add the databases: `Postgres` and `Redis` from Railway's database templates.
 3. For every other row of the table: **New service → GitHub repo**, then Settings → **Root Directory** as in the table, Settings → **Config as code → file path** as in the table, and set the variables below. Do not generate a public domain unless the table says yes.
 4. Project-level **Shared Variables** (Project settings → Shared Variables): create the secrets once and reference them as `${{shared.NAME}}`. Generate each with `openssl rand -hex 16` (32 for `ADDRESS_LINK_ENCRYPTION_KEY`, `CENTRIFUGO_TOKEN_HMAC_SECRET`; 24 for `GATEWAY_INTERNAL_TOKEN`, `CENTRIFUGO_API_KEY`):
@@ -58,7 +58,7 @@ Database-connected services (`migrate`, `api`, `indexer`, `webhook-ingest`, `pri
 | `centrifugo` | `PORT=8000`, `CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY=${{shared.CENTRIFUGO_TOKEN_HMAC_SECRET}}`, `CENTRIFUGO_HTTP_API_KEY=${{shared.CENTRIFUGO_API_KEY}}`, `CENTRIFUGO_ENGINE_TYPE=memory` |
 | `redis-cache` | `REDIS_PASSWORD=${{shared.REDIS_PASSWORD}}` |
 
-`POSTGRES_URL` for the per-service logins has the shape shown for `api`; only the user, password and `pool_max_conns` change. Run **one** replica of every service until you have read the scaling notes in `reliability.md`.
+`POSTGRES_URL` for the per-service logins has the shape shown for `api`; only the user, password and `pool_max_conns` change. Run **one** replica of every service until you have load-tested more (webhook management is guarded by a Postgres advisory lock, but the gateway's cache, budgets and circuit breakers are per process).
 
 ## Known trade-off: database TLS
 
@@ -66,7 +66,7 @@ The backend refuses a non-loopback database unless the connection is `verify-ful
 
 Partitioning: Railway's Postgres has no `pg_partman`; migration `0001` falls back to the built-in `harbour_ensure_monthly_partitions`, which `migrate -maintain` (the daily cron) keeps ahead.
 
-## Verification status (2026-11-06)
+## Verification status (last checked 2026-11-06)
 
 Checked here, on the real files:
 
