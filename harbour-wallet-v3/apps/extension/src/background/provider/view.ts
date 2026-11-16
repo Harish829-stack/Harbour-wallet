@@ -6,6 +6,7 @@ import type { PendingRequest, PermissionStore, KV } from '../../core/provider/st
 import { decodeCalldata, flattenCalls, decodeString, encodeBalanceCall, isUnlimited, SEL, type DecodedCall } from '../../core/provider/decode';
 import { summarizeTypedData } from '../../core/provider/typed';
 import { parseSiwe, siweIssues } from '../../core/provider/siwe';
+import { hasHiddenChars, visibleDeep } from '../../core/provider/displayText';
 import { parseSiws, siwsIssues } from '../../core/provider/siws';
 import { describeSolTx, parseSolTx, resolveLookupTables } from '../../core/provider/solanaTx';
 import { simulateSolTx, solAccountData } from '../../core/provider/solSim';
@@ -30,7 +31,11 @@ const netView = (n: EvmNetwork) => ({ chainId: n.chainId, id: n.id, name: n.name
 const callView = (c: DecodedCall): any => JSON.parse(JSON.stringify(c, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
 const MAX_UINT = (1n << 256n) - 1n;
 
-export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
+/** The approval screen's view of a pending request. Every string in it is passed through `visibleDeep`, so invisible or text-reordering
+ *  characters a site put in a message, typed-data value, title, token or network name are drawn as visible escapes (display only:
+ *  signing uses the stored request, never this view). */
+export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> { return visibleDeep(await buildRawView(p, d)); }
+async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
   const host = displayHost(p.origin);
   let risk: { level: string } = await siteRisk(p.origin, d.kv, d.fetch ?? fetch).catch(() => ({ level: 'unavailable' as const }));
   let riskOrigin = p.origin;
@@ -68,7 +73,7 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
     }
     case 'sign': {
       const n = p.params; const siwe = n.utf8 ? parseSiwe(n.utf8) : null;
-      return { ...base, message: { utf8: n.utf8, hex: n.bytesHex, bytes: (n.bytesHex.length - 2) / 2, rawHash: n.rawHash, ethSign: n.method === 'eth_sign' },
+      return { ...base, message: { utf8: n.utf8, hex: n.bytesHex, bytes: (n.bytesHex.length - 2) / 2, rawHash: n.rawHash, ethSign: n.method === 'eth_sign', hidden: !!n.utf8 && hasHiddenChars(n.utf8) },
         siwe: siwe ? { ...siwe, issues: siweIssues(siwe, { host, address: n.address, chainId }) } : null };
     }
     case 'typed': { const td = p.params.typedData; return { ...base, typed: summarizeTypedData(td), typedData: td, signer: p.params.address }; }
@@ -90,7 +95,7 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
     case 'solSignMessage': {
       const bytes = b64ToBytes(p.params.messageB64); const text = tryUtf8(bytes);
       const siws = text ? parseSiws(text) : null;
-      return { ...base, message: { utf8: text, hex: bytesToHex(bytes), bytes: bytes.length }, siwe: siws ? { ...siws, issues: siwsIssues(siws, { host, address: conn?.solanaAddress ?? '' }) } : null };
+      return { ...base, message: { utf8: text, hex: bytesToHex(bytes), bytes: bytes.length, hidden: !!text && hasHiddenChars(text) }, siwe: siws ? { ...siws, issues: siwsIssues(siws, { host, address: conn?.solanaAddress ?? '' }) } : null };
     }
     case 'solSignTx': case 'solSignAll': case 'solSignSend': {
       const me = conn?.solanaAddress ?? '';
