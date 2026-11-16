@@ -13,7 +13,7 @@
 #
 FROM golang:1.26.10-alpine AS build
 WORKDIR /src
-ENV CGO_ENABLED=0 GOTOLCHAIN=local
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .

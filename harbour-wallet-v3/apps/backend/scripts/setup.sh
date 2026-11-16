@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Creates backend/.env from .env.example (if missing) and fills every empty
+# Creates apps/backend/.env from .env.example (if missing) and fills every empty
 # "generated" secret. Safe to re-run: existing values are never changed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -43,7 +43,7 @@ if grep -qE '^VAPID_PRIVATE_KEY=[[:space:]]*(#.*)?$' .env; then
   fi
 fi
 
-# Networks served: testnets only for now (older .env files predate this setting).
+# Networks served (older .env files predate this setting). Empty = every chain in chains.yaml.
 grep -q '^ENABLED_CHAINS=' .env || { printf '\n# Networks served (chains.yaml names). Empty = all.\nENABLED_CHAINS=\n' >> .env; echo "added ENABLED_CHAINS="; }
 
 # HW-2026-007: Postgres TLS certificates, and host-side URLs upgraded from sslmode=disable to verify-full.

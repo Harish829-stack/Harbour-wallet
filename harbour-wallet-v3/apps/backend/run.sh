@@ -75,7 +75,7 @@ up() {
   check_tools
   ensure_env
   ensure_deps
-  say "Building and starting Postgres, Redis, NATS, Centrifugo, migrate, rpc-gateway, api"
+  say "Building and starting every service (Postgres, Redis x2, NATS, Centrifugo, migrate and the 8 Go services)"
   "${COMPOSE[@]}" up -d --build
   wait_for "rpc-gateway" "$GW/healthz" 90
   wait_for "api" "$API/healthz" 90
@@ -145,14 +145,20 @@ inspect() {
   [ $# -ge 2 ] || die "usage: ./run.sh inspect CHAIN ADDRESS"
   local chain=$1 addr
   addr=$(printf '%s' "$2" | tr 'A-F' 'a-f')
+  # Both values are pasted into SQL below, so accept only chain slugs and plain addresses (no quotes or spaces).
+  printf '%s' "$chain" | grep -Eq '^[a-z0-9-]{1,40}$' || die "chain must be a chains.yaml name, e.g. base-sepolia"
+  printf '%s' "$addr" | grep -Eq '^[0-9a-z]{20,90}$|^0x[0-9a-f]{40}$' || die "address looks wrong: $2"
+  # Since migration 0010, hashes, from/to and asset refs are BYTEA: hb_ref(text) encodes for comparisons,
+  # hb_ref_text(bytea) decodes for display. tracked_addresses.address is still text.
   local q="\\pset footer off
 SELECT id, backfill_state, device_count, webhook_id, synced_to_block, last_seen_block, last_activity_at
   FROM tracked_addresses WHERE chain_id='$chain' AND address='$addr';
-SELECT t.block_number, left(t.tx_hash, 14) AS tx, t.event_ref, t.kind, COALESCE(a.symbol, a.asset_ref) AS asset,
-       t.amount_raw, t.finality, CASE WHEN t.block_hash = '' THEN '-' ELSE left(t.block_hash, 10) END AS block_hash
+SELECT t.block_number, left(hb_ref_text(t.tx_hash), 14) AS tx, t.event_ref, t.kind,
+       COALESCE(a.symbol, hb_ref_text(a.asset_ref)) AS asset, t.amount_raw, t.finality,
+       CASE WHEN length(t.block_hash) = 0 THEN '-' ELSE left(hb_ref_text(t.block_hash), 10) END AS block_hash
   FROM transfers t JOIN assets a ON a.id = t.asset_id
- WHERE t.chain_id='$chain' AND ('$addr' IN (t.\"from\", t.\"to\")) ORDER BY t.block_number DESC LIMIT 10;
-SELECT COALESCE(a.symbol, a.asset_ref) AS asset, b.amount_raw, a.decimals, b.as_of_block, b.updated_at
+ WHERE t.chain_id='$chain' AND hb_ref('$addr') IN (t.\"from\", t.\"to\") ORDER BY t.block_number DESC LIMIT 10;
+SELECT COALESCE(a.symbol, hb_ref_text(a.asset_ref)) AS asset, b.amount_raw, a.decimals, b.as_of_block, b.updated_at
   FROM balances b JOIN assets a ON a.id = b.asset_id JOIN tracked_addresses ta ON ta.id = b.tracked_address_id
  WHERE ta.chain_id='$chain' AND ta.address='$addr' AND (b.amount_raw > 0 OR a.kind = 'native');
 SELECT id AS webhook, chain_id, address_count, url FROM webhooks WHERE chain_id='$chain';

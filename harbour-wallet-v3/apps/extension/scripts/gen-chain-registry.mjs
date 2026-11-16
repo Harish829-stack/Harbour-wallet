@@ -3,6 +3,7 @@
 // Usage: node scripts/gen-chain-registry.mjs   (reads ../../../research/evidences/reference/wallet-core/registry.json and ../../../research/evidences/re-evidence/30-chain-registry/*)
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+process.chdir(new URL('..', import.meta.url).pathname); // paths below are relative to apps/extension
 const require = createRequire(import.meta.url);
 const { initWasm } = require('@trustwallet/wallet-core');
 const core = await initWasm();

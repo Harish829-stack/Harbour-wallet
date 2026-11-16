@@ -129,7 +129,7 @@ Push routing doesn't link addresses to devices in the clear: `push_routes` is ke
 | An EVM chain | One entry in `chains.yaml` |
 | A non-EVM family, indexer source, price source, simulator, metadata or push channel | Adapter under `adapters/<kind>/<name>` passing the shared suite in `contracttest/` |
 
-Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK imports outside `adapters/` and `cmd/`; `scripts/check-provider-names.sh` blocks provider names in service code. The workflow is `ci/backend.yml`; copy it to the repository's `.github/workflows/`.
+Rules enforced in CI: depguard (`.golangci.yml`) blocks adapter and provider-SDK imports outside `adapters/` and `cmd/`; `scripts/check-provider-names.sh` blocks provider names in service code. The workflow is `.github/workflows/backend.yml` at the repository root.
 
 ## Database
 

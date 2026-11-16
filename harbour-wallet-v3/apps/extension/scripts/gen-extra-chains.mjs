@@ -1,9 +1,10 @@
 // Generates src/core/chains/registry.extra.json: wallet-core coins that are NOT in Trust Wallet's 86 visible chains (the other 82 of the
 // 168-entry embedded registry, doc 03) for which Harbour has a working adapter family. Extras stay hidden until their id is listed in
-// src/core/chains/extra-enabled.json, which you fill after `node tools/check-chains.mjs` shows PASS for them.
+// src/core/chains/extra-enabled.json, which you fill after `node scripts/check-chains.mjs` shows PASS for them.
 // Usage: node scripts/gen-extra-chains.mjs   (reads ../../../research/evidences/reference/wallet-core/registry.json)
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+process.chdir(new URL('..', import.meta.url).pathname); // paths below are relative to apps/extension
 const { initWasm } = createRequire(import.meta.url)('@trustwallet/wallet-core');
 const core = await initWasm();
 const wc = new Map(JSON.parse(fs.readFileSync('../../../research/evidences/reference/wallet-core/registry.json', 'utf8')).map((x) => [x.coinId, x]));

@@ -1,4 +1,4 @@
-// Run on your own machine:  node scripts/deploy-gateway.mjs [path/to/harbour-keys.env]
+// LEGACY v2 tool. Run on your own machine:  node scripts/deploy-gateway.mjs --legacy-v2 [path/to/harbour-keys.env]
 // Deploys gateway/worker.ts to Cloudflare Workers, stores the provider keys as Worker secrets, and publishes a signed remote config.
 // Needs Node 20+ and network access. Key values are passed to wrangler on stdin and never printed.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -9,6 +9,14 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
+// LEGACY (v2 only). Harbour v3 does not use this Cloudflare Worker: the Go backend serves /v1/gw (provider keys live in the
+// backend's env, e.g. Railway variables) and the signed remote config (CONFIG_JSON / CONFIG_SIG, made with config-tool.mjs).
+if (!args.includes('--legacy-v2')) {
+  console.error('deploy-gateway.mjs deploys the old v2 Cloudflare Worker, which Harbour v3 does not use.\n' +
+    'v3: set provider keys on the backend, sign the remote config with  node scripts/config-tool.mjs sign config/config.json\n' +
+    'and check the backend gateway with  node scripts/check-gateway.mjs.   (Pass --legacy-v2 to deploy the worker anyway.)');
+  process.exit(1);
+}
 const sub = (args.find((a) => a.startsWith('--subdomain=')) ?? '').split('=')[1];
 const envFile = args.find((a) => !a.startsWith('--')) ?? path.join(root, '..', '..', '..', 'harbour-keys.env');
 const env = Object.fromEntries(readFileSync(envFile, 'utf8').split('\n').filter((l) => /^[A-Z_]+=/.test(l)).map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).trim()]; }));

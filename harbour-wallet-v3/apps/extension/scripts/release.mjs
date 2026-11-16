@@ -23,6 +23,13 @@ const version = manifest.version;
 // Only a bundle that talks to an https backend can be released (local builds use http://localhost; see scripts/api-url.mjs).
 const infoFile = path.join(dist, 'build-info.json');
 const info = existsSync(infoFile) ? JSON.parse(readFileSync(infoFile, 'utf8')) : null;
+// Temporary tunnel hosts change on every restart, so a release built against one would stop working; require a stable domain.
+const TUNNEL = /\.(trycloudflare\.com|ngrok(-free)?\.(app|io|dev)|loca\.lt|localtunnel\.me)$/i;
+const apiHost = (() => { try { return new URL(String(info?.api)).hostname; } catch { return ''; } })();
+if (TUNNEL.test(apiHost)) {
+  console.error(`release refused: dist/ points at a temporary tunnel (${apiHost}). Deploy the API on a stable domain, set VITE_HB_API_URL to it and rebuild.`);
+  process.exit(1);
+}
 if (!info || info.local || !String(info.api).startsWith('https://') || (manifest.host_permissions ?? []).some((h) => h.startsWith('http://'))) {
   console.error(`release refused: dist/ was built for ${info?.api ?? 'an unknown API'}. Set VITE_HB_API_URL=https://... in .env.production and rebuild.`);
   process.exit(1);

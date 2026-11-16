@@ -1,5 +1,5 @@
 // Remote-config signing. `node scripts/config-tool.mjs keygen` prints a new Ed25519 key pair (keep the private key offline).
-// `HARBOUR_CONFIG_KEY=<privateKeyB64> node scripts/config-tool.mjs sign config/config.json [days]` (or the key on stdin) prints { config, signature } for the gateway / GitHub Pages.
+// `HARBOUR_CONFIG_KEY=<privateKeyB64> node scripts/config-tool.mjs sign config/config.json [days]` (or the key on stdin) prints { config, signature }: put them in the backend's CONFIG_JSON and CONFIG_SIG (served at /v1/gw/v1/config).
 import { generateKeyPairSync, sign, createPrivateKey } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 const [cmd, file, daysArg] = process.argv.slice(2);

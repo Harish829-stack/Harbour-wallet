@@ -1,4 +1,4 @@
-# Harbour backend. Requires Go 1.23+ and Docker.
+# Harbour backend. Requires Go 1.26.10 (go.mod) and Docker. ./run.sh is the main entry point; these targets are shortcuts.
 SHELL := /bin/bash
 envval = $(shell ./scripts/envval.sh $(1))
 
@@ -27,15 +27,14 @@ lint:             ## golangci-lint (depguard) + provider-name check
 	golangci-lint run ./...
 	./scripts/check-provider-names.sh
 
-up:               ## start Postgres, Redis, NATS, Centrifugo, migrate, rpc-gateway, api
-	./scripts/pg-certs.sh
-	$(COMPOSE) up -d --build
+up:               ## create .env/certs if needed, build and start every service, wait until healthy
+	./run.sh up
 
 down:
 	$(COMPOSE) down
 
 logs:
-	$(COMPOSE) logs -f api rpc-gateway indexer webhook-ingest price-poller
+	./run.sh logs
 
 migrate:
 	go run ./cmd/migrate -maintain
@@ -46,9 +45,5 @@ run-api:          ## run the API on the host against Compose infra
 run-gateway:
 	go run ./cmd/rpc-gateway
 
-smoke:            ## register a device, make signed calls, read a block through the gateway
-	go run ./cmd/hbdevice register
-	go run ./cmd/hbdevice me
-	go run ./cmd/hbdevice rpc base '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'
-	go run ./cmd/hbdevice rpc ethereum '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","latest"]}'
-	@curl -s -H "Authorization: Bearer $(call envval,GATEWAY_INTERNAL_TOKEN)" localhost:8081/status | head -c 2000; echo
+smoke:            ## register (or reuse) a test device, signed calls, testnet reads through the gateway
+	./run.sh smoke

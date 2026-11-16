@@ -1,5 +1,5 @@
 // One command for every commit:  npm run verify
-// type-check -> unit tests -> gateway type-check -> production build (to a temp dir) -> secret-leak scan of the bundle.
+// type-check -> unit tests -> legacy v2 worker type-check -> production build (to a temp dir) -> secret-leak scan of the bundle.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +14,7 @@ const run = (name, cmd, args) => {
 };
 run('lint (no warnings)', 'npx', ['eslint', '.', '--max-warnings', '0']);
 run('tsc (extension)', 'npx', ['tsc', '--noEmit']);
-run('tsc (gateway)', 'npx', ['tsc', '-p', 'gateway/tsconfig.json']);
+run('tsc (legacy v2 gateway worker)', 'npx', ['tsc', '-p', 'gateway/tsconfig.json']);
 if (!process.argv.includes('--skip-tests')) run('unit tests', 'npm', ['test', '--silent']);
 for (const sc of ['prepare-wasm', 'build-inpage', 'build-content']) run(`prebuild ${sc}`, 'node', [`scripts/${sc}.mjs`]);
 run('production build', 'npx', ['vite', 'build', '--outDir', out, '--emptyOutDir']);
@@ -24,10 +24,14 @@ run('lockfile matches package.json', 'npm', ['ls', '--omit=dev', '--all', '--sil
 
 // Leak scan: no secret from the key file, and no obvious key shapes, may appear in the built extension.
 const secrets = [];
-for (const f of [path.join(root, '..', '..', '..', 'harbour-keys.env'), path.join(root, '.env.local')]) {
+// v3 keeps the provider keys in the backend's .env; only its secret-named values are checked there (its *_URL values,
+// e.g. the public API host, legitimately appear in the bundle).
+for (const [f, only] of [[path.join(root, '..', '..', '..', 'harbour-keys.env'), null], [path.join(root, '.env.local'), null],
+  [path.join(root, '..', 'backend', '.env'), /(KEY|SECRET|TOKEN|PASSWORD|^PG_PW_|^NATS_PW_|SIG$)/]]) {
   if (!existsSync(f)) continue;
   for (const l of readFileSync(f, 'utf8').split('\n')) {
-    const m = l.match(/^([A-Z_]+)=(.+)$/); if (m && m[2].length > 12 && !/^(VITE_|TEST_)/.test(m[1])) secrets.push(m[2].trim());
+    const m = l.match(/^([A-Z_]+)=(.+)$/); const v = m?.[2].replace(/\s+#.*$/, '').trim();
+    if (m && v.length > 12 && !/^(VITE_|TEST_)/.test(m[1]) && !/PUBLIC/.test(m[1]) && (!only || only.test(m[1]))) secrets.push(v);
   }
 }
 const SHAPES = [/sk_(live|test)_[A-Za-z0-9]{16,}/, /x-lifi-api-key/i, /api[-_]?key=[A-Za-z0-9]{16,}/i, /infura\.io\/v3\/[0-9a-f]{32}/i, /\.alchemy\.com\/v2\/[A-Za-z0-9_-]{20,}/i, /helius-rpc\.com\/?\?api-key=/i, /api\.pimlico\.io\/[^"' ]*apikey=/i];
