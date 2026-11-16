@@ -7,6 +7,19 @@ updates:
   - package-ecosystem: docker
     directory: /harbour-wallet-v3/apps/backend
     schedule: { interval: weekly }
+  # The infrastructure images (Centrifugo, NATS, Postgres, cache Redis) have their own Dockerfiles: watch them too.
+  - package-ecosystem: docker
+    directory: /harbour-wallet-v3/apps/backend/deploy/centrifugo
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /harbour-wallet-v3/apps/backend/deploy/nats
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /harbour-wallet-v3/apps/backend/deploy/postgres
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /harbour-wallet-v3/apps/backend/deploy/redis-cache
+    schedule: { interval: weekly }
   - package-ecosystem: npm
     directory: /harbour-wallet-v3/apps/extension
     schedule: { interval: weekly }
