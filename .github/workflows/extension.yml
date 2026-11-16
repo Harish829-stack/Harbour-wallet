@@ -2,6 +2,8 @@
 # Repository settings that make this a control (not code, set them by hand):
 #   - branch protection on main: require this workflow + 1 review, no force push, signed commits
 #   - environment "release" with 2 required reviewers; HB_RELEASE_KEY_PEM stored only as that environment's secret
+# Actions are pinned to full commit SHAs (a tag such as @v4 can be moved to different code by whoever controls the action;
+# see the tj-actions/changed-files compromise, 2025). Dependabot (github-actions) proposes the SHA bumps.
 name: extension
 on:
   push:
@@ -18,8 +20,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: harbour-wallet-v3/apps/extension/.nvmrc
           cache: npm
@@ -29,7 +31,7 @@ jobs:
       - run: npm run verify
       - name: SBOM (CycloneDX)
         run: npm sbom --omit=dev --sbom-format cyclonedx > sbom.cdx.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: {name: sbom, path: harbour-wallet-v3/apps/extension/sbom.cdx.json}
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -38,8 +40,8 @@ jobs:
     environment: release   # 2 required reviewers; their logins become HB_RELEASE_APPROVERS
     permissions: {contents: write, id-token: write, attestations: write}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: harbour-wallet-v3/apps/extension/.nvmrc
           cache: npm
@@ -50,7 +52,7 @@ jobs:
           HB_RELEASE_KEY_PEM: ${{ secrets.HB_RELEASE_KEY_PEM }}
           HB_RELEASE_APPROVERS: ${{ vars.HB_RELEASE_APPROVERS }}
       - run: node scripts/repro.mjs
-      - uses: actions/attest-build-provenance@v1
+      - uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
         with: {subject-path: "harbour-wallet-v3/apps/extension/releases/*.zip"}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: {name: release, path: harbour-wallet-v3/apps/extension/releases/}
