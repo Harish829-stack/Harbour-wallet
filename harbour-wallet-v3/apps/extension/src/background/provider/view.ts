@@ -42,7 +42,7 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
     id: p.id, kind: p.kind, ns: p.ns, method: p.method, origin: baseOrigin(p.origin), via: isWcKey(p.origin) ? 'walletconnect' : 'injected', host, title: p.title || host, icon: p.icon ?? null, topOrigin: p.topOrigin, embedded: !p.isTopFrame, createdAt: p.createdAt,
     site: { risk: risk.level, riskOrigin, insecure: isInsecureOrigin(p.origin), lookalike: isPunycodeHost(hostnameOf(p.origin)) },
   };
-  const conn = await d.perms.get(p.origin); const chainId = conn?.chainId ?? DEFAULT_EVM_CHAIN; const net = d.networks.get(chainId);
+  const conn = await d.perms.get(p.origin); const chainId = (p.binding?.scoped ? p.binding.chainId : conn?.chainId) ?? DEFAULT_EVM_CHAIN; const net = d.networks.get(chainId);
   base.chain = net ? netView(net) : { chainId, name: `Chain ${chainId}`, symbol: '', testnet: false, custom: false, explorer: null };
   // The site moved the wallet to this request's network just before asking (HW-2026-005): say so on the approval screen.
   const sf = p.params?.switchedFrom; if (typeof sf === 'number') { const from = d.networks.get(sf); base.switchedFrom = from ? netView(from) : { chainId: sf, name: `Chain ${sf}` }; }

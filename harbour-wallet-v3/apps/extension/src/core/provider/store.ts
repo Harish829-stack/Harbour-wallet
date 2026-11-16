@@ -118,7 +118,7 @@ export interface PendingRequest {
   origin: string; topOrigin: string; isTopFrame: boolean; tabId: number; frameId: number; documentId?: string;
   title?: string; icon?: string; createdAt: number; expiresAt: number;
   stage?: 'executing';      // durable claim: never replay signing/broadcast after an interrupted worker
-  binding?: Pick<Connection, 'id' | 'walletId' | 'accountIndex' | 'chainId' | 'evmAddress' | 'solanaAddress' | 'others'>;
+  binding?: Pick<Connection, 'id' | 'walletId' | 'accountIndex' | 'chainId' | 'evmAddress' | 'solanaAddress' | 'others'> & { scoped?: true }; // scoped: chain named by the request (WalletConnect), not the connection's
   internal?: boolean;         // raised by the extension UI itself (e.g. revoke approval)
 }
 export type Outcome = { result: unknown } | { error: { code: number; message: string; data?: unknown } };

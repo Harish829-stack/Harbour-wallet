@@ -136,14 +136,12 @@ export class WalletConnectBridge {
     const mapped = mapRequest({ chainId: String(e?.params?.chainId ?? ''), request: e?.params?.request ?? { method: '' } }, rec.chains, rec.methods);
     if (!mapped.ok) return fail(mapped.code, mapped.message);
     const conn = await this.d.perms.get(rec.origin); if (!conn || !conn.namespaces.includes(mapped.ns)) return fail(ERR.UNAUTHORIZED, 'The connection was removed in Harbour.');
-    if (mapped.ns === 'evm' && mapped.chainId != null) {
-      if (!this.d.networks.get(mapped.chainId)) return fail(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-      // WalletConnect carries the target chain on every request; the router binds to the connection's chain.
-      if (conn.chainId !== mapped.chainId) await this.d.perms.update(rec.origin, { chainId: mapped.chainId });
-    }
+    // SIG-11: WalletConnect names the target chain on every request (CAIP-27) and the session's approved chains authorize it (mapRequest).
+    // The chain is passed to the router for THIS request only; it is never written to the shared connection record.
+    if (mapped.ns === 'evm' && mapped.chainId != null && !this.d.networks.get(mapped.chainId)) return fail(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
     const sender: SenderInfo = { tabId: WC_TAB, frameId: 0, documentId: `wc:${topic}`, origin: rec.origin, topOrigin: rec.origin, isTopFrame: true, title: rec.name, icon: rec.icon };
     const req: PageRequest = { id: String(id), ns: mapped.ns, method: mapped.method, params: mapped.params as any };
-    const r = await this.d.service().handle(sender, req);
+    const r = await this.d.service().handle(sender, req, mapped.ns === 'evm' && mapped.chainId != null ? { chainId: mapped.chainId } : undefined);
     if (r.done) await this.respond(topic, id, r.outcome, mapped.solana);
   }
   /** ProviderService settled a request raised by this bridge (user decision, expiry, window closed). */

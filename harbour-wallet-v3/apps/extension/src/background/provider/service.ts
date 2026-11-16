@@ -74,6 +74,7 @@ export interface WcHost {
   reject(proposalId: number, code: number, message: string): Promise<void>;
 }
 export type HandleResult = { done: true; outcome: Outcome } | { done: false };
+export interface RequestScope { chainId?: number }
 export interface Decision { approve: boolean; accountIndex?: number; chainId?: number; gasLimit?: string; feeLevel?: 'safe' | 'average' | 'fast'; fee?: { maxFeePerGas?: string; maxPriorityFeePerGas?: string; gasPrice?: string }; allowanceLimit?: string; riskOverride?: string }
 
 const hex = (n: number) => '0x' + n.toString(16);
@@ -104,10 +105,14 @@ export class ProviderService {
   }
 
   // ------------------------------------------------------------------ request router
-  async handle(sender: SenderInfo, req: PageRequest): Promise<HandleResult> {
-    try { return await this.route(sender, req); } catch (e) { return fail(e); }
+  /**
+   * `scope.chainId` (SIG-11): a WalletConnect request names its EVM chain itself (CAIP-25/CAIP-27). It applies to THIS request only and is
+   * never written to the stored connection, so one session (or one in-flight request) cannot move the chain another one runs on.
+   */
+  async handle(sender: SenderInfo, req: PageRequest, scope?: RequestScope): Promise<HandleResult> {
+    try { return await this.route(sender, req, scope); } catch (e) { return fail(e); }
   }
-  private async route(s: SenderInfo, req: PageRequest): Promise<HandleResult> {
+  private async route(s: SenderInfo, req: PageRequest, scope?: RequestScope): Promise<HandleResult> {
     if (!this.readLimiter.take(s.origin)) throw new ProviderError(ERR.LIMIT_EXCEEDED);
     if (req.ns === 'evm' && UNSUPPORTED_EVM.has(req.method)) throw new ProviderError(ERR.UNSUPPORTED_METHOD, `Harbour does not support ${req.method}.`);
     // Namespaces this build does not serve are refused before anything else (core/harbour/policy.ts).
@@ -122,7 +127,10 @@ export class ProviderService {
     const conn = await this.d.perms.get(s.origin);
     const evmConn = conn && conn.namespaces.includes('evm') && conn.evmAddress ? conn : undefined;
     const solConn = conn && conn.namespaces.includes('solana') && conn.solanaAddress ? conn : undefined;
-    let chainId = conn?.chainId ?? this.policy.defaultChain;
+    const scoped = req.ns === 'evm' && scope?.chainId != null;
+    let chainId = scoped ? scope!.chainId! : conn?.chainId ?? this.policy.defaultChain;
+    // A request-scoped chain binds the approval to that chain instead of the connection's current one.
+    const bindEvm = evmConn && scoped ? { ...evmConn, chainId, scoped: true as const } : evmConn;
     void this.d.perms.touch(s.origin).catch(() => {});
 
     if (req.ns === 'evm') {
@@ -150,7 +158,7 @@ export class ProviderService {
           const n = req.method === 'eth_sign' ? normalizeEthSign(req.params) : normalizePersonalSign(req.params, me);
           if (req.method === 'eth_sign' && !n.rawHash) throw new ProviderError(ERR.INVALID_PARAMS, 'eth_sign only signs a 32-byte hash. Use personal_sign for text.');
           if (!sameAddress(n.address, me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
-          return this.queue(s, req, 'sign', n, evmConn);
+          return this.queue(s, req, 'sign', n, bindEvm);
         }
         case 'typed': {
           const n = normalizeTypedData(req.method, req.params, me);
@@ -159,17 +167,19 @@ export class ProviderService {
           if (dc !== undefined && dc !== null && String(dc).length && !this.policy.isSigningEvmChain(dc)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
           // PT-07 / EIP-3326: a request for another known chain is queued with the switch; nothing changes until the user approves.
           let switchedFrom: number | undefined; let switchTo: number | undefined;
+          if (scoped && dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) throw new ProviderError(ERR.INVALID_PARAMS, 'The typed data names a different network than this request.');
           if (dc !== undefined && dc !== null && String(dc).length && Number(dc) !== chainId) { const t = this.switchTarget(dc); if (t === null) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; switchTo = t; }
-          return this.queue(s, req, 'typed', { ...n, ...(switchTo !== undefined ? { switchedFrom, switchTo } : {}) }, evmConn);
+          return this.queue(s, req, 'typed', { ...n, ...(switchTo !== undefined ? { switchedFrom, switchTo } : {}) }, bindEvm);
         }
         case 'tx': {
           const tx = normalizeSendTx(req.params, me);
           // PT-07 / EIP-3326: validate the target chain BEFORE anything is written; the switch itself happens on approval.
           let switchedFrom: number | undefined;
+          if (scoped && tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) throw new ProviderError(ERR.INVALID_PARAMS, 'The transaction names a different network than this request.');
           if (tx.chainId !== undefined && Number(BigInt(tx.chainId)) !== chainId) { const want = this.switchTarget(tx.chainId); if (want === null) throw new ProviderError(ERR.INVALID_PARAMS, 'Provided chainId does not match the currently active chain.'); switchedFrom = chainId; chainId = want; }
           if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
           if (!this.policy.isSigningEvmChain(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
-          return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, evmConn);
+          return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, bindEvm);
         }
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
@@ -201,7 +211,7 @@ export class ProviderService {
           if (!v.ok) throw new ProviderError(ERR.INVALID_PARAMS, v.error);
           return this.queue(s, req, 'addChain', { chainId: a.chainId, known: false, network: { name: v.network.name, rpcUrl: v.network.rpcUrl, symbol: v.network.symbol, explorerUrl: v.network.explorerUrl ?? '', rpcUrls: usable.map((r) => r.url).slice(0, 6) } }, evmConn);
         }
-        case 'watchAsset': return this.queue(s, req, 'watchAsset', { asset: normalizeWatchAsset(req.params), chainId }, evmConn);
+        case 'watchAsset': return this.queue(s, req, 'watchAsset', { asset: normalizeWatchAsset(req.params), chainId }, bindEvm);
         default: throw new ProviderError(ERR.METHOD_NOT_FOUND);
       }
     }
@@ -283,7 +293,7 @@ export class ProviderService {
   }
 
   /** Create (or de-duplicate) an approval request and make the approval window visible. */
-  private async queue(s: SenderInfo, req: PageRequest, kind: PendingKind, params: unknown, bound?: Connection): Promise<HandleResult> {
+  private async queue(s: SenderInfo, req: PageRequest, kind: PendingKind, params: unknown, bound?: Connection & { scoped?: true }): Promise<HandleResult> {
     const key = senderKey(s, req.id);
     const existing = await this.d.pending.findByKey(key);
     if (existing?.stage === 'executing') throw new ProviderError(ERR.RESOURCE_UNAVAILABLE, 'This request is executing or its outcome is unknown. Do not resubmit; check the wallet and chain history.');
@@ -295,7 +305,7 @@ export class ProviderService {
     if (all.length >= MAX_PENDING_TOTAL || all.filter((p) => p.origin === s.origin).length >= MAX_PENDING_PER_ORIGIN) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many pending requests.');
     if ((kind === 'connect' || kind === 'permissions' || kind === 'solConnect' || kind === 'multiConnect') && all.some((p) => p.origin === s.origin && p.kind === kind)) throw new ProviderError(ERR.RESOURCE_UNAVAILABLE);
     const c = bound;
-    const binding = c ? { id: c.id, walletId: c.walletId, accountIndex: c.accountIndex, chainId: c.chainId, evmAddress: c.evmAddress, solanaAddress: c.solanaAddress, others: c.others } : undefined;
+    const binding = c ? { id: c.id, walletId: c.walletId, accountIndex: c.accountIndex, chainId: c.chainId, evmAddress: c.evmAddress, solanaAddress: c.solanaAddress, others: c.others, ...(c.scoped ? { scoped: true as const } : {}) } : undefined;
     await this.d.pending.add({ binding, key, reqId: req.id, ns: req.ns, method: req.method, kind, params, origin: s.origin, topOrigin: s.topOrigin, isTopFrame: s.isTopFrame, tabId: s.tabId, frameId: s.frameId, documentId: s.documentId, title: s.title, icon: s.icon });
     await this.d.openApproval().catch(() => {});
     return { done: false };
@@ -307,7 +317,7 @@ export class ProviderService {
     if (!same) {
       await this.d.perms.update(origin, { chainId });
       // EIP-3326: a chain switch cancels this site's other chain-bound requests that are still waiting (they named the old chain).
-      await this.rejectWhere((p) => p.origin === origin && !p.internal && (p.kind === 'tx' || p.kind === 'typed') && p.binding?.chainId !== chainId,
+      await this.rejectWhere((p) => p.origin === origin && !p.internal && (p.kind === 'tx' || p.kind === 'typed') && !p.binding?.scoped && p.binding?.chainId !== chainId,
         new ProviderError(ERR.USER_REJECTED, 'The network changed while this request was waiting. Send it again.')).catch(() => 0);
     }
     this.d.emit(origin, 'evm', 'chainChanged', hex(chainId)); this.d.emit(origin, 'evm', 'networkChanged', String(chainId));
@@ -479,7 +489,7 @@ export class ProviderService {
           tx = { ...tx, data: nd };
         }
         const switchedFrom = (p.params as { switchedFrom?: number }).switchedFrom;
-        if (conn.chainId !== (switchedFrom ?? chainId)) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
+        if (p.binding?.scoped ? p.binding.chainId !== chainId : conn.chainId !== (switchedFrom ?? chainId)) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
         const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
         if (switchedFrom !== undefined) await this.applyChain(p.origin, chainId); // approved: the network switch happens now (PT-07)
         const fee: FeeValues = {}; if (dec.fee?.maxFeePerGas) fee.maxFeePerGas = BigInt(dec.fee.maxFeePerGas); if (dec.fee?.maxPriorityFeePerGas) fee.maxPriorityFeePerGas = BigInt(dec.fee.maxPriorityFeePerGas); if (dec.fee?.gasPrice) fee.gasPrice = BigInt(dec.fee.gasPrice);
@@ -559,7 +569,7 @@ export class ProviderService {
   private async needConn(p: PendingRequest, ns: Namespace): Promise<Connection> {
     const c = await this.d.perms.isConnected(p.origin, ns); if (!c) throw new ProviderError(ERR.UNAUTHORIZED, 'The site is no longer connected.');
     const b = p.binding;
-    if (!b || c.id !== b.id || c.walletId !== b.walletId || c.accountIndex !== b.accountIndex || c.chainId !== b.chainId || c.evmAddress !== b.evmAddress || c.solanaAddress !== b.solanaAddress || JSON.stringify(c.others ?? null) !== JSON.stringify(b.others ?? null)) throw new ProviderError(ERR.UNAUTHORIZED, 'The connection changed while this request was pending. Request again for the current account and chain.');
+    if (!b || c.id !== b.id || c.walletId !== b.walletId || c.accountIndex !== b.accountIndex || (!b.scoped && c.chainId !== b.chainId) || c.evmAddress !== b.evmAddress || c.solanaAddress !== b.solanaAddress || JSON.stringify(c.others ?? null) !== JSON.stringify(b.others ?? null)) throw new ProviderError(ERR.UNAUTHORIZED, 'The connection changed while this request was pending. Request again for the current account and chain.');
     return c;
   }
   /** Token metadata straight from the contract (symbol(), decimals(), name()). Never trusts dApp-supplied values. */

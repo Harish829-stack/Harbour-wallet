@@ -76,7 +76,7 @@ function fakeKit() {
 }
 function setup(over = {}) {
   const kv = new MemKV(); const perms = new M.PermissionStore(kv); const kit = fakeKit(); const log = { queued: [], handled: [], disconnectedOrigins: [] };
-  const service = { async queueWcSession(s, id, p) { log.queued.push({ s, id, p }); }, async handle(s, req) { log.handled.push({ s, req }); return over.handle ? over.handle(s, req) : { done: true, outcome: { result: '0xsig' } }; } };
+  const service = { async queueWcSession(s, id, p) { log.queued.push({ s, id, p }); }, async handle(s, req, scope) { log.handled.push({ s, req, scope }); return over.handle ? over.handle(s, req) : { done: true, outcome: { result: '0xsig' } }; } };
   const bridge = new M.WalletConnectBridge({ kv, perms, service: () => service, createKit: async () => kit, projectId: async () => ('projectId' in over ? over.projectId : 'a'.repeat(32)),
     networks: { get: (id) => [1, 137].includes(id) ? {} : undefined }, disconnectOrigin: async (o) => { log.disconnectedOrigins.push(o); }, now: () => NOW * 1000 });
   return { bridge, kit, kv, perms, log };
@@ -125,11 +125,12 @@ test('host.approve sends the session and indexes it; a rejected proposal is answ
   assert.deepEqual(t.kit.calls.at(-1), ['reject', { id: 8, reason: { code: 5000, message: 'User rejected.' } }]);
   assert.equal(await t.bridge.deliver('doc-1', 'r1', { result: 1 }), false, 'content-script replies are not ours');
 });
-test('session_request: maps to the provider, binds the connection to the request chain, and answers on the relay', async () => {
+test('session_request: maps to the provider, scopes the chain to the request (SIG-11), and answers on the relay', async () => {
   const t = setup(); await seedSession(t); await t.bridge.ensure();
   t.kit.handlers.session_request({ id: 11, topic: TOPIC, params: { chainId: 'eip155:137', request: { method: 'personal_sign', params: ['0x68', A.evm] } } }); await flush();
   assert.equal(t.log.handled[0].req.method, 'personal_sign'); assert.equal(t.log.handled[0].s.tabId, M.WC_TAB); assert.equal(t.log.handled[0].s.documentId, `wc:${TOPIC}`);
-  assert.equal((await t.perms.get(K)).chainId, 137);
+  assert.deepEqual(t.log.handled[0].scope, { chainId: 137 }, 'the request chain is passed to the router');
+  assert.equal((await t.perms.get(K)).chainId, 1, 'SIG-11: a request never moves the stored connection chain');
   assert.deepEqual(t.kit.calls.at(-1), ['respond', { topic: TOPIC, response: { id: 11, jsonrpc: '2.0', result: '0xsig' } }]);
 });
 test('network change: a new chain is added to the session (updateSession) before chainChanged is emitted; a known chain only emits', async () => {
@@ -191,7 +192,7 @@ test('PT-06: a WalletConnect session never shares or changes the real site\'s in
   await t.perms.connect({ origin: O, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm }); // the real site, injected
   t.kit.handlers.session_request({ id: 31, topic: TOPIC, params: { chainId: 'eip155:137', request: { method: 'personal_sign', params: ['0x68', A.evm] } } }); await flush();
   assert.equal(t.log.handled.at(-1).s.origin, K, 'WC requests carry the WalletConnect key');
-  assert.equal((await t.perms.get(K)).chainId, 137); assert.equal((await t.perms.get(O)).chainId, 1, 'the injected connection is untouched');
+  assert.equal((await t.perms.get(K)).chainId, 1); assert.equal((await t.perms.get(O)).chainId, 1, 'the injected connection is untouched');
   // an unverified peer claiming a site that is connected only through the injected provider gets its OWN (new) record after approval, never the site's
   const u = setup(); await u.perms.connect({ origin: O, walletId: 'w', walletName: 'W', accountIndex: 0, accountName: 'A', chainId: 1, namespaces: ['evm'], evmAddress: A.evm });
   await u.bridge.ensure(); const ev = proposalEvent(); ev.verifyContext.verified.validation = 'UNKNOWN'; u.kit.handlers.session_proposal(ev); await flush();

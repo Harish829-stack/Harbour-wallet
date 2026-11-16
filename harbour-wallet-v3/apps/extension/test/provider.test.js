@@ -847,3 +847,34 @@ test('PT-10: a clean dApp iframe inside a phishing-listed page is blocked unless
   assert.equal(blocked.ok, false); assert.match(blocked.error, /phishing list/);
   assert.equal((await ctx.svc.resolve(p.id, { approve: true, riskOverride: 'evil.example' })).ok, true);
 });
+
+// ------------------------------------------------------------------ SIG-11: request-scoped chain (WalletConnect, CAIP-27)
+test('SIG-11: a request-scoped chain never moves the connection, and concurrent requests keep their own chains', async () => {
+  const ctx = setup(); const s = sender('https://wc.example', { tabId: -1, documentId: 'wc:t1' }); await connect(ctx, s);
+  assert.equal((await ctx.perms.get('https://wc.example')).chainId, 1);
+  // reads go to the request's chain
+  await ctx.svc.handle(s, req('eth_blockNumber', []), { chainId: 137 }); assert.equal(ctx.log.rpc.at(-1)[0], 137);
+  assert.equal((await ctx.svc.handle(s, req('eth_chainId'), { chainId: 137 })).outcome.result, '0x89');
+  // two in-flight transactions for different chains
+  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }]), { chainId: 137 })).done, false);
+  assert.equal((await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x2' }]), { chainId: 1 })).done, false);
+  assert.equal((await ctx.perms.get('https://wc.example')).chainId, 1, 'the stored connection chain is untouched');
+  const [a, b] = await ctx.pending.list(); assert.deepEqual([a.params.chainId, b.params.chainId].sort(), [1, 137]);
+  assert.ok(a.binding.scoped && b.binding.scoped);
+  for (const p of [a, b]) assert.equal((await ctx.svc.resolve(p.id, { approve: true, fee: { gasPrice: '1' } })).ok, true);
+  assert.deepEqual(ctx.log.signed.filter((x) => x[0] === 'tx').map((x) => [x[2], x[3].value]).sort(), [[1, '0x2'], [137, '0x1']], 'each tx is signed for the chain its own request named');
+  // a payload that names another chain than the request is refused, not silently switched
+  const bad = await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, chainId: '0x1' }]), { chainId: 137 }); assert.equal(bad.outcome.error.code, -32602);
+  const td = { types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], M: [{ name: 'x', type: 'uint256' }] }, primaryType: 'M', domain: { chainId: 1 }, message: { x: 1 } };
+  const badTd = await ctx.svc.handle(s, req('eth_signTypedData_v4', [ADDR0, JSON.stringify(td)]), { chainId: 137 }); assert.equal(badTd.outcome.error.code, -32602);
+});
+test('SIG-11: a wallet-side network switch does not cancel request-scoped approvals', async () => {
+  const ctx = setup(); const s = sender('https://wc2.example', { tabId: -1, documentId: 'wc:t2' }); await connect(ctx, s);
+  await ctx.svc.handle(s, req('eth_sendTransaction', [{ to: ADDR1, value: '0x1' }]), { chainId: 137 });
+  const scopedTx = await pendingOf(ctx);
+  await ctx.svc.handle(s, req('wallet_switchEthereumChain', [{ chainId: '0xaa36a7' }]));
+  const sw = (await ctx.pending.list()).find((p) => p.kind === 'switchChain'); assert.equal((await ctx.svc.resolve(sw.id, { approve: true })).ok, true);
+  assert.equal((await ctx.perms.get('https://wc2.example')).chainId, 11155111);
+  assert.equal((await ctx.svc.resolve(scopedTx.id, { approve: true, fee: { gasPrice: '1' } })).ok, true);
+  assert.equal(ctx.log.signed.find((x) => x[0] === 'tx')[2], 137);
+});
