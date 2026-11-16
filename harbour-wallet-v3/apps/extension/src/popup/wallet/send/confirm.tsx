@@ -8,6 +8,7 @@ import { useRecipient } from './prepare';
 import { Notice, FeeRow, FeeSheet, CopyBtn } from './parts';
 import { money } from '../../settingsStore';
 import { chainById } from '../../../core/chains/index';
+import { isPopupContext } from '../../biometricsUi';
 
 /** Documented assumption: TW shows no value threshold publicly; 1,000 USD-equivalent triggers the extra review step. */
 // Hardware wallets: the background prepares the exact transaction, the Ledger signs it over WebHID, the background verifies + broadcasts.
@@ -22,7 +23,7 @@ async function sendWithLedger(c: any, req: any, note: (m: string) => void): Prom
   let t: any = null;
   try {
     note('Confirm the transaction on your Ledger.');
-    t = await L.open(false);
+    t = await L.open(false, { chooser: !(await isPopupContext()) }); // no device picker inside the toolbar popup
     if (p.kind === 'evm') return await c.bg({ type: 'ledgerSendSubmit', id: p.id, signature: await L.ethSign(t, p.path, p.unsignedTx) });
     return await c.bg({ type: 'ledgerSendSubmit', id: p.id, signedTx: await L.btcSign(t, p.path, p.inputs, p.outputs) });
   } catch (e: any) { return { ok: false, error: L.ledgerError(e) }; }

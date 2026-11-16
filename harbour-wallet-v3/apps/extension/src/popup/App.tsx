@@ -16,6 +16,7 @@ import './design/system.css';
 import './wallet/layout.css';
 import { Brand, PasswordField } from './design/components';
 import { AddPassword } from './wallet/addPassword';
+import { ImportLedgerScreen } from './ledger/ImportLedger';
 import { BiometricEnroll, biometricUnlock, isPopupContext, loadPasskeyStatus, openInTab, useBiometricAvailability, type PasskeyStatus } from './biometricsUi';
 import { useSecretField } from './secureField';
 
@@ -192,6 +193,9 @@ function WalletApp() {
   if (screen === 'home' && params.get('reauth') === 'add') return <FlowFrame heading={<>Verify<br/>it’s you</>} title="Add a wallet" art="backup"><AddWalletReauth bg={bg} then={params.get('then') === 'create' ? 'create' : 'import'}/></FlowFrame>;
   // Opened in a full tab from the reveal gate so the OS biometric sheet can appear.
   if (screen === 'home' && params.get('reveal')) return <FlowFrame heading={<>Back up your<br/>secret phrase</>} title="Back up your Secret Phrase" art="backup"><BackupFlow bg={bg} walletId={params.get('wallet') || undefined} autoBiometric onDone={() => window.close()} onCancel={() => window.close()}/></FlowFrame>;
+  // Opened in a full tab from Add wallet: Chrome's WebHID device picker would close the toolbar popup.
+  if (screen === 'home' && params.get('ledger')) { const done = () => { window.history.replaceState(null, '', window.location.pathname); window.close(); };
+    return <FlowFrame heading={<>Connect your<br/>Ledger</>} title="Connect your Ledger" art="backup"><ImportLedgerScreen {...({ bg, nav: { pop: done, home: done, push: () => {}, replace: () => {} }, refresh: () => {}, params: {} } as any)}/></FlowFrame>; }
   if (screen === 'home' && params.get('addpw')) return <FlowFrame heading="Add a password" title="Add a password" art="biometrics"><AddPassword bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.close(); window.location.reload(); }} /></FlowFrame>;
   if (screen === 'home' && params.get('enroll')) return <FlowFrame heading="Secure your wallet" title="Set up biometrics" art="biometrics"><BiometricEnroll bg={bg} name={bio.name} onDone={() => { window.history.replaceState(null, '', window.location.pathname); window.location.reload(); }} /></FlowFrame>;
 

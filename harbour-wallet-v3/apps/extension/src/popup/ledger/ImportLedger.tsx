@@ -36,7 +36,7 @@ export const ImportLedgerScreen: React.FC<Ctx> = (c) => {
           right={<button type="button" data-testid={`ledger-read-${ct}`} disabled={!!busy} onClick={() => void read(ct)} className="hb-link-btn">{busy === ct ? 'Reading…' : found[ct] ? 'Read again' : 'Read'}</button>} left={<Coin sym={ct === 'ethereum' ? 'ETH' : ct === 'bitcoin' ? 'BTC' : 'SOL'} assetId={ct} size={36} />} />
       ))}
       {err && <div role="alert" style={{ color: T.error, fontSize: 13, margin: '10px 0' }}>{err}</div>}
-      <div style={{ color: T.sub, fontSize: 12, marginTop: 12 }}>Sending works on EVM networks and Bitcoin. Solana is receive-only from a Ledger for now. If Chrome's device picker does not open in the popup, use Expand view and try again.</div>
+      <div style={{ color: T.sub, fontSize: 12, marginTop: 12 }}>Sending works on EVM networks and Bitcoin. Solana is receive-only from a Ledger for now. Keep this tab open until the wallet is added.</div>
     </Screen>
   );
 };

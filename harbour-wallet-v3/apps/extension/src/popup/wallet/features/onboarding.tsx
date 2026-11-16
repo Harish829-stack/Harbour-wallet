@@ -8,6 +8,7 @@ import { Screen, Row, Skeleton, Ic } from '../ui';
 import { T } from '../../theme';
 import { BackupFlow } from '../../onboarding/BackupFlow';
 import { RevealGate } from '../revealGate';
+import { isPopupContext, openInTab } from '../../biometricsUi';
 import { MAX_WALLETS, canCreateWallet } from '../../../core/importKey';
 
 const openOnboarding = async (query = '') => { await browser.tabs.create({ url: browser.runtime.getURL(`src/popup/index.html#/onboarding${query}`) }); window.close(); };
@@ -38,7 +39,11 @@ export const AddWalletOnboardingScreen: React.FC<Ctx> = (c) => {
         <div style={{ color: T.sub, fontSize: 12, marginBottom: 8 }}>{count} of {MAX_WALLETS} wallets</div>
         <Row left={<Ic d="plus" size={20}/>} title="Create new wallet" sub="Generate a new secret phrase" onClick={allowed ? () => setGate('create') : undefined}/>
         <Row left={<Ic d="receive" size={20}/>} title="I already have a wallet" sub="Secret phrase, private key or QR code" onClick={allowed ? () => setGate('import') : undefined}/>
-        <Row left={<Ic d="shield" size={20}/>} title="Connect your Ledger" sub="Hardware wallet" onClick={allowed ? () => (SCREENS['importLedger'] ? c.nav.push('importLedger') : void openOnboarding()) : undefined}/>
+        <Row left={<Ic d="shield" size={20}/>} title="Connect your Ledger" sub="Hardware wallet" onClick={allowed ? () => void (async () => {
+          // Chrome's WebHID device picker closes the toolbar popup: connecting a Ledger always runs in a full tab.
+          if (await isPopupContext()) { await openInTab('?ledger=1'); window.close(); return; }
+          if (SCREENS['importLedger']) c.nav.push('importLedger'); else void openOnboarding();
+        })() : undefined}/>
         {err && <div role="alert" style={{ color: T.error, marginTop: 12, fontSize: 13 }}>{err}</div>}
         {busy && <div role="status" style={{ color: T.sub, marginTop: 12, fontSize: 13 }}>Creating wallet...</div>}
       </>}

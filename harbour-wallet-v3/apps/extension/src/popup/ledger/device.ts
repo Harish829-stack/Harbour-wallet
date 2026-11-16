@@ -8,10 +8,15 @@ import Solana from '@ledgerhq/hw-app-solana';
 
 type Transport = Awaited<ReturnType<typeof TransportWebHID.create>>;
 export const supported = () => typeof navigator !== 'undefined' && !!(navigator as any).hid;
-/** Reuse a device the user already granted; otherwise show Chrome's device chooser (needs a click). */
-export async function open(request = false): Promise<Transport> {
+/**
+ * Reuse a device the user already granted; otherwise show Chrome's device chooser (needs a click).
+ * `chooser: false` (the toolbar popup): the chooser is never opened there, because the popup closes when the OS/Chrome picker takes focus
+ * and the WebHID request dies with it. Pairing happens once in a full tab (Add wallet > Connect your Ledger), as MetaMask and Rabby do.
+ */
+export async function open(request = false, opts: { chooser?: boolean } = {}): Promise<Transport> {
   if (!supported()) throw new Error('This browser does not support WebHID. Use Chrome or Edge on desktop.');
   if (!request) { const t = await TransportWebHID.openConnected().catch(() => null); if (t) return t; }
+  if (opts.chooser === false) throw Object.assign(new Error('Ledger not paired'), { name: 'LedgerNotPaired' });
   return TransportWebHID.request();
 }
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -28,6 +33,7 @@ export function ledgerError(e: any): string {
   if (code === 0x6e00 || code === 0x6d00 || code === 0x6511 || /CLA_NOT_SUPPORTED|INS_NOT_SUPPORTED|app/i.test(e?.message ?? '')) return 'Open the right app on your Ledger (Ethereum or Bitcoin) and try again.';
   if (code === 0x5515 || /locked/i.test(e?.message ?? '')) return 'Unlock your Ledger with its PIN and try again.';
   if (/blind signing|0x6a80/i.test(e?.message ?? '') || code === 0x6a80) return 'Enable blind signing in the Ethereum app settings on your Ledger for this transaction.';
+  if (e?.name === 'LedgerNotPaired') return 'Plug in and unlock your Ledger. If it still is not found, connect it once from Add wallet › Connect your Ledger (it opens in a tab), then try again.';
   if (e?.name === 'NotFoundError' || /No device selected/i.test(e?.message ?? '')) return 'No Ledger selected.';
   return String(e?.message ?? 'Ledger error').slice(0, 200);
 }
