@@ -1,6 +1,6 @@
 # Harbour Wallet security findings, explained in plain language
 
-Each number matches the row in `SECURITY_FINDINGS.md`. Items 1 to 8 are fixed. Items 9 to 19 are not fixed and say why; none of them needed your approval for a protected area (see item 18).
+Each number matches the row in `SECURITY_FINDINGS.md`. Items 1 to 8 and 20 are fixed. Items 9 to 19 are not fixed and say why; none of them needed your approval for a protected area (see item 18).
 
 How to read the status words: **Fixed** means the change is committed and was checked as far as this session allowed (stated in each item). **Not fixed** means I found it but could not or should not change it myself.
 
@@ -152,8 +152,16 @@ How to read the status words: **Fixed** means the change is committed and was ch
 
 ## 19. What this review could not check
 
-- **What was wrong:** Some things cannot be judged from code on this computer: the server code was read but not built or tested (the Go tools could not be downloaded here); the automatic jobs were not run on GitHub; server images were not built; nothing was tried in a real browser, with a real fingerprint reader or with a Ledger; and account security for the Chrome Web Store and GitHub is outside the code.
+- **What was wrong:** Some things cannot be judged from code alone. Since the first version of this file, you ran the server on your Mac: it builds, every service starts, the smoke test passes and the server's automatic tests pass (one Mac-only test failure is item 20). Still not checked: the two server security scanners, the automatic jobs on GitHub, the images used on Railway, real-browser use, real fingerprint readers, Ledger, and account security for the Chrome Web Store and GitHub.
 - **How an attacker could abuse it:** Problems in those areas would not have been seen by this review. Taking over the store publishing account is exactly how the Trust Wallet extension was attacked in 2025.
 - **What could have been lost or harmed:** Unknown until checked.
-- **How it was fixed:** It was not. Before real funds are at stake: run the backend tests and scanners in CI, test on real devices, protect the store and GitHub accounts with two-step sign-in and required reviewers, and have an independent firm audit the wallet.
+- **How it was fixed:** It was not. Before real funds are at stake: run the scanners in CI, test on real devices, protect the store and GitHub accounts with two-step sign-in and required reviewers, and have an independent firm audit the wallet.
+- **Did anything change for users?** No.
+
+## 20. A database safety check failed its own test on Macs (Fixed)
+
+- **What was wrong:** A small script makes the database refuse any connection that is not encrypted. The script worked on the servers, but it used a text-editing command that behaves differently on a Mac, so its test failed when you ran the tests on your Mac.
+- **How an attacker could abuse it:** Not directly. The danger is human: when a security test is always red on developers' machines, people learn to ignore it, and a real break in that check could slip through.
+- **What could have been lost or harmed:** Nothing so far; the servers were never affected.
+- **How it was fixed:** The script now edits the file in a way that works the same on Linux and on a Mac, and it stops without touching the file if anything goes wrong. Checked on Linux; please rerun `make test` on your Mac to confirm it is green there.
 - **Did anything change for users?** No.
