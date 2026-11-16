@@ -128,7 +128,7 @@ function ApprovalReview({ view: v, busy, resolve: resolveRaw }: { view: any; bus
   const wcPrev = wcs ? v.wc?.preview?.find((p: any) => p.index === account) : null;
   const warnings: string[] = v.warnings ?? [];
   const risk = v.site?.risk === 'high' || v.site?.risk === 'blocked' || v.site?.risk === 'malicious' || v.site?.risk === 'phishing';
-  const dangerous = risk || !!v.switchedFrom || (wcs && (v.wc?.verify?.isScam || v.wc?.verify?.validation !== 'VALID')) || v.message?.rawHash || v.message?.ethSign || warnings.length > 0 || v.typed?.warnings?.length > 0 || v.siwe?.issues?.length > 0;
+  const dangerous = risk || !!v.switchedFrom || (wcs && (v.wc?.verify?.isScam || v.wc?.verify?.validation !== 'VALID')) || v.message?.rawHash || v.message?.ethSign || v.message?.hidden || warnings.length > 0 || v.typed?.warnings?.length > 0 || v.siwe?.issues?.length > 0;
   // Phishing-listed sites are blocked (HW-2026-006): approving needs the user to type the site's host; the worker re-checks it.
   const [override, setOverride] = useState(''); const siteHost = (() => { try { return new URL(v.site?.riskOrigin ?? v.origin).host.toLowerCase(); } catch { return ''; } })();
   const overrideOk = !risk || (!!siteHost && override.trim().toLowerCase() === siteHost);
