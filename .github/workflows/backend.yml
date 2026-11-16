@@ -26,6 +26,7 @@ jobs:
         ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: {persist-credentials: false}   # do not leave the job token in .git/config for later steps
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with: {go-version-file: harbour-wallet-v3/apps/backend/go.mod, cache-dependency-path: harbour-wallet-v3/apps/backend/go.sum}
       - run: go mod tidy && git diff --exit-code go.mod go.sum
@@ -45,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: {persist-credentials: false}   # do not leave the job token in .git/config for later steps
       - run: docker build --target local -t harbour-backend:local .
       - run: docker build -t harbour-backend:railway --build-arg SERVICE=api .
       - run: |

@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: {persist-credentials: false}   # do not leave the job token in .git/config for later steps
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: harbour-wallet-v3/apps/extension/.nvmrc
@@ -38,9 +39,11 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     environment: release   # 2 required reviewers; their logins become HB_RELEASE_APPROVERS
-    permissions: {contents: write, id-token: write, attestations: write}
+    # Only what build provenance needs (OIDC token + attestation). The job never pushes to the repository, so contents stays read-only.
+    permissions: {contents: read, id-token: write, attestations: write}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: {persist-credentials: false}   # do not leave the job token in .git/config for later steps
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: harbour-wallet-v3/apps/extension/.nvmrc
