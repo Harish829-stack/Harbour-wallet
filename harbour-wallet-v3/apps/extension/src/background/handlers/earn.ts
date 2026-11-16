@@ -22,6 +22,7 @@ import { fetchTezosContext, tezosTarget, tezosFee, signTezosDelegation, injectTe
 import { fetchCardanoState, cardanoStakeInput, cardanoTipSlot, STAKE_KEY_DEPOSIT } from '../../core/staking/cardano';
 import { cardanoPlan, cardanoSign, cardanoSubmit } from '../../core/chains/cardano';
 import { poolsApi, poolMember, polkadotCall, polkadotFee, polkadotSubmit } from '../../core/staking/polkadot';
+import { ReviewStore } from '../../integrations/testnet-defi/plans';
 
 const env = (): StakeEnv => ({ f: fetch.bind(globalThis) as typeof fetch, rpcUrls: getRpcUrls, solUrls: () => [solanaRpcUrl(), ...(chainById('solana')?.endpoints ?? [])].filter((u, i, a) => a.indexOf(u) === i) });
 const LIST_KEY = 'earn:list:v1'; const LIST_TTL = 5 * 60_000;
@@ -35,6 +36,14 @@ export interface Summary {
   fee: string; feeSymbol: string; feeDecimals: number; feeExact: boolean; steps: number; notes: string[]; balance: string;
 }
 interface Plan { summary: Summary; run: () => Promise<string[]> }
+// Plan locking (same model as Send's planHash and the testnet DeFi reviews): earnPrepare builds the plan ONCE and keeps it in the worker;
+// earnSubmit executes exactly that plan by review id. Only chain mechanics (nonce/sequence/blockhash/fee market) are read fresh at signing,
+// and the fee may not rise past FEE_SLACK of what was reviewed. The popup can submit an id, never parameters.
+const REVIEW_TTL_MS = 3 * 60_000;
+const FEE_SLACK_NUM = 12n, FEE_SLACK_DEN = 10n; // +20%
+const reviews = new ReviewStore<{ owner: string; expiresAt: number; plan: Plan }>();
+const ownerOf = (info: { walletId: string; derivationIndex: number }) => `${info.walletId}:${info.derivationIndex}`;
+const feeRose = () => bad('The network fee rose since you reviewed this. Go back and review it again.', 'fee_changed');
 
 async function ready(ctx: HandlerCtx) {
   const info = await activeInfo(ctx);
@@ -214,7 +223,9 @@ async function buildPlan(ctx: HandlerCtx, req: Req): Promise<Plan> {
     base.notes.push('Your ADA never leaves your wallet and is not locked. Rewards start after 2 epochs (about 10 days).');
     return { summary: base, run: async () => withCoinKey(ctx, chain.ct, async (key) => {
       const fresh = await fetchCardanoState(chain, address, e.f);
-      const signed = cardanoSign(ctx.core, { ...cardanoStakeInput(req.action, fresh, await cardanoTipSlot(e.f, chain), pool), privateKey: [key] });
+      const input2 = cardanoStakeInput(req.action, fresh, await cardanoTipSlot(e.f, chain), pool); const plan2 = cardanoPlan(ctx.core, input2);
+      if (plan2.error || BigInt(plan2.fee.toString()) * FEE_SLACK_DEN > BigInt(base.fee) * FEE_SLACK_NUM) throw feeRose();
+      const signed = cardanoSign(ctx.core, { ...input2, privateKey: [key] });
       return [(await cardanoSubmit(e.f, signed.cbor, chain)) || signed.txId];
     }) };
   }
@@ -287,12 +298,12 @@ async function buildPlan(ctx: HandlerCtx, req: Req): Promise<Plan> {
   }
   const est = await estimatePlan(chain, address as `0x${string}`, plan).catch(() => null);
   if (!est) throw bad('Could not estimate the network fee; check your connection and try again', 'fee_failed');
-  base.fee = est.fee.toString(); base.feeExact = est.exact; base.steps = plan.length;
+  base.fee = est.fee.toString(); base.feeExact = est.exact; base.steps = plan.length; const maxPrice = (est.price * FEE_SLACK_NUM) / FEE_SLACK_DEN;
   const spend = plan.reduce((n, c) => n + c.value, 0n) + est.fee;
   if (balance < spend) throw bad(`Not enough ${def.symbol} to cover the amount and network fee`, 'insufficient_funds');
   return { summary: base, run: async () => {
     const keys = await openActiveKeys(ctx.core, ctx.vault, ctx.wallet);
-    try { return await runPlan(chain, keys.evmPrivateKey(), plan); } finally { keys.dispose(); }
+    try { return await runPlan(chain, keys.evmPrivateKey(), plan, { maxPrice, onFeeRose: feeRose }); } finally { keys.dispose(); }
   } };
 }
 
@@ -328,12 +339,20 @@ const earnDetails: Handler = async (msg, ctx) => {
     return { ok: true, def: { chainId: def.chainId, family, minStake: d.minJoin ?? minStake, lockDays: d.overview.lockDays ?? lockDays, claimableRewards, supportsRedelegate, protocol, symbol, decimals }, overview: d.overview, validators: d.validators, validatorsSource: d.validatorsSource, balance, reserve, address };
   } catch (e: any) { return errOf(e); }
 };
-const earnPrepare: Handler = async (msg, ctx) => { try { return { ok: true, summary: (await buildPlan(ctx, parse(msg))).summary }; } catch (e: any) { return errOf(e); } };
+const earnPrepare: Handler = async (msg, ctx) => {
+  try {
+    const plan = await buildPlan(ctx, parse(msg)); const info = await ready(ctx); const reviewId = crypto.randomUUID();
+    reviews.put(reviewId, { owner: ownerOf(info), expiresAt: Date.now() + REVIEW_TTL_MS, plan });
+    return { ok: true, reviewId, summary: plan.summary };
+  } catch (e: any) { return errOf(e); }
+};
 const earnSubmit: Handler = async (msg, ctx) => {
   if (busy) return fail('Another staking transaction is in progress', 'busy');
   busy = true;
   try {
-    const plan = await buildPlan(ctx, parse(msg)); const hashes = await plan.run();
+    const info = await ready(ctx);
+    const { plan } = reviews.take(String(msg.reviewId ?? ''), ownerOf(info)); // single use; expired / other account -> review again
+    const hashes = await plan.run();
     await local.remove(LIST_KEY); // positions changed; next list read refreshes
     const chain = chainById(plan.summary.chainId)!;
     return { ok: true, hash: hashes[hashes.length - 1], hashes, explorerUrl: explorerTxUrl(chain, hashes[hashes.length - 1]), summary: plan.summary };

@@ -217,7 +217,7 @@ const StakeActionScreen: React.FC<Ctx> = (c) => {
     const req = { chainId, action, amount: needAmount ? amount : undefined, max, validator: action === 'claim' || action === 'compound' ? undefined : validator, toValidator, positionId };
     const r = await bg({ type: 'earnPrepare', ...req }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
     setBusy(false);
-    if (r?.ok) c.nav.push('stakeConfirm', { req, summary: r.summary, depth }); else setErr(r?.error ?? 'Could not prepare the transaction');
+    if (r?.ok) c.nav.push('stakeConfirm', { req, summary: r.summary, reviewId: r.reviewId, depth }); else setErr(r?.error ?? 'Could not prepare the transaction');
   };
   const field: React.CSSProperties = { background: T.bgAlt, borderRadius: 16, padding: '12px 14px', margin: '10px 0' };
   const vRow = (label: string, id: string | undefined, which: 'from' | 'to') => {
@@ -280,12 +280,12 @@ const StakeActionScreen: React.FC<Ctx> = (c) => {
 
 // ---------------------------------------------------------------- confirm / result
 const StakeConfirmScreen: React.FC<Ctx> = (c) => {
-  const { req, summary } = c.params as { req: any; summary: any }; const s = summary; const depth: number = c.params?.depth ?? 2;
+  const { summary, reviewId } = c.params as { req: any; summary: any; reviewId: string }; const s = summary; const depth: number = c.params?.depth ?? 2;
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<{ hash: string; explorerUrl?: string } | null>(null);
   const submit = async () => {
     setBusy(true); setErr(null);
-    const r = await bg({ type: 'earnSubmit', ...req }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+    const r = await bg({ type: 'earnSubmit', reviewId }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
     setBusy(false);
     if (r?.ok) { setDone({ hash: r.hash, explorerUrl: r.explorerUrl }); notifyEarnChanged(); } else setErr(r?.error ?? 'Transaction failed');
   };

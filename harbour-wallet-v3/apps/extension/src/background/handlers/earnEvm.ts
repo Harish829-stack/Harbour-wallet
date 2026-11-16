@@ -23,19 +23,21 @@ export async function estimateCall(client: Client, from: `0x${string}`, c: CallP
   return { gas: c.gasFallback, estimated: false };
 }
 /** Total fee (wei) of a plan: only the first call can be estimated against current state, later ones use their bound. */
-export async function estimatePlan(chain: ChainInfo, from: `0x${string}`, plan: CallPlan[]): Promise<{ fee: bigint; exact: boolean; steps: number }> {
+export async function estimatePlan(chain: ChainInfo, from: `0x${string}`, plan: CallPlan[]): Promise<{ fee: bigint; exact: boolean; steps: number; price: bigint }> {
   const client = evmClientFor(chain); const fees = await feeData(client, chain.evmChainId === 56);
   const price = fees.maxFeePerGas ?? fees.gasPrice ?? 0n;
   let gas = 0n; let exact = true;
   for (let i = 0; i < plan.length; i++) { const g = await estimateCall(client, from, plan[i], i === 0); gas += g.gas; exact = exact && g.estimated; }
-  return { fee: gas * price, exact, steps: plan.length };
+  return { fee: gas * price, exact, steps: plan.length, price };
 }
-export async function runPlan(chain: ChainInfo, privateKey: Uint8Array, plan: CallPlan[]): Promise<string[]> {
+/** `maxPrice`: the per-gas price the user reviewed (+ slack). A higher live price stops the plan before that call is signed. */
+export async function runPlan(chain: ChainInfo, privateKey: Uint8Array, plan: CallPlan[], cap?: { maxPrice: bigint; onFeeRose: () => Error }): Promise<string[]> {
   const client = evmClientFor(chain); const account = evmAccountFromBytes(privateKey);
   const legacy = chain.evmChainId === 56; const hashes: string[] = [];
   let nonce = await client.getTransactionCount({ address: account.address, blockTag: 'pending' });
   for (let i = 0; i < plan.length; i++) {
     const c = plan[i]; const fees = await feeData(client, legacy);
+    if (cap && (fees.maxFeePerGas ?? fees.gasPrice ?? 0n) > cap.maxPrice) throw i === 0 ? cap.onFeeRose() : new Error('Step 1 was sent, but the network fee rose before the next step. Open Earn and review the remaining step again.');
     const gas = (await estimateCall(client, account.address, c, true)).gas;
     const base = { chainId: chain.evmChainId!, to: c.to, data: c.data, value: c.value, nonce, gas };
     const raw = await account.signTransaction(legacy || !fees.maxFeePerGas ? { ...base, type: 'legacy' as const, gasPrice: fees.gasPrice ?? fees.maxFeePerGas! } : { ...base, type: 'eip1559' as const, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n });
