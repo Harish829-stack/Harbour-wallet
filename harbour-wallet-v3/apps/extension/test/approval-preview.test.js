@@ -50,3 +50,24 @@ test('a plain transfer (no data) raises none of them', async () => {
   const v = await view('0x', '0xde0b6b3a7640000', false);
   for (const w of ['unknownCall', 'simulationUnavailable', 'blindCall']) assert.ok(!v.warnings.includes(w), w);
 });
+
+test('no eth_simulateV1: the backend provider simulation fills the balance-change preview', async () => {
+  const TOKEN = '0x' + '44'.repeat(20);
+  const d = { ...deps(false), simulate: async (chainId, tx) => {
+    assert.equal(chainId, 1); assert.equal(tx.from, ME);
+    return { mode: 'full', success: true, warnings: [], changes: [
+      { asset: TOKEN, kind: 'token', change_type: 'transfer', from: ME, to: DAPP, amount_raw: '100000000', amount: '100', symbol: 'USDC' },
+      { asset: 'native', kind: 'native', change_type: 'transfer', from: DAPP, to: ME, amount_raw: '30000000000000000', amount: '0.03', symbol: 'ETH' },
+      { asset: TOKEN, kind: 'token', change_type: 'approve', from: ME, to: DAPP, amount_raw: '1', symbol: 'USDC' },
+    ] };
+  } };
+  const v = await buildView({ id: 'r2', kind: 'tx', ns: 'evm', method: 'eth_sendTransaction', origin: 'https://dapp.example', isTopFrame: true, params: { chainId: 1, tx: { from: ME, to: DAPP, value: '0x0', data: '0xdeadbeef00' } } }, d);
+  assert.ok(!v.warnings.includes('simulationUnavailable') && !v.warnings.includes('blindCall'));
+  const usdc = v.assetChanges.find((c) => c.symbol === 'USDC'); assert.equal(usdc.direction, 'out'); assert.equal(usdc.formatted, '100');
+  const eth = v.assetChanges.find((c) => c.kind === 'native'); assert.equal(eth.direction, 'in'); assert.equal(eth.formatted, '0.03');
+  assert.equal(v.assetChanges.length, 2, 'approvals are not balance changes');
+});
+test('backend simulation unsupported for the chain: still flagged as blind', async () => {
+  const v = await buildView({ id: 'r3', kind: 'tx', ns: 'evm', method: 'eth_sendTransaction', origin: 'https://dapp.example', isTopFrame: true, params: { chainId: 1, tx: { from: ME, to: DAPP, value: '0x0', data: '0xdeadbeef00' } } }, { ...deps(false), simulate: async () => null });
+  assert.ok(v.warnings.includes('simulationUnavailable') && v.warnings.includes('blindCall'));
+});

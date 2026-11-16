@@ -26,6 +26,8 @@ import { loadSettings } from '../settingsService';
 import { siteRisk as phishingRisk } from '../../core/provider/phishing';
 import { WalletConnectBridge, WC_TAB, SESSIONS_KEY } from '../walletconnect/bridge';
 import { createKit, readProjectId } from '../walletconnect/kit';
+import { simulateTx } from '../../core/harbour/client';
+import { backendChainOf } from '../../core/harbour/config';
 
 export const PORT_NAME = 'harbour-provider';
 export const GC_ALARM = 'harbour-provider-gc';
@@ -215,6 +217,7 @@ export async function disconnectOrigin(origin: string, ns?: Namespace): Promise<
 export function viewDeps(): ViewDeps {
   const svc = getProvider();
   return { perms, rpc: (c, m, p) => networksReady.then(() => rpc(c, m, p)), networks: { list: () => evmNetworks(), get: (id) => evmNetwork(id) }, signer: wrapSigner(), kv: kvSession, tokenMeta: (c, a) => svc.tokenMeta(c, a), solRpc,
+    simulate: async (chainId, tx) => { const b = backendChainOf(chainId); if (!b) return null; const r = await simulateTx(b, tx); return r?.mode === 'full' ? r : null; },
     probeChainId: async (url) => { const r = await probeRpcChainId(url); if (!r.ok) throw new Error(r.error); return r.chainId; } };
 }
 export { signer as rawSigner, wrapSigner, ensureCtx };

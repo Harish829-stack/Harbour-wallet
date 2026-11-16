@@ -67,6 +67,10 @@ export const putAddresses = (add: AddressRef[], remove: AddressRef[]) =>
 export const broadcastTx = async (chain: string, raw: string, session?: string) =>
   checkBroadcast(await api('POST', `/v1/tx/${chain}/broadcast`, { raw },
     { 'Idempotency-Key': `bc-${raw.slice(-24)}`, ...(session ? { 'X-HB-Session': session } : {}) }), raw);
+/** Backend asset-change simulation (Alchemy simulateAssetChanges on chains configured for it; mode "basic" elsewhere). */
+export interface SimChange { asset: string; kind: string; change_type: string; from: string; to: string; amount_raw: string; amount?: string; symbol?: string; token_id?: string }
+export interface SimResponse { mode: 'full' | 'basic'; success: boolean; changes: SimChange[]; warnings: string[]; message?: string }
+export const simulateTx = (chain: string, tx: { from: string; to?: string; value: string; data?: string; gas?: string }) => api<SimResponse>('POST', `/v1/tx/${chain}/simulate`, tx);
 export const realtimeToken = () => api<{ url: string; token: string; expires_at: number; subscriptions: Array<{ channel: string; token: string }> }>('POST', '/v1/realtime/token', {});
 export const vapidKey = async (): Promise<string> => { if (!HB_API_SECURE) throw new HarbourApiError(0, 'insecure_api', 'Harbour cannot reach its servers securely.', false); return (await parseResponse(await rawFetch(`${HB_API_URL}/v1/push/vapid`, { credentials: 'omit' }))).public_key; };
 export const putPush = (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) => api('PUT', '/v1/me/push', sub);

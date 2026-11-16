@@ -23,7 +23,9 @@ import type { RpcCall } from './rpc';
 import type { Signer } from './service';
 import { codeKind } from '../../core/evmCode';
 
-export interface ViewDeps { perms: PermissionStore; rpc: RpcCall; networks: { list(): EvmNetwork[]; get(id: number): EvmNetwork | undefined }; signer: Signer; kv: KV; fetch?: typeof fetch; tokenMeta(chainId: number, addr: string): Promise<{ symbol: string; name: string; decimals: number } | null>; probeChainId(url: string): Promise<number>; solRpc?: (method: string, params: unknown[]) => Promise<any> }
+export interface ViewDeps { perms: PermissionStore; rpc: RpcCall; networks: { list(): EvmNetwork[]; get(id: number): EvmNetwork | undefined }; signer: Signer; kv: KV; fetch?: typeof fetch; tokenMeta(chainId: number, addr: string): Promise<{ symbol: string; name: string; decimals: number } | null>; probeChainId(url: string): Promise<number>; solRpc?: (method: string, params: unknown[]) => Promise<any>;
+  /** Fallback asset-change preview from the Harbour backend (null when unsupported for the chain). */
+  simulate?: (chainId: number, tx: { from: string; to?: string; value: string; data?: string; gas?: string }) => Promise<import('../../core/harbour/client').SimResponse | null> }
 const netView = (n: EvmNetwork) => ({ chainId: n.chainId, id: n.id, name: n.name, symbol: n.symbol, testnet: n.testnet, custom: n.custom, explorer: n.explorer ?? null });
 const callView = (c: DecodedCall): any => JSON.parse(JSON.stringify(c, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
 const MAX_UINT = (1n << 256n) - 1n;
@@ -98,14 +100,18 @@ export async function buildView(p: PendingRequest, d: ViewDeps): Promise<any> {
           if (rpc) tx = await resolveLookupTables(tx, (a) => solAccountData(rpc, a));
           const v: any = { ok: true, ...describeSolTx(bytes, me, tx) };
           if (rpc && me) {
-            const sim = await simulateSolTx(rpc, bytes, me);
-            v.simulation = { ok: sim.ok, error: sim.error ?? null, solDelta: sim.solDelta === undefined ? null : sim.solDelta.toString() };
+            const sim = await simulateSolTx(rpc, bytes, me, tx);
+            v.simulation = { ok: sim.ok, error: sim.error ?? null, solDelta: sim.solDelta === undefined ? null : sim.solDelta.toString(),
+              tokenChanges: (sim.tokenChanges ?? []).map((c) => ({ ...c, formatted: c.decimals == null ? c.amount : formatUnits(BigInt(c.amount), c.decimals) })), tokensChecked: !!sim.tokensChecked };
             if (!sim.ok && !v.warnings.includes('simulationFailed')) v.warnings = [...v.warnings, 'simulationFailed'];
+            for (const w of sim.tokenWarnings ?? []) if (!v.warnings.includes(w)) v.warnings = [...v.warnings, w];
           }
           return v;
         } catch { return { ok: false }; }
       }));
-      return { ...base, solTransactions: txs, send: p.kind === 'solSignSend' };
+      // Drainer patterns found by simulation are lifted to the request level so the approval needs the high-risk acknowledgement.
+      const crit = [...new Set(txs.flatMap((t: any) => (t.warnings ?? []).filter((w: string) => w === 'tokenOwnerChanged' || w === 'tokenDelegated')))];
+      return { ...base, solTransactions: txs, send: p.kind === 'solSignSend', ...(crit.length ? { warnings: [...new Set([...((base as any).warnings ?? []), ...crit])] } : {}) };
     }
   }
   return base;
@@ -172,7 +178,23 @@ async function txView(p: PendingRequest, d: ViewDeps) {
     (decoded.kind === 'approve' || decoded.kind === 'setApprovalForAll' || decoded.kind === 'permit') && (decoded as any).spender ? checkAddress(chainId, (decoded as any).spender).catch(() => null)
       : decoded.kind === 'setApprovalForAll' && (decoded as any).operator ? checkAddress(chainId, (decoded as any).operator).catch(() => null) : Promise.resolve(null),
   ]);
-  if (simV1) {
+  // Fallback when the RPC has no eth_simulateV1: the backend's provider simulation (Alchemy simulateAssetChanges where configured).
+  const backendSim = !simV1 && d.simulate ? await d.simulate(chainId, { from: tx.from, ...(tx.to ? { to: tx.to } : {}), value: tx.value, ...(tx.data && tx.data !== '0x' ? { data: tx.data } : {}), ...(tx.gas ? { gas: tx.gas } : {}) }).catch(() => null) : null;
+  if (!simV1 && backendSim?.mode === 'full') {
+    const me = tx.from.toLowerCase(); const net2 = new Map<string, { amount: bigint; c: any }>();
+    for (const c of backendSim.changes ?? []) {
+      if (c.change_type !== 'transfer' || !/^\d+$/.test(c.amount_raw ?? '')) continue;
+      const sign = c.to === me ? 1n : c.from === me ? -1n : 0n; if (!sign) continue;
+      const key = c.kind === 'nft' || c.kind === 'multi' ? `${c.asset}:${c.token_id ?? ''}` : c.asset; const cur = net2.get(key) ?? { amount: 0n, c };
+      cur.amount += sign * BigInt(c.amount_raw); net2.set(key, cur);
+    }
+    out.assetChanges = [...net2.values()].filter((x) => x.amount !== 0n).slice(0, 12).map(({ amount, c }) => {
+      const abs = amount < 0n ? -amount : amount; const native = c.asset === 'native';
+      return { token: native ? NATIVE_PSEUDO : c.asset, amount: abs.toString(), direction: amount < 0n ? 'out' : 'in', kind: native ? 'native' : c.kind === 'token' ? 'erc20' : 'nft',
+        symbol: native ? net.symbol : c.symbol ?? '', decimals: native ? net.decimals : null, formatted: native ? formatUnits(abs, net.decimals) : c.amount && amount === BigInt(c.amount_raw) * (amount < 0n ? -1n : 1n) ? c.amount : abs.toString() };
+    });
+    if (!backendSim.success) warnings.add('simulationFailed');
+  } else if (simV1) {
     out.assetChanges = await Promise.all(simV1.changes.slice(0, 12).map(async (ch) => {
       if (ch.kind === 'native' || ch.token === NATIVE_PSEUDO) return { ...ch, symbol: net.symbol, decimals: net.decimals, formatted: formatUnits(BigInt(ch.amount), net.decimals) };
       const meta = ch.kind === 'erc20' ? await d.tokenMeta(chainId, ch.token).catch(() => null) : null;
