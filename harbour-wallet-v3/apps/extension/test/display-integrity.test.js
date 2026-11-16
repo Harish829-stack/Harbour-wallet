@@ -10,7 +10,7 @@ const load = async (contents) => {
   const out = await build({ stdin: { contents, resolveDir: src, sourcefile: 'entry.ts', loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
   return import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 };
-const { visibleText, visibleDeep, hasHiddenChars } = await load(`export * from './core/provider/displayText';`);
+const { visibleText, visibleDeep, hasHiddenChars, plainLabel } = await load(`export * from './core/provider/displayText';`);
 const { buildView } = await load(`export { buildView } from './background/provider/view';`);
 const { normalizePersonalSign, normalizeTypedData } = await load(`export { normalizePersonalSign, normalizeTypedData } from './core/provider/methods';`);
 
@@ -35,6 +35,12 @@ test('visibleDeep: every string and key of a view is covered, other values are k
   const out = visibleDeep(input);
   assert.deepEqual(out, { a: 'x\\u{202E}', n: 5, b: true, z: null, list: ['y\\u{200B}', { 'k\\u{202E}': 'v' }] });
   assert.equal(input.a, `x${RLO}`);
+});
+
+test('plainLabel: stored site names lose hidden characters and are length-capped', () => {
+  assert.equal(plainLabel(`Uni${ZWSP}swap ${RLO}  Labs\n`, 80), 'Uniswap Labs');
+  assert.equal(plainLabel('x'.repeat(200), 80).length, 80);
+  assert.equal(plainLabel(undefined, 80), '');
 });
 
 const net = { chainId: 1, name: 'Ethereum', symbol: 'ETH', decimals: 18, testnet: false, custom: false, explorer: null, rpcUrls: [] };
@@ -92,4 +98,11 @@ test('page title and network name set by a site are escaped on the approval scre
     { ...deps(), networks: { list: () => [net], get: (id) => (id === 1 ? net : undefined) } });
   assert.equal(v.title, 'Uniswap\\u{202E}');
   assert.equal(v.network.name, 'Ether\\u{202E}muem');
+});
+
+test('WalletConnect peer metadata: hidden characters are removed from the name, description and declared URL', async () => {
+  const { sanitizeText } = await load(`export { sanitizeText } from './core/walletconnect';`);
+  assert.equal(sanitizeText(`Uniswap${RLO} ${ZWSP}Interface`, 80), 'Uniswap Interface');
+  assert.equal(sanitizeText('  Plain name\n', 80), 'Plain name');
+  assert.equal(sanitizeText(null, 80), '');
 });

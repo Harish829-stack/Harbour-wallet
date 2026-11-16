@@ -9,6 +9,7 @@ import { getCore } from '../../core/walletCore';
 import { ERR, ProviderError, serializeError } from '../../core/provider/errors';
 import { isAllowedEvent, parsePageRequest, senderKey, type Namespace, type OutMessage, type SenderInfo } from '../../core/provider/protocol';
 import { BLOCKED_DOMAINS, normalizeOrigin } from '../../core/provider/origin';
+import { plainLabel } from '../../core/provider/displayText';
 import { PendingStore, PermissionStore, PKEYS, type Outcome } from '../../core/provider/store';
 import { getNetworkState, setNetworkState, customNetwork } from '../../core/networkRegistry';
 import { probeRpcChainId } from '../../core/networks';
@@ -142,7 +143,7 @@ function senderOf(port: chrome.runtime.Port): SenderInfo | null {
   const origin = normalizeOrigin((sd as any).origin ?? sd.url); if (!origin) return null;
   const topOrigin = normalizeOrigin(sd.tab.url) ?? origin;
   const icon = typeof sd.tab.favIconUrl === 'string' && /^https?:\/\//.test(sd.tab.favIconUrl) ? sd.tab.favIconUrl : undefined;
-  return { tabId: sd.tab.id, frameId: sd.frameId, documentId: (sd as any).documentId, origin, topOrigin, isTopFrame: sd.frameId === 0, title: typeof sd.tab.title === 'string' ? sd.tab.title.slice(0, 120) : undefined, icon, incognito: !!sd.tab.incognito };
+  return { tabId: sd.tab.id, frameId: sd.frameId, documentId: (sd as any).documentId, origin, topOrigin, isTopFrame: sd.frameId === 0, title: typeof sd.tab.title === 'string' ? plainLabel(sd.tab.title, 120) || undefined : undefined, icon, incognito: !!sd.tab.incognito };
 }
 function onConnect(port: chrome.runtime.Port) {
   if (port.name !== PORT_NAME) return;

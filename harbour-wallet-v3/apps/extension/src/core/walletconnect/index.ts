@@ -5,6 +5,7 @@
 // Evidence note (see evidences/re-evidence/16-walletconnect): Trust Wallet 26.41.0 ships no WalletConnect pairing/session client — only a Kotlin request mapper
 // (com.trustwallet.kit.plugin.walletconnect). This module is a Harbour-side equivalent built on the public Reown WalletKit.
 import { b58decode, b58encode, b64ToBytes, bytesToB64 } from '../provider/base58';
+import { plainLabel } from '../provider/displayText';
 import { normalizeOrigin } from '../provider/origin';
 
 export const SOLANA_MAINNET_CAIP = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
@@ -129,4 +130,4 @@ export function mapResult(kind: 'message' | 'transaction' | undefined, result: a
 
 /** Display origin for a session: the dApp's declared URL, https only. Self-declared metadata is never trusted as identity beyond display; the relay's verify result is shown beside it. */
 export const originOfMetadata = (url: unknown): string | null => normalizeOrigin(typeof url === 'string' ? url : '');
-export const sanitizeText = (s: unknown, max: number): string => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
+export const sanitizeText = (s: unknown, max: number): string => plainLabel(s, max); // control, invisible and text-reordering characters removed

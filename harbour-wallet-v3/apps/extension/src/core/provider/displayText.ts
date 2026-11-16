@@ -21,6 +21,11 @@ export function visibleText(s: string): string {
   return s.replace(HIDDEN, (c) => `\\u{${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}}`);
 }
 
+/** Site names and other short labels that are stored and listed later: hidden characters are removed, whitespace collapsed. */
+export function plainLabel(s: unknown, max: number): string {
+  return String(s ?? '').replace(HIDDEN, '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
 /** `visibleText` applied to every string (values and object keys) of a JSON-like value. Returns a copy; the input is not changed. */
 export function visibleDeep<T>(v: T, depth = 0): T {
   if (typeof v === 'string') return visibleText(v) as unknown as T;
