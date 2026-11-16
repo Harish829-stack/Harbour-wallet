@@ -5,6 +5,8 @@ on:
     paths: ["harbour-wallet-v3/apps/backend/**", ".github/workflows/backend.yml"]
   pull_request:
     paths: ["harbour-wallet-v3/apps/backend/**", ".github/workflows/backend.yml"]
+# Least privilege: the workflow token can only read the repository (it runs `go test`, linters and `docker build` on pull-request code).
+permissions: {contents: read}
 defaults:
   run:
     working-directory: harbour-wallet-v3/apps/backend
