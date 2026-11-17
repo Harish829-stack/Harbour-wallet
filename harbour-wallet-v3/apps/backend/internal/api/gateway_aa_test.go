@@ -37,7 +37,7 @@ func TestGatewayPimlicoMethods(t *testing.T) {
 		}
 		g, _ := testGateway(t, nil)
 		g.keys.Pimlico = "pimlico-secret"
-		_, rej := g.resolve("POST", "/pimlico/84532", nil, []byte(`{"jsonrpc":"2.0","id":1,"method":"`+m+`","params":[]}`))
+		_, rej := g.resolve("POST", "/pimlico/84532", nil, []byte(`{"jsonrpc":"2.0","id":1,"method":"`+m+`","params":[{"sender":"0x1111111111111111111111111111111111111111"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032"]}`))
 		if want && rej != nil {
 			t.Errorf("%s: want allowed, got rejection %v", m, rej)
 		}
