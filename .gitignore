@@ -56,6 +56,8 @@ harbour-release-key.json
 *.log
 npm-debug.log*
 /_to_delete/
+# Generated diagrams and exports from Claude sessions
+/Claude outputs/
 
 # ---- OS / editor ----
 .DS_Store

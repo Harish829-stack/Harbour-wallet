@@ -25,12 +25,18 @@ Current security model, what has been audited and fixed, what is still open, and
 | Seed typing and reveal, 2026-11-04 | threat model for typing and revealing secrets | six mitigations; no extension can stop screenshots or keyloggers, QR or Ledger import is the real defence |
 | Attacker review A1..A9, 2026-11-04 | extension and gateway | A1-A8 closed (A7 was a false positive); A9 is key hygiene |
 | Review fixes, 2026-11-16 | SIG-11 WalletConnect chain, Earn plan locking, balance previews, Ledger pairing | all fixed with tests |
+| Security audit, first pass, 2026-11-16 | whole repository: extension, backend, CI, deployment images (static review; extension tests and build run) | findings 1-20: approval-screen hidden characters, CI permissions and pinning, cache Redis password and more fixed; 9-19 open or operator actions |
+| Security audit, second pass, 2026-11-16/17 | backend built, run and attacked; production extension build run in Chromium and attacked from a test page | findings 21-25 fixed with tests (log-filter guard bypass, registration lock-out, failed-authentication limit, device ids in counters, `NAME_FILE` loading); **26 open and waiting for owner approval**; 27-29 recorded |
+
+The 2026-11-16/17 audit is recorded finding by finding in [SECURITY_FINDINGS.md](../SECURITY_FINDINGS.md) (table, commits, what was and was not verified) and [SECURITY_EXPLAINED.md](../SECURITY_EXPLAINED.md) (plain language). Those two files are the detailed record; this page is the summary.
 
 Re-run a full control-by-control audit before a public release.
 
 ## Open items
 
-These need a person, not a code change:
+**Open code change, waiting for approval (finding 26, High):** a site's own `gasPrice` in `eth_sendTransaction` can replace the fee level the user chose on the approval screen, so the transaction can cost far more in fees than shown as the highest possible fee. It is in the signing path, so it was reported and not changed. Fix it before any build that signs on mainnet is handed out.
+
+The rest need a person, not a code change:
 
 1. **Rotate secrets.** Rotate every provider key and server secret ever kept in a local `.env`, including the Infura key that leaked in old v2 builds, and the Firebase admin key if the folder was ever synced. Production secrets should come from a secrets manager through `NAME_FILE` mounts.
 2. **Release key.** Move `harbour-release-key.json` out of the working folder: put the Ed25519 PEM in the CI `release` environment secret `HB_RELEASE_KEY_PEM`, require two reviewers, set `HB_RELEASE_APPROVERS`, then securely delete the local file.
@@ -41,6 +47,7 @@ These need a person, not a code change:
 7. **Go toolchain.** Keep `go.mod` on a patched Go release; `govulncheck` in CI reports standard-library advisories.
 8. **Real devices.** Test Touch ID, Windows Hello and Ledger on hardware (matrix below).
 9. **Independent assurance.** Third-party audit, penetration test, bug bounty and an incident-response drill have not happened yet. Do not ship mainnet signing publicly before them.
+10. **Third-party data exposure (finding 27).** Bitcoin, Tron and Solana balance reads and some price reads go straight from the extension to public services, which see the user's IP address with that address. Route them through the backend gateway or state it in the privacy policy.
 
 Known residual risks: new recovery phrases pass through a JavaScript string at creation (wallet-core returns them that way); the approval preview for some calls still depends on the backend, so cross-check high-value or unknown calls with an independent RPC; non-EVM approval decoding is weaker than EVM.
 
@@ -58,4 +65,4 @@ Report privately to the maintainers. Do not open a public issue for a security b
 
 ## Where the old audit material went
 
-The detailed audit working files (framework, per-control results, pentest and red-team reports, tool output) are no longer part of `documentation/`. They were git-ignored working files; the copies that were tracked remain in git history, and the local-only copies were moved to the git-ignored `_to_delete/` folder at the repository root (`_to_delete/documentation/`). Keep them somewhere private if you still need them.
+The detailed audit working files (framework, per-control results, pentest and red-team reports, tool output) are no longer part of `documentation/`. They were git-ignored working files; the copies that were tracked remain in git history. Local-only copies are not in the repository folder any more (the `_to_delete/` folder they were moved to did not exist on 2026-11-16), so keep your own private copy if you still need them.

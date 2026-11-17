@@ -18,6 +18,7 @@ Start here. Each guide has one job; read them in this order if you are new.
 
 ## Other places with documentation
 
+- `SECURITY_FINDINGS.md` and `SECURITY_EXPLAINED.md` at the repository root record the 2026-11-16/17 security audit finding by finding (table and plain-language explanation); [security.md](security.md) summarises them.
 - Each app has a short README that points back here: `harbour-wallet-v3/apps/extension/README.md`, `harbour-wallet-v3/apps/backend/README.md`, `harbour-wallet-v3/infra/railway/README.md`.
 - `apps/extension/src/integrations/testnet-defi/README.md` describes the testnet Swap and Earn code.
 - `apps/backend/.env.example` documents every backend environment variable; `apps/extension/.env.example` documents the build settings.
