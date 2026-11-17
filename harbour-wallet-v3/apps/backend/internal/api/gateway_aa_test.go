@@ -46,3 +46,69 @@ func TestGatewayPimlicoMethods(t *testing.T) {
 		}
 	}
 }
+
+// H1: the server, not the client, chooses the sponsorship policy.
+func TestGatewayPimlicoPinsSponsorPolicy(t *testing.T) {
+	const op = `{"sender":"0x1111111111111111111111111111111111111111","nonce":"0x0"}`
+	const ep = `"0x0000000071727De22E5E9d8BAf0edAc6f37da032"`
+	sponsor := func(params string) string {
+		return `{"jsonrpc":"2.0","id":3,"method":"pm_sponsorUserOperation","params":` + params + `}`
+	}
+	forwarded := func(t *testing.T, policy, body string) (string, *gwReject) {
+		t.Helper()
+		g, _ := testGateway(t, nil)
+		g.keys.Pimlico = "pimlico-secret"
+		g.keys.PimlicoPolicy = policy
+		c, rej := g.resolve("POST", "/pimlico/84532", nil, []byte(body))
+		if rej != nil {
+			return "", rej
+		}
+		return string(c.body), nil
+	}
+	want := func(ctx string) string {
+		return `{"jsonrpc":"2.0","id":3,"method":"pm_sponsorUserOperation","params":[` + op + `,` + ep + ctx + `]}`
+	}
+	policyCtx := `,{"sponsorshipPolicyId":"sp_server_policy"}`
+
+	cases := map[string]struct{ policy, params, want string }{
+		"no client context, policy set":         {"sp_server_policy", `[` + op + `,` + ep + `]`, want(policyCtx)},
+		"client policy id replaced":             {"sp_server_policy", `[` + op + `,` + ep + `,{"sponsorshipPolicyId":"sp_attacker"}]`, want(policyCtx)},
+		"client extra context fields dropped":   {"sp_server_policy", `[` + op + `,` + ep + `,{"token":"0xabc","sponsorshipPolicyId":"sp_attacker"}]`, want(policyCtx)},
+		"client empty context, policy set":      {"sp_server_policy", `[` + op + `,` + ep + `,{}]`, want(policyCtx)},
+		"policy unset: client context dropped":  {"", `[` + op + `,` + ep + `,{"sponsorshipPolicyId":"sp_attacker"}]`, want("")},
+		"policy unset: no context stays absent": {"", `[` + op + `,` + ep + `]`, want("")},
+	}
+	for name, tc := range cases {
+		got, rej := forwarded(t, tc.policy, sponsor(tc.params))
+		if rej != nil || got != tc.want {
+			t.Errorf("%s:\n got  %s (rej=%v)\n want %s", name, got, rej, tc.want)
+		}
+		if strings.Contains(got, "sp_attacker") || strings.Contains(got, "0xabc") {
+			t.Errorf("%s: client context reached the upstream: %s", name, got)
+		}
+	}
+
+	// malformed params fail closed; a configured id that is not a plain identifier fails closed
+	for name, tc := range map[string]struct{ policy, body string }{
+		"one param":         {"sp_server_policy", sponsor(`[` + op + `]`)},
+		"four params":       {"sp_server_policy", sponsor(`[` + op + `,` + ep + `,{},{}]`)},
+		"params an object":  {"sp_server_policy", sponsor(`{"a":1}`)},
+		"bad configured id": {`sp"x`, sponsor(`[` + op + `,` + ep + `]`)},
+	} {
+		if got, rej := forwarded(t, tc.policy, tc.body); rej == nil {
+			t.Errorf("%s: want refused, forwarded %s", name, got)
+		}
+	}
+
+	// other methods are untouched
+	other := `{"jsonrpc":"2.0","id":4,"method":"eth_estimateUserOperationGas","params":[` + op + `,` + ep + `]}`
+	if got, rej := forwarded(t, "sp_server_policy", other); rej != nil || got != other {
+		t.Errorf("estimate call changed: %s (rej=%v)", got, rej)
+	}
+
+	// batch: only the sponsor call is rewritten
+	batch := `[` + other + `,` + sponsor(`[`+op+`,`+ep+`,{"sponsorshipPolicyId":"sp_attacker"}]`) + `]`
+	if got, rej := forwarded(t, "sp_server_policy", batch); rej != nil || strings.Contains(got, "sp_attacker") || !strings.Contains(got, "sp_server_policy") || !strings.Contains(got, `"eth_estimateUserOperationGas"`) {
+		t.Errorf("batch: %s (rej=%v)", got, rej)
+	}
+}

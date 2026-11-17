@@ -153,6 +153,7 @@ services:
       JUP_API_KEY: ${JUP_API_KEY:-}
       RELAY_API_KEY: ${RELAY_API_KEY:-}
       PIMLICO_API_KEY: ${PIMLICO_API_KEY:-}
+      PIMLICO_SPONSORSHIP_POLICY_ID: ${PIMLICO_SPONSORSHIP_POLICY_ID:-}   # pinned on every sponsor request; clients cannot choose it
       COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
       COINGECKO_PLAN: ${COINGECKO_PLAN:-demo}
       HELIUS_API_KEY: ${HELIUS_API_KEY:-}

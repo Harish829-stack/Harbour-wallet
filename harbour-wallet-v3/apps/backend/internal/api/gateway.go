@@ -34,8 +34,10 @@ import (
 // GatewayKeys are the third-party API keys held by the backend. They never reach the extension.
 type GatewayKeys struct {
 	LiFi, Jupiter, Relay, Pimlico, Uniswap, CoinGecko, Helius, Alchemy, Etherscan, TronGrid, TonCenter string
-	CoinGeckoPro                                                                                       bool
-	ConfigJSON, ConfigSig                                                                              string
+	// PimlicoPolicy is the sponsorship policy the gateway pins on every pm_sponsorUserOperation (not secret, but server-chosen).
+	PimlicoPolicy         string
+	CoinGeckoPro          bool
+	ConfigJSON, ConfigSig string
 }
 
 // GatewayKeysFromEnv reads the keys from the environment (backend/.env locally, the secret store in production).
@@ -49,7 +51,7 @@ func GatewayKeysFromEnv() GatewayKeys {
 		return ""
 	}
 	return GatewayKeys{
-		LiFi: get("LIFI_API_KEY"), Jupiter: get("JUP_API_KEY"), Relay: get("RELAY_API_KEY"), Pimlico: get("PIMLICO_API_KEY"),
+		LiFi: get("LIFI_API_KEY"), Jupiter: get("JUP_API_KEY"), Relay: get("RELAY_API_KEY"), Pimlico: get("PIMLICO_API_KEY"), PimlicoPolicy: get("PIMLICO_SPONSORSHIP_POLICY_ID"),
 		Uniswap:   get("UNISWAP_API_KEY"),
 		CoinGecko: get("COINGECKO_API_KEY", "COINGECKO_KEY"), CoinGeckoPro: strings.EqualFold(strings.TrimSpace(os.Getenv("COINGECKO_PLAN")), "pro"),
 		Helius: get("HELIUS_API_KEY"), Alchemy: get("ALCHEMY_API_KEY"), Etherscan: get("ETHERSCAN_API_KEY"),
@@ -306,6 +308,65 @@ func jsonRPCClean(body []byte, allowed map[string]bool, check func(rpcCall) *gwR
 		return nil, errBadRequest
 	}
 	return out, nil
+}
+
+var sponsorPolicyID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,255}$`)
+
+// pinSponsorPolicy makes the server, not the client, choose the sponsorship policy (H1). Every pm_sponsorUserOperation is rebuilt as
+// [userOperation, entryPoint] plus, when the gateway has a policy configured, {"sponsorshipPolicyId": <that id>} as the context. Whatever
+// context the client sent (a different policy id, extra fields) is dropped. Other methods pass unchanged. body is already canonical output
+// of jsonRPCClean. It fails closed (false) on a malformed params array or a configured id that is not a plain identifier.
+func pinSponsorPolicy(body []byte, policy string) ([]byte, bool) {
+	if policy != "" && !sponsorPolicyID.MatchString(policy) {
+		return nil, false
+	}
+	trim := bytes.TrimSpace(body)
+	batch := len(trim) > 0 && trim[0] == '['
+	var calls []rpcCall
+	if batch {
+		if json.Unmarshal(trim, &calls) != nil {
+			return nil, false
+		}
+	} else {
+		var c rpcCall
+		if json.Unmarshal(trim, &c) != nil {
+			return nil, false
+		}
+		calls = []rpcCall{c}
+	}
+	for i := range calls {
+		if calls[i].Method != "pm_sponsorUserOperation" {
+			continue
+		}
+		var params []json.RawMessage
+		if json.Unmarshal(calls[i].Params, &params) != nil || len(params) < 2 || len(params) > 3 {
+			return nil, false
+		}
+		params = params[:2]
+		if policy != "" {
+			ctx, err := json.Marshal(map[string]string{"sponsorshipPolicyId": policy})
+			if err != nil {
+				return nil, false
+			}
+			params = append(params, ctx)
+		}
+		np, err := json.Marshal(params)
+		if err != nil {
+			return nil, false
+		}
+		calls[i].Params = np
+	}
+	var out []byte
+	var err error
+	if batch {
+		out, err = json.Marshal(calls)
+	} else {
+		out, err = json.Marshal(calls[0])
+	}
+	if err != nil {
+		return nil, false
+	}
+	return out, true
 }
 
 // logFilterKeys are the only members an eth_getLogs filter may carry, in the order they are forwarded.
@@ -776,6 +837,10 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		clean, rej := jsonRPCClean(body, aaRPCMethods, nil)
 		if rej != nil {
 			return nil, rej
+		}
+		var ok bool
+		if clean, ok = pinSponsorPolicy(clean, g.keys.PimlicoPolicy); !ok {
+			return nil, errBadRequest
 		}
 		return &gwCall{method: http.MethodPost, url: g.hosts.Pimlico + "/" + m[1] + "/rpc?apikey=" + url.QueryEscape(g.keys.Pimlico), body: clean, header: jsonH(nil), secrets: []string{g.keys.Pimlico}}, nil
 	}
