@@ -109,7 +109,7 @@ var (
 	reGT        = regexp.MustCompile(`^/gt/networks/(trending_pools|[a-z0-9_-]{2,32}/(tokens/[A-Za-z0-9]{20,64}|pools/[A-Za-z0-9]{20,90}/ohlcv/(minute|hour|day)))$`)
 	reAlchRPC   = regexp.MustCompile(`^/alchemy/(\d{1,9})/rpc$`)
 	reAlchNFT   = regexp.MustCompile(`^/alchemy/(\d{1,9})/nft/(getNFTsForOwner|getContractMetadata|getNFTMetadata|getFloorPrice|isSpamContract|getOwnersForNFT)$`)
-	rePimlico   = regexp.MustCompile(`^/pimlico/(1|56|137|42161|8453)$`)
+	rePimlico   = regexp.MustCompile(`^/pimlico/(1|56|137|42161|8453|11155111|84532)$`)
 	reTron      = regexp.MustCompile(`(?i)^/(wallet|walletsolidity)/(getaccount|getnowblock|getaccountresource|triggerconstantcontract|triggersmartcontract|createtransaction|broadcasttransaction|broadcasthex|getchainparameters|gettransactioninfobyid|listwitnesses|freezebalancev2|unfreezebalancev2|votewitnessaccount|withdrawbalance|getreward|getdelegatedresourcev2)$|^/v1/accounts/T[1-9A-HJ-NP-Za-km-z]{33}(/transactions(/trc20)?)?$`)
 	reTon       = regexp.MustCompile(`^/toncenter(/api/v[23]/(getAddressInformation|getWalletInformation|getTransactions|sendBoc|sendBocReturnHash|runGetMethod|estimateFee|jetton/wallets|jetton/masters|jetton/transfers|nft/items|getMasterchainInfo|transactions))$`)
 	reEtherscan = regexp.MustCompile(`^(account:(txlist|tokentx|tokennfttx|token1155tx|txlistinternal|balance|balancemulti)|gastracker:gasoracle|stats:ethprice|proxy:eth_gasPrice)$`)
