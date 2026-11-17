@@ -176,17 +176,32 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, rpc.NewGatewayError(nil, rpc.CodeBadRequest, "bad_request", "Invalid request", false, nil))
 		return
 	}
-	for _, q := range reqs {
+	for i, q := range reqs {
 		if !s.rpcAllow[q.Method] {
 			writeJSON(w, http.StatusOK, rpc.NewGatewayError(q.ID, rpc.CodeMethodNotAllowed, "method_not_allowed",
 				"Method not available", false, nil))
 			return
 		}
-		if q.Method == "eth_getLogs" && !filteredLogs(q.Params) {
-			writeJSON(w, http.StatusOK, rpc.NewGatewayError(q.ID, rpc.CodeBadRequest, "bad_request",
-				"eth_getLogs needs an address or topic filter", false, nil))
-			return
+		if q.Method == "eth_getLogs" {
+			// Guards and node must read the same filter: rebuild it strictly (duplicate or differently-cased keys are refused).
+			p, ok := canonLogFilter(q.Params)
+			if !ok || !filteredLogs(p) {
+				writeJSON(w, http.StatusOK, rpc.NewGatewayError(q.ID, rpc.CodeBadRequest, "bad_request",
+					"eth_getLogs needs an address or topic filter", false, nil))
+				return
+			}
+			reqs[i].Params = p
 		}
+	}
+	// Forward what was checked, never the caller's bytes (the same rule the third-party gateway follows).
+	if isBatch {
+		trimmed, err = json.Marshal(reqs)
+	} else {
+		trimmed, err = json.Marshal(reqs[0])
+	}
+	if err != nil {
+		writeJSON(w, http.StatusOK, rpc.NewGatewayError(nil, rpc.CodeBadRequest, "bad_request", "Invalid request", false, nil))
+		return
 	}
 	ok, err := s.counter(ctx, "hb:rlrpc:"+s.devTag(d.ID), int64(len(reqs)), s.tier(d.Tier).RPCPerMinute)
 	if err != nil {

@@ -280,6 +280,14 @@ func jsonRPCClean(body []byte, allowed map[string]bool, check func(rpcCall) *gwR
 		if !allowed[c.Method] {
 			return nil, errNotAllowed
 		}
+		if c.Method == "eth_getLogs" {
+			// The filter the guards read must be the filter the node receives (see canonLogFilter).
+			p, ok := canonLogFilter(c.Params)
+			if !ok {
+				return nil, errBadRequest
+			}
+			c.Params = p
+		}
 		if check != nil {
 			if rej := check(c); rej != nil {
 				return nil, rej
@@ -298,6 +306,69 @@ func jsonRPCClean(body []byte, allowed map[string]bool, check func(rpcCall) *gwR
 		return nil, errBadRequest
 	}
 	return out, nil
+}
+
+// logFilterKeys are the only members an eth_getLogs filter may carry, in the order they are forwarded.
+var logFilterKeys = []string{"address", "topics", "fromBlock", "toBlock", "blockHash"}
+
+// canonLogFilter reads the params of an eth_getLogs call strictly and returns them rebuilt: exactly one filter object whose keys are the
+// five standard ones, spelled exactly, each at most once. Go's decoder matches keys case-insensitively and keeps the last duplicate,
+// nodes do not, so a filter such as {"address":null,"ADDRESS":"0x..","fromBlock":"0x0","FROMBLOCK":"0xfffff0"} used to pass the
+// "needs an address or topic" and block-range guards (which saw ADDRESS / FROMBLOCK) while the node ran an unfiltered query from
+// block 0 (which is what address / fromBlock said). Forwarding the rebuilt value closes that gap for every caller.
+func canonLogFilter(params json.RawMessage) (json.RawMessage, bool) {
+	var arr []json.RawMessage
+	if json.Unmarshal(params, &arr) != nil || len(arr) != 1 {
+		return nil, false
+	}
+	dec := json.NewDecoder(bytes.NewReader(arr[0]))
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
+		return nil, false
+	}
+	got := map[string]json.RawMessage{}
+	for dec.More() {
+		kt, err := dec.Token()
+		k, isStr := kt.(string)
+		if err != nil || !isStr {
+			return nil, false
+		}
+		known := false
+		for _, a := range logFilterKeys {
+			known = known || a == k
+		}
+		if _, dup := got[k]; !known || dup {
+			return nil, false
+		}
+		var v json.RawMessage
+		if dec.Decode(&v) != nil {
+			return nil, false
+		}
+		got[k] = v
+	}
+	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
+		return nil, false
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return nil, false
+	}
+	var b bytes.Buffer
+	b.WriteString("[{")
+	n := 0
+	for _, k := range logFilterKeys {
+		v, ok := got[k]
+		if !ok {
+			continue
+		}
+		if n > 0 {
+			b.WriteByte(',')
+		}
+		n++
+		b.WriteString(strconv.Quote(k))
+		b.WriteByte(':')
+		b.Write(v)
+	}
+	b.WriteString("}]")
+	return b.Bytes(), true
 }
 
 // jsonRPCGuard is the check-only form of jsonRPCClean.
