@@ -1,6 +1,6 @@
 # Harbour Wallet security findings, explained in plain language
 
-Each number matches the row in `SECURITY_FINDINGS.md`. Items 1 to 8 and 20 are fixed. Items 9 to 19 are not fixed and say why; none of them needed your approval for a protected area (see item 18).
+Each number matches the row in `SECURITY_FINDINGS.md`. Items 1 to 8 and 20 are fixed (first pass). Items 21 to 25 are fixed in the second pass, which also closed item 12 (see item 23). **Item 26 needs your approval: it is in a protected area (signing) and is the most serious open item.** Items 9 to 11, 13 to 19 and 27 to 29 are not fixed and say why.
 
 How to read the status words: **Fixed** means the change is committed and was checked as far as this session allowed (stated in each item). **Not fixed** means I found it but could not or should not change it myself.
 
@@ -94,7 +94,7 @@ How to read the status words: **Fixed** means the change is committed and was ch
 - **How it was fixed:** It was not: looking up the exact fingerprints needs access to the image registries, which this session does not have.
 - **Did anything change for users?** No. It takes a few minutes on a computer with Docker; finding 6 then keeps them updated.
 
-## 12. Strangers can make the server look things up before it says no (Not fixed)
+## 12. Strangers can make the server look things up before it says no (Fixed in the second pass: see item 23)
 
 - **What was wrong:** When a request arrives claiming to be from an unknown device, the server asks its database whether that device exists before rejecting it, and there is no limit on how often one sender can do that.
 - **How an attacker could abuse it:** Send a flood of requests with made-up device numbers to keep the database busy.
@@ -165,3 +165,73 @@ How to read the status words: **Fixed** means the change is committed and was ch
 - **What could have been lost or harmed:** Nothing so far; the servers were never affected.
 - **How it was fixed:** The script now edits the file in a way that works the same on Linux and on a Mac, and it stops without touching the file if anything goes wrong. Checked on Linux; please rerun `make test` on your Mac to confirm it is green there.
 - **Did anything change for users?** No.
+
+## 21. A trick in how a request is written let anyone ask the blockchain node for everything (Fixed)
+
+- **What was wrong:** The wallet's server passes "show me the event log" questions on to a blockchain node. To keep those questions small it insists on two things: name a contract or event, and ask for at most 2,000 blocks. The server and the node read the same request slightly differently. By writing a field twice with different capital letters (`address` and `ADDRESS`), a caller could show the server a small, well-behaved question while the node read a different one: every event, from the first block.
+- **How an attacker could abuse it:** Anyone with the extension installed (or a script pretending to be one) sends that request in a loop. I did exactly this against a running copy of the server, and the node received the unlimited question.
+- **What could have been lost or harmed:** No funds and no private data. The cost is yours: these questions are the most expensive ones a node provider bills for, so the provider budget drains and the wallet becomes slow or stops loading balances for everyone.
+- **How it was fixed:** The server now reads the filter strictly (only the five standard fields, spelled exactly, each at most once), rebuilds the request itself and sends that rebuilt version on. What it checked is now exactly what the node gets. I repeated the attack afterwards and it was refused; normal requests still work.
+- **Did anything change for users?** No.
+
+## 22. A handful of computers could stop every new user from setting up the wallet (Fixed)
+
+- **What was wrong:** To stop mass sign-ups, the server allows 2,000 new installs per hour in total. Setting up has two steps: first the extension asks for a puzzle, then it solves the puzzle and registers. The server counted the 2,000 at the first step, the asking, which is free.
+- **How an attacker could abuse it:** A script asks for puzzles from about 70 different internet addresses (cheap to rent) and never solves any. The hourly allowance is gone, and every real person installing Harbour that hour sees "Harbour is busy setting up new devices".
+- **What could have been lost or harmed:** New users could not finish setup for as long as the script ran. Existing users were not affected, and no funds were at risk.
+- **How it was fixed:** The allowance is now counted at the second step, after the puzzle is solved and the install has proved it holds its key. Using up a slot now costs real computing work each time.
+- **Did anything change for users?** No.
+
+## 23. Strangers could make the server do database work before it said no (Fixed; this was item 12)
+
+- **What was wrong:** Every request to the server names the install it comes from. If the name was unknown, the server looked it up in the database before refusing. Nothing limited how often one caller could do that.
+- **How an attacker could abuse it:** A script sends thousands of requests per second with made-up install names. Each one becomes a database lookup, slowing the server for real users.
+- **What could have been lost or harmed:** Speed and availability only.
+- **How it was fixed:** Each internet address gets 30 failed attempts per minute. After that the server refuses further unknown callers from that address straight away, without touching the database, until the minute is over. Installs the server already knows keep working even if they share that address (for example in an office).
+- **Did anything change for users?** No. A real install that somehow fails 30 times in a minute waits up to a minute.
+
+## 24. A few server counters stored install ids in the clear (Fixed)
+
+- **What was wrong:** The server keeps short-lived counters to limit how fast each install can act. Everywhere else it labels those counters with a scrambled tag instead of the install's real id, so the counter store never holds a list of who did what. Three counters (preparing, previewing and sending a transaction) used the real id.
+- **How an attacker could abuse it:** Someone who gets read access to that counter store (a misconfiguration, a leaked password) could see which installs were sending transactions and when.
+- **What could have been lost or harmed:** Privacy of activity timing. No funds, no addresses.
+- **How it was fixed:** Those three counters use the scrambled tag like all the others. The old entries disappear by themselves within two minutes.
+- **Did anything change for users?** No.
+
+## 25. The server read any file a certain kind of setting pointed to, and refused to start if one was missing (Fixed)
+
+- **What was wrong:** Secrets can be given to the server as files: a setting named `SOMETHING_FILE` means "read the secret from this file". The server applied that rule to every setting ending in `_FILE`, including ones that belong to other programs on the same machine and have nothing to do with Harbour.
+- **How an attacker could abuse it:** Not directly from outside. The practical harm: on a machine that happens to have such a setting pointing at a file that does not exist, no Harbour service starts, and two of the server's own tests fail (this is how I found it). It also copied unrelated files' contents into the server's settings for no reason.
+- **What could have been lost or harmed:** Uptime, and trust in the test results.
+- **How it was fixed:** The rule now applies only to settings that look like Harbour secrets (names ending in `_KEY`, `_PASSWORD`, `_TOKEN`, `_URL` and a few more). A missing file for one of those still stops the server, as it should.
+- **Did anything change for users?** No.
+
+## 26. A website can make you pay a far higher network fee than the one you chose (NEEDS YOUR APPROVAL, not fixed)
+
+- **What was wrong:** When a website asks you to send a transaction, the approval screen lets you choose a fee level (safe, average, fast) and shows the fee that goes with it. The website may also send its own fee. In one combination (the site sends an old-style fee, the wallet offers a new-style one, which is the normal case on Ethereum today) the wallet signs the transaction with the website's fee and ignores the one you chose.
+- **How an attacker could abuse it:** A malicious site asks you to approve something that looks ordinary and attaches a fee thousands of times above normal. You pick "average" and see about 0.003 ETH as the highest possible fee. I ran the wallet's real signing code this way: the signed transaction carried a fee of 50 ETH (in practice, as much as your balance covers). The overpayment goes to whoever builds the block, who can be the attacker's partner. One other line on the screen ("Estimated network fee") does show the site's number, so the screen disagrees with itself; nothing warns you, and changing the fee level does nothing.
+- **What could have been lost or harmed:** Funds: up to your whole balance of the network's coin, in one approved transaction.
+- **How it would be fixed:** Two small changes. The signing step uses only the fee you approved on the screen and ignores the website's fee. The screen computes every fee line from that same choice. This touches signing, which you asked me not to change without telling you first, so nothing was changed. The risk of the change is small: a site that wants a faster transaction can no longer force a higher fee; you choose "fast" yourself.
+- **Did anything change for users?** Not yet. After the fix: the fee you pick is always the fee you pay.
+
+## 27. Some outside services see your IP address together with your wallet address (Not fixed: product decision)
+
+- **What was wrong:** I recorded everything the extension sent over the network while creating and unlocking a wallet. Good news first: no secret phrase, password or key ever left the device. But for Bitcoin, Tron and Solana balances and for some prices, the extension talks directly to public services (mempool.space, blockstream.info, trongrid, public Solana servers, CoinGecko, DefiLlama) instead of going through Harbour's server.
+- **How an attacker could abuse it:** Not an attack by a stranger. Those services, or anyone who obtains their logs, can link your internet address to your wallet address.
+- **What could have been lost or harmed:** Privacy.
+- **How it was fixed:** It was not. This is how most wallets work, and changing it means sending those requests through Harbour's server (which hides your IP from them but costs server budget). It is your decision; at minimum the privacy policy should say it.
+- **Did anything change for users?** No.
+
+## 28. A file the build check needs is deleted on your computer (Not fixed: your action)
+
+- **What was wrong:** The file `audit-exceptions.json` in the extension folder shows as deleted in your working copy (not committed). It was already like that when I started. The automatic dependency check in CI reads this file first.
+- **How an attacker could abuse it:** They cannot. But if the deletion gets committed, the dependency check crashes instead of checking, and a vulnerable library could slip in unnoticed.
+- **What could have been lost or harmed:** A safety net in the build.
+- **How it was fixed:** I left it as I found it, because it is not my change. To restore it: `git checkout -- harbour-wallet-v3/apps/extension/audit-exceptions.json`.
+- **Did anything change for users?** No.
+
+## 29. What the second pass covered and what it did not
+
+- **What was done:** I built and ran the server myself, with a real database, and attacked it. I built the extension, loaded it in a real browser, created a wallet, looked at everything it stored and everything it sent, and attacked it from a web page the way a malicious site would. The approval logic for websites held up against every trick I tried except item 26.
+- **What was not done:** I did not read every line of the extension. The security-critical paths were read in full; the rest (about 300 files: swap, earn, perps, buy/sell, staking, most screens) was searched for dangerous patterns only. The popup was driven through its internal messages, not by clicking. Vulnerability scanners for Go, the GitHub build pipelines, the production images, biometrics and Ledger were not run. My server ran without real provider keys and without database encryption in transit, so those parts are as the first pass left them.
+- **What this means:** Treat this as two careful internal reviews, not as a guarantee. Before real money depends on it, get an independent audit, and decide item 26 first.
