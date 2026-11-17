@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = fileURLToPath(new URL('../src/popup/', import.meta.url));
-const FORBIDDEN = [/core\/vaultService/, /core\/walletService/, /core\/walletCore/, /core\/passworder/, /core\/passwordService/, /core\/passkeyService/, /core\/storage/, /core\/rpc['"]/, /\/background\//, /@trustwallet\/wallet-core/];
+const FORBIDDEN = [/core\/vaultService/, /core\/walletService/, /core\/walletCore/, /core\/passworder/, /core\/passwordService/, /core\/passkeyService/, /core\/storage/, /core\/rpc['"]/, /\/background\//, /core\/smartAccount\/(userOp|delegation|guard|abi)/, /@trustwallet\/wallet-core/];
 const walk = (d) => readdirSync(d).flatMap((n) => { const p = path.join(d, n); return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(n) ? [p] : []; });
 
 test('popup never imports vault, keys, wallet-core, storage or background code', () => {
