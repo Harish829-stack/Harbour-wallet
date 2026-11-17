@@ -132,7 +132,7 @@ var solRPCMethods = setOf("getBalance", "getAccountInfo", "getMultipleAccounts",
 
 var evmRPCMethods = setOf("eth_chainId", "eth_blockNumber", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "eth_feeHistory", "eth_getTransactionCount", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode", "eth_getLogs", "eth_getStorageAt", "eth_simulateV1", "net_version", "alchemy_getTokenBalances", "alchemy_getTokenMetadata", "alchemy_getAssetTransfers")
 
-var aaRPCMethods = setOf("pimlico_getUserOperationGasPrice", "pm_sponsorUserOperation", "eth_sendUserOperation", "eth_getUserOperationReceipt", "eth_estimateUserOperationGas", "eth_supportedEntryPoints")
+var aaRPCMethods = setOf("pimlico_getUserOperationGasPrice", "pm_sponsorUserOperation", "eth_sendUserOperation", "eth_getUserOperationReceipt", "eth_estimateUserOperationGas", "eth_getUserOperationByHash", "eth_supportedEntryPoints")
 
 func setOf(v ...string) map[string]bool {
 	m := make(map[string]bool, len(v))
