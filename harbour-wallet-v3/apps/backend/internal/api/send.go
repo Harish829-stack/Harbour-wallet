@@ -142,9 +142,13 @@ func (s *Server) ownsAddress(w http.ResponseWriter, r *http.Request, chain, addr
 	return ok
 }
 
+// sendRateKey is the Redis key of a send-path counter. It takes the device's keyed tag (devTag), never the raw device id, like
+// every other per-device key (HW-2026-020): Redis must not hold a list of device ids next to what each one did and when.
+func sendRateKey(kind, deviceTag string) string { return "hb:rl" + kind + ":" + deviceTag }
+
 func (s *Server) sendRate(w http.ResponseWriter, r *http.Request, kind string, limit int) bool {
 	d := deviceFrom(r.Context())
-	ok, err := s.counter(r.Context(), "hb:rl"+kind+":"+d.ID, 1, limit)
+	ok, err := s.counter(r.Context(), sendRateKey(kind, s.devTag(d.ID)), 1, limit)
 	if err != nil {
 		s.internalErr(w, r, err)
 		return false

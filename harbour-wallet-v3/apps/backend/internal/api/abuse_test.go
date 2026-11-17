@@ -109,3 +109,31 @@ func TestFailedAuthIsLimitedPerClient(t *testing.T) {
 	wantStatus(t, status(good.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 200)  // an already-seen device is not affected
 	wantStatus(t, status(late.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 429)  // an unseen one waits for the next minute
 }
+
+// Finding 24: the estimate / simulate / broadcast counters were the only Redis keys that carried the raw device id.
+func TestSendCountersDoNotStoreDeviceIDs(t *testing.T) {
+	hs, rdb := abuseServer(t, "abuse_keys", nil)
+	ctx := context.Background()
+	c := hbclient.New(hs.URL)
+	_, err := c.Register(ctx)
+	must(t, err)
+	const addr = "0x1111111111111111111111111111111111111111"
+	_, err = c.Do(ctx, "PUT", "/v1/me/addresses", map[string]any{"add": []map[string]string{{"chain": "base", "address": addr}}}, nil, nil)
+	must(t, err)
+	c.Do(ctx, "POST", "/v1/tx/base/estimate", map[string]string{"from": addr, "to": addr, "value": "1"}, nil, nil) //nolint:errcheck
+	c.Do(ctx, "POST", "/v1/tx/base/simulate", map[string]string{"from": addr, "to": addr, "value": "1"}, nil, nil) //nolint:errcheck
+	keys, err := rdb.Keys(ctx, "*").Result()
+	must(t, err)
+	var sendKeys int
+	for _, k := range keys {
+		if strings.Contains(k, c.DeviceID) {
+			t.Errorf("Redis key carries the raw device id: %s", strings.ReplaceAll(k, c.DeviceID, "<device id>"))
+		}
+		if strings.HasPrefix(k, "hb:rlest:") || strings.HasPrefix(k, "hb:rlsim:") {
+			sendKeys++
+		}
+	}
+	if sendKeys != 2 {
+		t.Fatalf("expected the estimate and simulate counters, found %d of them in %d keys", sendKeys, len(keys))
+	}
+}
