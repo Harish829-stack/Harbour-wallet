@@ -137,6 +137,7 @@ const baseOp = async (sender, calls) => {
   return { sender, nonce: toHex(hexN(nonce)), callData: encodeCalls(calls), maxFeePerGas: gp.fast.maxFeePerGas, maxPriorityFeePerGas: gp.fast.maxPriorityFeePerGas, signature: STUB_SIG };
 };
 const policy = () => process.env.SPONSORSHIP_POLICY_ID;
+const NO_POLICY = process.env.SPONSOR_NO_POLICY === '1'; // sponsor with no policy id (testnet default behaviour)
 async function stepProbe() {
   const pk = ensureKey(); const a = privateKeyToAccount(pk).address;
   const op = await baseOp(a, [{ to: SINK, value: 1n, data: '0x' }]);
@@ -154,8 +155,9 @@ async function runOp(label, calls, { sponsor }) {
   if (!delegated || delegated.toLowerCase() !== DELEGATE.toLowerCase()) fail('account is not delegated to the pinned delegate; run upgrade first');
   let op = await baseOp(a, calls); const info = { label, calls: calls.length, sponsor };
   if (sponsor) {
-    if (!policy()) return record(label, { skipped: 'set SPONSORSHIP_POLICY_ID' });
-    const r = await sponsorCall(op, { sponsorshipPolicyId: policy() });
+    if (!policy() && !NO_POLICY) return record(label, { skipped: 'set SPONSORSHIP_POLICY_ID or SPONSOR_NO_POLICY=1' });
+    const r = await sponsorCall(op, policy() ? { sponsorshipPolicyId: policy() } : undefined);
+    info.noPolicyId = !policy();
     info.paymaster = r.paymaster; info.gas = { verificationGasLimit: r.verificationGasLimit, callGasLimit: r.callGasLimit, preVerificationGas: r.preVerificationGas };
     op = { ...op, ...r };                      // paymaster, paymasterData, paymaster gas, op gas limits
   } else {
@@ -209,7 +211,14 @@ async function stepOffline() {
   process.exit(res.every(([, ok]) => ok) ? 0 : 1);
 }
 
-const steps = { offline: stepOffline, gen: stepGen, checks: stepChecks, upgrade: stepUpgrade, 'sponsor-probe': stepProbe, ops: stepOps, revoke: stepRevoke,
+async function stepCodeDiff() {
+  const out = {};
+  for (const [name, c] of Object.entries(CHAINS)) out[name] = await rpc(process.env['RPC_' + name] || c.rpc, 'eth_getCode', [DELEGATE, 'latest']);
+  const a = out.sepolia, b = out.baseSepolia; const diffs = []; let start = -1;
+  for (let i = 2; i <= Math.max(a.length, b.length); i += 2) { const d = a.slice(i, i + 2) !== b.slice(i, i + 2); if (d && start < 0) start = i; if (!d && start >= 0) { diffs.push([(start - 2) / 2, (i - 2) / 2]); start = -1; } }
+  record('codeDiff', { sepoliaHash: keccak256(a), baseSepoliaHash: keccak256(b), lengthBytes: [(a.length - 2) / 2, (b.length - 2) / 2], differingByteRanges: diffs, sample: diffs.slice(0, 6).map(([x, y]) => ({ at: x, sepolia: '0x' + a.slice(2 + x * 2, 2 + y * 2).slice(0, 80), baseSepolia: '0x' + b.slice(2 + x * 2, 2 + y * 2).slice(0, 80) })) });
+}
+const steps = { codediff: stepCodeDiff, offline: stepOffline, gen: stepGen, checks: stepChecks, upgrade: stepUpgrade, 'sponsor-probe': stepProbe, ops: stepOps, revoke: stepRevoke,
   all: async () => { await stepGen(); await stepChecks(); await stepUpgrade(); await stepProbe(); await stepOps(); await stepRevoke(); } };
 const cmd = process.argv[2];
 if (!steps[cmd]) { console.log('usage: node spike.mjs', Object.keys(steps).join('|')); process.exit(2); }
