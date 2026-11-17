@@ -13,6 +13,7 @@ const run = (name, cmd, args) => {
   if (!ok) { console.log((r.stdout + r.stderr).split('\n').slice(-25).join('\n')); process.exit(1); }
 };
 run('lint (no warnings)', 'npx', ['eslint', '.', '--max-warnings', '0']);
+run('frozen secure code unchanged', 'node', ['scripts/check-frozen.mjs']);
 run('tsc (extension)', 'npx', ['tsc', '--noEmit']);
 run('tsc (legacy v2 gateway worker)', 'npx', ['tsc', '-p', 'gateway/tsconfig.json']);
 if (!process.argv.includes('--skip-tests')) run('unit tests', 'npm', ['test', '--silent']);
