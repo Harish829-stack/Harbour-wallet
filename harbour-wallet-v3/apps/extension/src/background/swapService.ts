@@ -4,7 +4,7 @@ import { checkToken } from '../kit/clients/securityClient';
 // chunk actions: FetchSwapQuote -> (StageSwapApproval/ExecuteSwapApproval) -> StageSwapTransaction ->
 // ExecuteSwap/BroadcastSwapTransaction -> GetSwapSettlementStatus -> RecordSwapTransaction.
 import { createPublicClient, http, defineChain, erc20Abi, maxUint256, isAddress, encodeFunctionData } from 'viem';
-import { evmAccountFromBytes, signHash } from '../core/provider/evmAccount';
+import { evmAccountFromBytes } from '../core/provider/evmAccount';
 import { local } from '../core/storage';
 import { rpcUrl, solanaRpcUrl, protectedRpcUrl } from '../core/rpc';
 import { openActiveKeys } from './keys';
@@ -27,8 +27,9 @@ import { relayQuote, relayTransactions, relayStatus, relayTargets } from '../cor
 import { thorQuote, checkThorQuote, verifyThorInbound, thorRouterCall, thorStatus } from '../core/swap/thorchain';
 import { utxoFamily } from '../core/chains/send/utxo';
 import { chainById } from '../core/chains/index';
-import { serializeSignature } from 'viem/accounts';
-import { sendGasless, bundlerUrl, GASLESS_FLAG, type Call } from '../core/swap/gasless';
+import { sendCalls, sendCallsAvailable } from './smartAccountService';
+import { isSmartAccountChain } from '../core/smartAccount/constants';
+type Call = { to: `0x${string}`; value: bigint; data: `0x${string}` };
 import { isContractCode } from '../core/evmCode';
 /** Refuse a third-party-built Solana transaction unless every instruction is understood and a dry run succeeds without draining more SOL than the sale. */
 async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep, o: { strictPrograms: boolean }): Promise<void> {
@@ -40,7 +41,6 @@ async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep
   if (!sim.ok) throw swapError('simulation_failed');
   if (sim.solDelta !== undefined && -sim.solDelta > sell + 20_000_000n) throw bad;
 }
-const getStore = () => import('./store'); // same chunk as the background entry: Rollup inlines this (no runtime import())
 
 const SETTINGS_KEY = 'wallet:swap:settings';
 const HISTORY_KEY = 'wallet:swap:history';
@@ -171,34 +171,17 @@ export async function maxSpendable(deps: SwapDeps, asset: SwapAsset): Promise<{ 
   return bal > reserve ? { max: (bal - reserve).toString(), belowFee: false } : { max: '0', belowFee: true };
 }
 
-// ---------- gasless (EIP-7702 + sponsored user operation) ----------
-async function gaslessFlag(): Promise<boolean> {
-  try { return (await getStore()).store.getState().sdkFeatureSlice.flags[GASLESS_FLAG] === true; } catch { return false; }
-}
-/** Offered only when the remote flag is on and the gateway can reach a bundler. */
-export async function gaslessAvailable(): Promise<boolean> { return (await gaslessFlag()) && !!bundlerUrl(1); }
+// ---------- gasless (smart account operation, sponsored) ----------
+// Uses the user's own smart account (MetaMask Stateless7702, Settings > Wallet > Smart account) through smartAccountService.sendCalls.
+// Behind the remote flag `smartAccounts`; if anything is unavailable the callers fall back to normal transactions.
+/** Offered only when the flag is on and the gateway can reach a bundler (Sepolia and Base Sepolia for now). */
+export async function gaslessAvailable(): Promise<boolean> { return (await sendCallsAvailable(11155111)) || (await sendCallsAvailable(84532)); }
 async function gaslessActive(chainId: number): Promise<boolean> {
-  return !!bundlerUrl(chainId) && (await getSettings()).gasless && (await gaslessFlag());
+  return isSmartAccountChain(chainId) && (await getSettings()).gasless && (await sendCallsAvailable(chainId));
 }
-/** Run calls as one sponsored user operation; null when gasless is unavailable (caller falls back to normal transactions). */
+/** Run calls as one sponsored operation; null when unavailable (caller falls back to normal transactions). */
 async function tryGasless(chainId: number, client: any, privateKey: Uint8Array, sender: string, calls: Call[]): Promise<`0x${string}` | null> {
-  const url = bundlerUrl(chainId); if (!url) return null;
-  let id = 0;
-  const bundler = async (method: string, params: unknown[]) => {
-    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }), signal: AbortSignal.timeout(20000) });
-    const j = await r.json(); if (j?.error) throw new Error(j.error.message ?? 'bundler error'); return j.result;
-  };
-  try {
-    const r = await sendGasless({
-      chainId, sender: sender as `0x${string}`, bundler,
-      getCode: (a) => client.getCode({ address: a }), call: async (to, data) => (await client.call({ to, data })).data ?? '0x', txCount: (a) => client.getTransactionCount({ address: a }),
-      signDigest: async (hash) => { const sig = signHash(hash, privateKey); return { r: sig.r, s: sig.s, yParity: Number(sig.yParity ?? (sig.v === 28n ? 1 : 0)), serialized: serializeSignature(sig) }; },
-    }, calls);
-    return r.txHash;
-  } catch (e: any) {
-    if (e?.code === 'gasless_unavailable') return null;
-    throw e;
-  }
+  return sendCalls({ chainId, client, account: sender, privateKey, calls, sponsor: true });
 }
 
 // ---------- quote ----------

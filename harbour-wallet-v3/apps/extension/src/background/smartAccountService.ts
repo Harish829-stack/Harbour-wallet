@@ -5,14 +5,17 @@
 //    operation, its nonce and its fees stay in this worker's memory. No key, digest or signature ever leaves it.
 //  - Upgrade and revoke are user-paid, self-sent type-4 transactions signed here with the existing pattern
 //    openActiveKeys() -> signHash() -> dispose() in finally, behind consumeReauth('manage').
-import { formatEther } from 'viem';
+import { encodeFunctionData, formatEther, parseAbi, type Hex } from 'viem';
+import { serializeSignature } from 'viem/accounts';
+import { GATEWAY_URL } from '../kit/endpoints';
 import { signHash, evmAccountFromBytes } from '../core/provider/evmAccount';
 import { smartAccountsAvailable } from '../core/harbour/policy';
 import { resolveSendChain } from '../core/sendService';
 import { customNetworks } from '../core/networkRegistry';
 import { logWarn } from '../core/logger';
-import { DELEGATES, SMART_ACCOUNT_FLAG, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
+import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
 import { buildSignedType4 } from '../core/smartAccount/delegation';
+import { sendOperation } from '../core/smartAccount/send';
 import { GuardError, GUARD_MESSAGE, assertFresh, checkAuthorization, delegationState, type DelegationState } from '../core/smartAccount/guard';
 import { delegationTarget } from '../core/evmCode';
 import { evmClientFor, feeData } from './handlers/earnEvm';
@@ -122,3 +125,41 @@ export function reject(p: { requestId: unknown }) {
 }
 /** Test hook: how many prepared requests are held. */
 export const preparedCount = () => prepared.size;
+
+// ---------- Harbour's own flows (swap, ...): one operation, optionally sponsored ----------
+const epAbi = parseAbi(['function getNonce(address sender, uint192 key) view returns (uint256 nonce)']);
+const bundlerUrl = (chainId: number): string | null => (GATEWAY_URL && isSmartAccountChain(chainId) ? `${GATEWAY_URL}/pimlico/${chainId}` : null);
+
+/** True when the flag is on, the chain is pinned and the gateway can reach a bundler. Used to decide whether to offer sponsored actions. */
+export async function sendCallsAvailable(chainId: number): Promise<boolean> { return (await flagOn()) && !!bundlerUrl(chainId); }
+
+/**
+ * Runs `calls` for the user's own account as ONE smart account operation. The caller (a Harbour feature) has already shown its own
+ * confirmation and holds the unlocked key for this action; this function never opens keys itself and never keeps them.
+ * Returns the transaction hash, or null when smart accounts cannot be used (flag off, account not enabled, sponsorship refused,
+ * guard refused): the caller then sends normal transactions exactly as before. A guard refusal is logged and signs nothing.
+ * It throws only for an operation that was sent and then reverted or is still pending (code op_reverted / op_pending).
+ */
+export async function sendCalls(p: { chainId: number; client: ReturnType<typeof evmClientFor>; account: string; privateKey: Uint8Array; calls: unknown; sponsor?: boolean }): Promise<Hex | null> {
+  const url = bundlerUrl(p.chainId); if (!url || !(await flagOn())) return null;
+  const account = p.account as Address;
+  let id = 0;
+  try {
+    if (evmAccountFromBytes(p.privateKey).address.toLowerCase() !== account.toLowerCase()) throw new GuardError('key_mismatch');
+    const r = await sendOperation({
+      chainId: p.chainId, account,
+      getCode: () => p.client.getCode({ address: account }),
+      readNonce: async () => BigInt((await p.client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
+      bundler: async (method, params) => {
+        const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }), signal: AbortSignal.timeout(20000) });
+        const j = await res.json(); if (j?.error) throw new Error(j.error.message ?? 'bundler error'); return j.result;
+      },
+      signDigest: (digest) => serializeSignature(signHash(digest, p.privateKey)),
+    }, { calls: p.calls, sponsor: p.sponsor !== false });
+    return r.txHash;
+  } catch (e: any) {
+    if (e?.code === 'op_reverted' || e?.code === 'op_pending') throw e;
+    if (e instanceof GuardError) { if (e.reason !== 'not_enabled') logWarn('smart account: guard refused an operation', e.reason); return null; }
+    return null; // sponsor_refused, estimate_failed, network errors: fall back to normal transactions
+  }
+}

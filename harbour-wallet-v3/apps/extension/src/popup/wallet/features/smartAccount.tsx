@@ -9,6 +9,7 @@ import { Group, SectionLabel, ErrorLine, Note } from '../settingsScreens';
 import type { Ctx } from '../screens';
 
 const CHAINS = [11155111, 84532];
+const LEGACY_DELEGATE = '0xe6cae83bde06e4c305530e199d7217f42808555b'; // Simple7702Account used by the retired gasless path; Switch re-delegates to the current contract in one step
 type Status = { chainId: number; available: boolean; network?: string; state?: 'none' | 'pinned' | 'other'; delegatedTo?: string | null };
 type Summary = { requestId: string; kind: 'enable' | 'revoke'; chainId: number; network: string; symbol: string; address: string; delegate: string | null; maxFee: string; expiresInSec: number };
 const short = (a: string) => `${a.slice(0, 8)}…${a.slice(-6)}`;
@@ -47,9 +48,10 @@ export const SmartAccountSection: React.FC<{ c: Ctx; walletId: string }> = ({ c,
         <div key={r.chainId} data-testid={`smart-account-${r.chainId}`} style={{ padding: 14, borderTop: i ? `1px solid ${T.border}` : undefined, display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{r.network}</div>
-            <div style={{ fontSize: 12, color: T.sub }}>{r.state === 'pinned' ? 'On' : r.state === 'other' ? 'Delegated to another contract' : 'Off'}</div>
+            <div style={{ fontSize: 12, color: T.sub }}>{r.state === 'pinned' ? 'On' : r.state === 'other' ? (r.delegatedTo?.toLowerCase() === LEGACY_DELEGATE ? 'Delegated to an older Harbour contract' : 'Delegated to another contract') : 'Off'}</div>
           </div>
           {r.state === 'none' && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Turn on</Btn>}
+          {r.state === 'other' && r.delegatedTo?.toLowerCase() === LEGACY_DELEGATE && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Switch</Btn>}
           {r.state !== 'none' && <Btn variant="ghost" onClick={() => void start(r.chainId, 'revoke')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Turn off</Btn>}
         </div>
       ))}

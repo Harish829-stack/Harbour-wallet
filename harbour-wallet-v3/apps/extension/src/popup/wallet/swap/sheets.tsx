@@ -63,7 +63,7 @@ export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: s
         desc="Approve a token once and swap any amount later. Off is safer: each swap approves only the amount it spends."
         warn="Unlimited approval is not safe unless you fully trust the contract" />
       {gaslessAvailable && <Row testid="setting-gasless" title="Gasless swaps (beta)" on={settings.gasless} onChange={(v) => save({ gasless: v })}
-        desc="Network fees are sponsored on Ethereum, BNB Chain, Polygon, Arbitrum and Base. The first gasless swap upgrades your account with EIP-7702 to the audited Simple7702Account; you can keep using it as a normal account."
+        desc="Network fees are sponsored on test networks (Sepolia and Base Sepolia) for accounts with Smart account turned on (Wallet details, Smart account). Your address stays the same and you can turn it off at any time."
         warn="Gasless swaps are in beta. If sponsorship is unavailable, the swap is sent as a normal transaction and you pay the fee." />}
       <DustPanel domainId={fromDomainId && domainById(fromDomainId)?.kind !== 'utxo' ? fromDomainId : 'ethereum'} />
     </Sheet>
