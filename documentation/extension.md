@@ -78,7 +78,7 @@ The popup follows a shorter path: `bg({ type: '...' })` in `src/popup/api.ts` se
 - **Approvals screen.** Decoded calldata, Permit/Permit2/multicall hidden-approval detection, `eth_simulateV1` balance changes (falling back to the backend `/v1/tx/{chain}/simulate`), Solana SPL diffs and drainer flags, phishing and address risk lists. If a list is unavailable the UI says so instead of claiming safety. Editable spending cap works like MetaMask's.
 - **Token approvals scan** (Settings > Security). Allowances are read on chain through `/v1/rpc` for the user's added tokens times the contracts Harbour talks to, plus a ledger of approvals this wallet signed (Swap, Earn, connected sites); nothing is shown unless the chain reports an allowance above zero. It covers the networks listed in `approvalScan.ts` (Sepolia and Base Sepolia when this was written) and answers "Approval scanning isn't available on this network" elsewhere. A log-based "Deep scan" that would find approvals to unknown spenders is deferred.
 - **Testnet Swap and Earn.** Swap on Ethereum Sepolia uses the Uniswap Trading API through the backend (`UNISWAP_API_KEY`; only chain 11155111). Earn on Base Sepolia uses AaveKit. Every transaction either returns is decoded and checked before review. Details in `src/integrations/testnet-defi/README.md`; tests: `node --test test/testnet-defi.test.js test/testnet-defi-handlers.test.js test/aavekit.test.js`.
-- **Remote config.** `config/config.json` is signed; flags `perps`, `predictions` and `gasless7702` are `false` by default, and providers can be killed remotely.
+- **Remote config.** `config/config.json` is signed; flags `perps`, `predictions` and `smartAccounts` are `false` by default, and providers can be killed remotely.
 - **Permissions.** `alarms`, `storage`, `clipboardWrite`, `notifications`, `scripting`, `sidePanel`, `gcm`, `idle` (lock when the OS locks) and `offscreen`; host access `https://*/*` for the injected provider and chain endpoints.
 
 ## Testing notes
@@ -87,3 +87,7 @@ The popup follows a shorter path: `bg({ type: '...' })` in `src/popup/api.ts` se
 - `test/boundaries.test.js` enforces that the popup never imports vault, key or wallet-core code.
 - On Linux, if `node_modules` was installed on macOS, set `ESBUILD_BINARY_PATH` to a Linux esbuild binary or reinstall with `npm ci`.
 - Real Touch ID / Windows Hello and Ledger flows need manual testing; the matrix is in [security.md](security.md).
+
+## Smart accounts (EIP-7702), behind the remote flag `smartAccounts`
+
+Pure code in `src/core/smartAccount/` (constants, call encoding, user operation and type-4 builders, `guard`, `send`, `calls5792`, `permissions`). The worker side is `background/smartAccountService.ts` (status, enable/revoke, `sendCalls` for Harbour's own flows, `submitDappCalls` for EIP-5792) and `background/handlers/smartAccount.ts` (four UI-only messages; Approve/Reject carry only a requestId). The popup section is `popup/wallet/features/smartAccount.tsx` (Wallet details). dApps get `wallet_getCapabilities`, `wallet_sendCalls`, `wallet_getCallsStatus`, `wallet_showCallsStatus` (atomic only, user-paid, never able to turn the account on). Swap's sponsored path uses `sendCalls`. Full design: `documentation/smart-accounts/`.

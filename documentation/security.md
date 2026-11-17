@@ -66,3 +66,7 @@ Report privately to the maintainers. Do not open a public issue for a security b
 ## Where the old audit material went
 
 The detailed audit working files (framework, per-control results, pentest and red-team reports, tool output) are no longer part of `documentation/`. They were git-ignored working files; the copies that were tracked remain in git history. Local-only copies are not in the repository folder any more (the `_to_delete/` folder they were moved to did not exist on 2026-11-16), so keep your own private copy if you still need them.
+
+## Smart accounts (flag `smartAccounts`, default off)
+
+The delegate (MetaMask Stateless7702) and paymaster are pinned per chain in `core/smartAccount/constants.ts`; provider replies are read only through strict readers in `guard.ts` and the signed digest is always computed locally from the final operation. Keys are opened only inside `openActiveKeys() -> signHash() -> dispose()`; the frozen secure files are checked by `scripts/check-frozen.mjs` in `npm run verify`. A dApp cannot enable, revoke or sponsor: those messages are UI-only, `wallet_sendCalls` needs the account already enabled and is never sponsored. Not done before mainnet (P7): independent review, mainnet pins, kill-switch drill, finding 26.
