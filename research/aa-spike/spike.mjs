@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
+import { createPrivateKey, sign as edSign, randomBytes, createHash } from 'node:crypto';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -36,6 +37,31 @@ function pimlicoKey() {
 }
 let KEY_CACHE; const apiKey = () => (KEY_CACHE ??= pimlicoKey());
 const redact = (s) => { try { const k = apiKey(); return k ? String(s).split(k).join('<key>') : String(s); } catch { return String(s); } };
+// Gateway mode: GATEWAY=http://localhost:8080 sends bundler calls through /v1/gw/pimlico/{chainId}, signed like the extension
+// (devicesig, Ed25519). Device key file from `hbdevice register`: HBDEVICE_FILE (default ./.hbdevice.json). Never printed.
+const GATEWAY = process.env.GATEWAY && process.env.GATEWAY.replace(/\/+$/, '');
+let DEV;
+function device() {
+  if (DEV) return DEV;
+  const f = process.env.HBDEVICE_FILE || resolve(process.cwd(), '.hbdevice.json');
+  const kf = JSON.parse(readFileSync(f, 'utf8'));
+  const seed = Buffer.from(kf.seed, 'base64url');
+  const key = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), seed]), format: 'der', type: 'pkcs8' });
+  return (DEV = { id: kf.device_id, key });
+}
+async function gatewayRpc(method, params) {
+  const d = device(); const path = `/v1/gw/pimlico/${CHAIN_ID}`;
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method, params });
+  const date = String(Math.floor(Date.now() / 1000)); const nonce = randomBytes(18).toString('base64url');
+  const canon = ['HB1', 'POST', path, date, nonce, d.id, createHash('sha256').update(body).digest('hex')].join('\n');
+  let res;
+  try { res = await fetch(GATEWAY + path, { method: 'POST', headers: { 'content-type': 'application/json', 'X-HB-Device': d.id, 'X-HB-Date': date, 'X-HB-Nonce': nonce, 'X-HB-Signature': edSign(null, Buffer.from(canon), d.key).toString('base64url') }, body }); }
+  catch (e) { throw new Error(`gateway unreachable: ${e.cause?.code || e.message}`); }
+  const text = await res.text(); let j; try { j = JSON.parse(text); } catch { j = null; }
+  if (!res.ok && !(j && j.error)) { const err = new Error(`gateway HTTP ${res.status} on ${method}: ${text.slice(0, 300)}`); err.code = res.status; throw err; }
+  if (j && j.error) { const err = new Error(`${method}: ${j.error.message}`); err.code = j.error.code; err.data = j.error.data; throw err; }
+  return j?.result;
+}
 const bundlerUrl = () => `https://api.pimlico.io/v2/${CHAIN_ID}/rpc?apikey=${apiKey()}`;
 
 // ---- json-rpc ----
@@ -48,7 +74,7 @@ async function rpc(url, method, params = []) {
   return j.result;
 }
 const chain = (m, p) => rpc(RPC_URL, m, p);
-const bundler = (m, p) => rpc(bundlerUrl(), m, p);
+const bundler = (m, p) => (GATEWAY ? gatewayRpc(m, p) : rpc(bundlerUrl(), m, p));
 
 // ---- builders (same as validation/mine.mjs) ----
 const abi = parseAbi(['function execute((address target, uint256 value, bytes callData) execution)', 'function execute(bytes32 mode, bytes executionCalldata)']);
@@ -75,7 +101,7 @@ async function rawType4(pk, { delegate, nonce, fees, gas }) {
 
 // ---- state / report (no secrets) ----
 mkdirSync(STATE, { recursive: true });
-const keyFile = resolve(STATE, 'key.json'), reportFile = resolve(STATE, `report-${CHAIN}.json`);
+const keyFile = resolve(STATE, 'key.json'), reportFile = resolve(STATE, `report-${CHAIN}${GATEWAY ? '-gateway' : ''}.json`);
 const report = existsSync(reportFile) ? JSON.parse(readFileSync(reportFile, 'utf8')) : {};
 const record = (k, v) => { report[k] = v; writeFileSync(reportFile, JSON.stringify(report, (_, x) => (typeof x === 'bigint' ? x.toString() : x), 2)); console.log(`[${CHAIN}] ${k}:`, JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x))); };
 function loadPk() {
