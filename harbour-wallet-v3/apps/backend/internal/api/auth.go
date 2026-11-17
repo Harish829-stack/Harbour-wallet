@@ -62,21 +62,8 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many attempts. Please try again later.", true)
 		return
 	}
-	// Global ceiling: per-IP limits alone are cheap to spread over many addresses.
-	gk := fmt.Sprintf("hb:chal:all:%d", now.Unix()/3600)
-	g, err := s.opt.Redis.Incr(ctx, gk).Result()
-	if err != nil {
-		s.internalErr(w, r, err)
-		return
-	}
-	if g == 1 {
-		s.opt.Redis.Expire(ctx, gk, 2*time.Hour)
-	}
-	if int(g) > s.cfg.API.RegistrationsPerHour {
-		w.Header().Set("Retry-After", "600")
-		writeErr(w, http.StatusTooManyRequests, "busy", "Harbour is busy setting up new devices. Please try again in a few minutes.", true)
-		return
-	}
+	// The global ceiling on new devices is charged in handleRegister, after the proof-of-work: charging it here let anyone use it up
+	// with free challenge requests and lock every new install out (finding 22).
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		s.internalErr(w, r, err)
@@ -151,6 +138,23 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if !devicesig.Verify(pub, devicesig.RegistrationMessage(req.Challenge), req.Signature) {
 		writeErr(w, http.StatusBadRequest, "bad_signature", "Device check failed. Please try again.", false)
+		return
+	}
+	// Global ceiling on new devices per hour (per-IP limits alone are cheap to spread over many addresses). It is charged only now,
+	// for a request that solved its proof-of-work and proved its key, so using it up costs real work per slot.
+	gk := fmt.Sprintf("hb:reg:all:%d", s.opt.Now().Unix()/3600)
+	g, err := s.opt.Redis.Incr(ctx, gk).Result()
+	if err != nil {
+		s.internalErr(w, r, err)
+		return
+	}
+	if g == 1 {
+		s.opt.Redis.Expire(ctx, gk, 2*time.Hour)
+	}
+	if int(g) > s.cfg.API.RegistrationsPerHour {
+		w.Header().Set("Retry-After", "600")
+		s.secEvent(r, "register_global_limit", "")
+		writeErr(w, http.StatusTooManyRequests, "busy", "Harbour is busy setting up new devices. Please try again in a few minutes.", true)
 		return
 	}
 	tier := s.cfg.API.DefaultTier
