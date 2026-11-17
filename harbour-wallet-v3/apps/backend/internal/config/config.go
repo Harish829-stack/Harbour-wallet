@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -443,14 +444,22 @@ func LoadDotEnv(path string) error {
 	return LoadSecretFiles()
 }
 
+// secretName matches the variables LoadSecretFiles resolves: API keys, secrets, passwords, tokens, connection URLs and the few
+// other secret-bearing settings (optionally numbered, e.g. FOO_API_KEY_2), plus the per-service PG_PW_* / NATS_PW_* logins.
+var secretName = regexp.MustCompile(`^(PG|NATS)_PW_[A-Z0-9_]+$|^[A-Z][A-Z0-9_]*_(KEY|KEYS|SECRET|PASSWORD|TOKEN|URL|USERS|JSON|SIG|SUBJECT)(_[0-9]+)?$`)
+
 // LoadSecretFiles (HW-2026-002, CCSS G-06): for every NAME_FILE variable, reads the file (a Docker/Kubernetes secret, or a file a
 // secrets-manager agent such as Vault Agent or the AWS/GCP secret CSI driver writes) into NAME, unless NAME is already set.
 // Secrets then never have to live in .env or in the process's declared environment.
+//
+// Only names shaped like a Harbour setting are resolved (secretName). Other software defines its own *_FILE variables
+// (PIP_CONFIG_FILE, SSL_CERT_FILE, GIT_CONFIG_FILE, FCM_CREDENTIALS_FILE, ...): those are paths, not secrets to load. Before this
+// rule every one of them was read into the environment, and one that pointed at a missing file stopped the service at startup.
 func LoadSecretFiles() error {
 	for _, kv := range os.Environ() {
 		k, v, _ := strings.Cut(kv, "=")
 		name, ok := strings.CutSuffix(k, "_FILE")
-		if !ok || name == "" || v == "" {
+		if !ok || name == "" || v == "" || !secretName.MatchString(name) {
 			continue
 		}
 		if _, set := os.LookupEnv(name); set && os.Getenv(name) != "" {
