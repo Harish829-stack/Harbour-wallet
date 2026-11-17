@@ -5,6 +5,7 @@
 import { HARBOUR_CHAINS, CLIENT_CHAIN_IDS, HB_API_URL, HB_API_SECURE, isLoopbackUrl } from './config';
 import { customNetwork } from '../networkRegistry';
 import { chainById } from '../chains/index';
+import { isSmartAccountChain } from '../smartAccount/constants';
 
 /** Signing and broadcasting on real-value (mainnet) networks is a deliberate switch, not a side effect of a chain being listed.
  *  All three must stay explicit so a review (and test/policy.test.js) can see what this build allows:
@@ -53,6 +54,16 @@ export const isSigningEvmChain = (chainId: number | bigint | string | null | und
 /** True when this build may sign for the registry chain (`sepolia`, `base-sepolia`, …) or its EVM chain id. */
 export const isSigningChain = (chain: { id?: string; kind?: string; evmChainId?: number } | null | undefined): boolean =>
   !!chain && (chain.kind === 'evm' ? isSigningEvmChain(chain.evmChainId) : !!chain.id && CHAIN_IDS.has(chain.id) && basisAllowed('client-chain'));
+
+/** Smart accounts (EIP-7702 + ERC-4337, core/smartAccount): off unless the signed remote flag `smartAccounts` is true (the caller reads it
+ *  from the config store and passes it as `flag`), the account is held locally (recovery phrase or imported key: never Ledger or
+ *  watch-only), and the chain both has a pinned delegate and is one this build may sign on. Nothing else enables a smart-account flow. */
+export const smartAccountsAvailable = (a: { flag: boolean; chainId: number | bigint | string | null | undefined; walletType?: string }): boolean => {
+  if (a.flag !== true) return false;
+  if (a.walletType !== 'mnemonic' && a.walletType !== 'privateKey') return false;
+  let id: number; try { id = Number(BigInt(a.chainId as any)); } catch { return false; }
+  return isSmartAccountChain(id) && isSigningEvmChain(id);
+};
 
 /** The provider-facing slice of the policy. ProviderService takes it as a dependency so the generic provider stays testable
  *  with every family on, while the build default (below) is what ships. */

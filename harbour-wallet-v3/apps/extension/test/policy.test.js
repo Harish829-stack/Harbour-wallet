@@ -26,3 +26,16 @@ test('a user-added network becomes signable, and stops being signable when remov
   R.setNetworkState({ custom: [], rpcOverrides: {} });
   assert.equal(P.isSigningEvmChain(59141), false);
 });
+
+test('smart accounts need the remote flag, a software account and a pinned, signable chain', () => {
+  const ok = { flag: true, chainId: 84532, walletType: 'mnemonic' };
+  assert.equal(P.smartAccountsAvailable(ok), true);
+  assert.equal(P.smartAccountsAvailable({ ...ok, chainId: '0x14a34' }), true);
+  assert.equal(P.smartAccountsAvailable({ ...ok, chainId: 11155111, walletType: 'privateKey' }), true);
+  assert.equal(P.smartAccountsAvailable({ ...ok, flag: false }), false, 'default off');
+  assert.equal(P.smartAccountsAvailable({ ...ok, flag: undefined }), false);
+  assert.equal(P.smartAccountsAvailable({ ...ok, walletType: 'ledger' }), false);
+  assert.equal(P.smartAccountsAvailable({ ...ok, walletType: 'watch' }), false);
+  assert.equal(P.smartAccountsAvailable({ ...ok, walletType: undefined }), false);
+  for (const chainId of [1, 8453, 0, 59141, null, undefined, '', 'nope']) assert.equal(P.smartAccountsAvailable({ ...ok, chainId }), false, String(chainId));
+});
