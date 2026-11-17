@@ -91,6 +91,15 @@ async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
       return { ...base, chain: d.networks.get(cid) ? netView(d.networks.get(cid)!) : base.chain, token: { address: asset.address, ...(meta ?? { symbol: '', name: '', decimals: 0 }), verified: !!meta, requestedSymbol: asset.symbol ?? null, requestedDecimals: asset.decimals ?? null, image: asset.image ?? null } };
     }
     case 'tx': return { ...base, ...(await txView(p, d)) };
+    case 'calls': {
+      const { n, chainId: cid } = p.params as { n: { calls: Array<{ to: string; value: string; data: string }> }; chainId: number }; const net = d.networks.get(cid);
+      const detail: Record<string, string> = { Network: net?.name ?? String(cid), Calls: `${n.calls.length} in one atomic batch (all succeed or none run)`, Fee: `Paid from your account, up to the network maximum` };
+      n.calls.forEach((c, i) => {
+        const v = BigInt(c.value); const dc = c.data === '0x' ? null : decodeCalldata(c.data);
+        detail[`Call ${i + 1}`] = `${c.to}${v > 0n ? ` · ${formatUnits(v, net?.decimals ?? 18)} ${net?.symbol ?? ''}`.trimEnd() : ''} · ${c.data === '0x' ? 'native transfer' : dc && dc.kind !== 'unknown' ? String(dc.kind) : `function ${c.data.slice(0, 10)}`}`;
+      });
+      return { ...base, chain: net ? netView(net) : base.chain, multi: { kind: 'calls', types: [], detail } };
+    }
     case 'multiSign': { const s = p.params.summary; return { ...base, multi: s, ...(s.kind === 'message' ? { message: { utf8: s.text ?? null, hex: s.hex, bytes: (s.hex.length - 2) / 2 } } : {}) }; }
     case 'solSignMessage': {
       const bytes = b64ToBytes(p.params.messageB64); const text = tryUtf8(bytes);

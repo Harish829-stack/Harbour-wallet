@@ -6,6 +6,7 @@ import type { Namespace } from './protocol';
 
 export type MethodKind =
   | 'local' | 'rpc' | 'connect' | 'permissionsRequest' | 'permissionsRevoke' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset'
+  | 'capabilities' | 'calls' | 'callsStatus' | 'showCalls'
   | 'solConnect' | 'solDisconnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'multiConnect' | 'multiDisconnect' | 'multiSign';
 export interface MethodSpec { kind: MethodKind; needsConnection?: boolean; approval?: boolean }
 
@@ -24,6 +25,11 @@ export const EVM_METHODS: Readonly<Record<string, MethodSpec>> = Object.freeze({
   wallet_switchEthereumChain: { kind: 'switchChain', needsConnection: true, approval: true },
   wallet_addEthereumChain: { kind: 'addChain', needsConnection: true, approval: true },
   wallet_watchAsset: { kind: 'watchAsset', needsConnection: true, approval: true },
+  // EIP-5792 (behind the remote flag `smartAccounts`; the service answers 4200 while it is off)
+  wallet_getCapabilities: { kind: 'capabilities', needsConnection: true },
+  wallet_sendCalls: { kind: 'calls', needsConnection: true, approval: true },
+  wallet_getCallsStatus: { kind: 'callsStatus', needsConnection: true },
+  wallet_showCallsStatus: { kind: 'showCalls', needsConnection: true },
   // read-only JSON-RPC proxied to the origin's selected network (public RPC)
   ...Object.fromEntries([
     'eth_blockNumber', 'eth_call', 'eth_estimateGas', 'eth_gasPrice', 'eth_getBalance', 'eth_getBlockByHash', 'eth_getBlockByNumber',
@@ -53,7 +59,7 @@ export const MULTI_METHODS: Readonly<Record<string, MethodSpec>> = Object.freeze
   signPsbt: { kind: 'multiSign', needsConnection: true, approval: true },
 });
 /** Explicitly unsupported (TW: UNIMPLEMENTED_WALLET_METHODS + filters/subscriptions). They answer 4200 and never reach a handler. */
-export const UNSUPPORTED_EVM = new Set(['wallet_getCapabilities', 'wallet_sendCalls', 'wallet_getCallsStatus', 'wallet_showCallsStatus', 'eth_newFilter', 'eth_newBlockFilter', 'eth_newPendingTransactionFilter', 'eth_uninstallFilter', 'eth_subscribe', 'eth_unsubscribe', 'eth_signTransaction', 'eth_decrypt', 'eth_getEncryptionPublicKey', 'eth_getFilterChanges', 'eth_getFilterLogs']);
+export const UNSUPPORTED_EVM = new Set(['eth_newFilter', 'eth_newBlockFilter', 'eth_newPendingTransactionFilter', 'eth_uninstallFilter', 'eth_subscribe', 'eth_unsubscribe', 'eth_signTransaction', 'eth_decrypt', 'eth_getEncryptionPublicKey', 'eth_getFilterChanges', 'eth_getFilterLogs']);
 
 export function specFor(ns: Namespace, method: string): MethodSpec | null {
   const table = ns === 'evm' ? EVM_METHODS : ns === 'multi' ? MULTI_METHODS : SOLANA_METHODS;

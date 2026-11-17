@@ -19,7 +19,7 @@ const out = await build({
       export { makeRpc } from './background/provider/rpc';
       export { gateRoute, FUNDING_ROUTES } from './popup/wallet/backupGate';
       export * from './core/provider/evmAccount';
-      export { isInternalWalletSender } from './background/accessPolicy';`,
+      export { isInternalWalletSender } from './background/accessPolicy'; export { normalizeSendCalls, buildCapabilities, buildCallsStatus } from './core/smartAccount/calls5792';`,
     resolveDir: src, sourcefile: 'entry.ts', loader: 'ts',
   },
   bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
@@ -95,7 +95,7 @@ test('method allowlist: wallet UI messages and bridge-namespaced names are not d
   assert.ok(M.isBridgeNamespaced('INTERNAL_Reset') && M.isBridgeNamespaced('PUBLIC_Ping') && M.isBridgeNamespaced('x_callback'));
   for (const m of ['eth_requestAccounts', 'personal_sign', 'eth_sendTransaction', 'eth_signTypedData_v4', 'wallet_switchEthereumChain', 'eth_getBalance']) assert.ok(M.specFor('evm', m), m);
   assert.equal(M.specFor('evm', 'constructor'), null); assert.equal(M.specFor('evm', '__proto__'), null); assert.equal(M.specFor('solana', 'toString'), null);
-  assert.ok(M.UNSUPPORTED_EVM.has('eth_signTransaction') && M.UNSUPPORTED_EVM.has('eth_subscribe') && M.UNSUPPORTED_EVM.has('wallet_sendCalls'));
+  assert.ok(M.UNSUPPORTED_EVM.has('eth_signTransaction') && M.UNSUPPORTED_EVM.has('eth_subscribe'));
 });
 test('event allowlist', () => {
   assert.ok(M.isAllowedEvent('evm', 'accountsChanged') && M.isAllowedEvent('solana', 'disconnect'));
@@ -252,7 +252,7 @@ test('a sub-frame request is queued with its own origin and the embedding page r
 });
 test('unsupported / unknown methods: 4200 vs -32601, and no UI-message injection', async () => {
   const ctx = setup(); const s = sender();
-  for (const m of ['eth_signTransaction', 'eth_subscribe', 'wallet_sendCalls', 'eth_newFilter', 'eth_decrypt']) assert.equal((await ctx.svc.handle(s, req(m, []))).outcome.error.code, 4200, m);
+  for (const m of ['eth_signTransaction', 'eth_subscribe', 'eth_newFilter', 'eth_decrypt']) assert.equal((await ctx.svc.handle(s, req(m, []))).outcome.error.code, 4200, m);
   for (const m of ['unlock', 'sendTx', 'revealMnemonic', 'INTERNAL_Lock', 'providerResolve']) assert.equal((await ctx.svc.handle(s, req(m, []))).outcome.error.code, -32601, m);
   assert.equal((await ctx.svc.handle(s, req('connect', undefined, 'solana'))).done, false);
   assert.equal((await ctx.svc.handle(s, req('eth_accounts', undefined, 'solana'))).outcome.error.code, -32601);
@@ -877,4 +877,81 @@ test('SIG-11: a wallet-side network switch does not cancel request-scoped approv
   assert.equal((await ctx.perms.get('https://wc2.example')).chainId, 11155111);
   assert.equal((await ctx.svc.resolve(scopedTx.id, { approve: true, fee: { gasPrice: '1' } })).ok, true);
   assert.equal(ctx.log.signed.find((x) => x[0] === 'tx')[2], 137);
+});
+
+// ---------------------------------------------------------------- EIP-5792 (smart account batches)
+const SEPOLIA = 11155111;
+function smartSetup(state = 'pinned', flag = true) {
+  const sent = []; const store = new Map(); let status = { state: 'pending' };
+  const ctx = setup({ smart: {
+    available: async () => flag, state: async () => state, status: async () => status,
+    bundles: { get: async (o, id) => store.get(o + '|' + id) ?? null, put: async (o, id, rec) => { store.set(o + '|' + id, rec); } },
+  } });
+  const real = ctx.svc.d.signer; real.sendCalls = async (c, net, calls) => { sent.push([c.evmAddress, net.chainId, calls]); return { userOpHash: '0x' + 'cd'.repeat(32) }; };
+  return { ctx, sent, setStatus: (x) => { status = x; } };
+}
+const batch = (over = {}) => [{ version: '2.0.0', chainId: '0xaa36a7', atomicRequired: true, calls: [{ to: ADDR1, value: '0x5' }, { to: ADDR1, data: '0xa9059cbb' }], ...over }];
+async function connectOnSepolia(ctx, s) { await connect(ctx, s); const r = await switchTo(ctx, s, '0xaa36a7'); assert.ok(r.done); }
+
+test('5792: methods answer 4200 while the flag is off or the host is absent', async () => {
+  for (const ctx of [setup(), smartSetup('pinned', false).ctx]) {
+    const s = sender(); await connect(ctx, s);
+    for (const m of ['wallet_getCapabilities', 'wallet_sendCalls', 'wallet_getCallsStatus', 'wallet_showCallsStatus']) assert.equal((await ctx.svc.handle(s, req(m, []))).outcome.error.code, 4200, m);
+  }
+});
+test('5792 normalizer: strict fields, caps, sizes, chain and from binding', () => {
+  const ok = M.normalizeSendCalls(batch(), ADDR0, SEPOLIA);
+  assert.equal(ok.calls.length, 2); assert.equal(ok.calls[0].value, '0x5'); assert.equal(ok.atomicRequired, true);
+  const code = (f) => { try { f(); } catch (e) { return e.code; } return null; };
+  assert.equal(code(() => M.normalizeSendCalls(batch({ extra: 1 }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ version: '3.0.0' }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ atomicRequired: 'yes' }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ from: ADDR1 }), ADDR0, SEPOLIA)), 4100);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ chainId: '0x1' }), ADDR0, SEPOLIA)), 5710);
+  assert.equal(code(() => M.normalizeSendCalls(batch(), ADDR0, 1)), 5710);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ calls: Array(17).fill({ to: ADDR1 }) }), ADDR0, SEPOLIA)), 5740);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ calls: [] }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ calls: [{ data: '0x12' }] }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ calls: [{ to: ADDR1, gas: '0x1' }] }), ADDR0, SEPOLIA)), -32602);
+  assert.equal(code(() => M.normalizeSendCalls(batch({ capabilities: { paymasterService: { url: 'https://x' } } }), ADDR0, SEPOLIA)), 5700);
+  assert.equal(M.normalizeSendCalls(batch({ capabilities: { paymasterService: { optional: true } } }), ADDR0, SEPOLIA).calls.length, 2);
+});
+test('5792 capabilities: supported only where the account runs the pinned smart account', async () => {
+  const on = smartSetup('pinned'), off = smartSetup('none'); const s = sender(); await connect(on.ctx, s); await connect(off.ctx, s);
+  assert.deepEqual((await on.ctx.svc.handle(s, req('wallet_getCapabilities', [ADDR0]))).outcome.result, { '0xaa36a7': { atomic: { status: 'supported' } }, '0x14a34': { atomic: { status: 'supported' } } });
+  assert.equal((await off.ctx.svc.handle(s, req('wallet_getCapabilities', [ADDR0, ['0xaa36a7']]))).outcome.result['0xaa36a7'].atomic.status, 'unsupported');
+  assert.equal((await off.ctx.svc.handle(s, req('wallet_getCapabilities', [ADDR1]))).outcome.error.code, 4100);
+});
+test('5792 sendCalls: a site cannot enable the smart account (5760) and nothing is queued', async () => {
+  for (const st of ['none', 'other']) {
+    const { ctx, sent } = smartSetup(st); const s = sender(); await connectOnSepolia(ctx, s);
+    for (const atomicRequired of [true, false]) assert.equal((await ctx.svc.handle(s, req('wallet_sendCalls', batch({ atomicRequired })))).outcome.error.code, 5760);
+    assert.equal((await ctx.pending.list()).length, 0); assert.equal(sent.length, 0);
+  }
+});
+test('5792 sendCalls: one approval, calls passed through unchanged, id returned, status polled', async () => {
+  const { ctx, sent, setStatus } = smartSetup('pinned'); const s = sender(); await connectOnSepolia(ctx, s);
+  const r = await ctx.svc.handle(s, req('wallet_sendCalls', batch({ id: '0x' + '12'.repeat(8) }))); assert.equal(r.done, false);
+  const p = await pendingOf(ctx); assert.equal(p.kind, 'calls');
+  const v = await ctx.svc.view?.(p.id).catch(() => null); void v;
+  assert.equal(sent.length, 0, 'nothing is sent before approval');
+  const res = await ctx.svc.resolve(p.id, { approve: true }); assert.equal(res.ok, true);
+  assert.equal(sent.length, 1); assert.equal(sent[0][0].toLowerCase(), ADDR0.toLowerCase()); assert.equal(sent[0][2].length, 2); assert.equal(sent[0][2][0].value, '0x5');
+  const out = ctx.log.delivered.at(-1).outcome.result; assert.deepEqual(out, { id: '0x' + '12'.repeat(8) });
+  assert.equal((await ctx.svc.handle(s, req('wallet_getCallsStatus', [out.id]))).outcome.result.status, 100);
+  const TX = '0x' + 'ab'.repeat(32), H = '0x' + 'cc'.repeat(32);
+  setStatus({ state: 'done', success: true, receipt: { transactionHash: TX, blockHash: H, blockNumber: '0x10', gasUsed: '0x5208', logs: [], junk: 'dropped' } });
+  const done = (await ctx.svc.handle(s, req('wallet_getCallsStatus', [out.id]))).outcome.result;
+  assert.equal(done.status, 200); assert.equal(done.receipts[0].transactionHash, TX); assert.equal(done.receipts[0].junk, undefined);
+  assert.equal((await ctx.svc.handle(s, req('wallet_getCallsStatus', ['0x' + '99'.repeat(8)]))).outcome.error.code, 5730);
+  assert.equal((await ctx.svc.handle(s, req('wallet_sendCalls', batch({ id: '0x' + '12'.repeat(8) })))).outcome.error.code, 5720);
+});
+test('5792 sendCalls: rejecting sends nothing; the account turning off before approval is refused', async () => {
+  const { ctx, sent } = smartSetup('pinned'); const s = sender(); await connectOnSepolia(ctx, s);
+  await ctx.svc.handle(s, req('wallet_sendCalls', batch())); let p = await pendingOf(ctx);
+  assert.equal((await ctx.svc.resolve(p.id, { approve: false })).ok, true); assert.equal(sent.length, 0);
+  assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 4001);
+  await ctx.svc.handle(s, req('wallet_sendCalls', batch())); p = await pendingOf(ctx);
+  ctx.svc.d.smart.state = async () => 'none';
+  await ctx.svc.resolve(p.id, { approve: true }); assert.equal(sent.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 5760);
 });

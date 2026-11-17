@@ -21,6 +21,7 @@ import { makeRpc } from './rpc';
 import { createSigner } from './signer';
 import { multiBackend } from './multiBuild';
 import { ProviderService, type DeliverTarget } from './service';
+import { flagOn as smartFlagOn, callsState, userOpStatus } from '../smartAccountService';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
 import { loadSettings } from '../settingsService';
@@ -59,6 +60,16 @@ const ensureCtx = async () => { await ctx(); };
 const networksReady: Promise<void> = local.get<any>(KEYS.NETWORKS).then((n) => { if (n) setNetworkState(n); }).catch(() => {});
 
 export const rpc = makeRpc();
+// EIP-5792 batches submitted by a site: id -> user operation, per origin, kept in session storage (survives worker restarts, not browser restarts).
+const BUNDLES_KEY = 'wallet:provider:bundles'; const MAX_BUNDLES = 50;
+const callBundles = {
+  get: async (origin: string, id: string) => { const m = (await kvSession.get<Record<string, any>>(BUNDLES_KEY)) ?? {}; return m[`${origin}|${id}`] ?? null; },
+  put: async (origin: string, id: string, rec: { chainId: number; userOpHash: string; account: string }) => {
+    const m = (await kvSession.get<Record<string, any>>(BUNDLES_KEY)) ?? {}; m[`${origin}|${id}`] = { ...rec, at: Date.now() };
+    const keys = Object.keys(m).sort((a, b) => m[a].at - m[b].at); for (const k of keys.slice(0, Math.max(0, keys.length - MAX_BUNDLES))) delete m[k];
+    await kvSession.set(BUNDLES_KEY, m);
+  },
+};
 // WalletConnect v2 (Harbour-side equivalent; Trust Wallet 26.41.0 ships no pairing/session client — see evidences/re-evidence/16-walletconnect).
 export const wc = new WalletConnectBridge({
   kv: kvLocal, perms, service: () => getProvider(), createKit, projectId: readProjectId,
@@ -81,6 +92,7 @@ export function getProvider(): ProviderService {
     vaultStatus: async () => { await ensureCtx(); const v = ctxCache!.vault; return { hasVault: await v.exists(), unlocked: await v.isUnlocked() }; },
     openApproval: () => approvalWindow.open(), closeApprovalIfIdle: () => approvalWindow.closeIfIdle(),
     deliver, emit, wc: wc.host, multi: multiBackend,
+    smart: { available: smartFlagOn, state: callsState, status: userOpStatus, bundles: callBundles },
     siteRisk: async (origin) => (await phishingRisk(origin, kvSession)).level,
     ethSignEnabled: async () => (await loadSettings()).developerSettings.isEthSignEnabled === true,
     probeChainId: async (url) => { const r = await probeRpcChainId(url, fetch, { fromSite: true }); if (!r.ok) throw new Error(r.error); return r.chainId; },
@@ -111,6 +123,7 @@ function wrapSigner() {
     accounts: () => w(() => signer.accounts()), accountOf: (a: string, b: number) => w(() => signer.accountOf(a, b)),
     signMessage: (...a: Parameters<typeof signer.signMessage>) => w(() => signer.signMessage(...a)), signTypedData: (...a: Parameters<typeof signer.signTypedData>) => w(() => signer.signTypedData(...a)),
     sendTransaction: (...a: Parameters<typeof signer.sendTransaction>) => w(() => signer.sendTransaction(...a)), solSign: (...a: Parameters<typeof signer.solSign>) => w(() => signer.solSign(...a)),
+    sendCalls: (...a: Parameters<NonNullable<typeof signer.sendCalls>>) => w(() => signer.sendCalls!(...a)),
     multiKey: (...a: Parameters<typeof signer.multiKey>) => w(() => signer.multiKey(...a)), multiSign: (...a: Parameters<typeof signer.multiSign>) => w(() => signer.multiSign(...a)),
   };
 }

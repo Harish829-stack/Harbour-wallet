@@ -130,6 +130,11 @@ export const preparedCount = () => prepared.size;
 const epAbi = parseAbi(['function getNonce(address sender, uint192 key) view returns (uint256 nonce)']);
 const bundlerUrl = (chainId: number): string | null => (GATEWAY_URL && isSmartAccountChain(chainId) ? `${GATEWAY_URL}/pimlico/${chainId}` : null);
 
+const bundlerCall = (url: string) => { let id = 0; return async (method: string, params: unknown[]) => {
+  const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }), signal: AbortSignal.timeout(20000) });
+  const j = await res.json(); if (j?.error) throw new Error(j.error.message ?? 'bundler error'); return j.result;
+}; };
+
 /** True when the flag is on, the chain is pinned and the gateway can reach a bundler. Used to decide whether to offer sponsored actions. */
 export async function sendCallsAvailable(chainId: number): Promise<boolean> { return (await flagOn()) && !!bundlerUrl(chainId); }
 
@@ -143,17 +148,13 @@ export async function sendCallsAvailable(chainId: number): Promise<boolean> { re
 export async function sendCalls(p: { chainId: number; client: ReturnType<typeof evmClientFor>; account: string; privateKey: Uint8Array; calls: unknown; sponsor?: boolean }): Promise<Hex | null> {
   const url = bundlerUrl(p.chainId); if (!url || !(await flagOn())) return null;
   const account = p.account as Address;
-  let id = 0;
   try {
     if (evmAccountFromBytes(p.privateKey).address.toLowerCase() !== account.toLowerCase()) throw new GuardError('key_mismatch');
     const r = await sendOperation({
       chainId: p.chainId, account,
       getCode: () => p.client.getCode({ address: account }),
       readNonce: async () => BigInt((await p.client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
-      bundler: async (method, params) => {
-        const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }), signal: AbortSignal.timeout(20000) });
-        const j = await res.json(); if (j?.error) throw new Error(j.error.message ?? 'bundler error'); return j.result;
-      },
+      bundler: bundlerCall(url),
       signDigest: (digest) => serializeSignature(signHash(digest, p.privateKey)),
     }, { calls: p.calls, sponsor: p.sponsor !== false });
     return r.txHash;
@@ -162,4 +163,41 @@ export async function sendCalls(p: { chainId: number; client: ReturnType<typeof 
     if (e instanceof GuardError) { if (e.reason !== 'not_enabled') logWarn('smart account: guard refused an operation', e.reason); return null; }
     return null; // sponsor_refused, estimate_failed, network errors: fall back to normal transactions
   }
+}
+
+// ---------- dApp batches (EIP-5792): atomic only, user-paid, submit now and report status later ----------
+export type CallsAccountState = 'pinned' | 'none' | 'other' | 'unavailable';
+/** Whether `account` runs the pinned smart account on `chainId` right now. 'unavailable' = flag off, unpinned chain or no bundler. */
+export async function callsState(chainId: number, account: string): Promise<CallsAccountState> {
+  try {
+    if (!bundlerUrl(chainId) || !(await flagOn())) return 'unavailable';
+    const chain = resolveSendChain(undefined, chainId, customNetworks()); if (!chain) return 'unavailable';
+    return delegationState(await evmClientFor(chain).getCode({ address: account as Address }), chainId);
+  } catch { return 'unavailable'; }
+}
+/** Sends the already-approved batch and returns its user operation hash without waiting for inclusion. Never sponsored (a site cannot spend Harbour's sponsorship). */
+export async function submitDappCalls(p: { chainId: number; account: string; privateKey: Uint8Array; calls: unknown }): Promise<{ userOpHash: Hex }> {
+  const url = bundlerUrl(p.chainId); if (!url || !(await flagOn())) throw Object.assign(new Error('Atomic batches are not available right now.'), { code: 'unavailable' });
+  const chain = resolveSendChain(undefined, p.chainId, customNetworks()); if (!chain) throw Object.assign(new Error('Unknown network'), { code: 'unavailable' });
+  const client = evmClientFor(chain); const account = p.account as Address;
+  try {
+    if (evmAccountFromBytes(p.privateKey).address.toLowerCase() !== account.toLowerCase()) throw new GuardError('key_mismatch');
+    await sendOperation({
+      chainId: p.chainId, account, getCode: () => client.getCode({ address: account }),
+      readNonce: async () => BigInt((await client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
+      bundler: bundlerCall(url), signDigest: (digest) => serializeSignature(signHash(digest, p.privateKey)),
+    }, { calls: p.calls, sponsor: false }, 0);
+    throw Object.assign(new Error('unexpected'), { code: 'error' });
+  } catch (e: any) {
+    if (e?.code === 'op_pending' && typeof e.userOpHash === 'string') return { userOpHash: e.userOpHash as Hex };
+    if (e instanceof GuardError) { logWarn('smart account: guard refused a dApp batch', e.reason); throw Object.assign(new Error(GUARD_MESSAGE), { code: 'guard_failed' }); }
+    throw e;
+  }
+}
+/** Status of a submitted batch from the bundler: pending until it reports an included receipt. */
+export async function userOpStatus(chainId: number, userOpHash: string): Promise<{ state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown }> {
+  const url = bundlerUrl(chainId); if (!url || !/^0x[0-9a-fA-F]{64}$/.test(userOpHash)) return { state: 'pending' };
+  const rc = await bundlerCall(url)('eth_getUserOperationReceipt', [userOpHash]).catch(() => null);
+  if (!rc || typeof rc !== 'object' || !rc.receipt) return { state: 'pending' };
+  return { state: 'done', success: rc.success !== false, receipt: rc.receipt };
 }

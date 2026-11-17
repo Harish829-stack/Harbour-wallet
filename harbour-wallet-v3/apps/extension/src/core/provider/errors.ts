@@ -3,6 +3,8 @@ export const ERR = {
   USER_REJECTED: 4001, UNAUTHORIZED: 4100, UNSUPPORTED_METHOD: 4200, DISCONNECTED: 4900, CHAIN_DISCONNECTED: 4901, UNRECOGNIZED_CHAIN: 4902,
   PARSE: -32700, INVALID_REQUEST: -32600, METHOD_NOT_FOUND: -32601, INVALID_PARAMS: -32602, INTERNAL: -32603,
   RESOURCE_NOT_FOUND: -32001, RESOURCE_UNAVAILABLE: -32002, LIMIT_EXCEEDED: -32005,
+  // EIP-5792 wallet_sendCalls
+  CAPS_UNSUPPORTED: 5700, CALLS_CHAIN_UNSUPPORTED: 5710, CALLS_DUPLICATE_ID: 5720, CALLS_UNKNOWN_ID: 5730, CALLS_TOO_LARGE: 5740, CALLS_ATOMIC_UNSUPPORTED: 5760,
 } as const;
 
 const DEFAULT_MESSAGE: Record<number, string> = {
@@ -16,6 +18,7 @@ const DEFAULT_MESSAGE: Record<number, string> = {
   [-32602]: 'Invalid method parameter(s).', [-32603]: 'Internal error.',
   [-32001]: 'Requested resource not found.', [-32002]: 'Request already pending. Check the Harbour approval window.',
   [-32005]: 'Request limit exceeded.',
+  5700: 'Unsupported non-optional capability.', 5710: 'Unsupported chain ID.', 5720: 'There is already a call batch with this id.', 5730: 'Unknown call batch id.', 5740: 'Too many calls in one batch.', 5760: 'Atomic execution is not available for this account.',
 };
 
 export class ProviderError extends Error {

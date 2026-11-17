@@ -21,6 +21,8 @@ import type { AccountEntry, ConnRef, WalletAccounts } from './wallet';
 import { negotiate, type SupportedNamespace } from '../../core/walletconnect';
 import { tonProofHash } from './tonProof';
 import { applySignatures, decodePsbt, planPsbtSigning, psbtToB64, psbtToHex } from '../../core/provider/psbt';
+import { normalizeSendCalls, buildCapabilities, buildCallsStatus, type AtomicStatus } from '../../core/smartAccount/calls5792';
+import { SMART_ACCOUNT_CHAINS } from '../../core/smartAccount/constants';
 import { isMultiChain, normalizeMultiSign, signPlan, MULTI_CHAINS, type Scheme, type MultiRequest } from '../../core/provider/multi';
 
 export interface Signer {
@@ -33,6 +35,15 @@ export interface Signer {
   /** Address + public key of a non-EVM chain account (used at connect time, before a connection exists). */
   multiKey(c: ConnRef, chain: string): Promise<{ address: string; publicKey: Uint8Array }>;
   multiSign(c: ConnRef, chain: string, scheme: Scheme, data: Uint8Array): Promise<Uint8Array>;
+  /** EIP-5792: submits an approved atomic batch through the user's smart account (user-paid). Absent = unsupported. */
+  sendCalls?(c: ConnRef, net: EvmNetwork, calls: unknown): Promise<{ userOpHash: string }>;
+}
+/** Smart account hooks for EIP-5792 (optional: absent, or `available()` false, means those methods answer 4200 as before). */
+export interface SmartHost {
+  available(): Promise<boolean>;
+  state(chainId: number, account: string): Promise<'pinned' | 'none' | 'other' | 'unavailable'>;
+  status(chainId: number, userOpHash: string): Promise<{ state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown }>;
+  bundles: { get(origin: string, id: string): Promise<{ chainId: number; userOpHash: string; account: string } | null>; put(origin: string, id: string, rec: { chainId: number; userOpHash: string; account: string }): Promise<void> };
 }
 export interface DeliverTarget { tabId: number; frameId: number; documentId?: string }
 export interface ServiceDeps {
@@ -47,6 +58,7 @@ export interface ServiceDeps {
   probeChainId(rpcUrl: string): Promise<number>;                                     // asks a node for eth_chainId
   saveCustomNetwork(n: { chainId: number; name: string; rpcUrl: string; symbol: string; explorerUrl?: string }): Promise<void>;
   addToken(t: { walletId: string; chainId: number; address: string; name: string; symbol: string; decimals: number }): Promise<{ ok: boolean; error?: string }>;
+  smart?: SmartHost;
   /** WalletConnect transport (optional: absent in unit tests that do not exercise it). */
   wc?: WcHost;
   /** Sui / Aptos / TON SDK backend (optional: absent in unit tests that do not exercise it). */
@@ -181,6 +193,7 @@ export class ProviderService {
           if (!this.policy.isSigningEvmChain(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN, 'This network is not available in Harbour.');
           return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, bindEvm);
         }
+        case 'capabilities': case 'calls': case 'callsStatus': case 'showCalls': return this.fiveSevenNinetyTwo(s, req, spec.kind, me, chainId, bindEvm);
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
           if (!this.d.networks.get(target) || !this.policy.isSigningEvmChain(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
@@ -293,6 +306,33 @@ export class ProviderService {
   }
 
   /** Create (or de-duplicate) an approval request and make the approval window visible. */
+  // ------------------------------------------------------------------ EIP-5792
+  private async fiveSevenNinetyTwo(s: SenderInfo, req: PageRequest, kind: 'capabilities' | 'calls' | 'callsStatus' | 'showCalls', me: string, chainId: number, bound: (Connection & { scoped?: true }) | undefined): Promise<HandleResult> {
+    const smart = this.d.smart;
+    if (!smart || !(await smart.available())) throw new ProviderError(ERR.UNSUPPORTED_METHOD, `Harbour does not support ${req.method}.`);
+    const params = Array.isArray(req.params) ? req.params : req.params === undefined ? [] : (() => { throw new ProviderError(ERR.INVALID_PARAMS, 'Params must be an array.'); })();
+    if (kind === 'showCalls') return ok(null);
+    if (kind === 'capabilities') {
+      if (params[0] !== undefined && !sameAddress(params[0], me)) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
+      const states: Record<number, AtomicStatus> = {};
+      for (const id of SMART_ACCOUNT_CHAINS) states[id] = (await smart.state(id, me)) === 'pinned' ? 'supported' : 'unsupported';
+      return ok(buildCapabilities(params[1], chainId, states));
+    }
+    if (kind === 'callsStatus') {
+      const id = typeof params[0] === 'string' ? params[0].toLowerCase() : '';
+      if (!/^0x[0-9a-f]{2,128}$/.test(id)) throw new ProviderError(ERR.INVALID_PARAMS, 'Invalid id.');
+      const rec = await smart.bundles.get(s.origin, id); if (!rec) throw new ProviderError(ERR.CALLS_UNKNOWN_ID);
+      const st = await smart.status(rec.chainId, rec.userOpHash);
+      return ok(buildCallsStatus(st.state === 'pending' ? { id, chainId: rec.chainId, state: 'pending' } : { id, chainId: rec.chainId, state: 'done', success: st.success, receipt: st.receipt as any }));
+    }
+    // wallet_sendCalls: only accounts already running the pinned smart account can run a batch atomically. A site can never turn it on.
+    const n = normalizeSendCalls(req.params, me, chainId);
+    if (!this.d.networks.get(n.chainId) || !this.policy.isSigningEvmChain(n.chainId)) throw new ProviderError(ERR.CALLS_CHAIN_UNSUPPORTED);
+    if ((await smart.state(n.chainId, me)) !== 'pinned') throw new ProviderError(ERR.CALLS_ATOMIC_UNSUPPORTED);
+    if (n.id && (await smart.bundles.get(s.origin, n.id))) throw new ProviderError(ERR.CALLS_DUPLICATE_ID);
+    return this.queue(s, req, 'calls', { n, chainId: n.chainId }, bound);
+  }
+
   private async queue(s: SenderInfo, req: PageRequest, kind: PendingKind, params: unknown, bound?: Connection & { scoped?: true }): Promise<HandleResult> {
     const key = senderKey(s, req.id);
     const existing = await this.d.pending.findByKey(key);
@@ -501,6 +541,20 @@ export class ProviderService {
           void perms.trackApproval({ chainId, token: tx.to, spender: call.spender, owner: conn.evmAddress!, origin: p.origin, txHash: hash, amount: call.amount.toString(), unlimited: isUnlimited(call.amount) }).catch(() => {});
         }
         return hash;
+      }
+      case 'calls': {
+        const conn = await this.needConn(p, 'evm'); const smart = this.d.smart;
+        const { n, chainId } = p.params as { n: ReturnType<typeof normalizeSendCalls>; chainId: number };
+        if (!smart || !this.d.signer.sendCalls || !(await smart.available())) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Atomic batches are not available right now.');
+        if (p.binding?.scoped ? p.binding.chainId !== chainId : conn.chainId !== chainId) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
+        if (!sameAddress(n.from, conn.evmAddress)) throw new ProviderError(ERR.UNAUTHORIZED, 'The connected account changed while this request was pending.');
+        const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
+        if ((await smart.state(chainId, conn.evmAddress!)) !== 'pinned') throw new ProviderError(ERR.CALLS_ATOMIC_UNSUPPORTED);
+        const id = n.id ?? ('0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) => x.toString(16).padStart(2, '0')).join(''));
+        if (await smart.bundles.get(p.origin, id)) throw new ProviderError(ERR.CALLS_DUPLICATE_ID);
+        const { userOpHash } = await this.d.signer.sendCalls(conn, net, n.calls);
+        await smart.bundles.put(p.origin, id, { chainId, userOpHash, account: conn.evmAddress! });
+        return n.version === '1.0' ? id : { id };
       }
       case 'switchChain': {
         const { chainId } = p.params as { chainId: number }; if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);

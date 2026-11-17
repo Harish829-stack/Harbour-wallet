@@ -12,6 +12,8 @@ export const ENTRYPOINT_V07: Address = '0x0000000071727De22E5E9d8BAf0edAc6f37da0
 /** MetaMask EIP7702StatelessDeleGator v1.3.0 per EVM chain id (lowercase). Testnets only until the P7 checks run per mainnet.
  *  The runtime code differs between chains in exactly two immutables (chain id and EIP-712 domain separator): never compare raw
  *  code hashes across chains. */
+/** Chains where the pinned delegate and paymaster are verified (P0). */
+export const SMART_ACCOUNT_CHAINS: readonly number[] = Object.freeze([11155111, 84532]);
 export const DELEGATES: Readonly<Record<number, Address>> = Object.freeze({
   11155111: '0x63c0c19a282a1b52b07dd5a65b58948a07dae32b',
   84532: '0x63c0c19a282a1b52b07dd5a65b58948a07dae32b',
