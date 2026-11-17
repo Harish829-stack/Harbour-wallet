@@ -17,6 +17,7 @@ import { handlers as perps } from './perps';
 import { handlers as predictions } from './predictions';
 import { handlers as approvals } from './approvals';
 import { handlers as secrets } from './secrets';
+import { handlers as smartAccount } from './smartAccount';
 import { featureEnabled } from '../../core/harbour/policy';
 import { handlers as testnetDefi } from './testnetDefi';
 
@@ -25,7 +26,7 @@ const on = (f: Parameters<typeof featureEnabled>[0], m: HandlerMap): HandlerMap 
 // Testnet Uniswap Swap / Aave Earn (`defi*` messages) sit beside the legacy swap/earn handlers and are
 // registered only when at least one of those features is on; each handler re-checks its own feature.
 const testnetDefiOn = featureEnabled('swap') || featureEnabled('earn') ? testnetDefi : {};
-const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...testnetDefiOn, ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets };
+const ALL: HandlerMap = { ...provider, ...chainSend, ...chainData, ...on('earn', earn), ...testnetDefiOn, ...nfts, ...on('ramps', ramps), ...discover, ...onboardingExtra, ...settingsExtra, ...on('walletconnect', walletconnect), ...ledger, ...kitEvents, ...on('perps', perps), ...on('predictions', predictions), ...approvals, ...secrets, ...smartAccount };
 export const allExtraHandlers = (): HandlerMap => ALL;
 export async function runExtraHandler(msg: Msg, ctx: HandlerCtx): Promise<any> {
   const h = Object.prototype.hasOwnProperty.call(ALL, msg.type) ? ALL[msg.type] : undefined;
