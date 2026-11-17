@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -83,4 +84,28 @@ func TestRegistrationCeilingNeedsProofOfWork(t *testing.T) {
 	if _, err := hbclient.New(hs.URL).Register(ctx); err == nil || !strings.Contains(err.Error(), "busy") {
 		t.Fatalf("third registration in the hour should hit the ceiling, got %v", err)
 	}
+}
+
+// Finding 23 (was 12): requests naming unknown devices, or carrying wrong signatures, cost a database lookup each and had no limit.
+// One address now gets 30 such failures a minute; further requests for devices the server has not seen are refused before any
+// lookup. A device that has already authenticated keeps working from the same address.
+func TestFailedAuthIsLimitedPerClient(t *testing.T) {
+	hs, _ := abuseServer(t, "abuse_auth", nil)
+	ctx := context.Background()
+	good := hbclient.New(hs.URL)
+	_, err := good.Register(ctx)
+	must(t, err)
+	wantStatus(t, status(good.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 200)
+	late := hbclient.New(hs.URL) // registered, but not seen by the server before the flood
+	_, err = late.Register(ctx)
+	must(t, err)
+	ghost := hbclient.New(hs.URL)
+	for i := 0; i < 30; i++ {
+		ghost.DeviceID = fmt.Sprintf("00000000-0000-4000-8000-%012d", i)
+		wantStatus(t, status(ghost.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 401)
+	}
+	ghost.DeviceID = "00000000-0000-4000-8000-999999999999"
+	wantStatus(t, status(ghost.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 429) // refused before any lookup
+	wantStatus(t, status(good.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 200)  // an already-seen device is not affected
+	wantStatus(t, status(late.Do(ctx, "GET", "/v1/me", nil, nil, nil)), 429)  // an unseen one waits for the next minute
 }

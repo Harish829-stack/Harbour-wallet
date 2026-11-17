@@ -80,8 +80,9 @@ type Server struct {
 	cfg      *config.Config
 	rpcAllow map[string]bool
 	deny     map[string]bool
-	devCache sync.Map // device id -> cachedDevice
-	touched  sync.Map // device id -> unix nanos of the last last_seen_at write
+	devCache sync.Map     // device id -> cachedDevice
+	touched  sync.Map     // device id -> unix nanos of the last last_seen_at write
+	authFail authFailures // failed-authentication count per client address (auth.go)
 	http     *http.Client
 	media    *http.Client
 	gw       *gateway

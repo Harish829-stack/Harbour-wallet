@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -232,6 +233,42 @@ var uuidRe = func(s string) bool {
 	return true
 }
 
+// authFailures bounds how much unauthenticated work one caller can cause (finding 23). A signed-looking request that names an unknown
+// device costs a Postgres lookup, and one with a wrong signature costs a lookup (on a cache miss) plus a signature check, before
+// anything can be refused. Each client address (IPv4 address or IPv6 /64) gets authFailPerMinute such failures per minute; after
+// that its requests for devices this process has not seen are refused before any lookup until the minute ends. In memory and per
+// process: it only has to cap the cost.
+const (
+	authFailPerMinute = 30
+	authFailMaxKeys   = 50_000
+)
+
+type authFailures struct {
+	mu     sync.Mutex
+	minute int64
+	n      map[string]int
+}
+
+func (f *authFailures) roll(now time.Time) {
+	if m := now.Unix() / 60; m != f.minute || f.n == nil || len(f.n) > authFailMaxKeys {
+		f.minute, f.n = m, map[string]int{}
+	}
+}
+
+func (f *authFailures) blocked(client string, now time.Time) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.roll(now)
+	return f.n[client] >= authFailPerMinute
+}
+
+func (f *authFailures) add(client string, now time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.roll(now)
+	f.n[client]++
+}
+
 func (s *Server) deviceAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -241,6 +278,14 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		sig := r.Header.Get(devicesig.HeaderSignature)
 		unauth := func() {
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "This device needs to sign in again.", false)
+		}
+		client := clientIP(r)
+		// A device this process has already authenticated is never held back by other callers' failures on the same address
+		// (shared NAT, or a proxy whose address stands in for every caller): for it no lookup is needed, only a signature check.
+		if _, seen := s.devCache.Load(dev); !seen && s.authFail.blocked(client, s.opt.Now()) {
+			w.Header().Set("Retry-After", "60")
+			writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many requests. Please wait a moment.", true)
+			return
 		}
 		if !uuidRe(dev) || !devicesig.ValidNonce(nonce) || sig == "" {
 			s.secEvent(r, "auth_malformed", "")
@@ -267,6 +312,7 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		cd, err := s.lookupDevice(ctx, dev)
 		if errors.Is(err, store.ErrNotFound) {
 			// The only case where the client registers a new key (e.g. the database was reset).
+			s.authFail.add(client, s.opt.Now())
 			s.secEvent(r, "auth_device_unknown", dev)
 			writeErr(w, http.StatusUnauthorized, "device_unknown", "This device needs to sign in again.", false)
 			return
@@ -282,6 +328,7 @@ func (s *Server) deviceAuth(next http.Handler) http.Handler {
 		}
 		canon := devicesig.Canonical(r.Method, r.URL.RequestURI(), date, nonce, dev, body)
 		if !devicesig.Verify(cd.pub, canon, sig) {
+			s.authFail.add(client, s.opt.Now())
 			s.secEvent(r, "auth_bad_signature", dev)
 			unauth()
 			return
