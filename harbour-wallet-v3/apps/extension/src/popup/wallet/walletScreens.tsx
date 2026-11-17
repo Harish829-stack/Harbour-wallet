@@ -15,6 +15,7 @@ import {
   canContinueFromSource, canContinueFromDestination, canMigrate, type MigrationAsset, type MigrationState,
 } from '../../core/settingsExtra';
 import type { Ctx } from './screens';
+import { SmartAccountSection } from './features/smartAccount';
 
 interface DAccount { index: number; derivationIndex: number; name: string; addresses: Record<string, string> }
 interface DWallet { id: string; label: string; type: string; kind: string; blockchain: string | null; activeAccount: number; backupRequired: boolean; accounts: DAccount[] }
@@ -91,7 +92,7 @@ export const ManageWallets: React.FC<Ctx> = (c) => {
 // ---------- Wallet detail (settings/wallet/:id) ----------
 export const WalletDetail: React.FC<Ctx> = (c) => {
   const walletId: string = c.params?.walletId;
-  const { wallets, error, load } = useWallets(c);
+  const { wallets, active, error, load } = useWallets(c);
   const w = wallets?.find((x) => x.id === walletId);
   const [draft, setDraft] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(false); const [gate, setGate] = useState(false); const [copied, setCopied] = useState('');
@@ -144,6 +145,7 @@ export const WalletDetail: React.FC<Ctx> = (c) => {
       </Group>
       {canBackupPhrase(w) && <Group><NavRow first icon="shield" label={w.backupRequired ? 'Back up your Secret Phrase (required)' : 'Secret Phrase'} onClick={() => c.nav.push('backup', { walletId: w.id, label: w.label })} testid="wallet-backup"/></Group>}
       {canRevealPrivateKey(w) && <Group><NavRow first icon="lock" label="Show private key" onClick={() => { setErr(''); setGate(true); }} testid="wallet-reveal-key"/></Group>}
+      {active === w.id && <SmartAccountSection c={c} walletId={w.id}/>}
       {kind === 'privateKey' && <Note>This wallet was imported with a private key. It has one account and no secret phrase.</Note>}
       {key && <div data-testid="private-key-panel" style={{ background: T.bgAlt, borderRadius: 14, padding: 14, marginBottom: 14 }}>
         <div style={{ fontSize: 12, color: T.sub, marginBottom: 6 }}>Private key ({key.network}). Never share it. Stop any screen sharing first. Hidden again after 60 seconds or when you leave this window.</div>
