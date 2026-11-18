@@ -73,6 +73,8 @@ The delegate (MetaMask Stateless7702), the DelegationManager, the caveat enforce
 
 A dApp cannot enable, revoke or upgrade: those messages are UI-only. `wallet_sendCalls` needs the account already enabled and the user's approval; sponsorship is decided by the gateway-pinned policy and Pimlico, never by the site, and a refusal falls back to a user-paid operation (a reply that fails the guard signs nothing). Spending permissions (`wallet_requestExecutionPermissions`) are re-checked by the guard against the user-approved terms (delegate, native or ERC-20 allowance, expiry of at most 30 days, no calldata for native, nothing else) before signing; revoke is an on-chain `disableDelegation` by the user.
 
+Operation results are read from the chain (the `UserOperationEvent` for the exact hash and sender on the transaction receipt), never taken from the bundler's receipt, and fee and gas ceilings are per chain (`CHAIN_LIMITS`; an unlisted chain can never pass). The receipt path goes through Harbour's own RPC route, so it is independent of the bundler but not of the Harbour backend.
+
 The remote kill switch (`smartAccounts` off) stops everything that turns on or uses smart accounts (enable, grants, `wallet_sendCalls`, every dApp method, sponsored swaps) but keeps the ways out: turning the account off and revoking a grant still work, so users are never stuck with a delegation or a grant they cannot undo.
 
 Not done before mainnet (P7): independent review of `guard.ts`, `send.ts` and the key adapter; mainnet pins and a per-chain byte-diff of the DelegationManager; kill-switch drill; a global cap on the sponsorship policy.
