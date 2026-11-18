@@ -7,6 +7,10 @@
 //
 // Fund the printed address with about 0.005 test ETH first (amounts are small; most of the cost is gas). It refuses any chain that is not Sepolia or Base Sepolia, never prints a key
 // (except `keygen`), and spends at most a few thousandths of test ETH. Exit code 0 only if every check passes.
+//throwaway wallet 
+//address 0x3c2B250540FedD8c488cf7b3fEE6342c914409c3
+//key     0xbe6a7719cc44c68b4852fb36464284e4ed0c414a07b708d46daaba67b98db9e0
+//script   RPC_URL=https://sepolia.infura.io/v3/a710f8c2379a44fda67fce69cf197679 OWNER_PK=0xbe6a7719cc44c68b4852fb36464284e4ed0c414a07b708d46daaba67b98db9e0 WAIT_EXPIRY=1 node scripts/p5-e2e.mjs 
 process.env.DO_NOT_TRACK = '1';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
@@ -67,7 +71,8 @@ const redeemData = (g, to, value, callData = '0x') => encodeFunctionData({ abi: 
 const redeem = async (g, to, value, who = session, wallet = sessionWallet, callData = '0x') => {
   const data = redeemData(g, to, value, callData);
   try { await pub.call({ account: who.address, to: DM, data }); } catch (e) { return { ok: false, reason: short(e) }; }
-  try { const r = await wait(await wallet.sendTransaction({ to: DM, data, gas: 400_000n })); return { ok: r.status === 'success', reason: r.status }; } catch (e) { return { ok: false, reason: short(e) }; }
+  let gas; try { gas = ((await pub.estimateGas({ account: who.address, to: DM, data })) * 14n) / 10n; } catch (e) { return { ok: false, reason: short(e) }; } // a fixed 400k ran out of gas inside the account call
+  try { const r = await wait(await wallet.sendTransaction({ to: DM, data, gas })); return { ok: r.status === 'success', reason: r.status }; } catch (e) { return { ok: false, reason: short(e) }; }
 };
 
 // 3. Limits on a 0.001 test-ETH allowance.
