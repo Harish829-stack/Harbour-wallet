@@ -125,6 +125,7 @@ function wrapSigner() {
     signMessage: (...a: Parameters<typeof signer.signMessage>) => w(() => signer.signMessage(...a)), signTypedData: (...a: Parameters<typeof signer.signTypedData>) => w(() => signer.signTypedData(...a)),
     sendTransaction: (...a: Parameters<typeof signer.sendTransaction>) => w(() => signer.sendTransaction(...a)), solSign: (...a: Parameters<typeof signer.solSign>) => w(() => signer.solSign(...a)),
     sendCalls: (...a: Parameters<NonNullable<typeof signer.sendCalls>>) => w(() => signer.sendCalls!(...a)),
+    grantPermission: (...a: Parameters<NonNullable<typeof signer.grantPermission>>) => w(() => signer.grantPermission!(...a)),
     multiKey: (...a: Parameters<typeof signer.multiKey>) => w(() => signer.multiKey(...a)), multiSign: (...a: Parameters<typeof signer.multiSign>) => w(() => signer.multiSign(...a)),
   };
 }
