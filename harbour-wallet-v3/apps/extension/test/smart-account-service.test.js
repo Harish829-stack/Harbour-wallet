@@ -169,7 +169,6 @@ test('grants list: the active account\'s grants as public summaries only (no del
   const r = await call('smartAccountGrants'); assert.equal(r.ok, true); assert.equal(r.grants.length, 1); const g = r.grants[0];
   assert.equal(g.status, 'active'); assert.equal(g.origin, 'https://app.example'); assert.equal(g.allowance, '10000000000000000'); assert.equal(g.network, 'Base Sepolia');
   for (const k of ['delegation', 'signature', 'context']) assert.equal(k in g, false, k);
-  reset({ flags: { smartAccounts: false } }); assert.equal((await call('smartAccountGrants')).available, false);
 });
 test('revoking a grant: prepare signs nothing, approve needs re-auth then sends one disableDelegation tx from the account to the DelegationManager', async () => {
   const rec = await seedGrant();
@@ -196,4 +195,28 @@ test('revoking fails closed: unknown id, another account, already disabled on-ch
   sa.balance = 10n ** 18n; let p = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); assert.equal(p.ok, true);
   sa.keyHex = '0x' + '11'.repeat(32); assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'guard_failed'); assert.equal(sa.sent.length, 0); assert.equal(sa.disposed, 1);
   sa.keyHex = PK; p = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); sa.store = []; assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'guard_failed'); assert.equal(sa.sent.length, 0);
+});
+
+// ---- kill switch: the remote flag turns everything ON/USE off, but the ways OUT keep working (turn the account off, revoke grants)
+test('kill switch: flag off still lets the user turn an enabled account off and revoke a grant; nothing can be turned on or granted', async () => {
+  const rec = await seedGrant(); reset({ flags: { smartAccounts: false }, code: '0xef0100' + DELEGATE.slice(2) }); sa.store = [rec];
+  const st = await call('smartAccountStatus', { chainId: CHAIN });
+  assert.equal(st.ok, true); assert.equal(st.available, true); assert.equal(st.flagOn, false); assert.equal(st.state, 'pinned');
+  assert.equal((await call('smartAccountGrants')).grants.length, 1, 'grants stay listed so they can be revoked');
+  // turn off: prepare + approve sign a type-4 revoke even though the flag is off
+  const pr = await call('smartAccountPrepare', { kind: 'revoke', chainId: CHAIN }); assert.equal(pr.ok, true);
+  const ar = await call('smartAccountApprove', { requestId: pr.requestId }); assert.equal(ar.ok, true); assert.equal(sa.sent.length, 1);
+  // revoke the grant
+  const pg = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); assert.equal(pg.ok, true);
+  sa.grants = 1; const ag = await call('smartAccountApprove', { requestId: pg.requestId }); assert.equal(ag.ok, true); assert.equal(sa.sent.length, 2);
+  // but nothing turns ON, and a new grant is refused
+  const en = await call('smartAccountPrepare', { kind: 'enable', chainId: CHAIN }); assert.equal(en.ok, false); assert.equal(en.code, 'unavailable');
+  assert.equal(await code(M.grantPermission(grantArgs())), 'unavailable');
+});
+test('kill switch: flag off and nothing to undo (plain account) shows nothing; a hardware wallet never gets the exit paths either', async () => {
+  reset({ flags: { smartAccounts: false } });
+  assert.deepEqual({ ...(await call('smartAccountStatus', { chainId: CHAIN })) }, { ok: true, available: false });
+  reset({ flags: { smartAccounts: false }, code: '0xef0100' + DELEGATE.slice(2), info: { walletId: 'w1', walletType: 'ledger', addresses: { ethereum: ACCT } } });
+  assert.deepEqual({ ...(await call('smartAccountStatus', { chainId: CHAIN })) }, { ok: true, available: false });
+  assert.equal((await call('smartAccountPrepare', { kind: 'revoke', chainId: CHAIN })).code, 'unavailable');
 });

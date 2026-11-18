@@ -10,7 +10,7 @@ import type { Ctx } from '../screens';
 
 const CHAINS = [11155111, 84532];
 const LEGACY_DELEGATE = '0xe6cae83bde06e4c305530e199d7217f42808555b'; // Simple7702Account used by the retired gasless path; Switch re-delegates to the current contract in one step
-type Status = { chainId: number; available: boolean; network?: string; state?: 'none' | 'pinned' | 'other'; delegatedTo?: string | null };
+type Status = { chainId: number; available: boolean; flagOn?: boolean; network?: string; state?: 'none' | 'pinned' | 'other'; delegatedTo?: string | null };
 type Summary = { requestId: string; kind: 'enable' | 'revoke' | 'revokeGrant'; chainId: number; network: string; symbol: string; address: string; delegate: string | null; maxFee: string; expiresInSec: number; origin?: string; allowance?: string; token?: string | null; expiry?: number };
 type Grant = { id: string; origin: string; chainId: number; network: string; symbol: string; sessionKey: string; type: string; allowance: string; token: string | null; expiry: number; status: 'active' | 'expired' | 'revoked' };
 const amountOf = (g: { allowance: string; token?: string | null; symbol?: string }) => { try { const v = BigInt(g.allowance); if (g.token) return `${v} units of token ${short(g.token)}`; const w = 10n ** 18n; const frac = (v % w).toString().padStart(18, '0').replace(/0+$/, ''); return `${v / w}${frac ? '.' + frac : ''} ${g.symbol ?? ''}`.trim(); } catch { return '?'; } };
@@ -21,7 +21,7 @@ export const SmartAccountSection: React.FC<{ c: Ctx; walletId: string }> = ({ c,
   const [gate, setGate] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [done, setDone] = useState('');
   const load = useCallback(async () => {
     const out: Status[] = [];
-    for (const chainId of CHAINS) { const r = await c.bg({ type: 'smartAccountStatus', chainId }).catch(() => null); if (r?.ok && r.available) out.push({ chainId, available: true, network: r.network, state: r.state, delegatedTo: r.delegatedTo }); }
+    for (const chainId of CHAINS) { const r = await c.bg({ type: 'smartAccountStatus', chainId }).catch(() => null); if (r?.ok && r.available) out.push({ chainId, available: true, flagOn: r.flagOn !== false, network: r.network, state: r.state, delegatedTo: r.delegatedTo }); }
     setRows(out);
     const g = await c.bg({ type: 'smartAccountGrants' }).catch(() => null); setGrants(g?.ok && g.available ? (g.grants as Grant[]) : []);
   }, [c]);
@@ -53,13 +53,13 @@ export const SmartAccountSection: React.FC<{ c: Ctx; walletId: string }> = ({ c,
             <div style={{ fontWeight: 700, fontSize: 14 }}>{r.network}</div>
             <div style={{ fontSize: 12, color: T.sub }}>{r.state === 'pinned' ? 'On' : r.state === 'other' ? (r.delegatedTo?.toLowerCase() === LEGACY_DELEGATE ? 'Delegated to an older Harbour contract' : 'Delegated to another contract') : 'Off'}</div>
           </div>
-          {r.state === 'none' && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Turn on</Btn>}
-          {r.state === 'other' && r.delegatedTo?.toLowerCase() === LEGACY_DELEGATE && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Switch</Btn>}
+          {r.state === 'none' && r.flagOn !== false && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Turn on</Btn>}
+          {r.state === 'other' && r.flagOn !== false && r.delegatedTo?.toLowerCase() === LEGACY_DELEGATE && <Btn onClick={() => void start(r.chainId, 'enable')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Switch</Btn>}
           {r.state !== 'none' && <Btn variant="ghost" onClick={() => void start(r.chainId, 'revoke')} disabled={busy} style={{ width: 'auto', padding: '8px 14px', marginTop: 0 }}>Turn off</Btn>}
         </div>
       ))}
     </Group>
-    <Note>A smart account lets this address use batched and sponsored transactions. You can turn it off at any time.</Note>
+    <Note>{rows.some((r) => r.flagOn === false) ? 'Smart accounts are switched off by Harbour for now. You can still turn this account back into a normal account and revoke permissions you granted.' : 'A smart account lets this address use batched and sponsored transactions. You can turn it off at any time.'}</Note>
     {grants.length > 0 && <>
       <SectionLabel>Permissions you granted</SectionLabel>
       <Group>

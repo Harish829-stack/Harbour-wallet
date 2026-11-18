@@ -45,11 +45,13 @@ export async function flagOn(): Promise<boolean> {
   try { return (await getStore()).store.getState().sdkFeatureSlice.flags[SMART_ACCOUNT_FLAG] === true; } catch { return false; }
 }
 
-async function context(ctx: HandlerCtx, chainIdRaw: unknown) {
+/** `exit` = a way OUT (turn the account off, revoke a grant): it must keep working when the remote kill switch is off, or users would be
+ *  stuck with a delegation or grants they cannot undo. Everything that turns something ON or uses it still needs the flag. */
+async function context(ctx: HandlerCtx, chainIdRaw: unknown, exit = false) {
   const chainId = Number(chainIdRaw);
   const info = await activeInfo(ctx);
   if (!info) throw Object.assign(new Error('No wallet found'), { code: 'no_wallet' });
-  if (!smartAccountsAvailable({ flag: await flagOn(), chainId, walletType: info.walletType })) throw Object.assign(new Error('Smart accounts are not available for this account or network.'), { code: 'unavailable' });
+  if (!smartAccountsAvailable({ flag: exit ? true : await flagOn(), chainId, walletType: info.walletType })) throw Object.assign(new Error('Smart accounts are not available for this account or network.'), { code: 'unavailable' });
   const chain = resolveSendChain(undefined, chainId, customNetworks()); if (!chain) throw Object.assign(new Error('Unknown network'), { code: 'unavailable' });
   const account = info.addresses.ethereum as Address | undefined; if (!account) throw Object.assign(new Error('This wallet has no EVM account'), { code: 'no_address' });
   return { chainId, chain, account, walletId: info.walletId, client: evmClientFor(chain) };
@@ -64,9 +66,11 @@ const codeState = async (client: ReturnType<typeof evmClientFor>, account: Addre
 export async function status(ctx: HandlerCtx, p: { chainId: unknown }) {
   try {
     const chainId = Number(p.chainId); const info = await activeInfo(ctx);
-    if (!smartAccountsAvailable({ flag: await flagOn(), chainId, walletType: info?.walletType })) return { ok: true as const, available: false as const };
-    const c = await context(ctx, chainId); const s = await codeState(c.client, c.account, chainId);
-    return { ok: true as const, available: true as const, chainId, address: c.account, network: c.chain.name, state: s.state, delegate: DELEGATES[chainId], delegatedTo: s.delegatedTo };
+    if (!smartAccountsAvailable({ flag: true, chainId, walletType: info?.walletType })) return { ok: true as const, available: false as const };
+    const flag = await flagOn();
+    const c = await context(ctx, chainId, true); const s = await codeState(c.client, c.account, chainId);
+    if (!flag && s.state === 'none') return { ok: true as const, available: false as const }; // switched off remotely and nothing to undo
+    return { ok: true as const, available: true as const, flagOn: flag, chainId, address: c.account, network: c.chain.name, state: s.state, delegate: DELEGATES[chainId], delegatedTo: s.delegatedTo };
   } catch (e) { return errOf(e); }
 }
 
@@ -75,7 +79,7 @@ export async function prepare(ctx: HandlerCtx, p: { kind: unknown; chainId: unkn
   try {
     if (p.kind === 'revokeGrant') return await prepareRevokeGrant(ctx, p);
     if (p.kind !== 'enable' && p.kind !== 'revoke') return fail('Unknown request', 'bad_request');
-    const kind = p.kind as SmartKind; const c = await context(ctx, p.chainId);
+    const kind = p.kind as SmartKind; const c = await context(ctx, p.chainId, kind === 'revoke');
     const s = await codeState(c.client, c.account, c.chainId);
     if (kind === 'enable' && s.state === 'pinned') return fail('Smart account is already on for this network.', 'already_enabled');
     if (kind === 'revoke' && s.state === 'none') return fail('Smart account is not on for this network.', 'not_enabled');
@@ -103,7 +107,7 @@ export async function approve(ctx: HandlerCtx, p: { requestId: unknown }) {
   if (e.kind === 'revokeGrant') return approveRevokeGrant(ctx, id, e);
   try {
     assertFresh(e.preparedAt);
-    const c = await context(ctx, e.chainId);
+    const c = await context(ctx, e.chainId, e.kind === 'revoke');
     if (c.account.toLowerCase() !== e.account.toLowerCase() || c.walletId !== e.walletId) throw new GuardError('account_changed');
     if (!(await consumeReauth('manage', { walletId: e.walletId }))) return fail('Confirm with your password first.', 'AUTH_REQUIRED'); // keep the request for a retry within its lifetime
     prepared.delete(id); // single use from here on
@@ -249,7 +253,7 @@ const GRANT_REVOKE_GAS_CAP = 400_000n;
 export async function grants(ctx: HandlerCtx) {
   try {
     const info = await activeInfo(ctx); const account = info?.addresses.ethereum;
-    if (!account || !smartAccountsAvailable({ flag: await flagOn(), chainId: SMART_ACCOUNT_CHAINS[0], walletType: info?.walletType })) return { ok: true as const, available: false as const, grants: [] };
+    if (!account || !smartAccountsAvailable({ flag: true, chainId: SMART_ACCOUNT_CHAINS[0], walletType: info?.walletType })) return { ok: true as const, available: false as const, grants: [] };
     const now = Math.floor(Date.now() / 1000);
     const rows = (await grantStore.all()).filter((g) => g.account.toLowerCase() === account.toLowerCase()).map((g) => ({
       id: g.id, origin: g.origin, chainId: g.chainId, network: resolveSendChain(undefined, g.chainId, customNetworks())?.name ?? String(g.chainId), symbol: resolveSendChain(undefined, g.chainId, customNetworks())?.symbol ?? '',
@@ -264,7 +268,7 @@ async function prepareRevokeGrant(ctx: HandlerCtx, p: { grantId?: unknown }) {
   const g = (await grantStore.all()).find((x) => x.id === gid);
   if (!g) return fail('That permission was not found.', 'not_found');
   if (g.revoked) return fail('That permission is already revoked.', 'already_revoked');
-  const c = await context(ctx, g.chainId);
+  const c = await context(ctx, g.chainId, true);
   if (c.account.toLowerCase() !== g.account.toLowerCase()) return fail('That permission belongs to another account.', 'other_account');
   if (await isDisabled(c.client, g.id)) { await grantStore.markRevoked(g.id, 'already-disabled'); return fail('That permission is already revoked.', 'already_revoked'); }
   const data = disableCalldata(g);
@@ -288,7 +292,7 @@ async function prepareRevokeGrant(ctx: HandlerCtx, p: { grantId?: unknown }) {
 async function approveRevokeGrant(ctx: HandlerCtx, id: string, e: Prepared) {
   try {
     assertFresh(e.preparedAt);
-    const c = await context(ctx, e.chainId);
+    const c = await context(ctx, e.chainId, true);
     if (c.account.toLowerCase() !== e.account.toLowerCase() || c.walletId !== e.walletId) throw new GuardError('account_changed');
     const g = (await grantStore.all()).find((x) => x.id === e.grantId);
     if (!g || g.revoked || g.account.toLowerCase() !== c.account.toLowerCase() || g.chainId !== e.chainId) throw new GuardError('grant_changed');
