@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export * from './core/smartAccount/permissions'; export { specFor } from './core/provider/methods';`, resolveDir: src, sourcefile: 'e.ts', loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
+const out = await build({ stdin: { contents: `export * from './core/smartAccount/permissions'; export { specFor } from './core/provider/methods';`, resolveDir: src, sourcefile: 'e.ts', loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent' });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
 const NOW = 1_800_000_000, KEY = '0x' + '12'.repeat(20);

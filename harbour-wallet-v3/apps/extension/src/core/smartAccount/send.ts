@@ -1,11 +1,12 @@
 // Build, sponsor, check, sign and send ONE smart account operation (Flow B). Pure orchestration: every side effect (chain reads,
 // bundler calls, the signature) is injected, so tests run it with fakes and the worker passes real ones. The key never enters this
-// file: `signDigest` is a callback that signs only the digest computed HERE from the final operation (never one a third party
-// supplied). Provider replies are read only through the guard's strict readers.
+// file: `signUserOp` is a callback that signs only the final operation assembled HERE (the kit derives the typed data from it;
+// no third party ever supplies a hash or typed data to sign). Provider replies are read only through the guard's strict readers.
 import type { Hex } from 'viem';
 import { ENTRYPOINT_V07, type Address } from './constants';
 import { encodeCalls } from './abi';
-import { STUB_SIGNATURE, toRpcOp, userOpDigest, type UserOp } from './userOp';
+import { toRpcOp, type UserOp } from './userOp';
+import { STUB_SIGNATURE } from './kit';
 import { acceptGasEstimate, acceptGasPrice, acceptSponsorReply, assembleOp, checkIntent, maxTotalFee, requirePinnedDelegation, type GasFields, type SponsorFields } from './guard';
 
 export interface SendDeps {
@@ -14,8 +15,8 @@ export interface SendDeps {
   /** EntryPoint.getNonce(account, 0): read from the chain, never from a provider reply. */
   readNonce(): Promise<bigint>;
   bundler(method: string, params: unknown[]): Promise<any>;
-  /** Signs a 32-byte digest and returns the serialized 65-byte signature. */
-  signDigest(digest: Hex): Hex;
+  /** Signs the final operation (kit-built EIP-712 PackedUserOperation) and returns the serialized 65-byte signature. */
+  signUserOp(op: UserOp): Promise<Hex>;
   sleep?(ms: number): Promise<void>;
 }
 export interface SendInput { calls: unknown; sponsor: boolean }
@@ -38,7 +39,7 @@ export async function sendOperation(d: SendDeps, input: SendInput, timeoutMs = 1
     gas = acceptGasEstimate(await d.bundler('eth_estimateUserOperationGas', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Could not estimate the operation'), 'estimate_failed'); }));
   }
   const unsigned: UserOp = assembleOp({ sender: d.account, nonce, callData, price, gas, sponsor, signature: STUB_SIGNATURE }); // enforces the fee cap
-  const op: UserOp = { ...unsigned, signature: d.signDigest(userOpDigest(unsigned, d.chainId)) };
+  const op: UserOp = { ...unsigned, signature: await d.signUserOp(unsigned) };
   const hash: Hex = await d.bundler('eth_sendUserOperation', [toRpcOp(op), ENTRYPOINT_V07]);
   const sleep = d.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const until = Date.now() + timeoutMs;

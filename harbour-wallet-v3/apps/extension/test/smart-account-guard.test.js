@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export * from './core/smartAccount/constants'; export * from './core/smartAccount/abi'; export * from './core/smartAccount/userOp'; export * from './core/smartAccount/guard';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
+const out = await build({ stdin: { contents: `export * from './core/smartAccount/constants'; export * from './core/smartAccount/abi'; export * from './core/smartAccount/userOp'; export * from './core/smartAccount/guard';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const v = JSON.parse(readFileSync(new URL('./fixtures/aa/vectors.json', import.meta.url), 'utf8'));
 

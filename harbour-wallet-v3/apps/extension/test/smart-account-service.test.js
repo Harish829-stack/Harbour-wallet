@@ -21,7 +21,7 @@ const plugin = { name: 'stubs', setup(b) {
   b.onResolve({ filter: /^(\.\/(keys|reauth|store)|\.\/handlers\/(earnEvm|earnKeys)|\.\.\/core\/sendService)$/ }, (a) => (a.importer.endsWith('smartAccountService.ts') && stubs[a.path] ? { path: a.path, namespace: 'stub' } : undefined));
   b.onLoad({ filter: /.*/, namespace: 'stub' }, (a) => ({ contents: stubs[a.path], loader: 'js' }));
 } };
-const out = await build({ stdin: { contents: `export * from './background/smartAccountService'; export { handlers } from './background/handlers/smartAccount'; export { DELEGATES } from './core/smartAccount/constants';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', plugins: [plugin], define: { 'import.meta.env': '{}' } });
+const out = await build({ stdin: { contents: `export * from './background/smartAccountService'; export { handlers } from './background/handlers/smartAccount'; export { DELEGATES } from './core/smartAccount/constants';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent', plugins: [plugin], define: { 'import.meta.env': '{}' } });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
 const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; // public anvil key

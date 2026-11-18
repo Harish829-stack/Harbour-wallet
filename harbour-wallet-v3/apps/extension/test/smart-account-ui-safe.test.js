@@ -12,7 +12,7 @@ const src = fileURLToPath(new URL('../src/', import.meta.url));
 const out = await build({
   stdin: { contents: `export { specFor, isBridgeNamespaced } from './core/provider/methods'; export { uiSafe, findSecretField } from './core/uiSafe';`,
     resolveDir: src, sourcefile: 'entry.ts', loader: 'ts' },
-  bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
+  bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent',
 });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 

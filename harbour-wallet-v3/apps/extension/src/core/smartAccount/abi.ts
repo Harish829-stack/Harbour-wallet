@@ -1,16 +1,10 @@
-// Call encoding for the MetaMask Stateless7702 delegate (ERC-7821 style execute). Pure. Byte-identical to MetaMask's kit
-// (documentation/smart-accounts/validation, vectors.json).
-import { encodeAbiParameters, encodeFunctionData, parseAbi, getAddress, isAddress, isHex, type Hex } from 'viem';
+// Call validation for the MetaMask Stateless7702 delegate. The ENCODING is MetaMask's kit (kit.ts); this file only refuses
+// malformed input before it reaches the kit (strict address, value and data, and a call-count cap).
+import { getAddress, isAddress, isHex, type Hex } from 'viem';
 import { MAX_CALLS, type Address } from './constants';
+import { encodeKitCalls } from './kit';
 
 export interface Call { to: Address; value: bigint; data: Hex }
-
-const abi = parseAbi([
-  'function execute((address target, uint256 value, bytes callData) execution)',
-  'function execute(bytes32 mode, bytes executionCalldata)',
-]);
-/** ERC-7579 execution mode: batch, default exec type. */
-export const BATCH_MODE: Hex = '0x0100000000000000000000000000000000000000000000000000000000000000';
 
 /** Strict normalization of one call: a valid address, a non-negative value and even-length hex data. */
 export function normalizeCall(c: { to: unknown; value?: unknown; data?: unknown }): Call {
@@ -28,10 +22,5 @@ export function normalizeCall(c: { to: unknown; value?: unknown; data?: unknown 
 export function encodeCalls(calls: readonly Call[]): Hex {
   if (!calls.length) throw new Error('No calls.');
   if (calls.length > MAX_CALLS) throw new Error(`At most ${MAX_CALLS} calls.`);
-  if (calls.length === 1) return encodeFunctionData({ abi, functionName: 'execute', args: [{ target: calls[0].to, value: calls[0].value, callData: calls[0].data }] });
-  const execs = encodeAbiParameters(
-    [{ type: 'tuple[]', components: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'callData', type: 'bytes' }] }],
-    [calls.map((c) => ({ target: c.to, value: c.value, callData: c.data }))],
-  );
-  return encodeFunctionData({ abi, functionName: 'execute', args: [BATCH_MODE, execs] });
+  return encodeKitCalls(calls);
 }

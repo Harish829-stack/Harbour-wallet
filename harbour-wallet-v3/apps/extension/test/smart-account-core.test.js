@@ -1,14 +1,16 @@
 // Smart accounts core (src/core/smartAccount): builders reproduce MetaMask's kit byte for byte (fixtures/aa/vectors.json, made by the kit
 // with viem 2.31.4) using the extension's pinned viem and its existing signHash. Pure code, no network.
+process.env.DO_NOT_TRACK = '1'; // tests below load the kit's root entry to compare with it; analytics must stay off (the offline test covers production code)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { hexToBytes } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export * from './core/smartAccount/constants'; export * from './core/smartAccount/abi'; export * from './core/smartAccount/userOp'; export * from './core/smartAccount/delegation'; export { signHash } from './core/provider/evmAccount';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
+const out = await build({ stdin: { contents: `export * from './core/smartAccount/constants'; export * from './core/smartAccount/abi'; export * from './core/smartAccount/userOp'; export * from './core/smartAccount/kit'; export * from './core/smartAccount/delegation'; export { signHash, evmAccountFromBytes } from './core/provider/evmAccount';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent', define: { 'import.meta.env': '{}' } });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const v = JSON.parse(readFileSync(new URL('./fixtures/aa/vectors.json', import.meta.url), 'utf8'));
 const PK = hexToBytes('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'); // public anvil test key used by the fixtures
@@ -37,19 +39,31 @@ test('normalizeCall is strict', () => {
   assert.deepEqual({ ...M.normalizeCall({ to: SINK.toLowerCase(), value: '0x5', data: '0x' }) }, { to: SINK, value: 5n, data: '0x' });
   for (const bad of [{ to: 'nope' }, { to: SINK, value: -1 }, { to: SINK, value: 'x' }, { to: SINK, data: '0xabc' }, { to: SINK, data: 'zz' }, { to: 5 }]) assert.throws(() => M.normalizeCall(bad), /Invalid/);
 });
-test('user operation digest signs to the kit signature (op1 without paymaster, op2 with paymaster)', () => {
-  for (const k of ['op1', 'op2']) {
-    const op = toOp(v[k].op); const digest = M.userOpDigest(op, v.chainId);
-    const sig = signer(digest);
-    const hex = '0x' + sig.r.slice(2) + sig.s.slice(2) + (sig.v === 28n ? '1c' : '1b');
-    assert.equal(hex.toLowerCase(), v[k].sig.toLowerCase(), k);
-  }
+test('kit-built typed data signs to the pinned vectors (op1 without paymaster, op2 with paymaster)', async () => {
+  const owner = privateKeyToAccount('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80');
+  for (const k of ['op1', 'op2']) assert.equal((await M.signUserOp(toOp(v[k].op), v.chainId, owner)).toLowerCase(), v[k].sig.toLowerCase(), k);
   assert.ok(v.op2.op.paymaster, 'op2 carries a paymaster, so paymasterAndData is covered');
 });
-test('stub signature has the kit shape and RPC op form has no factory fields', () => {
-  assert.equal(M.STUB_SIGNATURE.length, 132); assert.ok(M.STUB_SIGNATURE.endsWith('1b'));
+test('the account key bytes sign the same way (evmAccountFromBytes signer, as in the worker)', async () => {
+  const acct = M.evmAccountFromBytes(PK);
+  for (const k of ['op1', 'op2']) assert.equal((await M.signUserOp(toOp(v[k].op), v.chainId, acct)).toLowerCase(), v[k].sig.toLowerCase(), k);
+});
+test('stub signature equals the kit stub and the RPC op form has no factory fields', async () => {
+  const { toMetaMaskSmartAccount, Implementation } = await import('@metamask/smart-accounts-kit');
+  const { createPublicClient, custom } = await import('viem');
+  const client = createPublicClient({ chain: { id: v.chainId, name: 'x', nativeCurrency: { name: 'E', symbol: 'E', decimals: 18 }, rpcUrls: { default: { http: [] } } }, transport: custom({ request: async () => '0x' }) });
+  const kit = await toMetaMaskSmartAccount({ client, implementation: Implementation.Stateless7702, address: v.account, signer: { account: privateKeyToAccount('0x' + '11'.repeat(32)) } });
+  assert.equal(M.STUB_SIGNATURE, await kit.getStubSignature());
   const r = M.toRpcOp({ ...toOp(v.op2.op), signature: M.STUB_SIGNATURE });
   assert.ok(r.paymaster && r.paymasterData); assert.equal(r.factory, undefined); assert.match(r.nonce, /^0x/);
+});
+test('the pinned delegate and DelegationManager equal the kit deployments for every pinned chain', async () => {
+  const { getSmartAccountsEnvironment } = await import('@metamask/smart-accounts-kit');
+  for (const id of Object.keys(M.DELEGATES).map(Number)) {
+    const env = getSmartAccountsEnvironment(id);
+    assert.equal(env.implementations.EIP7702StatelessDeleGatorImpl.toLowerCase(), M.DELEGATES[id].toLowerCase());
+    assert.equal(env.EntryPoint.toLowerCase(), M.ENTRYPOINT_V07.toLowerCase());
+  }
 });
 test('authorization digest and both type-4 transactions equal the kit', () => {
   assert.equal(M.authorizationDigest(v.env.impl, v.chainId, 3).toLowerCase(), v.authDigest.toLowerCase());

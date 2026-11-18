@@ -6,7 +6,6 @@
 //  - Upgrade and revoke are user-paid, self-sent type-4 transactions signed here with the existing pattern
 //    openActiveKeys() -> signHash() -> dispose() in finally, behind consumeReauth('manage').
 import { encodeFunctionData, formatEther, parseAbi, type Hex } from 'viem';
-import { serializeSignature } from 'viem/accounts';
 import { GATEWAY_URL } from '../kit/endpoints';
 import { signHash, evmAccountFromBytes } from '../core/provider/evmAccount';
 import { smartAccountsAvailable } from '../core/harbour/policy';
@@ -16,6 +15,7 @@ import { logWarn } from '../core/logger';
 import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
 import { buildSignedType4 } from '../core/smartAccount/delegation';
 import { sendOperation } from '../core/smartAccount/send';
+import { signUserOp } from '../core/smartAccount/kit';
 import { GuardError, GUARD_MESSAGE, assertFresh, checkAuthorization, delegationState, type DelegationState } from '../core/smartAccount/guard';
 import { delegationTarget } from '../core/evmCode';
 import { evmClientFor, feeData } from './handlers/earnEvm';
@@ -155,7 +155,7 @@ export async function sendCalls(p: { chainId: number; client: ReturnType<typeof 
       getCode: () => p.client.getCode({ address: account }),
       readNonce: async () => BigInt((await p.client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
       bundler: bundlerCall(url),
-      signDigest: (digest) => serializeSignature(signHash(digest, p.privateKey)),
+      signUserOp: (op) => signUserOp(op, p.chainId, evmAccountFromBytes(p.privateKey)),
     }, { calls: p.calls, sponsor: p.sponsor !== false });
     return r.txHash;
   } catch (e: any) {
@@ -185,7 +185,7 @@ export async function submitDappCalls(p: { chainId: number; account: string; pri
     await sendOperation({
       chainId: p.chainId, account, getCode: () => client.getCode({ address: account }),
       readNonce: async () => BigInt((await client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
-      bundler: bundlerCall(url), signDigest: (digest) => serializeSignature(signHash(digest, p.privateKey)),
+      bundler: bundlerCall(url), signUserOp: (op) => signUserOp(op, p.chainId, evmAccountFromBytes(p.privateKey)),
     }, { calls: p.calls, sponsor: false }, 0);
     throw Object.assign(new Error('unexpected'), { code: 'error' });
   } catch (e: any) {

@@ -3,7 +3,7 @@
 // its chainId is the active chain and never 0, and its nonce is the transaction nonce + 1 (the sender's nonce is incremented
 // before the authorization list is processed).
 import { keccak256, serializeTransaction, type Hex, type Signature } from 'viem';
-import { hashAuthorization } from 'viem/experimental';
+import { hashAuthorization } from 'viem/utils';
 import { DELEGATES, TYPE4_GAS_LIMIT, ZERO_ADDRESS, type Address } from './constants';
 
 export type Signer = (digest: Hex) => Signature;
