@@ -1,0 +1,100 @@
+{
+ "source": "official docs / SDK ABI / bsc-genesis-contract source; verified 2026-11-18",
+ "sigs": [
+  {
+   "group": "lido.stETH",
+   "sig": "submit(address)",
+   "selector": "0xa1903eab"
+  },
+  {
+   "group": "lido.stETH",
+   "sig": "balanceOf(address)",
+   "selector": "0x70a08231"
+  },
+  {
+   "group": "lido.stETH",
+   "sig": "approve(address,uint256)",
+   "selector": "0x095ea7b3"
+  },
+  {
+   "group": "lido.stETH",
+   "sig": "allowance(address,address)",
+   "selector": "0xdd62ed3e"
+  },
+  {
+   "group": "lido.queue",
+   "sig": "requestWithdrawals(uint256[],address)",
+   "selector": "0xd6681042"
+  },
+  {
+   "group": "lido.queue",
+   "sig": "getWithdrawalRequests(address)",
+   "selector": "0x7d031b65"
+  },
+  {
+   "group": "lido.queue",
+   "sig": "getWithdrawalStatus(uint256[])",
+   "selector": "0xb8c4b85a"
+  },
+  {
+   "group": "lido.queue",
+   "sig": "claimWithdrawal(uint256)",
+   "selector": "0xf8444436"
+  },
+  {
+   "group": "bnb.stakeHub",
+   "sig": "getValidatorCreditContract(address)",
+   "selector": "0xdbda7fb3"
+  },
+  {
+   "group": "bnb.stakeHub",
+   "sig": "delegate(address,bool)",
+   "selector": "0x982ef0a7"
+  },
+  {
+   "group": "bnb.stakeHub",
+   "sig": "undelegate(address,uint256)",
+   "selector": "0x4d99dd16"
+  },
+  {
+   "group": "bnb.stakeHub",
+   "sig": "redelegate(address,address,uint256,bool)",
+   "selector": "0x59491871"
+  },
+  {
+   "group": "bnb.stakeHub",
+   "sig": "claim(address,uint256)",
+   "selector": "0xaad3ec96"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "getPooledBNB(address)",
+   "selector": "0x0913db47"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "balanceOf(address)",
+   "selector": "0x70a08231"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "getSharesByPooledBNB(uint256)",
+   "selector": "0x647df759"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "pendingUnbondRequest(address)",
+   "selector": "0x038c0023"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "claimableUnbondRequest(address)",
+   "selector": "0x2f2d448a"
+  },
+  {
+   "group": "bnb.credit",
+   "sig": "unbondRequest(address,uint256)",
+   "selector": "0xd241c1ea"
+  }
+ ]
+}
