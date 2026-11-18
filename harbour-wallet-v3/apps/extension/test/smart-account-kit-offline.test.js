@@ -14,16 +14,19 @@ delete process.env.DO_NOT_TRACK; delete process.env.CI; // analytics could only 
 const seen = [];
 globalThis.fetch = async (...a) => { seen.push(String(a[0]?.url ?? a[0])); return new Response('{}', { status: 200 }); }; // installed BEFORE the kit loads (it captures fetch at load)
 const src = fileURLToPath(new URL('../src/', import.meta.url));
-const out = await build({ stdin: { contents: `export * from './core/smartAccount/abi'; export * from './core/smartAccount/kit'; export * from './core/smartAccount/send'; export * from './core/smartAccount/constants'; export * from './core/smartAccount/userOp';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, define: { 'import.meta.env': '{}' } });
+const out = await build({ stdin: { contents: `export * from './core/smartAccount/abi'; export * from './core/smartAccount/kit'; export * from './core/smartAccount/send'; export * from './core/smartAccount/constants'; export * from './core/smartAccount/userOp'; export * from './core/smartAccount/permissionDelegation'; export * from './core/smartAccount/permissions';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, define: { 'import.meta.env': '{}' } });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 const SINK = '0x000000000000000000000000000000000000dEaD';
 const acct = privateKeyToAccount('0x' + '11'.repeat(32));
 
-test('production kit paths make no network call (encoding, typed data, signing)', async () => {
+test('production kit paths make no network call (encoding, typed data, signing, permission delegations)', async () => {
   M.encodeCalls([{ to: SINK, value: 1n, data: '0x' }]);
   M.encodeCalls([{ to: SINK, value: 1n, data: '0x' }, { to: SINK, value: 0n, data: '0x12' }]);
   const op = { sender: acct.address, nonce: 1n, callData: '0x', callGasLimit: 1n, verificationGasLimit: 1n, preVerificationGas: 1n, maxFeePerGas: 1n, maxPriorityFeePerGas: 1n, signature: '0x' };
   await M.signUserOp(op, 84532, acct);
+  const p = M.normalizePermissionRequest({ chainId: '0x14a34', to: SINK, expiry: Math.floor(Date.now() / 1000) + 3600, permission: { type: 'native-token-allowance', data: { allowance: '0x10' } } });
+  const d = M.buildPermissionDelegation(p, acct.address, 1n);
+  M.permissionHash(d); M.permissionDigest(d, p.chainId); await M.signPermission(d, p, acct.address, acct);
   await new Promise((r) => setTimeout(r, 400)); // the kit's sender batches after ~100 ms
   assert.deepEqual(seen, []);
 });
@@ -35,7 +38,7 @@ test('positive control: the kit root entry DOES attempt telemetry (so the check 
   await new Promise((r) => setTimeout(r, 600));
   assert.ok(seen.some((u) => u.includes('mm-sdk-analytics')), 'telemetry attempt expected from the kit root entry: ' + JSON.stringify(seen));
 });
-test('nothing in src imports the kit root entry; only /utils (and only in core/smartAccount/kit.ts)', () => {
+test('nothing in src imports the kit root entry; only /utils (and only in core/smartAccount/kit.ts and permissionDelegation.ts)', () => {
   const files = []; const walk = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx|js|mjs)$/.test(n) && files.push(p); } }; walk(src);
   const bad = []; const used = [];
   for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/from\s+['"](@metamask\/smart-accounts-kit[^'"]*)['"]|import\(\s*['"](@metamask\/smart-accounts-kit[^'"]*)['"]\s*\)/g)) {
@@ -43,5 +46,5 @@ test('nothing in src imports the kit root entry; only /utils (and only in core/s
     if (spec !== '@metamask/smart-accounts-kit/utils') bad.push([f, spec]);
   }
   assert.deepEqual(bad, []);
-  assert.deepEqual(used.map(([f]) => f.replace(src, '')), ['core/smartAccount/kit.ts']);
+  assert.deepEqual(used.map(([f]) => f.replace(src, '')).sort(), ['core/smartAccount/kit.ts', 'core/smartAccount/permissionDelegation.ts']);
 });

@@ -48,3 +48,14 @@ export const LIMITS = Object.freeze({
 export const delegateFor = (chainId: number): Address | null => DELEGATES[chainId] ?? null;
 export const isSmartAccountChain = (chainId: number): boolean => Object.prototype.hasOwnProperty.call(DELEGATES, chainId);
 export const isPinnedPaymaster = (chainId: number, a: string): boolean => (PAYMASTERS[chainId] ?? []).includes(a.toLowerCase() as Address);
+
+/** MetaMask Delegation Framework v1.3.0, pinned per chain (same CREATE2 addresses on both testnets). Equality with the kit's deployments is a test;
+ *  on-chain existence is open question Q7 (research/aa-spike/q7.mjs) and must pass before any permission flow is reachable from a dApp. */
+export const DELEGATION_MANAGER: Address = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+export const ENFORCERS = Object.freeze({
+  ExactCalldataEnforcer: '0x99F2e9bF15ce5eC84685604836F71aB835DBBdED',
+  NativeTokenTransferAmountEnforcer: '0xF71af580b9c3078fbc2BBF16FbB8EEd82b330320',
+  ValueLteEnforcer: '0x92Bf12322527cAA612fd31a0e810472BBB106A8F',
+  ERC20TransferAmountEnforcer: '0xf100b0819427117EcF76Ed94B358B1A5b5C6D2Fc',
+  TimestampEnforcer: '0x1046bb45C8d673d4ea75321280DB34899413c069',
+} as const satisfies Record<string, Address>);
