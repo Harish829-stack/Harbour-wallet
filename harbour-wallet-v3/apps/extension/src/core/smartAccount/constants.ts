@@ -33,7 +33,8 @@ export const MAX_CALLS = 16;
 export const PREPARED_TTL_MS = 120_000;
 
 /** Upper bounds the guard enforces on gas numbers a provider returns (wei / gas units). Testnet-safe, tightened per chain before mainnet. */
-export const LIMITS = Object.freeze({
+export interface Limits { maxCallGasLimit: bigint; maxVerificationGasLimit: bigint; maxPreVerificationGas: bigint; maxPaymasterVerificationGasLimit: bigint; maxPaymasterPostOpGasLimit: bigint; maxTotalFeeWei: bigint; maxFeePerGasWei: bigint }
+export const LIMITS: Limits = Object.freeze({
   maxCallGasLimit: 5_000_000n,
   maxVerificationGasLimit: 2_000_000n,
   maxPreVerificationGas: 1_000_000n,
@@ -44,6 +45,14 @@ export const LIMITS = Object.freeze({
   /** Highest maxFeePerGas accepted (wei). 1000 gwei. */
   maxFeePerGasWei: 1_000_000_000_000n,
 });
+
+/** Per-chain bounds. EVERY chain in DELEGATES needs its own entry (a test enforces it), so enabling a new chain forces a decision on its fee ceiling:
+ *  a mainnet entry must be set from measured usage and the chain's gas price, not copied from the testnet defaults. */
+export const CHAIN_LIMITS: Readonly<Record<number, Limits>> = Object.freeze({
+  11155111: LIMITS,
+  84532: LIMITS,
+});
+export const limitsFor = (chainId: number): Limits => CHAIN_LIMITS[chainId] ?? Object.freeze({ ...LIMITS, maxTotalFeeWei: 0n }); // an unlisted chain can never pass the fee cap
 
 export const delegateFor = (chainId: number): Address | null => DELEGATES[chainId] ?? null;
 export const isSmartAccountChain = (chainId: number): boolean => Object.prototype.hasOwnProperty.call(DELEGATES, chainId);

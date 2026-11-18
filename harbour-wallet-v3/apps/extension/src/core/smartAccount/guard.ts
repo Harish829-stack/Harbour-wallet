@@ -4,7 +4,7 @@
 // failure is a GuardError: the worker signs nothing and shows GUARD_MESSAGE.
 import { getAddress, isAddress, isHex, type Hex } from 'viem';
 import { delegationTarget } from '../evmCode';
-import { DELEGATES, ENTRYPOINT_V07, LIMITS, MAX_CALLS, PREPARED_TTL_MS, ZERO_ADDRESS, isPinnedPaymaster, type Address } from './constants';
+import { DELEGATES, ENTRYPOINT_V07, LIMITS, limitsFor, type Limits, MAX_CALLS, PREPARED_TTL_MS, ZERO_ADDRESS, isPinnedPaymaster, type Address } from './constants';
 import { normalizeCall, type Call } from './abi';
 import type { UserOp } from './userOp';
 
@@ -59,10 +59,10 @@ function qty(v: unknown, max: bigint, reason: string, { allowZero = true }: { al
 const isObj = (r: unknown): r is Record<string, unknown> => !!r && typeof r === 'object' && !Array.isArray(r);
 
 /** 5a. Gas price reply (pimlico_getUserOperationGasPrice). Only `fast.maxFeePerGas` and `fast.maxPriorityFeePerGas` are read. */
-export function acceptGasPrice(reply: unknown): { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } {
+export function acceptGasPrice(reply: unknown, L: Limits = LIMITS): { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } {
   const fast = isObj(reply) && isObj(reply.fast) ? reply.fast : fail('price_shape');
-  const maxFeePerGas = qty((fast as any).maxFeePerGas, LIMITS.maxFeePerGasWei, 'fee_per_gas', { allowZero: false });
-  const maxPriorityFeePerGas = qty((fast as any).maxPriorityFeePerGas, LIMITS.maxFeePerGasWei, 'priority_fee');
+  const maxFeePerGas = qty((fast as any).maxFeePerGas, L.maxFeePerGasWei, 'fee_per_gas', { allowZero: false });
+  const maxPriorityFeePerGas = qty((fast as any).maxPriorityFeePerGas, L.maxFeePerGasWei, 'priority_fee');
   if (maxPriorityFeePerGas > maxFeePerGas) fail('priority_over_max');
   return { maxFeePerGas, maxPriorityFeePerGas };
 }
@@ -70,42 +70,42 @@ export function acceptGasPrice(reply: unknown): { maxFeePerGas: bigint; maxPrior
 export interface GasFields { callGasLimit: bigint; verificationGasLimit: bigint; preVerificationGas: bigint }
 export interface SponsorFields extends GasFields { paymaster: Address; paymasterData: Hex; paymasterVerificationGasLimit: bigint; paymasterPostOpGasLimit: bigint }
 
-function gasFields(r: Record<string, unknown>): GasFields {
+function gasFields(r: Record<string, unknown>, L: Limits): GasFields {
   return {
-    callGasLimit: qty(r.callGasLimit, LIMITS.maxCallGasLimit, 'call_gas', { allowZero: false }),
-    verificationGasLimit: qty(r.verificationGasLimit, LIMITS.maxVerificationGasLimit, 'verification_gas', { allowZero: false }),
-    preVerificationGas: qty(r.preVerificationGas, LIMITS.maxPreVerificationGas, 'pre_verification_gas', { allowZero: false }),
+    callGasLimit: qty(r.callGasLimit, L.maxCallGasLimit, 'call_gas', { allowZero: false }),
+    verificationGasLimit: qty(r.verificationGasLimit, L.maxVerificationGasLimit, 'verification_gas', { allowZero: false }),
+    preVerificationGas: qty(r.preVerificationGas, L.maxPreVerificationGas, 'pre_verification_gas', { allowZero: false }),
   };
 }
 /** 5b. User-paid: eth_estimateUserOperationGas reply. Only the three gas limits are read; everything else is ignored. */
-export function acceptGasEstimate(reply: unknown): GasFields {
+export function acceptGasEstimate(reply: unknown, L: Limits = LIMITS): GasFields {
   if (!isObj(reply)) return fail('estimate_shape');
-  return gasFields(reply);
+  return gasFields(reply, L);
 }
 /** 5b'. User-paid only: safety margin on the bundler's estimate. The bundler sizes its handleOps transaction from these limits, and a
  *  tight estimate (seen on Sepolia: callGasLimit 34,068) can leave the EntryPoint out of gas after a successful validation and call.
  *  +25% on call and verification gas, +10% on pre-verification gas, never above the hard caps. Unused gas is not charged (the fee cap
  *  in assembleOp still bounds the worst case). NOT applied to sponsored ops: the paymaster signature covers the gas limits. */
-export function padGasEstimate(g: GasFields): GasFields {
+export function padGasEstimate(g: GasFields, L: Limits = LIMITS): GasFields {
   const pad = (v: bigint, pct: bigint, cap: bigint): bigint => { const x = (v * pct + 99n) / 100n; return x > cap ? cap : x; };
   return {
-    callGasLimit: pad(g.callGasLimit, 125n, LIMITS.maxCallGasLimit),
-    verificationGasLimit: pad(g.verificationGasLimit, 125n, LIMITS.maxVerificationGasLimit),
-    preVerificationGas: pad(g.preVerificationGas, 110n, LIMITS.maxPreVerificationGas),
+    callGasLimit: pad(g.callGasLimit, 125n, L.maxCallGasLimit),
+    verificationGasLimit: pad(g.verificationGasLimit, 125n, L.maxVerificationGasLimit),
+    preVerificationGas: pad(g.preVerificationGas, 110n, L.maxPreVerificationGas),
   };
 }
 /** 5c. Sponsored: pm_sponsorUserOperation reply. Only paymaster, paymasterData, paymaster gas limits and the three gas limits are read.
  *  The paymaster must be in the per-chain allow-list; any other field (callData, sender, nonce, initCode, entryPoint, ...) is ignored. */
-export function acceptSponsorReply(reply: unknown, chainId: number): SponsorFields {
+export function acceptSponsorReply(reply: unknown, chainId: number, L: Limits = limitsFor(chainId)): SponsorFields {
   if (!isObj(reply)) return fail('sponsor_shape');
   const pm = reply.paymaster;
   if (typeof pm !== 'string' || !isAddress(pm, { strict: false }) || !isPinnedPaymaster(chainId, pm)) return fail('paymaster');
   const data = reply.paymasterData ?? '0x';
   if (typeof data !== 'string' || !isHex(data) || data.length % 2 !== 0 || data.length > 2 + 2 * 256) return fail('paymaster_data');
   return {
-    ...gasFields(reply), paymaster: getAddress(pm) as Address, paymasterData: data as Hex,
-    paymasterVerificationGasLimit: qty(reply.paymasterVerificationGasLimit, LIMITS.maxPaymasterVerificationGasLimit, 'pm_verification_gas'),
-    paymasterPostOpGasLimit: qty(reply.paymasterPostOpGasLimit, LIMITS.maxPaymasterPostOpGasLimit, 'pm_post_op_gas'),
+    ...gasFields(reply, L), paymaster: getAddress(pm) as Address, paymasterData: data as Hex,
+    paymasterVerificationGasLimit: qty(reply.paymasterVerificationGasLimit, L.maxPaymasterVerificationGasLimit, 'pm_verification_gas'),
+    paymasterPostOpGasLimit: qty(reply.paymasterPostOpGasLimit, L.maxPaymasterPostOpGasLimit, 'pm_post_op_gas'),
   };
 }
 
@@ -114,18 +114,18 @@ export const maxTotalFee = (op: Pick<UserOp, 'callGasLimit' | 'verificationGasLi
   (op.callGasLimit + op.verificationGasLimit + op.preVerificationGas + (op.paymasterVerificationGasLimit ?? 0n) + (op.paymasterPostOpGasLimit ?? 0n)) * op.maxFeePerGas;
 
 /** S8: the fee shown to the user is the most they can pay. */
-export function checkFeeCap(op: UserOp): bigint {
+export function checkFeeCap(op: UserOp, L: Limits = LIMITS): bigint {
   const fee = maxTotalFee(op);
-  if (fee > LIMITS.maxTotalFeeWei) fail('fee_cap');
+  if (fee > L.maxTotalFeeWei) fail('fee_cap');
   return fee;
 }
 
 /** Assembles the operation from locally built parts plus the accepted provider numbers. `nonce` comes from an EntryPoint read, never a reply. */
-export function assembleOp(p: { sender: Address; nonce: bigint; callData: Hex; price: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }; gas: GasFields; sponsor?: SponsorFields; signature: Hex }): UserOp {
+export function assembleOp(p: { sender: Address; nonce: bigint; callData: Hex; price: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }; gas: GasFields; sponsor?: SponsorFields; signature: Hex; limits?: Limits }): UserOp {
   if (typeof p.nonce !== 'bigint' || p.nonce < 0n) fail('nonce');
   const op: UserOp = { sender: p.sender, nonce: p.nonce, callData: p.callData, ...p.gas, ...p.price, signature: p.signature };
   if (p.sponsor) Object.assign(op, { paymaster: p.sponsor.paymaster, paymasterData: p.sponsor.paymasterData, paymasterVerificationGasLimit: p.sponsor.paymasterVerificationGasLimit, paymasterPostOpGasLimit: p.sponsor.paymasterPostOpGasLimit });
-  checkFeeCap(op);
+  checkFeeCap(op, p.limits);
   return op;
 }
 

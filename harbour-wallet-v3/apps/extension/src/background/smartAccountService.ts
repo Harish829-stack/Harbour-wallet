@@ -14,7 +14,7 @@ import { customNetworks } from '../core/networkRegistry';
 import { logWarn } from '../core/logger';
 import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
 import { buildSignedType4 } from '../core/smartAccount/delegation';
-import { sendOperation } from '../core/smartAccount/send';
+import { sendOperation, verifyInclusion } from '../core/smartAccount/send';
 import { buildPermissionDelegation, permissionContext, permissionHash, signPermission } from '../core/smartAccount/permissionDelegation';
 import { DELEGATION_MANAGER, SMART_ACCOUNT_CHAINS } from '../core/smartAccount/constants';
 import type { NormalizedPermission, GrantRecord } from '../core/smartAccount/permissions';
@@ -167,10 +167,11 @@ export async function sendCalls(p: { chainId: number; client: ReturnType<typeof 
       readNonce: async () => BigInt((await p.client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
       bundler: bundlerCall(url),
       signUserOp: (op) => signUserOp(op, p.chainId, evmAccountFromBytes(p.privateKey)),
+      getTxReceipt: (h) => p.client.getTransactionReceipt({ hash: h }),
     }, { calls: p.calls, sponsor: p.sponsor !== false });
     return r.txHash;
   } catch (e: any) {
-    if (e?.code === 'op_reverted' || e?.code === 'op_pending') throw e;
+    if (e?.code === 'op_reverted' || e?.code === 'op_pending' || e?.code === 'receipt_mismatch') throw e; // an operation was already sent: never fall back to a second transaction
     if (e instanceof GuardError) { if (e.reason !== 'not_enabled') logWarn('smart account: guard refused an operation', e.reason); return null; }
     return null; // estimate_failed, network errors: fall back to normal transactions
   }
@@ -197,6 +198,7 @@ export async function submitDappCalls(p: { chainId: number; account: string; pri
       chainId: p.chainId, account, getCode: () => client.getCode({ address: account }),
       readNonce: async () => BigInt((await client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
       bundler: bundlerCall(url), signUserOp: (op) => signUserOp(op, p.chainId, evmAccountFromBytes(p.privateKey)),
+      getTxReceipt: (h) => client.getTransactionReceipt({ hash: h }),
     }, { calls: p.calls, sponsor: true }, 0);
     throw Object.assign(new Error('unexpected'), { code: 'error' });
   } catch (e: any) {
@@ -209,8 +211,14 @@ export async function submitDappCalls(p: { chainId: number; account: string; pri
 export async function userOpStatus(chainId: number, userOpHash: string): Promise<{ state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown }> {
   const url = bundlerUrl(chainId); if (!url || !/^0x[0-9a-fA-F]{64}$/.test(userOpHash)) return { state: 'pending' };
   const rc = await bundlerCall(url)('eth_getUserOperationReceipt', [userOpHash]).catch(() => null);
-  if (!rc || typeof rc !== 'object' || !rc.receipt) return { state: 'pending' };
-  return { state: 'done', success: rc.success !== false, receipt: rc.receipt };
+  const tx = rc?.receipt?.transactionHash;
+  if (!rc || typeof tx !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return { state: 'pending' };
+  // The bundler only names the transaction; success is read from the user's own RPC (UserOperationEvent for this exact hash). Not yet visible there = still pending.
+  const chain = resolveSendChain(undefined, chainId, customNetworks()); if (!chain) return { state: 'pending' };
+  const chainRc = await evmClientFor(chain).getTransactionReceipt({ hash: tx as Hex }).catch(() => null);
+  if (!chainRc) return { state: 'pending' };
+  const r = verifyInclusion(chainRc, userOpHash);
+  return { state: 'done', success: r === 'success', receipt: { ...rc.receipt, success: r === 'success' } };
 }
 
 

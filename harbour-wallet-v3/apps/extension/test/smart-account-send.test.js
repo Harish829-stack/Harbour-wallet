@@ -18,7 +18,9 @@ const CHAIN = 84532, PM = '0x777777777777AeC03fd955926DbF81597e66834C', SINK = '
 const KEY = '0x' + '11'.repeat(32); const ACCT = privateKeyToAccount(KEY).address;
 const DELEG_CODE = '0xef0100' + M.DELEGATES[CHAIN].slice(2);
 const goodSponsor = { paymaster: PM, paymasterData: '0xabcd', paymasterVerificationGasLimit: '0x7cb3', paymasterPostOpGasLimit: '0x1', callGasLimit: '0x4623', verificationGasLimit: '0x7cb3', preVerificationGas: '0xc479' };
-const TX = '0x' + 'ab'.repeat(32);
+const TX = '0x' + 'ab'.repeat(32); const OPH = '0x' + 'cd'.repeat(32);
+// A chain receipt as the user's own RPC returns it: the EntryPoint's UserOperationEvent for OPH, sender ACCT, success flag configurable.
+const chainRc = (o = {}) => ({ status: o.status ?? 'success', logs: o.logs ?? [{ address: o.ep ?? M.ENTRYPOINT_V07, topics: [M.USER_OP_EVENT_TOPIC, o.hash ?? OPH, '0x' + '0'.repeat(24) + (o.sender ?? ACCT).slice(2), '0x' + '0'.repeat(64)], data: '0x' + '0'.repeat(63) + '7' + '0'.repeat(63) + (o.ok === false ? '0' : '1') + '0'.repeat(63) + '5' + '0'.repeat(63) + '6' }] });
 const signOp = (op) => M.signUserOp(op, CHAIN, privateKeyToAccount(KEY));
 // Independent oracle (test only): the delegate's EIP-712 PackedUserOperation digest, written out here so the kit is checked against it.
 const p16 = (n) => pad(toHex(n), { size: 16 });
@@ -48,6 +50,7 @@ function rig(over = {}) {
       throw new Error('unexpected ' + method);
     },
     signUserOp: signOp,
+    getTxReceipt: async () => (over.chainRc !== undefined ? over.chainRc : chainRc()),
     sleep: async () => {},
   };
   return { d, calls, signed };
@@ -118,8 +121,31 @@ test('not enabled, foreign delegate, bad intent and a fee over the cap are refus
   await assert.rejects(M.sendOperation(c.d, input), (e) => e instanceof M.GuardError);
 });
 test('reverted and pending operations are reported', async () => {
-  const r = rig({ eth_getUserOperationReceipt: () => ({ success: false, receipt: { transactionHash: TX } }) }); r.d.signUserOp = signOp;
+  const r = rig({ chainRc: chainRc({ ok: false }) }); r.d.signUserOp = signOp;
   await assert.rejects(M.sendOperation(r.d, input), (e) => e.code === 'op_reverted');
   const p = rig({ eth_getUserOperationReceipt: () => null }); p.d.signUserOp = signOp;
   await assert.rejects(M.sendOperation(p.d, input, 1), (e) => e.code === 'op_pending' && /^0x[0-9a-f]{64}$/.test(e.userOpHash));
+});
+
+test('success is read from the user\'s own RPC: a bundler that says success cannot hide a failed operation', async () => {
+  const lie = rig({ chainRc: chainRc({ ok: false }), eth_getUserOperationReceipt: () => ({ success: true, receipt: { transactionHash: TX } }) });
+  await assert.rejects(M.sendOperation(lie.d, input), (e) => e.code === 'op_reverted');
+  const txRev = rig({ chainRc: chainRc({ status: 'reverted' }) });
+  await assert.rejects(M.sendOperation(txRev.d, input), (e) => e.code === 'op_reverted');
+});
+test('a receipt that is not for this operation is a mismatch, never a success', async () => {
+  for (const o of [{ hash: '0x' + 'ee'.repeat(32) }, { sender: SINK }, { ep: SINK }, { logs: [] }]) {
+    const r = rig({ chainRc: chainRc(o) });
+    await assert.rejects(M.sendOperation(r.d, input), (e) => e.code === 'receipt_mismatch', JSON.stringify(Object.keys(o)));
+  }
+});
+test('a receipt not yet visible on the user\'s RPC keeps waiting and ends pending', async () => {
+  const r = rig({ chainRc: null });
+  await assert.rejects(M.sendOperation(r.d, input, 1), (e) => e.code === 'op_pending');
+});
+test('verifyInclusion: topic0 is the EntryPoint v0.7 event and malformed data is a mismatch', () => {
+  assert.equal(M.USER_OP_EVENT_TOPIC, '0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f');
+  assert.equal(M.verifyInclusion(chainRc(), OPH, ACCT), 'success');
+  assert.equal(M.verifyInclusion(chainRc({ logs: [{ address: M.ENTRYPOINT_V07, topics: [M.USER_OP_EVENT_TOPIC, OPH, '0x' + '0'.repeat(64)], data: '0x01' }] }), OPH), 'mismatch');
+  assert.equal(M.verifyInclusion(null, OPH), 'mismatch');
 });

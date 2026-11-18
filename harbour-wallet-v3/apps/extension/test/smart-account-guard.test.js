@@ -124,3 +124,12 @@ test('padGasEstimate: +25% call/verification, +10% pre-verification, rounded up,
   assert.equal(cap.callGasLimit, M.LIMITS.maxCallGasLimit); assert.equal(cap.verificationGasLimit, M.LIMITS.maxVerificationGasLimit); assert.equal(cap.preVerificationGas, M.LIMITS.maxPreVerificationGas);
   assert.deepEqual(Object.keys(g).sort(), ['callGasLimit', 'preVerificationGas', 'verificationGasLimit']);
 });
+
+test('every smart account chain has its own explicit limits entry; an unlisted chain can never pass the fee cap', () => {
+  for (const id of Object.keys(M.DELEGATES)) assert.ok(Object.prototype.hasOwnProperty.call(M.CHAIN_LIMITS, id), `chain ${id} needs an explicit CHAIN_LIMITS entry`);
+  assert.equal(M.limitsFor(999999).maxTotalFeeWei, 0n);
+  const tight = { ...M.LIMITS, maxFeePerGasWei: 10n, maxTotalFeeWei: 1_000n };
+  assert.throws(() => M.acceptGasPrice({ fast: { maxFeePerGas: '0xb', maxPriorityFeePerGas: '0x1' } }, tight), (e) => e.reason === 'fee_per_gas');
+  assert.deepEqual(M.acceptGasPrice({ fast: { maxFeePerGas: '0xa', maxPriorityFeePerGas: '0x1' } }, tight), { maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+  assert.throws(() => M.acceptGasEstimate({ callGasLimit: '0x4623', verificationGasLimit: '0x7cb3', preVerificationGas: '0xc479' }, { ...M.LIMITS, maxCallGasLimit: 100n }), (e) => e.reason === 'call_gas');
+});
