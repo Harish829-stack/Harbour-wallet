@@ -16,7 +16,7 @@ const out = await build({
 });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
-const UI_MESSAGES = ['smartAccountStatus', 'smartAccountPrepare', 'smartAccountApprove', 'smartAccountReject'];
+const UI_MESSAGES = ['smartAccountStatus', 'smartAccountGrants', 'smartAccountPrepare', 'smartAccountApprove', 'smartAccountReject'];
 
 test('a web page cannot reach the smart account messages or methods through the provider', () => {
   for (const ns of ['evm', 'solana'])
@@ -24,7 +24,7 @@ test('a web page cannot reach the smart account messages or methods through the 
       assert.equal(M.specFor(ns, m), null, `${ns}:${m}`);
 });
 
-test('the UI message names are exactly the four handlers, none takes key material', () => {
+test('the UI message names are exactly the five handlers, none takes key material', () => {
   const text = readFileSync(path.join(src, 'background/handlers/smartAccount.ts'), 'utf8');
   const names = [...text.matchAll(/^\s+(smartAccount\w+):/gm)].map((m) => m[1]);
   assert.deepEqual(names.sort(), [...UI_MESSAGES].sort());

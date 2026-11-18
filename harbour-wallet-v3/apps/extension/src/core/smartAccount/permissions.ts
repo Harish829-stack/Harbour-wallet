@@ -58,6 +58,8 @@ export interface GrantRecord {
   id: string; origin: string; chainId: number; account: string; sessionKey: string; type: PermissionType; allowance: string; token: string | null; expiry: number; grantedAt: number;
   /** ABI-encoded signed delegation (what the site redeems); stored so the site can read its grant back. */
   context: string;
+  /** Set once the user has disabled the delegation on-chain. */
+  revoked?: { tx: string; at: number };
   delegation: { delegate: string; delegator: string; authority: string; caveats: Array<{ enforcer: string; terms: string; args: string }>; salt: string; signature: string };
 }
 /** The ERC-7715 response for a stored grant (the context is the ABI-encoded signed delegation the site redeems through the DelegationManager). */

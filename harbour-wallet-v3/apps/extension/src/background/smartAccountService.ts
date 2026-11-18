@@ -16,7 +16,7 @@ import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYP
 import { buildSignedType4 } from '../core/smartAccount/delegation';
 import { sendOperation } from '../core/smartAccount/send';
 import { buildPermissionDelegation, permissionContext, permissionHash, signPermission } from '../core/smartAccount/permissionDelegation';
-import { DELEGATION_MANAGER } from '../core/smartAccount/constants';
+import { DELEGATION_MANAGER, SMART_ACCOUNT_CHAINS } from '../core/smartAccount/constants';
 import type { NormalizedPermission, GrantRecord } from '../core/smartAccount/permissions';
 import { signUserOp } from '../core/smartAccount/kit';
 import { GuardError, GUARD_MESSAGE, assertFresh, checkAuthorization, delegationState, requirePinnedDelegation, type DelegationState } from '../core/smartAccount/guard';
@@ -24,13 +24,15 @@ import { delegationTarget } from '../core/evmCode';
 import { evmClientFor, feeData } from './handlers/earnEvm';
 import { activeInfo } from './handlers/earnKeys';
 import { openActiveKeys } from './keys';
+import { grantStore } from './grants';
+import { DelegationManager as DM_ABI } from '@metamask/delegation-abis';
 import { consumeReauth } from './reauth';
 import type { HandlerCtx } from './handlers/types';
 
 const getStore = () => import('./store'); // lazy: keeps this module importable outside the extension runtime
 
-export type SmartKind = 'enable' | 'revoke';
-interface Prepared { kind: SmartKind; chainId: number; account: Address; walletId: string; before: DelegationState; txNonce: number; maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; preparedAt: number }
+export type SmartKind = 'enable' | 'revoke' | 'revokeGrant';
+interface Prepared { grantId?: string; gas?: bigint; kind: SmartKind; chainId: number; account: Address; walletId: string; before: DelegationState; txNonce: number; maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; preparedAt: number }
 const prepared = new Map<string, Prepared>(); // in memory only; a worker restart drops them and the user simply starts again
 
 const fail = (error: string, code = 'error') => ({ ok: false as const, error, code });
@@ -69,8 +71,9 @@ export async function status(ctx: HandlerCtx, p: { chainId: unknown }) {
 }
 
 /** Builds the confirmation summary and remembers the operation under a requestId. Signs nothing. */
-export async function prepare(ctx: HandlerCtx, p: { kind: unknown; chainId: unknown }) {
+export async function prepare(ctx: HandlerCtx, p: { kind: unknown; chainId: unknown; grantId?: unknown }) {
   try {
+    if (p.kind === 'revokeGrant') return await prepareRevokeGrant(ctx, p);
     if (p.kind !== 'enable' && p.kind !== 'revoke') return fail('Unknown request', 'bad_request');
     const kind = p.kind as SmartKind; const c = await context(ctx, p.chainId);
     const s = await codeState(c.client, c.account, c.chainId);
@@ -97,6 +100,7 @@ export async function prepare(ctx: HandlerCtx, p: { kind: unknown; chainId: unkn
 export async function approve(ctx: HandlerCtx, p: { requestId: unknown }) {
   const id = typeof p.requestId === 'string' ? p.requestId : '';
   const e = prepared.get(id); if (!e) return fail('This request expired. Start again.', 'expired');
+  if (e.kind === 'revokeGrant') return approveRevokeGrant(ctx, id, e);
   try {
     assertFresh(e.preparedAt);
     const c = await context(ctx, e.chainId);
@@ -229,4 +233,79 @@ export async function grantPermission(p: { chainId: number; account: string; pri
     if (e instanceof GuardError) { logWarn('smart account: guard refused a permission', e.reason); throw Object.assign(new Error(GUARD_MESSAGE), { code: 'guard_failed' }); }
     throw e;
   }
+}
+
+
+// ---------- Settings: list and revoke the permissions the user granted to sites (P5) ----------
+const disableCalldata = (g: GrantRecord): Hex => encodeFunctionData({
+  abi: DM_ABI, functionName: 'disableDelegation',
+  args: [{ delegate: g.delegation.delegate as Address, delegator: g.delegation.delegator as Address, authority: g.delegation.authority as Hex, caveats: g.delegation.caveats.map((c) => ({ enforcer: c.enforcer as Address, terms: c.terms as Hex, args: c.args as Hex })), salt: BigInt(g.delegation.salt), signature: g.delegation.signature as Hex }],
+} as any);
+const isDisabled = async (client: ReturnType<typeof evmClientFor>, id: string) =>
+  (await client.readContract({ address: DELEGATION_MANAGER, abi: DM_ABI, functionName: 'disabledDelegations', args: [id as Hex] } as any)) === true;
+const GRANT_REVOKE_GAS_CAP = 400_000n;
+
+/** The active account's grants for the Settings list. Public data only: no delegation, no signature, no context. */
+export async function grants(ctx: HandlerCtx) {
+  try {
+    const info = await activeInfo(ctx); const account = info?.addresses.ethereum;
+    if (!account || !smartAccountsAvailable({ flag: await flagOn(), chainId: SMART_ACCOUNT_CHAINS[0], walletType: info?.walletType })) return { ok: true as const, available: false as const, grants: [] };
+    const now = Math.floor(Date.now() / 1000);
+    const rows = (await grantStore.all()).filter((g) => g.account.toLowerCase() === account.toLowerCase()).map((g) => ({
+      id: g.id, origin: g.origin, chainId: g.chainId, network: resolveSendChain(undefined, g.chainId, customNetworks())?.name ?? String(g.chainId), symbol: resolveSendChain(undefined, g.chainId, customNetworks())?.symbol ?? '',
+      sessionKey: g.sessionKey, type: g.type, allowance: g.allowance, token: g.token, expiry: g.expiry, grantedAt: g.grantedAt, status: g.revoked ? 'revoked' as const : g.expiry <= now ? 'expired' as const : 'active' as const,
+    })).sort((a, b) => b.grantedAt - a.grantedAt);
+    return { ok: true as const, available: true as const, grants: rows };
+  } catch (e) { return errOf(e); }
+}
+
+async function prepareRevokeGrant(ctx: HandlerCtx, p: { grantId?: unknown }) {
+  const gid = typeof p.grantId === 'string' ? p.grantId : '';
+  const g = (await grantStore.all()).find((x) => x.id === gid);
+  if (!g) return fail('That permission was not found.', 'not_found');
+  if (g.revoked) return fail('That permission is already revoked.', 'already_revoked');
+  const c = await context(ctx, g.chainId);
+  if (c.account.toLowerCase() !== g.account.toLowerCase()) return fail('That permission belongs to another account.', 'other_account');
+  if (await isDisabled(c.client, g.id)) { await grantStore.markRevoked(g.id, 'already-disabled'); return fail('That permission is already revoked.', 'already_revoked'); }
+  const data = disableCalldata(g);
+  let gas: bigint;
+  try { gas = ((await c.client.estimateGas({ account: c.account, to: DELEGATION_MANAGER, data })) * 13n) / 10n; } catch { return fail('This permission cannot be revoked right now. Try again later.', 'cannot_estimate'); }
+  if (gas <= 0n || gas > GRANT_REVOKE_GAS_CAP) return fail('This permission cannot be revoked right now. Try again later.', 'cannot_estimate');
+  const f = await feeData(c.client, false); const base = f.maxFeePerGas ?? f.gasPrice ?? 0n; if (base <= 0n) throw new Error('Could not read the network fee.');
+  const maxFeePerGas = (base * 12n) / 10n; const maxPriorityFeePerGas = f.maxPriorityFeePerGas && f.maxPriorityFeePerGas < maxFeePerGas ? f.maxPriorityFeePerGas : 0n;
+  const maxFee = gas * maxFeePerGas; const balance = await c.client.getBalance({ address: c.account });
+  if (balance < maxFee) return fail(`You need about ${formatEther(maxFee)} ${c.chain.symbol} for the network fee.`, 'insufficient_funds');
+  const txNonce = await c.client.getTransactionCount({ address: c.account, blockTag: 'pending' });
+  const now = Date.now(); for (const [k, v] of prepared) if (now - v.preparedAt > PREPARED_TTL_MS) prepared.delete(k);
+  const requestId = crypto.randomUUID();
+  prepared.set(requestId, { kind: 'revokeGrant', grantId: g.id, gas, chainId: c.chainId, account: c.account, walletId: c.walletId, before: 'pinned', txNonce, maxFeePerGas, maxPriorityFeePerGas, preparedAt: now });
+  return {
+    ok: true as const, requestId, kind: 'revokeGrant' as const, chainId: c.chainId, network: c.chain.name, symbol: c.chain.symbol, address: c.account, delegate: g.sessionKey, origin: g.origin,
+    allowance: g.allowance, token: g.token, expiry: g.expiry, maxFee: formatEther(maxFee), maxFeeWei: maxFee.toString(), expiresInSec: Math.floor(PREPARED_TTL_MS / 1000), needsReauth: true,
+  };
+}
+
+async function approveRevokeGrant(ctx: HandlerCtx, id: string, e: Prepared) {
+  try {
+    assertFresh(e.preparedAt);
+    const c = await context(ctx, e.chainId);
+    if (c.account.toLowerCase() !== e.account.toLowerCase() || c.walletId !== e.walletId) throw new GuardError('account_changed');
+    const g = (await grantStore.all()).find((x) => x.id === e.grantId);
+    if (!g || g.revoked || g.account.toLowerCase() !== c.account.toLowerCase() || g.chainId !== e.chainId) throw new GuardError('grant_changed');
+    if (!(await consumeReauth('manage', { walletId: e.walletId }))) return fail('Confirm with your password first.', 'AUTH_REQUIRED'); // keep the request for a retry within its lifetime
+    prepared.delete(id); // single use from here on
+    if (await isDisabled(c.client, g.id)) { await grantStore.markRevoked(g.id, 'already-disabled'); return fail('That permission is already revoked.', 'already_revoked'); }
+    const txNonce = await c.client.getTransactionCount({ address: c.account, blockTag: 'pending' });
+    if ((await c.client.getBalance({ address: c.account })) < (e.gas as bigint) * e.maxFeePerGas) return fail('Not enough balance for the network fee.', 'insufficient_funds');
+    const keys = await openActiveKeys(ctx.core, ctx.vault, ctx.wallet);
+    let raw: Hex;
+    try {
+      const pk = keys.evmPrivateKey(); const acct = evmAccountFromBytes(pk);
+      if (acct.address.toLowerCase() !== e.account.toLowerCase()) throw new GuardError('key_mismatch');
+      raw = await acct.signTransaction({ type: 'eip1559', chainId: e.chainId, nonce: txNonce, gas: e.gas as bigint, maxFeePerGas: e.maxFeePerGas, maxPriorityFeePerGas: e.maxPriorityFeePerGas, to: DELEGATION_MANAGER, value: 0n, data: disableCalldata(g) } as any);
+    } finally { keys.dispose(); }
+    const txHash = await c.client.sendRawTransaction({ serializedTransaction: raw });
+    await grantStore.markRevoked(g.id, txHash);
+    return { ok: true as const, txHash, kind: 'revokeGrant' as const, chainId: e.chainId };
+  } catch (err) { return errOf(err); }
 }

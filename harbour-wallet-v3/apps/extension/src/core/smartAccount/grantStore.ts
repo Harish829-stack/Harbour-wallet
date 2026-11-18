@@ -15,6 +15,8 @@ export function makeGrantStore(kv: Kv) {
       const all = (await read()).filter((g) => g.id !== rec.id); all.push(rec);
       await kv.set(GRANTS_KEY, all.slice(-MAX_GRANTS)); // oldest dropped from the list only; an on-chain grant stays valid until it expires or is disabled
     },
+    /** Remembers that the user disabled this grant on-chain (the record is kept so Settings can show it as revoked). */
+    markRevoked: async (id: string, tx: string) => { await kv.set(GRANTS_KEY, (await read()).map((g) => (g.id === id ? { ...g, revoked: { tx, at: Date.now() } } : g))); },
     remove: async (id: string) => { await kv.set(GRANTS_KEY, (await read()).filter((g) => g.id !== id)); },
   };
 }

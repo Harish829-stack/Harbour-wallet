@@ -5,7 +5,8 @@ import * as svc from '../smartAccountService';
 
 export const handlers: HandlerMap = {
   smartAccountStatus: (m, ctx) => svc.status(ctx, { chainId: m.chainId }),
-  smartAccountPrepare: (m, ctx) => svc.prepare(ctx, { kind: m.kind, chainId: m.chainId }),
+  smartAccountGrants: (_m, ctx) => svc.grants(ctx),
+  smartAccountPrepare: (m, ctx) => svc.prepare(ctx, { kind: m.kind, chainId: m.chainId, grantId: m.grantId }),
   smartAccountApprove: (m, ctx) => svc.approve(ctx, { requestId: m.requestId }),
   smartAccountReject: (m) => svc.reject({ requestId: m.requestId }),
 };

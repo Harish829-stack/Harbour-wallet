@@ -21,7 +21,7 @@ import { makeRpc } from './rpc';
 import { createSigner } from './signer';
 import { multiBackend } from './multiBuild';
 import { ProviderService, type DeliverTarget } from './service';
-import { makeGrantStore } from '../../core/smartAccount/grantStore';
+import { grantStore } from '../grants';
 import { flagOn as smartFlagOn, callsState, userOpStatus } from '../smartAccountService';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
@@ -71,7 +71,6 @@ const callBundles = {
     await kvSession.set(BUNDLES_KEY, m);
   },
 };
-export const grantStore = makeGrantStore(kvLocal);
 // WalletConnect v2 (Harbour-side equivalent; Trust Wallet 26.41.0 ships no pairing/session client — see evidences/re-evidence/16-walletconnect).
 export const wc = new WalletConnectBridge({
   kv: kvLocal, perms, service: () => getProvider(), createKit, projectId: readProjectId,

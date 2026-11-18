@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-import { parseTransaction, recoverTransactionAddress, recoverAddress, recoverTypedDataAddress, hexToBytes, keccak256 } from 'viem';
+import { parseTransaction, recoverTransactionAddress, recoverAddress, recoverTypedDataAddress, hexToBytes, keccak256, toFunctionSelector } from 'viem';
 import { hashAuthorization } from 'viem/experimental';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -15,10 +15,11 @@ const stubs = {
   './store': `export const store = { getState: () => ({ sdkFeatureSlice: { flags: globalThis.__sa.flags } }) };`,
   './handlers/earnEvm': `export const evmClientFor = () => globalThis.__sa.client; export const feeData = async () => ({ maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n });`,
   './handlers/earnKeys': `export const activeInfo = async () => globalThis.__sa.info;`,
+  './grants': `export const grantStore = { all: (...a) => globalThis.__sa.grantStore.all(...a), markRevoked: (...a) => globalThis.__sa.grantStore.markRevoked(...a) };`,
   '../core/sendService': `export const resolveSendChain = (_a, id) => (id === 84532 ? { id: 'base-sepolia', name: 'Base Sepolia', symbol: 'ETH', evmChainId: 84532, kind: 'evm' } : undefined);`,
 };
 const plugin = { name: 'stubs', setup(b) {
-  b.onResolve({ filter: /^(\.\/(keys|reauth|store)|\.\/handlers\/(earnEvm|earnKeys)|\.\.\/core\/sendService)$/ }, (a) => (a.importer.endsWith('smartAccountService.ts') && stubs[a.path] ? { path: a.path, namespace: 'stub' } : undefined));
+  b.onResolve({ filter: /^(\.\/(keys|reauth|store|grants)|\.\/handlers\/(earnEvm|earnKeys)|\.\.\/core\/sendService)$/ }, (a) => (a.importer.endsWith('smartAccountService.ts') && stubs[a.path] ? { path: a.path, namespace: 'stub' } : undefined));
   b.onLoad({ filter: /.*/, namespace: 'stub' }, (a) => ({ contents: stubs[a.path], loader: 'js' }));
 } };
 const out = await build({ stdin: { contents: `export * from './background/smartAccountService'; export { handlers } from './background/handlers/smartAccount'; export { DELEGATES } from './core/smartAccount/constants'; export { normalizePermissionRequest } from './core/smartAccount/permissions'; export { delegationTypedData } from './core/smartAccount/permissionDelegation';`, resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` }, logLevel: 'silent', plugins: [plugin], define: { 'import.meta.env': '{}' } });
@@ -30,7 +31,10 @@ const CHAIN = 84532; const DELEGATE = M.DELEGATES[CHAIN];
 const sa = globalThis.__sa = {};
 function reset(over = {}) {
   Object.assign(sa, { flags: { smartAccounts: true }, code: '0x', nonce: 4, balance: 10n ** 18n, sent: [], disposed: 0, opened: 0, grants: 1, keyHex: PK, info: { walletId: 'w1', walletType: 'mnemonic', addresses: { ethereum: ACCT } }, ...over });
+  sa.store = []; sa.disabled = false; sa.estimate = 60_000n;
+  sa.grantStore = { all: async () => sa.store, markRevoked: async (id, tx) => { sa.store = sa.store.map((g) => (g.id === id ? { ...g, revoked: { tx, at: 1 } } : g)); } };
   sa.client = {
+    readContract: async () => sa.disabled, estimateGas: async () => { if (sa.estimate === null) throw new Error('reverts'); return sa.estimate; },
     getCode: async () => sa.code, getTransactionCount: async () => sa.nonce, getBalance: async () => sa.balance,
     sendRawTransaction: async ({ serializedTransaction }) => { sa.sent.push(serializedTransaction); return keccak256(serializedTransaction); },
   };
@@ -134,7 +138,7 @@ test('reject forgets the request; only the four UI messages exist', async () => 
   reset(); const p = await call('smartAccountPrepare', { kind: 'enable', chainId: CHAIN });
   assert.deepEqual({ ...M.reject({ requestId: p.requestId }) }, { ok: true });
   assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'expired');
-  assert.deepEqual(Object.keys(M.handlers).sort(), ['smartAccountApprove', 'smartAccountPrepare', 'smartAccountReject', 'smartAccountStatus']);
+  assert.deepEqual(Object.keys(M.handlers).sort(), ['smartAccountApprove', 'smartAccountGrants', 'smartAccountPrepare', 'smartAccountReject', 'smartAccountStatus']);
 });
 
 // ---------------------------------------------------------------- ERC-7715 grant signing (P5)
@@ -155,4 +159,41 @@ test('grantPermission fails closed: flag off, account not on the pinned delegate
   reset({ code: '0xef0100' + '44'.repeat(20) }); assert.equal(await code(M.grantPermission(grantArgs())), 'guard_failed');
   reset({ code: '0xef0100' + DELEGATE.slice(2) }); assert.equal(await code(M.grantPermission({ ...grantArgs(), privateKey: hexToBytes('0x' + '22'.repeat(32)) })), 'guard_failed');
   assert.equal(await code(M.grantPermission({ ...grantArgs(), chainId: 1 })), 'unavailable');
+});
+
+// ---------------------------------------------------------------- Settings: list and revoke granted permissions (P5)
+async function seedGrant() { reset({ code: '0xef0100' + DELEGATE.slice(2) }); const g = await M.grantPermission(grantArgs()); sa.store = [g.record]; return g.record; }
+const DM = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+test('grants list: the active account\'s grants as public summaries only (no delegation, signature or context)', async () => {
+  const rec = await seedGrant(); sa.store.push({ ...rec, id: '0x' + '01'.repeat(32), account: '0x0000000000000000000000000000000000000009' });
+  const r = await call('smartAccountGrants'); assert.equal(r.ok, true); assert.equal(r.grants.length, 1); const g = r.grants[0];
+  assert.equal(g.status, 'active'); assert.equal(g.origin, 'https://app.example'); assert.equal(g.allowance, '10000000000000000'); assert.equal(g.network, 'Base Sepolia');
+  for (const k of ['delegation', 'signature', 'context']) assert.equal(k in g, false, k);
+  reset({ flags: { smartAccounts: false } }); assert.equal((await call('smartAccountGrants')).available, false);
+});
+test('revoking a grant: prepare signs nothing, approve needs re-auth then sends one disableDelegation tx from the account to the DelegationManager', async () => {
+  const rec = await seedGrant();
+  const p = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); assert.equal(p.ok, true); assert.equal(p.kind, 'revokeGrant'); assert.equal(p.delegate.toLowerCase(), rec.sessionKey.toLowerCase());
+  assert.equal(sa.sent.length, 0); assert.equal(sa.opened, 0);
+  sa.grants = 0; assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'AUTH_REQUIRED'); assert.equal(sa.sent.length, 0);
+  sa.grants = 1; const r = await call('smartAccountApprove', { requestId: p.requestId }); assert.equal(r.ok, true); assert.equal(sa.sent.length, 1); assert.equal(sa.disposed, 1);
+  const tx = parseTransaction(sa.sent[0]); assert.equal(tx.type, 'eip1559'); assert.equal(tx.to.toLowerCase(), DM.toLowerCase()); assert.equal(tx.value ?? 0n, 0n); assert.equal(tx.chainId, CHAIN);
+  assert.equal(await recoverTransactionAddress({ serializedTransaction: sa.sent[0] }), ACCT);
+  assert.equal(tx.data.slice(0, 10), toFunctionSelector('disableDelegation((address,address,bytes32,(address,bytes,bytes)[],uint256,bytes))'));
+  assert.equal(sa.store[0].revoked.tx, r.txHash);
+  assert.equal((await call('smartAccountGrants')).grants[0].status, 'revoked');
+  assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'expired', 'single use');
+  assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'already_revoked');
+});
+test('revoking fails closed: unknown id, another account, already disabled on-chain, cannot estimate, no balance, key mismatch, grant changed', async () => {
+  let rec = await seedGrant();
+  assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: '0xnope' })).code, 'not_found');
+  sa.store = [{ ...rec, account: '0x0000000000000000000000000000000000000009' }]; assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'other_account');
+  sa.store = [rec]; sa.disabled = true; assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'already_revoked'); assert.ok(sa.store[0].revoked, 'remembered as revoked');
+  rec = await seedGrant(); sa.estimate = null; assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'cannot_estimate');
+  sa.estimate = 5_000_000n; assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'cannot_estimate');
+  sa.estimate = 60_000n; sa.balance = 0n; assert.equal((await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id })).code, 'insufficient_funds');
+  sa.balance = 10n ** 18n; let p = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); assert.equal(p.ok, true);
+  sa.keyHex = '0x' + '11'.repeat(32); assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'guard_failed'); assert.equal(sa.sent.length, 0); assert.equal(sa.disposed, 1);
+  sa.keyHex = PK; p = await call('smartAccountPrepare', { kind: 'revokeGrant', chainId: CHAIN, grantId: rec.id }); sa.store = []; assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'guard_failed'); assert.equal(sa.sent.length, 0);
 });
