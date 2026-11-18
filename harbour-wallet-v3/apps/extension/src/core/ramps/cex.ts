@@ -67,13 +67,16 @@ export function registryCexAssets(): CexAsset[] {
 const sortAssets = (a: CexAsset[]) => a.sort((x, y) => Number(y.isNative) - Number(x.isNative) || x.symbol.localeCompare(y.symbol) || x.chainName.localeCompare(y.chainName));
 
 export async function fetchCexAssets(id: CexProviderId, f: Fetcher): Promise<CexAssets> {
-  const url = id === 'coinbase-pay' ? 'https://api.exchange.coinbase.com/currencies' : 'https://www.binance.com/bapi/capital/v1/public/capital/getNetworkCoinAll';
+  // Binance has no public, documented asset-list endpoint (its capital config needs an API key), so the undocumented `bapi`
+  // endpoint is not called: Binance uses Harbour's registry list, which the deposit screen already labels as not exchange-confirmed.
+  if (id !== 'coinbase-pay') return { assets: sortAssets(registryCexAssets()), source: 'registry', note: "Binance publishes no public asset list, so this is Harbour's own list; Binance may not support every asset shown. Confirm the network in Binance's withdrawal form." };
+  const url = 'https://api.exchange.coinbase.com/currencies';
   try {
     const res = await f(url, { signal: AbortSignal.timeout(10_000), headers: { accept: 'application/json' } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     const assets = sortAssets(id === 'coinbase-pay' ? parseCoinbaseCurrencies(body) : parseBinanceNetworks(body));
-    if (assets.length) return { assets, source: id === 'coinbase-pay' ? 'coinbase-exchange-api' : 'binance-public-bapi' };
+    if (assets.length) return { assets, source: 'coinbase-exchange-api' };
     throw new Error('empty list');
   } catch (e: any) {
     return { assets: sortAssets(registryCexAssets()), source: 'registry', note: `Could not load ${id === 'coinbase-pay' ? 'Coinbase' : 'Binance'}'s asset list (${String(e?.message ?? 'offline').slice(0, 80)}). Showing Harbour's own list: the exchange may not support every asset or network shown. Check the network on the exchange's withdrawal form.` };
