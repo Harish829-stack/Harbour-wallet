@@ -229,9 +229,9 @@ test('SPL: balance sums token accounts; probe reads decimals on-chain, name/symb
   assert.deepEqual(b, { ok: true, raw: '2000000', formatted: '2' }); assert.deepEqual(f.calls[0].body.params.slice(0, 2), [SOL_ME, { mint: MINT }]);
   assert.equal((await M.tok.splBalance(sol, SOL_ME, MINT, 6, mock({ throws: true }))).ok, false);
   const mintInfo = { jsonrpc: '2.0', id: 1, result: { value: { owner: M.tok.TOKEN_PROGRAMS[0], data: { parsed: { type: 'mint', info: { decimals: 6 } } } } } };
-  const p = await M.tok.probeSpl(sol, MINT, mock({ rpc: 'getAccountInfo', body: mintInfo }, { url: 'jup.ag/tokens/v2/search', body: [{ id: MINT, name: 'USD Coin', symbol: 'USDC', decimals: 6 }] }));
+  const p = await M.tok.probeSpl(sol, MINT, mock({ rpc: 'getAccountInfo', body: mintInfo }, { url: '/jup/tokens/v2/search', body: [{ id: MINT, name: 'USD Coin', symbol: 'USDC', decimals: 6 }] }));
   assert.deepEqual(p, { ok: true, token: { address: MINT, name: 'USD Coin', symbol: 'USDC', decimals: 6, standard: 'SPL' }, needsManual: false });
-  const spoof = await M.tok.probeSpl(sol, MINT, mock({ rpc: 'getAccountInfo', body: mintInfo }, { url: 'jup.ag', body: [{ id: MINT, name: 'Evil', symbol: 'EVIL', decimals: 9 }] }));
+  const spoof = await M.tok.probeSpl(sol, MINT, mock({ rpc: 'getAccountInfo', body: mintInfo }, { url: '/jup/tokens', body: [{ id: MINT, name: 'Evil', symbol: 'EVIL', decimals: 9 }] }));
   assert.equal(spoof.ok, true); assert.equal(spoof.needsManual, true); assert.equal(spoof.token.name, '');
   const nonMint = await M.tok.probeSpl(sol, MINT, mock({ rpc: 'getAccountInfo', body: { jsonrpc: '2.0', id: 1, result: { value: { owner: '11111111111111111111111111111111', data: { parsed: { type: 'account' } } } } } }));
   assert.equal(nonMint.code, 'NOT_A_TOKEN');

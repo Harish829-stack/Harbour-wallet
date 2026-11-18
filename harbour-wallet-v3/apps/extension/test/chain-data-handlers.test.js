@@ -15,7 +15,7 @@ const realFetch = globalThis.fetch;
 const routeFetch = () => { globalThis.fetch = async (url, init = {}) => { const b = init.body ? JSON.parse(init.body) : null; const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s });
   if (b?.method === 'getAccountInfo') return j({ jsonrpc: '2.0', id: 1, result: { value: { owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', data: { parsed: { type: 'mint', info: { decimals: 6 } } } } } });
   if (b?.method === 'getTokenAccountsByOwner') return j({ jsonrpc: '2.0', id: 1, result: { value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: '2500000', decimals: 6 } } } } } }] } });
-  if (String(url).includes('jup.ag')) return j([{ id: MINT, name: 'USD Coin', symbol: 'USDC', decimals: 6 }]);
+  if (String(url).includes('/jup/tokens')) return j([{ id: MINT, name: 'USD Coin', symbol: 'USDC', decimals: 6 }]);
   return j({}, 404); }; };
 test('chainDataCapabilities reports honest per-chain support', () => {
   const r = M.handlers.chainDataCapabilities({}, {});

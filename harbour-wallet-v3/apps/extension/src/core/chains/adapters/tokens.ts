@@ -1,13 +1,14 @@
 // Non-EVM custom-asset support (TW: custom-asset flow on Solana / Tron): token balances + metadata probes. Pure functions over an injectable fetch.
 //   SPL    : getTokenAccountsByOwner(owner, {mint}) jsonParsed (sums every token account; covers Token and Token-2022), getAccountInfo(mint) for decimals.
 //            name/symbol are NOT on the mint account (Metaplex metadata PDA needs off-curve derivation); they are looked up best-effort on Jupiter's
-//            public token index (lite-api.jup.ag/tokens/v2/search) and otherwise the user types them (decimals stay locked to the chain value).
+//            token index, reached through the Harbour gateway (/jup/tokens/v2/search; the key stays on the backend) and otherwise the user types them (decimals stay locked to the chain value).
 //   TRC-20 : TronGrid POST /wallet/triggerconstantcontract (balanceOf / name / symbol / decimals) — same ABI selectors as ERC-20.
 import type { ChainInfo } from '../types';
 import type { Fetcher } from './types';
 import { endpointsOf, postJ, getJ, rpc } from './net';
 import { base58CheckDecode, base58Decode, bytesToHex, toBig } from './codec';
 import { solanaRpcUrl } from '../../rpc';
+import { GATEWAY_URL } from '../../../kit/endpoints';
 import { firstOf, formatUnits } from './types';
 
 export type TokenStandard = 'SPL' | 'TRC20' | 'JETTON' | 'COIN';
@@ -67,8 +68,9 @@ export async function probeSpl(chain: ChainInfo, mint: string, f: Fetcher): Prom
 }
 /** Best-effort name/symbol. The id AND decimals must match the on-chain mint or the hit is ignored (a lookalike cannot spoof the card). */
 export async function jupiterMeta(mint: string, decimals: number, f: Fetcher): Promise<{ name: string; symbol: string } | null> {
+  if (!GATEWAY_URL) return null;
   try {
-    const r = await getJ(f, `https://lite-api.jup.ag/tokens/v2/search?query=${encodeURIComponent(mint)}`, 6000);
+    const r = await getJ(f, `${GATEWAY_URL}/jup/tokens/v2/search?query=${encodeURIComponent(mint)}`, 6000);
     const hit = (Array.isArray(r.body) ? r.body : []).find((t: any) => t?.id === mint && Number(t?.decimals) === decimals);
     const name = clean(hit?.name, 64), symbol = clean(hit?.symbol, 32);
     return name && symbol ? { name, symbol } : null;

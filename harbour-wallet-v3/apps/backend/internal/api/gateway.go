@@ -62,7 +62,7 @@ func GatewayKeysFromEnv() GatewayKeys {
 
 // GatewayHosts are the upstream base URLs (overridden in tests).
 type GatewayHosts struct {
-	LiFi, Jupiter, Relay, Thor, CoinGecko, CoinGeckoPro, GeckoTerminal, Helius, Etherscan, TronGrid, TonCenter, Pimlico, Uniswap string
+	LiFi, Jupiter, JupiterTokens, Relay, Thor, CoinGecko, CoinGeckoPro, GeckoTerminal, Helius, Etherscan, TronGrid, TonCenter, Pimlico, Uniswap string
 	// Alchemy is a format with one %s for the network slug, e.g. "https://%s.g.alchemy.com".
 	Alchemy string
 }
@@ -70,7 +70,7 @@ type GatewayHosts struct {
 // DefaultGatewayHosts are the production upstreams.
 func DefaultGatewayHosts() GatewayHosts {
 	return GatewayHosts{
-		LiFi: "https://li.quest/v1", Jupiter: "https://api.jup.ag/swap/v1", Relay: "https://api.relay.link",
+		LiFi: "https://li.quest/v1", Jupiter: "https://api.jup.ag/swap/v1", JupiterTokens: "https://api.jup.ag/tokens/v2", Relay: "https://api.relay.link",
 		Uniswap: "https://trade-api.gateway.uniswap.org/v1",
 		Thor:    "https://gateway.liquify.com/chain/thorchain_api", CoinGecko: "https://api.coingecko.com/api/v3",
 		CoinGeckoPro: "https://pro-api.coingecko.com/api/v3", GeckoTerminal: "https://api.geckoterminal.com/api/v2",
@@ -106,6 +106,8 @@ var (
 	reLiFi      = regexp.MustCompile(`^/lifi/v1/(advanced/(routes|stepTransaction)|status|token|tokens|chains)$`)
 	reUniswap   = regexp.MustCompile(`^/uniswap/v1/(check_approval|quote|swap)$`)
 	reJup       = regexp.MustCompile(`^/jup/swap/v1/(quote|swap)$`)
+	reJupTokens = regexp.MustCompile(`^/jup/tokens/v2/search$`)
+	reJupQuery  = regexp.MustCompile(`^[A-Za-z0-9._ -]{1,64}$`)
 	reRelay     = regexp.MustCompile(`^/relay/(quote/v2|intents/status/v[23])$`)
 	reThor      = regexp.MustCompile(`^/thornode/thorchain/(quote/swap|tx/status/[0-9A-Fa-f]{64}|inbound_addresses)$`)
 	reGT        = regexp.MustCompile(`^/gt/networks/(trending_pools|[a-z0-9_-]{2,32}/(tokens/[A-Za-z0-9]{20,64}|pools/[A-Za-z0-9]{20,90}/ohlcv/(minute|hour|day)))$`)
@@ -720,6 +722,12 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 			return nil, errBadRequest
 		}
 		return &gwCall{method: method, url: g.hosts.Jupiter + strings.TrimPrefix(path, "/jup/swap/v1") + qs, body: body, header: jsonH(map[string]string{"x-api-key": g.keys.Jupiter}), secrets: []string{g.keys.Jupiter}}, nil
+	case reJupTokens.MatchString(path):
+		// Solana token search (name/symbol/mint): the key stays on the backend; only a single short `query` is forwarded.
+		if method != http.MethodGet || len(q) != 1 || len(q["query"]) != 1 || !reJupQuery.MatchString(q.Get("query")) {
+			return nil, errBadRequest
+		}
+		return &gwCall{method: method, url: g.hosts.JupiterTokens + "/search?" + url.Values{"query": {q.Get("query")}}.Encode(), header: jsonH(map[string]string{"x-api-key": g.keys.Jupiter}), ttl: 60 * time.Second, secrets: []string{g.keys.Jupiter}}, nil
 	case reRelay.MatchString(path):
 		qs, ok := rawQuery(q)
 		if !ok || (method != http.MethodGet && method != http.MethodPost) {

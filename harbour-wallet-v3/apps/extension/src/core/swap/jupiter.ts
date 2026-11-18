@@ -7,7 +7,9 @@ import { classifyAggregatorError, swapError } from './errors';
 import { QUOTE_REFRESH_SECONDS } from './rules';
 
 import { GATEWAY_URL } from '../../kit/endpoints';
-export const JUP_BASE = GATEWAY_URL ? `${GATEWAY_URL}/jup/swap/v1` : 'https://lite-api.jup.ag/swap/v1';
+// Jupiter's free lite-api host is deprecated and the current API needs a key, so Jupiter is reached only through the Harbour
+// gateway (which holds the key). Without a gateway there is no Jupiter route; the swap screen reports the service as unavailable.
+export const JUP_BASE = GATEWAY_URL ? `${GATEWAY_URL}/jup/swap/v1` : '';
 export const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 type F = typeof fetch;
 export const jupMint = (a: { address: string }) => (a.address === 'native' ? WSOL_MINT : a.address);
@@ -20,6 +22,7 @@ export const SOLANA_PRIORITY = {
 const BASE_FEE_LAMPORTS = 5000;
 
 async function call(f: F, url: string, init?: RequestInit): Promise<any> {
+  if (!JUP_BASE) throw swapError('network');
   let res: Response;
   try { res = await f(url, { ...init, headers: { accept: 'application/json', 'content-type': 'application/json' }, signal: AbortSignal.timeout(15000) }); }
   catch (e: any) { throw e?.name === 'TimeoutError' ? swapError('timeout') : swapError('network'); }

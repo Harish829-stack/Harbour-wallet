@@ -42,7 +42,7 @@ func testGateway(t *testing.T, h http.HandlerFunc) (*gateway, *memCache) {
 		LiFi: srv.URL + "/lifi", Jupiter: srv.URL + "/jup", Relay: srv.URL + "/relay", Thor: srv.URL + "/thor", CoinGecko: srv.URL + "/cg",
 		CoinGeckoPro: srv.URL + "/cgpro", GeckoTerminal: srv.URL + "/gt", Helius: srv.URL + "/helius", Etherscan: srv.URL + "/es",
 		TronGrid: srv.URL + "/tron", TonCenter: srv.URL + "/ton", Pimlico: srv.URL + "/pim", Alchemy: srv.URL + "/alch/%s",
-		Uniswap: srv.URL + "/uni",
+		Uniswap: srv.URL + "/uni", JupiterTokens: srv.URL + "/jupt",
 	}
 	keys := GatewayKeys{LiFi: "lifi-secret-key", Jupiter: "jup-secret-key", CoinGecko: "cg-secret-key", Helius: "helius-secret", Alchemy: "alchemy-secret",
 		Etherscan: "etherscan-secret", TronGrid: "trongrid-secret", TonCenter: "toncenter-secret", Uniswap: "uniswap-secret"}
