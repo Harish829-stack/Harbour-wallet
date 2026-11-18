@@ -27,7 +27,7 @@ const Row: React.FC<{ title: string; desc: string; on: boolean; onChange: (v: bo
 // TW SettingsModal: slippage stepper (±0.1, ≤30), presets 0.1/0.5/1.0/2.5, >5% warning, plus the
 // swap settings flags (mev, solanaTurboSwaps, unlimitedAllowance).
 export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: string }> = ({ onClose, fromDomainId }) => {
-  const { settings, gaslessAvailable } = useSwapStore();
+  const { settings } = useSwapStore();
   const [draft, setDraft] = useState(settings.slippage);
   const commit = (v: string) => { const n = normalizeSlippage(v); setDraft(n); if (n !== settings.slippage) void save({ slippage: n }); };
   return (
@@ -62,9 +62,6 @@ export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: s
       <Row testid="setting-unlimited-allowance" title="Unlimited allowance" on={settings.unlimitedAllowance} onChange={(v) => save({ unlimitedAllowance: v })}
         desc="Approve a token once and swap any amount later. Off is safer: each swap approves only the amount it spends."
         warn="Unlimited approval is not safe unless you fully trust the contract" />
-      {gaslessAvailable && <Row testid="setting-gasless" title="Gasless swaps (beta)" on={settings.gasless} onChange={(v) => save({ gasless: v })}
-        desc="Network fees are sponsored on test networks (Sepolia and Base Sepolia) for accounts with Smart account turned on (Wallet details, Smart account). Your address stays the same and you can turn it off at any time."
-        warn="Gasless swaps are in beta. If sponsorship is unavailable, the swap is sent as a normal transaction and you pay the fee." />}
       <DustPanel domainId={fromDomainId && domainById(fromDomainId)?.kind !== 'utxo' ? fromDomainId : 'ethereum'} />
     </Sheet>
   );

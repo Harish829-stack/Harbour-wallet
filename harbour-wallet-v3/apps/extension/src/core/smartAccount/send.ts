@@ -32,10 +32,12 @@ export async function sendOperation(d: SendDeps, input: SendInput, timeoutMs = 1
   const zero: GasFields = { callGasLimit: 0n, verificationGasLimit: 0n, preVerificationGas: 0n };
   const stub = assembleOp({ sender: d.account, nonce, callData, price, gas: zero, signature: STUB_SIGNATURE });
   let gas: GasFields; let sponsor: SponsorFields | undefined;
-  if (input.sponsor) {
-    const r = await d.bundler('pm_sponsorUserOperation', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Sponsorship was refused'), 'sponsor_refused'); });
-    sponsor = acceptSponsorReply(r, d.chainId); gas = sponsor;
-  } else {
+  // Sponsorship is tried first; any refusal (first free operation already used, policy budget spent, paymaster unreachable) falls back to a
+  // user-paid operation. A reply that arrives but fails the guard (unknown paymaster, bad fields) is NOT a refusal and still signs nothing.
+  let reply: unknown; let refused = !input.sponsor;
+  if (input.sponsor) { try { reply = await d.bundler('pm_sponsorUserOperation', [toRpcOp(stub), ENTRYPOINT_V07]); } catch { refused = true; } }
+  if (!refused) { sponsor = acceptSponsorReply(reply, d.chainId); gas = sponsor; }
+  else {
     gas = padGasEstimate(acceptGasEstimate(await d.bundler('eth_estimateUserOperationGas', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Could not estimate the operation'), 'estimate_failed'); })));
   }
   const unsigned: UserOp = assembleOp({ sender: d.account, nonce, callData, price, gas, sponsor, signature: STUB_SIGNATURE }); // enforces the fee cap

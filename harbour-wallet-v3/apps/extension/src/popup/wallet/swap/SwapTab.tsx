@@ -84,7 +84,7 @@ export const SwapTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav,
   const nativeSell = from?.address === 'native';
   const feeNative = step?.networkFee?.isNative !== false;
   // gasless (beta) EVM swaps get their fee sponsored; if sponsorship fails the background falls back and the chain rejects an unfunded tx
-  const sponsored = !!s.gaslessAvailable && s.settings.gasless && !!from && domainById(from.domainId)?.kind === 'evm';
+  const sponsored = !!s.gaslessAvailable && !!from && domainById(from.domainId)?.kind === 'evm';
   const cannotCoverGas = !sponsored && !!step && !insufficientBalance && feeNative && nativeBal < fee + (nativeSell && atomic ? atomic : 0n);
   const feeSymbol = step?.networkFee?.symbol ?? (from ? domainById(from.domainId)?.nativeSymbol : '');
   const showsAllowance = step?.approval?.needed === true;

@@ -177,7 +177,7 @@ export async function maxSpendable(deps: SwapDeps, asset: SwapAsset): Promise<{ 
 /** Offered only when the flag is on and the gateway can reach a bundler (Sepolia and Base Sepolia for now). */
 export async function gaslessAvailable(): Promise<boolean> { return (await sendCallsAvailable(11155111)) || (await sendCallsAvailable(84532)); }
 async function gaslessActive(chainId: number): Promise<boolean> {
-  return isSmartAccountChain(chainId) && (await getSettings()).gasless && (await sendCallsAvailable(chainId));
+  return isSmartAccountChain(chainId) && (await sendCallsAvailable(chainId));
 }
 /** Run calls as one sponsored operation; null when unavailable (caller falls back to normal transactions). */
 async function tryGasless(chainId: number, client: any, privateKey: Uint8Array, sender: string, calls: Call[]): Promise<`0x${string}` | null> {

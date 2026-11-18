@@ -168,7 +168,7 @@ export async function sendCalls(p: { chainId: number; client: ReturnType<typeof 
   } catch (e: any) {
     if (e?.code === 'op_reverted' || e?.code === 'op_pending') throw e;
     if (e instanceof GuardError) { if (e.reason !== 'not_enabled') logWarn('smart account: guard refused an operation', e.reason); return null; }
-    return null; // sponsor_refused, estimate_failed, network errors: fall back to normal transactions
+    return null; // estimate_failed, network errors: fall back to normal transactions
   }
 }
 
@@ -182,7 +182,7 @@ export async function callsState(chainId: number, account: string): Promise<Call
     return delegationState(await evmClientFor(chain).getCode({ address: account as Address }), chainId);
   } catch { return 'unavailable'; }
 }
-/** Sends the already-approved batch and returns its user operation hash without waiting for inclusion. Never sponsored (a site cannot spend Harbour's sponsorship). */
+/** Sends the already-approved batch and returns its user operation hash without waiting for inclusion. Sponsored when the policy allows (the user's first free operation); otherwise user-paid. The site never picks the policy: the gateway pins it, and the user approved this batch. */
 export async function submitDappCalls(p: { chainId: number; account: string; privateKey: Uint8Array; calls: unknown }): Promise<{ userOpHash: Hex }> {
   const url = bundlerUrl(p.chainId); if (!url || !(await flagOn())) throw Object.assign(new Error('Atomic batches are not available right now.'), { code: 'unavailable' });
   const chain = resolveSendChain(undefined, p.chainId, customNetworks()); if (!chain) throw Object.assign(new Error('Unknown network'), { code: 'unavailable' });
@@ -193,7 +193,7 @@ export async function submitDappCalls(p: { chainId: number; account: string; pri
       chainId: p.chainId, account, getCode: () => client.getCode({ address: account }),
       readNonce: async () => BigInt((await client.call({ to: ENTRYPOINT_V07, data: encodeFunctionData({ abi: epAbi, functionName: 'getNonce', args: [account, 0n] }) })).data ?? '0x0'),
       bundler: bundlerCall(url), signUserOp: (op) => signUserOp(op, p.chainId, evmAccountFromBytes(p.privateKey)),
-    }, { calls: p.calls, sponsor: false }, 0);
+    }, { calls: p.calls, sponsor: true }, 0);
     throw Object.assign(new Error('unexpected'), { code: 'error' });
   } catch (e: any) {
     if (e?.code === 'op_pending' && typeof e.userOpHash === 'string') return { userOpHash: e.userOpHash as Hex };

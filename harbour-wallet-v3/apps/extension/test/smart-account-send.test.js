@@ -95,9 +95,17 @@ test('a provider reply cannot change callData: extra fields are ignored', async 
   const sent = calls.find((c) => c[0] === 'eth_sendUserOperation')[1][0];
   assert.notEqual(sent.callData, '0xdeadbeef'); assert.equal(sent.sender, ACCT); assert.equal(sent.nonce, '0x7');
 });
-test('sponsorship refused is reported with its own code and signs nothing', async () => {
-  const { d, signed } = rig({ pm_sponsorUserOperation: () => { throw new Error('sponsorshipPolicy perUserMaximumOpCount reached'); } }); d.signUserOp = (o) => { signed.push(o); return signOp(o); };
-  await assert.rejects(M.sendOperation(d, input), (e) => e.code === 'sponsor_refused'); assert.equal(signed.length, 0);
+test('sponsorship refused (free operation already used) falls back to a user-paid operation with padded gas', async () => {
+  const { d, calls, signed } = rig({ pm_sponsorUserOperation: () => { throw new Error('sponsorshipPolicy perUserMaximumOpCount reached'); } }); d.signUserOp = (o) => { signed.push(o); return signOp(o); };
+  const r = await M.sendOperation(d, input);
+  assert.equal(r.sponsored, false); assert.equal(signed.length, 1, 'exactly one signature');
+  assert.ok(calls.some((c) => c[0] === 'pm_sponsorUserOperation') && calls.some((c) => c[0] === 'eth_estimateUserOperationGas'));
+  const sent = calls.find((c) => c[0] === 'eth_sendUserOperation')[1][0];
+  assert.equal(sent.paymaster, undefined); assert.equal(BigInt(sent.callGasLimit), (0x4623n * 125n + 99n) / 100n);
+});
+test('sponsorship refused and the estimate also fails: nothing is signed or sent', async () => {
+  const { d, calls, signed } = rig({ pm_sponsorUserOperation: () => { throw new Error('refused'); }, eth_estimateUserOperationGas: () => { throw new Error('down'); } }); d.signUserOp = (o) => { signed.push(o); return signOp(o); };
+  await assert.rejects(M.sendOperation(d, input), (e) => e.code === 'estimate_failed'); assert.equal(signed.length, 0); assert.ok(!calls.some((c) => c[0] === 'eth_sendUserOperation'));
 });
 test('not enabled, foreign delegate, bad intent and a fee over the cap are refused before any signature', async () => {
   for (const [code, reason] of [['0x', 'not_enabled'], ['0xef0100' + '44'.repeat(20), 'foreign_delegate']]) {
