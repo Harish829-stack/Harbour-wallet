@@ -15,7 +15,7 @@ export interface Type4Params {
   gas?: bigint;
 }
 
-export const authorizationDigest = (contractAddress: Address, chainId: number, nonce: number): Hex => hashAuthorization({ contractAddress, chainId, nonce });
+export const authorizationDigest = (contractAddress: Address, chainId: number, nonce: number): Hex => hashAuthorization({ address: contractAddress, chainId, nonce });
 
 /** Target of the authorization for a kind. Throws when there is no pinned delegate for the chain (so an unlisted chain cannot be upgraded). */
 export function authorizationTarget(kind: 'upgrade' | 'revoke', chainId: number): Address {
@@ -36,7 +36,7 @@ export function buildSignedType4(p: Type4Params, sign: Signer): { raw: Hex; auth
   const unsigned = {
     type: 'eip7702' as const, chainId: p.chainId, nonce: p.txNonce, maxFeePerGas: p.maxFeePerGas, maxPriorityFeePerGas: p.maxPriorityFeePerGas,
     gas: p.gas ?? TYPE4_GAS_LIMIT, to: p.account, value: 0n, data: '0x' as Hex,
-    authorizationList: [{ contractAddress, chainId: p.chainId, nonce, r: a.r, s: a.s, yParity: a.yParity ?? (a.v === 28n ? 1 : 0) }],
+    authorizationList: [{ address: contractAddress, chainId: p.chainId, nonce, r: a.r, s: a.s, yParity: a.yParity ?? (a.v === 28n ? 1 : 0) }],
   };
   const sig = sign(keccak256((serializeTransaction as any)(unsigned)));
   return { raw: (serializeTransaction as any)(unsigned, sig) as Hex, authorization: { contractAddress, chainId: p.chainId, nonce } };

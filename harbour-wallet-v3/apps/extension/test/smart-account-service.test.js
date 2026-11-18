@@ -79,8 +79,8 @@ test('approve needs a fresh re-auth, keeps the request for a retry, then signs a
   assert.equal(tx.type, 'eip7702'); assert.equal(tx.chainId, CHAIN); assert.equal(tx.nonce, 4); assert.equal(tx.to.toLowerCase(), ACCT.toLowerCase()); assert.equal(tx.value ?? 0n, 0n); assert.equal(tx.gas, 150_000n);
   assert.equal((await recoverTransactionAddress({ serializedTransaction: raw })).toLowerCase(), ACCT.toLowerCase());
   const a = tx.authorizationList; assert.equal(a.length, 1);
-  assert.equal(a[0].contractAddress.toLowerCase(), DELEGATE); assert.equal(Number(a[0].chainId), CHAIN); assert.equal(Number(a[0].nonce), 5, 'authorization nonce = tx nonce + 1');
-  const signer = await recoverAddress({ hash: hashAuthorization({ contractAddress: a[0].contractAddress, chainId: CHAIN, nonce: 5 }), signature: { r: a[0].r, s: a[0].s, yParity: a[0].yParity } });
+  assert.equal(a[0].address.toLowerCase(), DELEGATE); assert.equal(Number(a[0].chainId), CHAIN); assert.equal(Number(a[0].nonce), 5, 'authorization nonce = tx nonce + 1');
+  const signer = await recoverAddress({ hash: hashAuthorization({ address: a[0].address, chainId: CHAIN, nonce: 5 }), signature: { r: a[0].r, s: a[0].s, yParity: a[0].yParity } });
   assert.equal(signer.toLowerCase(), ACCT.toLowerCase());
   assert.equal((await call('smartAccountApprove', { requestId: p.requestId })).code, 'expired', 'a request is single use');
 });
@@ -90,7 +90,7 @@ test('revoke authorizes the zero address; enable on an enabled account and revok
   const p = await call('smartAccountPrepare', { kind: 'revoke', chainId: CHAIN }); assert.equal(p.ok, true); assert.equal(p.delegate, null);
   const r = await call('smartAccountApprove', { requestId: p.requestId }); assert.equal(r.ok, true); assert.equal(r.kind, 'revoke');
   const a = parseTransaction(sa.sent[0]).authorizationList[0];
-  assert.equal(a.contractAddress, '0x0000000000000000000000000000000000000000'); assert.equal(Number(a.chainId), CHAIN);
+  assert.equal(a.address, '0x0000000000000000000000000000000000000000'); assert.equal(Number(a.chainId), CHAIN);
   reset(); assert.equal((await call('smartAccountPrepare', { kind: 'revoke', chainId: CHAIN })).code, 'not_enabled');
 });
 test('an account delegated to another contract can be re-delegated or revoked, and is reported as such', async () => {

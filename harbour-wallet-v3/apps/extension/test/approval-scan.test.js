@@ -35,7 +35,7 @@ function fakeChain({ allowances = {}, broken = [], meta = {} } = {}) {
       const m = meta[t]; if (!m) return { success: false, returnData: '0x' };
       return { success: true, returnData: encodeFunctionResult({ abi: erc20Abi, functionName: d.functionName, result: m[d.functionName] }) };
     });
-    const out = encodeFunctionResult({ abi: mcAbi, functionName: 'aggregate3', result: [results] });
+    const out = encodeFunctionResult({ abi: mcAbi, functionName: 'aggregate3', result: results });
     return { ok: true, json: async () => ({ jsonrpc: '2.0', id: 1, result: out }) };
   };
   return { f, calls };

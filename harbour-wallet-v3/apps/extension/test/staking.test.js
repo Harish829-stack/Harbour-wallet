@@ -188,11 +188,11 @@ test('lido overview from mocked eth_call + APR endpoint', async () => {
     if (String(url).includes('eth-api.lido.fi')) return json({ data: { smaApr: 2.71 } });
     const b = JSON.parse(init.body); const d = b.params[0].data; const to = b.params[0].to.toLowerCase();
     if (to === M.LIDO.stETH.toLowerCase() && d.startsWith('0x70a08231')) return call(M.encodeFunctionResult({ abi: M.stethAbi, functionName: 'balanceOf', result: 3n * 10n ** 18n }));
-    if (d.startsWith(M.toFunctionSelector('getWithdrawalRequests(address)'))) return call(M.encodeFunctionResult({ abi: M.queueAbi, functionName: 'getWithdrawalRequests', result: [[11n, 12n, 13n]] }));
-    if (d.startsWith(M.toFunctionSelector('getWithdrawalStatus(uint256[])'))) return call(M.encodeFunctionResult({ abi: M.queueAbi, functionName: 'getWithdrawalStatus', result: [[
+    if (d.startsWith(M.toFunctionSelector('getWithdrawalRequests(address)'))) return call(M.encodeFunctionResult({ abi: M.queueAbi, functionName: 'getWithdrawalRequests', result: [11n, 12n, 13n] }));
+    if (d.startsWith(M.toFunctionSelector('getWithdrawalStatus(uint256[])'))) return call(M.encodeFunctionResult({ abi: M.queueAbi, functionName: 'getWithdrawalStatus', result: [
       { amountOfStETH: 10n ** 18n, amountOfShares: 1n, owner, timestamp: 1n, isFinalized: true, isClaimed: false },
       { amountOfStETH: 2n * 10n ** 18n, amountOfShares: 1n, owner, timestamp: 1n, isFinalized: false, isClaimed: false },
-      { amountOfStETH: 5n, amountOfShares: 1n, owner, timestamp: 1n, isFinalized: true, isClaimed: true }]] }));
+      { amountOfStETH: 5n, amountOfShares: 1n, owner, timestamp: 1n, isFinalized: true, isClaimed: true }] }));
     throw new Error('unexpected call ' + d.slice(0, 10));
   };
   const r = await M.fetchLidoOverview(f, ['https://rpc.example'], owner);
