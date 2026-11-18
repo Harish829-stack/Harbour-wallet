@@ -75,6 +75,16 @@ test('user-paid: estimates gas, no paymaster', async () => {
   assert.ok(calls.some((c) => c[0] === 'eth_estimateUserOperationGas')); assert.ok(!calls.some((c) => c[0] === 'pm_sponsorUserOperation'));
   assert.equal(calls.find((c) => c[0] === 'eth_sendUserOperation')[1][0].paymaster, undefined);
 });
+test('user-paid ops carry padded gas limits; sponsored ops keep the paymaster-signed limits', async () => {
+  const paid = rig(); paid.d.signUserOp = signOp;
+  await M.sendOperation(paid.d, { ...input, sponsor: false });
+  const p = paid.calls.find((c) => c[0] === 'eth_sendUserOperation')[1][0];
+  assert.equal(BigInt(p.callGasLimit), (0x4623n * 125n + 99n) / 100n); assert.equal(BigInt(p.verificationGasLimit), (0x7cb3n * 125n + 99n) / 100n); assert.equal(BigInt(p.preVerificationGas), (0xc479n * 110n + 99n) / 100n);
+  const sp = rig(); sp.d.signUserOp = signOp;
+  await M.sendOperation(sp.d, input);
+  const q = sp.calls.find((c) => c[0] === 'eth_sendUserOperation')[1][0];
+  assert.equal(BigInt(q.callGasLimit), 0x4623n, 'the paymaster signature covers these numbers, so they are not changed');
+});
 test('a paymaster outside the allow-list signs nothing', async () => {
   const { d, signed } = rig({ pm_sponsorUserOperation: () => ({ ...goodSponsor, paymaster: '0x' + '22'.repeat(20) }) }); d.signUserOp = (o) => { signed.push(o); return signOp(o); };
   await refused(M.sendOperation(d, input), 'paymaster'); assert.equal(signed.length, 0);

@@ -114,3 +114,13 @@ test('max fee is every gas limit x maxFeePerGas, including the paymaster limits'
   assert.equal(M.maxTotalFee(op), 140n);
   assert.equal(M.maxTotalFee({ ...op, paymasterVerificationGasLimit: undefined, paymasterPostOpGasLimit: undefined }), 120n);
 });
+
+test('padGasEstimate: +25% call/verification, +10% pre-verification, rounded up, never above the hard caps', () => {
+  const g = M.padGasEstimate({ callGasLimit: 34068n, verificationGasLimit: 209902n, preVerificationGas: 150630n });
+  assert.equal(g.callGasLimit, 42585n); assert.equal(g.verificationGasLimit, 262378n); assert.equal(g.preVerificationGas, 165693n);
+  const tiny = M.padGasEstimate({ callGasLimit: 1n, verificationGasLimit: 1n, preVerificationGas: 1n });
+  assert.ok(tiny.callGasLimit >= 2n && tiny.verificationGasLimit >= 2n && tiny.preVerificationGas >= 2n, 'never rounds down below the estimate');
+  const cap = M.padGasEstimate({ callGasLimit: M.LIMITS.maxCallGasLimit, verificationGasLimit: M.LIMITS.maxVerificationGasLimit, preVerificationGas: M.LIMITS.maxPreVerificationGas });
+  assert.equal(cap.callGasLimit, M.LIMITS.maxCallGasLimit); assert.equal(cap.verificationGasLimit, M.LIMITS.maxVerificationGasLimit); assert.equal(cap.preVerificationGas, M.LIMITS.maxPreVerificationGas);
+  assert.deepEqual(Object.keys(g).sort(), ['callGasLimit', 'preVerificationGas', 'verificationGasLimit']);
+});

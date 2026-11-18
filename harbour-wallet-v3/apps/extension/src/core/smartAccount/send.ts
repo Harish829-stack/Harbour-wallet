@@ -7,7 +7,7 @@ import { ENTRYPOINT_V07, type Address } from './constants';
 import { encodeCalls } from './abi';
 import { toRpcOp, type UserOp } from './userOp';
 import { STUB_SIGNATURE } from './kit';
-import { acceptGasEstimate, acceptGasPrice, acceptSponsorReply, assembleOp, checkIntent, maxTotalFee, requirePinnedDelegation, type GasFields, type SponsorFields } from './guard';
+import { acceptGasEstimate, padGasEstimate, acceptGasPrice, acceptSponsorReply, assembleOp, checkIntent, maxTotalFee, requirePinnedDelegation, type GasFields, type SponsorFields } from './guard';
 
 export interface SendDeps {
   chainId: number; account: Address;
@@ -36,7 +36,7 @@ export async function sendOperation(d: SendDeps, input: SendInput, timeoutMs = 1
     const r = await d.bundler('pm_sponsorUserOperation', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Sponsorship was refused'), 'sponsor_refused'); });
     sponsor = acceptSponsorReply(r, d.chainId); gas = sponsor;
   } else {
-    gas = acceptGasEstimate(await d.bundler('eth_estimateUserOperationGas', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Could not estimate the operation'), 'estimate_failed'); }));
+    gas = padGasEstimate(acceptGasEstimate(await d.bundler('eth_estimateUserOperationGas', [toRpcOp(stub), ENTRYPOINT_V07]).catch((e) => { throw codeErr(String(e?.message ?? 'Could not estimate the operation'), 'estimate_failed'); })));
   }
   const unsigned: UserOp = assembleOp({ sender: d.account, nonce, callData, price, gas, sponsor, signature: STUB_SIGNATURE }); // enforces the fee cap
   const op: UserOp = { ...unsigned, signature: await d.signUserOp(unsigned) };

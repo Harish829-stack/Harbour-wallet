@@ -82,6 +82,18 @@ export function acceptGasEstimate(reply: unknown): GasFields {
   if (!isObj(reply)) return fail('estimate_shape');
   return gasFields(reply);
 }
+/** 5b'. User-paid only: safety margin on the bundler's estimate. The bundler sizes its handleOps transaction from these limits, and a
+ *  tight estimate (seen on Sepolia: callGasLimit 34,068) can leave the EntryPoint out of gas after a successful validation and call.
+ *  +25% on call and verification gas, +10% on pre-verification gas, never above the hard caps. Unused gas is not charged (the fee cap
+ *  in assembleOp still bounds the worst case). NOT applied to sponsored ops: the paymaster signature covers the gas limits. */
+export function padGasEstimate(g: GasFields): GasFields {
+  const pad = (v: bigint, pct: bigint, cap: bigint): bigint => { const x = (v * pct + 99n) / 100n; return x > cap ? cap : x; };
+  return {
+    callGasLimit: pad(g.callGasLimit, 125n, LIMITS.maxCallGasLimit),
+    verificationGasLimit: pad(g.verificationGasLimit, 125n, LIMITS.maxVerificationGasLimit),
+    preVerificationGas: pad(g.preVerificationGas, 110n, LIMITS.maxPreVerificationGas),
+  };
+}
 /** 5c. Sponsored: pm_sponsorUserOperation reply. Only paymaster, paymasterData, paymaster gas limits and the three gas limits are read.
  *  The paymaster must be in the per-chain allow-list; any other field (callData, sender, nonce, initCode, entryPoint, ...) is ignored. */
 export function acceptSponsorReply(reply: unknown, chainId: number): SponsorFields {
