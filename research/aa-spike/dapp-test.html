@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Harbour smart account test dApp</title>
+<style>
+body{font:14px system-ui,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;color:#222}
+h1{font-size:20px} h2{font-size:15px;margin:20px 0 6px} button{padding:7px 12px;margin:3px 4px 3px 0;cursor:pointer}
+input{padding:6px;margin:2px 4px 2px 0} #out{background:#111;color:#ddd;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-all;min-height:200px;max-height:420px;overflow:auto;font:12px ui-monospace,monospace}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:4px} .note{color:#666;font-size:12px}
+</style></head><body>
+<h1>Harbour smart account test dApp</h1>
+<p class="note">Testnets only (Sepolia / Base Sepolia). Nothing here talks to any server: every button calls <code>window.ethereum</code> in this tab.</p>
+<h2>1. Connect and network</h2>
+<div class="row"><button id="connect">Connect</button><button id="sepolia">Switch to Sepolia</button><button id="base">Switch to Base Sepolia</button><button id="state">Show account / chain</button></div>
+<h2>2. EIP-5792 batches (needs the smart account ON)</h2>
+<div class="row"><button id="caps">wallet_getCapabilities</button><button id="send">wallet_sendCalls (2 calls, 1 wei each to 0x…dEaD)</button><button id="status">wallet_getCallsStatus (last id)</button></div>
+<h2>3. ERC-7715 permission (needs the smart account ON)</h2>
+<div class="row">Session key address <input id="sk" size="46" value="0x1111111111111111111111111111111111111111"> Allowance (ETH) <input id="amt" size="8" value="0.001"> Minutes <input id="mins" size="5" value="60"></div>
+<div class="row"><button id="grant">wallet_requestExecutionPermissions</button><button id="granted">wallet_getGrantedExecutionPermissions</button></div>
+<h2>4. Negative checks (no approval prompt should appear; each prints PASS or FAIL)</h2>
+<div class="row"><button id="neg">Run negative checks</button></div>
+<h2>Output</h2><div id="out"></div>
+<script>
+const out = document.getElementById('out'); let account = null, lastId = null;
+const log = (...a) => { out.textContent += a.map((x) => typeof x === 'string' ? x : JSON.stringify(x, (k, v) => typeof v === 'bigint' ? v.toString() : v, 2)).join(' ') + '\n'; out.scrollTop = out.scrollHeight; };
+const eth = () => { if (!window.ethereum) { log('No window.ethereum. Is the Harbour extension installed and is this page http://localhost or https?'); throw new Error('no provider'); } return window.ethereum; };
+const req = async (method, params) => { try { const r = await eth().request({ method, params }); log('→', method, '\n ', r); return { ok: true, r }; } catch (e) { log('✗', method, '\n  code', e.code, '-', e.message); return { ok: false, e }; } };
+const hex = (n) => '0x' + BigInt(n).toString(16);
+const wei = (eth) => { const [i, f = ''] = String(eth).split('.'); return BigInt(i || '0') * 10n ** 18n + BigInt((f + '0'.repeat(18)).slice(0, 18)); };
+const chainHex = async () => (await eth().request({ method: 'eth_chainId' }));
+const $ = (id) => document.getElementById(id);
+$('connect').onclick = async () => { const x = await req('eth_requestAccounts'); if (x.ok) account = x.r[0]; };
+$('sepolia').onclick = () => req('wallet_switchEthereumChain', [{ chainId: '0xaa36a7' }]);
+$('base').onclick = () => req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]);
+$('state').onclick = async () => { log('account', await eth().request({ method: 'eth_accounts' }), 'chain', await chainHex()); };
+$('caps').onclick = async () => { const a = account ?? (await eth().request({ method: 'eth_accounts' }))[0]; await req('wallet_getCapabilities', [a]); };
+$('send').onclick = async () => {
+  const BURN = '0x000000000000000000000000000000000000dEaD';
+  const x = await req('wallet_sendCalls', [{ version: '2.0.0', chainId: await chainHex(), atomicRequired: true, calls: [{ to: BURN, value: '0x1' }, { to: BURN, value: '0x1' }] }]);
+  if (x.ok) lastId = typeof x.r === 'string' ? x.r : x.r.id;
+};
+$('status').onclick = () => lastId ? req('wallet_getCallsStatus', [lastId]) : log('Send a batch first.');
+const permission = (over = {}, perm) => ({ chainId: undefined, to: $('sk').value.trim(), expiry: Math.floor(Date.now() / 1000) + Number($('mins').value) * 60, permission: perm ?? { type: 'native-token-allowance', data: { allowance: hex(wei($('amt').value)) } }, ...over });
+$('grant').onclick = async () => req('wallet_requestExecutionPermissions', [permission({ chainId: await chainHex() })]);
+$('granted').onclick = () => req('wallet_getGrantedExecutionPermissions', []);
+$('neg').onclick = async () => {
+  const cid = await chainHex(); const now = Math.floor(Date.now() / 1000); const base = permission({ chainId: cid });
+  const expect = async (name, method, params, codes) => { try { await eth().request({ method, params }); log('FAIL ', name, '(it was accepted)'); } catch (e) { log(codes.includes(e.code) ? 'PASS ' : 'FAIL ', name, '→ code', e.code); } };
+  await expect('31-day expiry refused', 'wallet_requestExecutionPermissions', [{ ...base, expiry: now + 31 * 86400 }], [-32602]);
+  await expect('zero allowance refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-allowance', data: { allowance: '0x0' } } }], [-32602]);
+  await expect('unlimited allowance refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-allowance', data: { allowance: '0x' + 'f'.repeat(64) } } }], [-32602]);
+  await expect('two requests refused', 'wallet_requestExecutionPermissions', [base, base], [-32602]);
+  await expect('unknown permission type refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-stream', data: {} } }], [5700]);
+  await expect('mainnet chain refused', 'wallet_requestExecutionPermissions', [{ ...base, chainId: '0x1' }], [5710, 4200]);
+  await expect('another account in `from` refused', 'wallet_requestExecutionPermissions', [{ ...base, from: '0x000000000000000000000000000000000000dEaD' }], [4100]);
+  await expect('extra field refused', 'wallet_requestExecutionPermissions', [{ ...base, sneaky: true }], [-32602]);
+  await expect('a site cannot revoke (method does not exist)', 'wallet_revokeExecutionPermission', [{ permissionContext: '0x' }], [-32601]);
+  await expect('a site cannot ask for 7702 upgrade', 'wallet_upgradeDelegation', [], [-32601]);
+  await expect('tx with authorizationList refused', 'eth_sendTransaction', [{ from: account, to: account, authorizationList: [{ address: '0x0000000000000000000000000000000000000001', chainId: '0x1', nonce: '0x0' }] }], [-32602, 4200, -32603]);
+  log('Done. Any FAIL above is a bug: tell me which line.');
+};
+</script></body></html>
