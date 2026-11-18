@@ -133,3 +133,12 @@ test('every smart account chain has its own explicit limits entry; an unlisted c
   assert.deepEqual(M.acceptGasPrice({ fast: { maxFeePerGas: '0xa', maxPriorityFeePerGas: '0x1' } }, tight), { maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
   assert.throws(() => M.acceptGasEstimate({ callGasLimit: '0x4623', verificationGasLimit: '0x7cb3', preVerificationGas: '0xc479' }, { ...M.LIMITS, maxCallGasLimit: 100n }), (e) => e.reason === 'call_gas');
 });
+
+test('red-team finding 2: a dApp batch may not call the permission contracts (DelegationManager or any enforcer), with or without data', () => {
+  const ok = { chainId: CHAIN, from: ACCT, account: ACCT, calls: [] };
+  for (const to of [M.DELEGATION_MANAGER, ...Object.values(M.ENFORCERS)]) {
+    for (const data of ['0x', '0x12345678']) refuses(() => M.checkIntent({ ...ok, calls: [{ to, value: 0, data }] }), 'protocol_call');
+    refuses(() => M.checkIntent({ ...ok, calls: [{ to: to.toLowerCase(), value: 0, data: '0x12345678' }] }), 'protocol_call');
+  }
+  assert.equal(M.checkIntent({ ...ok, calls: [{ to: SINK, value: 0, data: '0x12345678' }] }).length, 1); // an ordinary contract is still fine
+});

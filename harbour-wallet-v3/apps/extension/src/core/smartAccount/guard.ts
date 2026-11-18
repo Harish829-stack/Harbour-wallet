@@ -4,7 +4,7 @@
 // failure is a GuardError: the worker signs nothing and shows GUARD_MESSAGE.
 import { getAddress, isAddress, isHex, type Hex } from 'viem';
 import { delegationTarget } from '../evmCode';
-import { DELEGATES, ENTRYPOINT_V07, LIMITS, limitsFor, type Limits, MAX_CALLS, PREPARED_TTL_MS, ZERO_ADDRESS, isPinnedPaymaster, type Address } from './constants';
+import { DELEGATES, DELEGATION_MANAGER, ENFORCERS, ENTRYPOINT_V07, LIMITS, limitsFor, type Limits, MAX_CALLS, PREPARED_TTL_MS, ZERO_ADDRESS, isPinnedPaymaster, type Address } from './constants';
 import { normalizeCall, type Call } from './abi';
 import type { UserOp } from './userOp';
 
@@ -17,6 +17,11 @@ export class GuardError extends Error {
 const fail = (reason: string): never => { throw new GuardError(reason); };
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
+/** Contracts a dApp batch may never call: the permission system. Every delegation has the user's own account as delegator, so a call made from the
+ *  account would pass the DelegationManager's `msg.sender` check whichever site asked for it (one site could disable another site's grant). Harbour's
+ *  own revoke is a separate transaction and does not use this path. */
+const PROTECTED_TARGETS: ReadonlySet<string> = new Set([DELEGATION_MANAGER, ...Object.values(ENFORCERS)].map((a) => a.toLowerCase()));
+
 /** 1. Intent: allowed chain, `from` is the user's own account on that chain, 1..16 normalized calls, none aimed at the account's own setup. */
 export function checkIntent(i: { chainId: number; from: string; account: string; calls: unknown }): Call[] {
   if (!DELEGATES[i.chainId]) fail('chain');
@@ -28,6 +33,7 @@ export function checkIntent(i: { chainId: number; from: string; account: string;
   for (const c of calls) {
     // S7: a normal operation may not call the account itself, the delegate or the EntryPoint with data (setup / re-entry paths).
     const target = c.to.toLowerCase();
+    if (PROTECTED_TARGETS.has(target)) fail('protocol_call');
     if ((target === i.account.toLowerCase() || target === delegate || target === ENTRYPOINT_V07.toLowerCase()) && c.data !== '0x') fail('self_call');
   }
   return calls;

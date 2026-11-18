@@ -23,6 +23,7 @@ import { tonProofHash } from './tonProof';
 import { applySignatures, decodePsbt, planPsbtSigning, psbtToB64, psbtToHex } from '../../core/provider/psbt';
 import { normalizeSendCalls, buildCapabilities, buildCallsStatus, type AtomicStatus } from '../../core/smartAccount/calls5792';
 import { DELEGATION_MANAGER } from '../../core/smartAccount/constants';
+import { checkIntent, GuardError } from '../../core/smartAccount/guard';
 import { SMART_ACCOUNT_CHAINS } from '../../core/smartAccount/constants';
 import { normalizeGrantParams, grantResponse, type GrantRecord, type NormalizedPermission } from '../../core/smartAccount/permissions';
 import { isMultiChain, normalizeMultiSign, signPlan, MULTI_CHAINS, type Scheme, type MultiRequest } from '../../core/provider/multi';
@@ -334,6 +335,8 @@ export class ProviderService {
     }
     // wallet_sendCalls: only accounts already running the pinned smart account can run a batch atomically. A site can never turn it on.
     const n = normalizeSendCalls(req.params, me, chainId);
+    // Refuse now what the signing step would refuse later (a batch aimed at the account, the delegate, the EntryPoint or the permission contracts), so the user is never asked to approve it.
+    try { checkIntent({ chainId: n.chainId, from: me, account: me, calls: n.calls }); } catch (e) { if (e instanceof GuardError) throw new ProviderError(ERR.INVALID_PARAMS, 'This batch calls a contract that batches may not call.'); throw e; }
     if (!this.d.networks.get(n.chainId) || !this.policy.isSigningEvmChain(n.chainId)) throw new ProviderError(ERR.CALLS_CHAIN_UNSUPPORTED);
     if ((await smart.state(n.chainId, me)) !== 'pinned') throw new ProviderError(ERR.CALLS_ATOMIC_UNSUPPORTED);
     if (n.id && (await smart.bundles.get(s.origin, n.id))) throw new ProviderError(ERR.CALLS_DUPLICATE_ID);
