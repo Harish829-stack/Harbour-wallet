@@ -5,7 +5,7 @@
 //   node scripts/p5-e2e.mjs keygen                       # prints a NEW throwaway testnet address + key (never use it on mainnet)
 //   RPC_URL=<rpc> OWNER_PK=<key> [CHAIN=sepolia|base-sepolia] [WAIT_EXPIRY=1] node scripts/p5-e2e.mjs
 //
-// Fund the printed address with about 0.02 test ETH first. It refuses any chain that is not Sepolia or Base Sepolia, never prints a key
+// Fund the printed address with about 0.005 test ETH first (amounts are small; most of the cost is gas). It refuses any chain that is not Sepolia or Base Sepolia, never prints a key
 // (except `keygen`), and spends at most a few thousandths of test ETH. Exit code 0 only if every check passes.
 process.env.DO_NOT_TRACK = '1';
 import { build } from 'esbuild';
@@ -35,7 +35,7 @@ const DM = W.DELEGATION_MANAGER; const MODE_SINGLE = '0x' + '00'.repeat(32);
 const short = (e) => String(e?.shortMessage ?? e?.message ?? e).split('\n')[0].slice(0, 140);
 
 console.log(`chain ${chain.name}, owner ${owner.address}, balance ${formatEther(await bal(owner.address))}`);
-if ((await bal(owner.address)) < parseEther('0.015')) { console.error('Owner needs at least 0.015 test ETH.'); process.exit(2); }
+if ((await bal(owner.address)) < parseEther('0.0045')) { console.error('Owner needs at least 0.0045 test ETH (most of it is gas).'); process.exit(2); }
 
 // 1. Enable the smart account with the wallet's own builder (self-sent type-4, authorization nonce = tx nonce + 1).
 const code = await pub.getCode({ address: owner.address });
@@ -71,29 +71,29 @@ const redeem = async (g, to, value, who = session, wallet = sessionWallet, callD
 };
 
 // 3. Limits on a 0.001 test-ETH allowance.
-const A = await grant(parseEther('0.001'), 3600);
-let r = await redeem(A, recipient, parseEther('0.0004')); check('redeem within the allowance works', r.ok && (await bal(recipient)) === parseEther('0.0004'), r.reason);
-r = await redeem(A, recipient, parseEther('0.0007')); check('redeem that would pass the total allowance is refused', !r.ok, r.reason);
-r = await redeem(A, recipient, parseEther('0.0006')); check('spending the rest (total exactly the allowance) works', r.ok && (await bal(recipient)) === parseEther('0.001'), r.reason);
+const A = await grant(parseEther('0.0001'), 3600);
+let r = await redeem(A, recipient, parseEther('0.00004')); check('redeem within the allowance works', r.ok && (await bal(recipient)) === parseEther('0.00004'), r.reason);
+r = await redeem(A, recipient, parseEther('0.00007')); check('redeem that would pass the total allowance is refused', !r.ok, r.reason);
+r = await redeem(A, recipient, parseEther('0.00006')); check('spending the rest (total exactly the allowance) works', r.ok && (await bal(recipient)) === parseEther('0.0001'), r.reason);
 r = await redeem(A, recipient, 1n); check('one wei more is refused (allowance used up)', !r.ok, r.reason);
-const B = await grant(parseEther('0.001'), 3600);
+const B = await grant(parseEther('0.0001'), 3600);
 r = await redeem(B, owner.address, 0n, other, createWalletClient({ account: other, chain, transport: http(process.env.RPC_URL) })); check('anyone other than the session key cannot redeem', !r.ok, r.reason);
 r = await redeem(B, recipient, 0n, session, sessionWallet, '0x12345678'); check('calldata is refused (the grant only allows plain native transfers)', !r.ok, r.reason);
-r = await redeem(B, recipient, parseEther('0.0001')); check('a fresh grant works before revoking', r.ok, r.reason);
+r = await redeem(B, recipient, parseEther('0.00001')); check('a fresh grant works before revoking', r.ok, r.reason);
 
 // 4. Revoke exactly as Settings does (disableDelegation from the account), then redeem must fail.
 const dg = B.d; const disable = encodeFunctionData({ abi: DM_ABI, functionName: 'disableDelegation', args: [{ delegate: dg.delegate, delegator: dg.delegator, authority: dg.authority, caveats: dg.caveats.map((c) => ({ enforcer: c.enforcer, terms: c.terms, args: c.args })), salt: dg.salt, signature: B.signature }] });
 const dr = await wait(await ownerWallet.sendTransaction({ to: DM, data: disable }));
 check('revoke transaction succeeds', dr.status === 'success');
 check('on-chain status says disabled', (await pub.readContract({ address: DM, abi: DM_ABI, functionName: 'disabledDelegations', args: [B.id] })) === true);
-r = await redeem(B, recipient, parseEther('0.0001')); check('after revoking, the site can no longer redeem', !r.ok, r.reason);
+r = await redeem(B, recipient, parseEther('0.00001')); check('after revoking, the site can no longer redeem', !r.ok, r.reason);
 
 // 5. Expiry (optional, waits about a minute).
 if (process.env.WAIT_EXPIRY === '1') {
-  const C = await grant(parseEther('0.001'), 45);
-  r = await redeem(C, recipient, parseEther('0.0001')); check('before expiry the grant works', r.ok, r.reason);
+  const C = await grant(parseEther('0.0001'), 45);
+  r = await redeem(C, recipient, parseEther('0.00001')); check('before expiry the grant works', r.ok, r.reason);
   while ((await pub.getBlock()).timestamp <= BigInt(C.p.expiry)) await new Promise((x) => setTimeout(x, 6000));
-  r = await redeem(C, recipient, parseEther('0.0001')); check('after the expiry the site can no longer redeem', !r.ok, r.reason);
+  r = await redeem(C, recipient, parseEther('0.00001')); check('after the expiry the site can no longer redeem', !r.ok, r.reason);
 } else console.log('SKIP  expiry check (set WAIT_EXPIRY=1; it waits about a minute)');
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed. Owner balance now ${formatEther(await bal(owner.address))}.`);
