@@ -92,13 +92,10 @@ async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
     }
     case 'tx': return { ...base, ...(await txView(p, d)) };
     case 'calls': {
-      const { n, chainId: cid } = p.params as { n: { calls: Array<{ to: string; value: string; data: string }> }; chainId: number }; const net = d.networks.get(cid);
+      const { n, chainId: cid } = p.params as { n: { from: string; calls: Array<{ to: string; value: string; data: string }> }; chainId: number }; const net = d.networks.get(cid);
       const detail: Record<string, string> = { Network: net?.name ?? String(cid), Calls: `${n.calls.length} in one atomic batch (all succeed or none run)`, Fee: `Free for your first smart-account transaction. Otherwise paid from your account, up to the network maximum` };
-      n.calls.forEach((c, i) => {
-        const v = BigInt(c.value); const dc = c.data === '0x' ? null : decodeCalldata(c.data);
-        detail[`Call ${i + 1}`] = `${c.to}${v > 0n ? ` · ${formatUnits(v, net?.decimals ?? 18)} ${net?.symbol ?? ''}`.trimEnd() : ''} · ${c.data === '0x' ? 'native transfer' : dc && dc.kind !== 'unknown' ? String(dc.kind) : `function ${c.data.slice(0, 10)}`}`;
-      });
-      return { ...base, chain: net ? netView(net) : base.chain, multi: { kind: 'calls', types: [], detail } };
+      const r = await callsView(n, cid, net, d); Object.assign(detail, r.detail);
+      return { ...base, chain: net ? netView(net) : base.chain, multi: { kind: 'calls', types: [], detail }, warnings: r.warnings };
     }
     case 'grant': {
       const { p: g, chainId: cid } = p.params as { p: { sessionKey: string; type: string; allowance: string; token: string | null; expiry: number }; chainId: number }; const net = d.networks.get(cid);
@@ -139,6 +136,60 @@ async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
     }
   }
   return base;
+}
+
+/** wallet_sendCalls approval (finding: batches must not be less visible than single transactions). Every call is decoded and described with the
+ *  parties and the amount, and gets the same warnings a single transaction would: unlimited / excessive approvals, approvals hidden inside a
+ *  multicall, collection-wide approvals, Permit2, flagged addresses and flagged spenders. A call that cannot be decoded is a high-risk "blind" call
+ *  (a batch is not simulated here). */
+async function callsView(n: { from: string; calls: Array<{ to: string; value: string; data: string }> }, chainId: number, net: EvmNetwork | undefined, d: ViewDeps): Promise<{ detail: Record<string, string>; warnings: string[] }> {
+  const warnings = new Set<string>(); const detail: Record<string, string> = {}; const sym = net?.symbol ?? ''; const dec = net?.decimals ?? 18;
+  const risk = new Map<string, Promise<boolean>>();
+  const flagged = (a: string) => { const k = a.toLowerCase(); if (!risk.has(k)) risk.set(k, (async () => !!(await checkAddress(chainId, a).catch(() => null))?.risky || (await addressRisk(a, d.kv, d.fetch ?? fetch).catch(() => null)) === 'scam')()); return risk.get(k)!; };
+  const amountOf = async (token: string, amt: bigint) => {
+    const meta = await d.tokenMeta(chainId, token).catch(() => null);
+    return { meta, text: isUnlimited(amt) ? `UNLIMITED ${meta?.symbol ?? 'tokens'}` : meta ? `${formatUnits(amt, meta.decimals)} ${meta.symbol}` : `${amt.toString()} units of an unverified token` };
+  };
+  const spenderCheck = async (a: string) => { if (await flagged(a)) warnings.add('maliciousSpender'); };
+  const lines = await Promise.all(n.calls.map(async (c) => {
+    const v = BigInt(c.value); const dc: DecodedCall | null = c.data === '0x' ? null : decodeCalldata(c.data);
+    const sends = v > 0n ? ` · sends ${formatUnits(v, dec)} ${sym}`.trimEnd() : '';
+    if (await flagged(c.to)) warnings.add('maliciousAddress');
+    if (!dc) return `Send to ${c.to}${sends}`;
+    switch (dc.kind) {
+      case 'approve': {
+        const a = await amountOf(c.to, dc.amount);
+        if (dc.decrease) return `Lower the allowance of ${dc.spender} on token ${c.to}${sends}`;
+        if (isUnlimited(dc.amount)) warnings.add('unlimitedApproval');
+        else if (a.meta) { try { const bal = BigInt(await d.rpc(chainId, 'eth_call', [{ to: c.to, data: encodeBalanceCall(n.from) }, 'latest'])); if (dc.amount > bal * 10n && dc.amount > 0n) warnings.add('excessiveApproval'); } catch { /* balance unavailable */ } }
+        if (dc.increase) warnings.add('increaseAllowance');
+        if (v > 0n) warnings.add('approvalNativeValue');
+        await spenderCheck(dc.spender);
+        return `Approve ${dc.spender} to spend ${a.text} (token ${c.to})${sends}`;
+      }
+      case 'permit': { const a = await amountOf(c.to, dc.value); if (isUnlimited(dc.value)) warnings.add('unlimitedApproval'); await spenderCheck(dc.spender); return `Permit ${dc.spender} to spend ${a.text} of ${dc.owner} (token ${c.to})${sends}`; }
+      case 'setApprovalForAll': { warnings.add(dc.approved ? 'setApprovalForAll' : 'revokeApprovalForAll'); if (dc.approved) await spenderCheck(dc.operator); return `${dc.approved ? 'Give' : 'Remove'} ${dc.operator} access to EVERY item of collection ${c.to}${sends}`; }
+      case 'permit2Approve': { warnings.add('permit2Approve'); if (isUnlimited(dc.amount)) warnings.add('unlimitedAllowance'); await spenderCheck(dc.spender); const a = await amountOf(dc.token, dc.amount); return `Permit2: let ${dc.spender} spend ${a.text} (token ${dc.token})${sends}`; }
+      case 'transfer': { const a = await amountOf(c.to, dc.amount); warnings.add('tokenTransfer'); return `Send ${a.text} to ${dc.to} (token ${c.to})${sends}`; }
+      case 'transferFrom': { warnings.add('tokenTransfer'); const a = dc.standard === 'erc20' ? (await amountOf(c.to, dc.amountOrId)).text : `item #${dc.amountOrId.toString()}`; return `Move ${a} from ${dc.from} to ${dc.to} (contract ${c.to})${sends}`; }
+      case 'nftTransfer': warnings.add('tokenTransfer'); return `Move NFT #${dc.id.toString()}${dc.amount !== undefined ? ` x${dc.amount.toString()}` : ''} from ${dc.from} to ${dc.to} (collection ${c.to})${sends}`;
+      case 'lend': { warnings.add('tokenTransfer'); if (dc.beneficiary.toLowerCase() !== n.from.toLowerCase()) warnings.add('lendOtherAccount'); const a = await amountOf(dc.asset, dc.amount); return `Lending pool ${c.to}: ${dc.action} ${a.text} for ${dc.beneficiary}${sends}`; }
+      case 'wrap': return `${dc.fn === 'deposit' ? 'Wrap' : 'Unwrap'} ${dc.amount !== undefined ? dc.amount.toString() : (v > 0n ? formatUnits(v, dec) : '')} via ${c.to}${sends}`;
+      case 'multicall': {
+        const inner = flattenCalls(dc); if (dc.truncated || inner.some((x) => x.kind === 'unknown')) warnings.add('unknownInner');
+        const found: string[] = [];
+        for (const x of inner) {
+          if (x.kind === 'permit2Approve') { warnings.add('permit2Approve'); if (isUnlimited(x.amount)) warnings.add('unlimitedAllowance'); await spenderCheck(x.spender); found.push(`Permit2 for ${x.spender}`); }
+          if ((x.kind === 'approve' || x.kind === 'permit') && !(x as any).decrease) { warnings.add('hiddenApproval'); if (isUnlimited(x.kind === 'approve' ? x.amount : x.value)) warnings.add('unlimitedApproval'); await spenderCheck(x.spender); found.push(`approval for ${x.spender}`); }
+          if (x.kind === 'setApprovalForAll' && x.approved) { warnings.add('hiddenApproval'); await spenderCheck(x.operator); found.push(`access to every item for ${x.operator}`); }
+        }
+        return `Bundle of ${dc.calls.length} calls to ${c.to}${found.length ? `, including ${found.join('; ')}` : ''}${sends}`;
+      }
+      default: warnings.add('unknownCall'); warnings.add('blindCall'); return `UNRECOGNISED call to ${c.to} · function ${c.data.slice(0, 10)} · ${(c.data.length - 2) / 2} bytes${sends}`;
+    }
+  }));
+  lines.forEach((l, i) => { detail[`Call ${i + 1}`] = l; });
+  return { detail, warnings: [...warnings] };
 }
 
 async function txView(p: PendingRequest, d: ViewDeps) {

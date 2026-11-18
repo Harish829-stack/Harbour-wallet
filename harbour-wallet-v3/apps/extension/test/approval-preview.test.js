@@ -87,3 +87,36 @@ test('the estimated fee on a tx approval comes from the wallet preset, never fro
   assert.equal(greedy.estimatedFee, plain.estimatedFee, 'a site gasPrice does not change the number shown');
   assert.equal(greedy.defaultFeeLevel, 'average');
 });
+
+// Red-team finding 1: a wallet_sendCalls batch must show the same facts a single transaction does.
+import { encodeFunctionData, parseAbi } from 'viem';
+const ERC = parseAbi(['function approve(address spender, uint256 amount) returns (bool)', 'function setApprovalForAll(address operator, bool approved)', 'function multicall(bytes[] data) returns (bytes[])']);
+const USDC = '0x' + 'a0'.repeat(20); const BAD = '0x' + 'bd'.repeat(20); const MAX = (1n << 256n) - 1n;
+const batch = (calls) => buildView({ id: 'rb', kind: 'calls', ns: 'evm', method: 'wallet_sendCalls', origin: 'https://dapp.example', isTopFrame: true, params: { chainId: 1, n: { from: ME, calls } } }, { ...deps(false), tokenMeta: async (_c, a) => (a.toLowerCase() === USDC ? { symbol: 'USDC', name: 'USD Coin', decimals: 6 } : null) });
+const ap = (spender, amt) => encodeFunctionData({ abi: ERC, functionName: 'approve', args: [spender, amt] });
+
+test('batch: an unlimited approval names the spender and the amount and raises the high-risk warning (the audit exploit)', async () => {
+  const v = await batch([{ to: USDC, value: '0x0', data: ap(BAD, MAX) }]);
+  const line = v.multi.detail['Call 1'];
+  assert.ok(line.toLowerCase().includes(BAD) && line.includes('UNLIMITED USDC'), line);
+  assert.ok(v.warnings.includes('unlimitedApproval'));
+});
+test('batch: a limited approval shows spender and amount without the unlimited warning (approve + swap stays usable)', async () => {
+  const v = await batch([{ to: USDC, value: '0x0', data: ap(DAPP, 5_000_000n) }]);
+  assert.ok(v.multi.detail['Call 1'].includes('5 USDC') && v.multi.detail['Call 1'].toLowerCase().includes(DAPP));
+  assert.ok(!v.warnings.includes('unlimitedApproval') && !v.warnings.includes('blindCall'));
+});
+test('batch: an approval hidden inside a multicall is called out and flagged', async () => {
+  const inner = ap(BAD, MAX);
+  const v = await batch([{ to: DAPP, value: '0x0', data: encodeFunctionData({ abi: ERC, functionName: 'multicall', args: [[inner]] }) }]);
+  assert.ok(v.warnings.includes('hiddenApproval') && v.warnings.includes('unlimitedApproval'));
+  assert.ok(v.multi.detail['Call 1'].toLowerCase().includes(BAD), v.multi.detail['Call 1']);
+});
+test('batch: access to every item of a collection and an unrecognised call are high risk; a plain transfer is not', async () => {
+  const a = await batch([{ to: DAPP, value: '0x0', data: encodeFunctionData({ abi: ERC, functionName: 'setApprovalForAll', args: [BAD, true] }) }]);
+  assert.ok(a.warnings.includes('setApprovalForAll') && a.multi.detail['Call 1'].includes('EVERY item'));
+  const b = await batch([{ to: DAPP, value: '0x0', data: '0xdeadbeef00' }]);
+  assert.ok(b.warnings.includes('unknownCall') && b.warnings.includes('blindCall'));
+  const c = await batch([{ to: DAPP, value: '0xde0b6b3a7640000', data: '0x' }]);
+  assert.deepEqual(c.warnings, []);
+});
