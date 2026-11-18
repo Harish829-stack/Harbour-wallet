@@ -109,7 +109,7 @@ export class PermissionStore {
 }
 
 // ------------------------------------------------------------------ pending requests (survive service-worker restarts: stored in storage.session)
-export type PendingKind = 'connect' | 'permissions' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset' | 'solConnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'wcSession' | 'multiConnect' | 'multiSign' | 'calls';
+export type PendingKind = 'grant' | 'connect' | 'permissions' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset' | 'solConnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'wcSession' | 'multiConnect' | 'multiSign' | 'calls';
 export interface PendingRequest {
   id: string;                 // internal id shown to the approval UI
   key: string;                // `${tabId}:${frameId}:${page request id}` — de-duplicates a content-script resend after a worker restart

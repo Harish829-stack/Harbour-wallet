@@ -6,7 +6,7 @@ import type { Namespace } from './protocol';
 
 export type MethodKind =
   | 'local' | 'rpc' | 'connect' | 'permissionsRequest' | 'permissionsRevoke' | 'sign' | 'typed' | 'tx' | 'switchChain' | 'addChain' | 'watchAsset'
-  | 'capabilities' | 'calls' | 'callsStatus' | 'showCalls'
+  | 'capabilities' | 'calls' | 'callsStatus' | 'showCalls' | 'grant' | 'grants'
   | 'solConnect' | 'solDisconnect' | 'solSignMessage' | 'solSignTx' | 'solSignAll' | 'solSignSend' | 'multiConnect' | 'multiDisconnect' | 'multiSign';
 export interface MethodSpec { kind: MethodKind; needsConnection?: boolean; approval?: boolean }
 
@@ -30,6 +30,9 @@ export const EVM_METHODS: Readonly<Record<string, MethodSpec>> = Object.freeze({
   wallet_sendCalls: { kind: 'calls', needsConnection: true, approval: true },
   wallet_getCallsStatus: { kind: 'callsStatus', needsConnection: true },
   wallet_showCallsStatus: { kind: 'showCalls', needsConnection: true },
+  // ERC-7715 (same flag): a site's session key gets a limited, expiring allowance. Revoking is done by the user in Settings, never by a site.
+  wallet_requestExecutionPermissions: { kind: 'grant', needsConnection: true, approval: true },
+  wallet_getGrantedExecutionPermissions: { kind: 'grants', needsConnection: true },
   // read-only JSON-RPC proxied to the origin's selected network (public RPC)
   ...Object.fromEntries([
     'eth_blockNumber', 'eth_call', 'eth_estimateGas', 'eth_gasPrice', 'eth_getBalance', 'eth_getBlockByHash', 'eth_getBlockByNumber',

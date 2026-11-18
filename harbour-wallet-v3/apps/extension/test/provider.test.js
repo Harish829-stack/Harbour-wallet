@@ -19,7 +19,7 @@ const out = await build({
       export { makeRpc } from './background/provider/rpc';
       export { gateRoute, FUNDING_ROUTES } from './popup/wallet/backupGate';
       export * from './core/provider/evmAccount';
-      export { isInternalWalletSender } from './background/accessPolicy'; export { normalizeSendCalls, buildCapabilities, buildCallsStatus } from './core/smartAccount/calls5792';`,
+      export { isInternalWalletSender } from './background/accessPolicy'; export { normalizeSendCalls, buildCapabilities, buildCallsStatus } from './core/smartAccount/calls5792'; export { normalizeGrantParams } from './core/smartAccount/permissions';`,
     resolveDir: src, sourcefile: 'entry.ts', loader: 'ts',
   },
   bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
@@ -954,4 +954,70 @@ test('5792 sendCalls: rejecting sends nothing; the account turning off before ap
   await ctx.svc.handle(s, req('wallet_sendCalls', batch())); p = await pendingOf(ctx);
   ctx.svc.d.smart.state = async () => 'none';
   await ctx.svc.resolve(p.id, { approve: true }); assert.equal(sent.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 5760);
+});
+
+// ---------------------------------------------------------------- ERC-7715 (session-key permissions, P5)
+function grantSetup(state = 'pinned', flag = true) {
+  const granted = []; const store = [];
+  const t = smartSetup(state, flag); const { ctx } = t;
+  ctx.svc.d.smart.grants = { list: async (o, a) => store.filter((g) => g.origin === o && g.account.toLowerCase() === a.toLowerCase()), put: async (r) => { store.push(r); } };
+  ctx.svc.d.signer.grantPermission = async (c, net, permission, origin) => {
+    granted.push([c.evmAddress, net.chainId, permission, origin]);
+    return { record: { id: '0x' + 'ee'.repeat(32), origin, chainId: net.chainId, account: c.evmAddress, sessionKey: permission.sessionKey, type: permission.type, allowance: permission.allowance.toString(), token: permission.token, expiry: permission.expiry, grantedAt: 1, context: '0xc0de', delegation: {} }, context: '0xc0de', delegationManager: '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3' };
+  };
+  return { ctx, granted, store };
+}
+const NOWS = 1_700_000_000;
+const grantReq = (over = {}, perm = { type: 'native-token-allowance', data: { allowance: '0x2386f26fc10000' } }) => [{ chainId: '0xaa36a7', to: ADDR1, expiry: NOWS + 3600, permission: perm, ...over }];
+
+test('7715: methods answer 4200 while the flag is off or the host is absent', async () => {
+  for (const ctx of [setup(), grantSetup('pinned', false).ctx]) {
+    const s = sender(); await connect(ctx, s);
+    for (const m of ['wallet_requestExecutionPermissions', 'wallet_getGrantedExecutionPermissions']) assert.equal((await ctx.svc.handle(s, req(m, []))).outcome.error.code, 4200, m);
+  }
+});
+test('7715 normalizer: exactly one request, bound to the connected account and chain, strict fields', () => {
+  const code = (f) => { try { f(); } catch (e) { return e.code; } return null; };
+  const ok = M.normalizeGrantParams(grantReq(), ADDR0, SEPOLIA, NOWS); assert.equal(ok.allowance, 10_000_000_000_000_000n);
+  assert.equal(code(() => M.normalizeGrantParams([], ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams([...grantReq(), ...grantReq()], ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({ from: ADDR1 }), ADDR0, SEPOLIA, NOWS)), 4100);
+  assert.equal(M.normalizeGrantParams(grantReq({ from: ADDR0 }), ADDR0, SEPOLIA, NOWS).sessionKey, ADDR1);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({ chainId: '0x14a34' }), ADDR0, SEPOLIA, NOWS)), 5710);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({ extra: 1 }), ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({ expiry: NOWS + 31 * 86400 }), ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({}, { type: 'native-token-allowance', data: { allowance: '0x0' } }), ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({}, { type: 'native-token-allowance', data: { allowance: '0x' + 'f'.repeat(64) } }), ADDR0, SEPOLIA, NOWS)), -32602);
+  assert.equal(code(() => M.normalizeGrantParams(grantReq({}, { type: 'native-token-stream', data: {} }), ADDR0, SEPOLIA, NOWS)), 5700);
+});
+test('7715: an account without the smart account gets a refusal, never a prompt', async () => {
+  for (const st of ['none', 'other']) {
+    const { ctx, granted } = grantSetup(st); const s = sender(); await connectOnSepolia(ctx, s);
+    assert.equal((await ctx.svc.handle(s, req('wallet_requestExecutionPermissions', grantReq()))).outcome.error.code, 4200);
+    assert.equal((await ctx.pending.list()).length, 0); assert.equal(granted.length, 0);
+  }
+});
+test('7715: one approval, nothing signed before it, response shape, and a site reads back only its own grants', async () => {
+  const { ctx, granted, store } = grantSetup('pinned'); const s = sender(); await connectOnSepolia(ctx, s);
+  const r = await ctx.svc.handle(s, req('wallet_requestExecutionPermissions', grantReq())); assert.equal(r.done, false);
+  const p = await pendingOf(ctx); assert.equal(p.kind, 'grant'); assert.equal(granted.length, 0, 'nothing is signed before approval');
+  assert.equal((await ctx.svc.resolve(p.id, { approve: true })).ok, true);
+  assert.equal(granted.length, 1); assert.equal(granted[0][2].allowance, 10_000_000_000_000_000n); assert.equal(granted[0][2].sessionKey, ADDR1); assert.equal(granted[0][3], s.origin);
+  const out = ctx.log.delivered.at(-1).outcome.result;
+  assert.equal(out.length, 1); assert.equal(out[0].to, ADDR1); assert.equal(out[0].permission.isAdjustmentAllowed, false); assert.equal(out[0].permission.data.allowance, '0x2386f26fc10000'); assert.equal(out[0].context, '0xc0de'); assert.equal(out[0].chainId, '0xaa36a7');
+  assert.equal(store.length, 1);
+  const got = (await ctx.svc.handle(s, req('wallet_getGrantedExecutionPermissions', []))).outcome.result; assert.equal(got.length, 1); assert.equal(got[0].context, '0xc0de');
+  const other = sender('https://other.example'); await connectOnSepolia(ctx, other);
+  assert.deepEqual((await ctx.svc.handle(other, req('wallet_getGrantedExecutionPermissions', []))).outcome.result, [], 'another origin sees none');
+  ctx.clock.t += 2 * 3600 * 1000; assert.deepEqual((await ctx.svc.handle(s, req('wallet_getGrantedExecutionPermissions', []))).outcome.result, [], 'expired grants are not listed');
+});
+test('7715: rejecting signs nothing; the smart account turning off or the expiry passing before approval is refused', async () => {
+  const { ctx, granted } = grantSetup('pinned'); const s = sender(); await connectOnSepolia(ctx, s);
+  await ctx.svc.handle(s, req('wallet_requestExecutionPermissions', grantReq())); let p = await pendingOf(ctx);
+  assert.equal((await ctx.svc.resolve(p.id, { approve: false })).ok, true); assert.equal(granted.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 4001);
+  await ctx.svc.handle(s, req('wallet_requestExecutionPermissions', grantReq())); p = await pendingOf(ctx);
+  ctx.svc.d.smart.state = async () => 'none'; await ctx.svc.resolve(p.id, { approve: true }); assert.equal(granted.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 4200);
+  ctx.svc.d.smart.state = async () => 'pinned';
+  await ctx.svc.handle(s, req('wallet_requestExecutionPermissions', grantReq({ expiry: NOWS + 60 }))); p = await pendingOf(ctx);
+  ctx.clock.t += 120 * 1000; await ctx.svc.resolve(p.id, { approve: true }); assert.equal(granted.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, -32602);
 });

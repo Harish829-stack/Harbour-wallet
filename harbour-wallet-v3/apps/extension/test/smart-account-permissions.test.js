@@ -31,7 +31,9 @@ test('unlimited, zero, expired, over 30 days, unknown fields/types, wrong chain 
   assert.equal(code(() => M.normalizePermissionRequest(req({ isAdjustmentAllowed: true }), NOW)), -32602);
   assert.equal(code(() => M.normalizePermissionRequest(req({ to: 'nope' }), NOW)), -32602);
 });
-test('no provider method reaches the permission code yet', () => {
-  for (const m of ['wallet_requestExecutionPermissions', 'wallet_grantPermissions', 'wallet_revokeExecutionPermission']) assert.equal(M.specFor('evm', m), null, m);
+test('only the two gated ERC-7715 methods reach the permission code; revoking and other names are not dApp methods', () => {
+  assert.equal(M.specFor('evm', 'wallet_requestExecutionPermissions').kind, 'grant'); assert.equal(M.specFor('evm', 'wallet_requestExecutionPermissions').approval, true);
+  assert.equal(M.specFor('evm', 'wallet_getGrantedExecutionPermissions').kind, 'grants'); assert.equal(!!M.specFor('evm', 'wallet_getGrantedExecutionPermissions').approval, false);
+  for (const m of ['wallet_grantPermissions', 'wallet_revokeExecutionPermission', 'wallet_revokeGrantedExecutionPermission']) assert.equal(M.specFor('evm', m), null, m);
   void readFileSync;
 });

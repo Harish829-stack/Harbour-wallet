@@ -22,7 +22,9 @@ import { negotiate, type SupportedNamespace } from '../../core/walletconnect';
 import { tonProofHash } from './tonProof';
 import { applySignatures, decodePsbt, planPsbtSigning, psbtToB64, psbtToHex } from '../../core/provider/psbt';
 import { normalizeSendCalls, buildCapabilities, buildCallsStatus, type AtomicStatus } from '../../core/smartAccount/calls5792';
+import { DELEGATION_MANAGER } from '../../core/smartAccount/constants';
 import { SMART_ACCOUNT_CHAINS } from '../../core/smartAccount/constants';
+import { normalizeGrantParams, grantResponse, type GrantRecord, type NormalizedPermission } from '../../core/smartAccount/permissions';
 import { isMultiChain, normalizeMultiSign, signPlan, MULTI_CHAINS, type Scheme, type MultiRequest } from '../../core/provider/multi';
 
 export interface Signer {
@@ -37,12 +39,16 @@ export interface Signer {
   multiSign(c: ConnRef, chain: string, scheme: Scheme, data: Uint8Array): Promise<Uint8Array>;
   /** EIP-5792: submits an approved atomic batch through the user's smart account (user-paid). Absent = unsupported. */
   sendCalls?(c: ConnRef, net: EvmNetwork, calls: unknown): Promise<{ userOpHash: string }>;
+  /** ERC-7715: signs one normalized permission as a root delegation to the site's session key (no key leaves the signer). Absent = unsupported. */
+  grantPermission?(c: ConnRef, net: EvmNetwork, permission: NormalizedPermission, origin: string): Promise<{ record: GrantRecord; context: string; delegationManager: string }>;
 }
 /** Smart account hooks for EIP-5792 (optional: absent, or `available()` false, means those methods answer 4200 as before). */
 export interface SmartHost {
   available(): Promise<boolean>;
   state(chainId: number, account: string): Promise<'pinned' | 'none' | 'other' | 'unavailable'>;
   status(chainId: number, userOpHash: string): Promise<{ state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown }>;
+  /** Stored ERC-7715 grants (persistent). The site only ever reads its own, for the connected account. */
+  grants?: { list(origin: string, account: string): Promise<GrantRecord[]>; put(rec: GrantRecord): Promise<void> };
   bundles: { get(origin: string, id: string): Promise<{ chainId: number; userOpHash: string; account: string } | null>; put(origin: string, id: string, rec: { chainId: number; userOpHash: string; account: string }): Promise<void> };
 }
 export interface DeliverTarget { tabId: number; frameId: number; documentId?: string }
@@ -194,6 +200,7 @@ export class ProviderService {
           return this.queue(s, req, 'tx', { tx, chainId, ...(switchedFrom !== undefined ? { switchedFrom } : {}) }, bindEvm);
         }
         case 'capabilities': case 'calls': case 'callsStatus': case 'showCalls': return this.fiveSevenNinetyTwo(s, req, spec.kind, me, chainId, bindEvm);
+        case 'grant': case 'grants': return this.sevenSevenOneFive(s, req, spec.kind, me, chainId, bindEvm);
         case 'switchChain': {
           const { chainId: target } = normalizeSwitchChain(req.params);
           if (!this.d.networks.get(target) || !this.policy.isSigningEvmChain(target)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);
@@ -331,6 +338,21 @@ export class ProviderService {
     if ((await smart.state(n.chainId, me)) !== 'pinned') throw new ProviderError(ERR.CALLS_ATOMIC_UNSUPPORTED);
     if (n.id && (await smart.bundles.get(s.origin, n.id))) throw new ProviderError(ERR.CALLS_DUPLICATE_ID);
     return this.queue(s, req, 'calls', { n, chainId: n.chainId }, bound);
+  }
+
+  // ------------------------------------------------------------------ ERC-7715 (session-key permissions)
+  private async sevenSevenOneFive(s: SenderInfo, req: PageRequest, kind: 'grant' | 'grants', me: string, chainId: number, bound: (Connection & { scoped?: true }) | undefined): Promise<HandleResult> {
+    const smart = this.d.smart;
+    if (!smart?.grants || !this.d.signer.grantPermission || !(await smart.available())) throw new ProviderError(ERR.UNSUPPORTED_METHOD, `Harbour does not support ${req.method}.`);
+    if (kind === 'grants') {
+      const now = Math.floor(this.now() / 1000);
+      return ok((await smart.grants.list(s.origin, me)).filter((g) => g.expiry > now).map((g) => grantResponse(g, g.context, DELEGATION_MANAGER)));
+    }
+    const p = normalizeGrantParams(req.params, me, chainId, Math.floor(this.now() / 1000));
+    if (!this.d.networks.get(p.chainId) || !this.policy.isSigningEvmChain(p.chainId)) throw new ProviderError(ERR.CALLS_CHAIN_UNSUPPORTED);
+    // Redemption runs through the account's smart-account delegate: a site can never turn that on, so an account without it gets a refusal, not a prompt.
+    if ((await smart.state(p.chainId, me)) !== 'pinned') throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Turn on the smart account in Harbour first. A site cannot do that for you.');
+    return this.queue(s, req, 'grant', { p: { ...p, allowance: p.allowance.toString() }, chainId: p.chainId }, bound);
   }
 
   private async queue(s: SenderInfo, req: PageRequest, kind: PendingKind, params: unknown, bound?: Connection & { scoped?: true }): Promise<HandleResult> {
@@ -555,6 +577,19 @@ export class ProviderService {
         const { userOpHash } = await this.d.signer.sendCalls(conn, net, n.calls);
         await smart.bundles.put(p.origin, id, { chainId, userOpHash, account: conn.evmAddress! });
         return n.version === '1.0' ? id : { id };
+      }
+      case 'grant': {
+        const conn = await this.needConn(p, 'evm'); const smart = this.d.smart;
+        const { p: raw, chainId } = p.params as { p: Omit<NormalizedPermission, 'allowance'> & { allowance: string }; chainId: number };
+        if (!smart?.grants || !this.d.signer.grantPermission || !(await smart.available())) throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Permissions are not available right now.');
+        if (p.binding?.scoped ? p.binding.chainId !== chainId : conn.chainId !== chainId) throw new ProviderError(ERR.UNAUTHORIZED, 'The site switched networks while this request was pending.');
+        const permission: NormalizedPermission = { ...raw, allowance: BigInt(raw.allowance) };
+        if (permission.expiry <= Math.floor(this.now() / 1000)) throw new ProviderError(ERR.INVALID_PARAMS, 'The permission expired while it was waiting for approval.');
+        const net = this.d.networks.get(chainId); if (!net) throw new ProviderError(ERR.CHAIN_DISCONNECTED);
+        if ((await smart.state(chainId, conn.evmAddress!)) !== 'pinned') throw new ProviderError(ERR.UNSUPPORTED_METHOD, 'Turn on the smart account in Harbour first.');
+        const g = await this.d.signer.grantPermission(conn, net, permission, p.origin);
+        await smart.grants.put(g.record);
+        return [grantResponse(g.record, g.context, g.delegationManager)];
       }
       case 'switchChain': {
         const { chainId } = p.params as { chainId: number }; if (!this.d.networks.get(chainId)) throw new ProviderError(ERR.UNRECOGNIZED_CHAIN);

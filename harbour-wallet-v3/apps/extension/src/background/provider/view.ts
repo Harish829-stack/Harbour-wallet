@@ -100,6 +100,16 @@ async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
       });
       return { ...base, chain: net ? netView(net) : base.chain, multi: { kind: 'calls', types: [], detail } };
     }
+    case 'grant': {
+      const { p: g, chainId: cid } = p.params as { p: { sessionKey: string; type: string; allowance: string; token: string | null; expiry: number }; chainId: number }; const net = d.networks.get(cid);
+      const meta = g.token ? await d.tokenMeta(cid, g.token) : null;
+      const amount = g.token ? `${formatUnits(BigInt(g.allowance), meta?.decimals ?? 18)} ${meta?.symbol ?? 'tokens (unverified token)'}` : `${formatUnits(BigInt(g.allowance), net?.decimals ?? 18)} ${net?.symbol ?? ''}`.trimEnd();
+      const detail: Record<string, string> = {
+        Network: net?.name ?? String(cid), 'Session key': g.sessionKey, 'Can spend (in total)': amount, ...(g.token ? { Token: g.token } : {}),
+        'Expires': new Date(g.expiry * 1000).toUTCString(), 'Limits': 'Enforced on-chain. The site can never spend more than this, after the expiry, or anything else. Revoke any time in Settings.',
+      };
+      return { ...base, chain: net ? netView(net) : base.chain, multi: { kind: 'grant', types: [], detail } };
+    }
     case 'multiSign': { const s = p.params.summary; return { ...base, multi: s, ...(s.kind === 'message' ? { message: { utf8: s.text ?? null, hex: s.hex, bytes: (s.hex.length - 2) / 2 } } : {}) }; }
     case 'solSignMessage': {
       const bytes = b64ToBytes(p.params.messageB64); const text = tryUtf8(bytes);

@@ -5,7 +5,7 @@
 //    operation, its nonce and its fees stay in this worker's memory. No key, digest or signature ever leaves it.
 //  - Upgrade and revoke are user-paid, self-sent type-4 transactions signed here with the existing pattern
 //    openActiveKeys() -> signHash() -> dispose() in finally, behind consumeReauth('manage').
-import { encodeFunctionData, formatEther, parseAbi, type Hex } from 'viem';
+import { bytesToHex, encodeFunctionData, formatEther, parseAbi, type Hex } from 'viem';
 import { GATEWAY_URL } from '../kit/endpoints';
 import { signHash, evmAccountFromBytes } from '../core/provider/evmAccount';
 import { smartAccountsAvailable } from '../core/harbour/policy';
@@ -15,8 +15,11 @@ import { logWarn } from '../core/logger';
 import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
 import { buildSignedType4 } from '../core/smartAccount/delegation';
 import { sendOperation } from '../core/smartAccount/send';
+import { buildPermissionDelegation, permissionContext, permissionHash, signPermission } from '../core/smartAccount/permissionDelegation';
+import { DELEGATION_MANAGER } from '../core/smartAccount/constants';
+import type { NormalizedPermission, GrantRecord } from '../core/smartAccount/permissions';
 import { signUserOp } from '../core/smartAccount/kit';
-import { GuardError, GUARD_MESSAGE, assertFresh, checkAuthorization, delegationState, type DelegationState } from '../core/smartAccount/guard';
+import { GuardError, GUARD_MESSAGE, assertFresh, checkAuthorization, delegationState, requirePinnedDelegation, type DelegationState } from '../core/smartAccount/guard';
 import { delegationTarget } from '../core/evmCode';
 import { evmClientFor, feeData } from './handlers/earnEvm';
 import { activeInfo } from './handlers/earnKeys';
@@ -200,4 +203,30 @@ export async function userOpStatus(chainId: number, userOpHash: string): Promise
   const rc = await bundlerCall(url)('eth_getUserOperationReceipt', [userOpHash]).catch(() => null);
   if (!rc || typeof rc !== 'object' || !rc.receipt) return { state: 'pending' };
   return { state: 'done', success: rc.success !== false, receipt: rc.receipt };
+}
+
+
+// ---------- dApp permissions (ERC-7715, P5): the user's account grants a site's session key a limited, expiring allowance ----------
+/** Signs ONE already-approved, already-normalized permission as a root delegation and returns the record to store plus the ERC-7715 context.
+ *  Nothing here takes a hash or typed data from the site: the delegation is built and checked locally from the normalized request. */
+export async function grantPermission(p: { chainId: number; account: string; privateKey: Uint8Array; permission: NormalizedPermission; origin: string }): Promise<{ record: GrantRecord; context: Hex; delegationManager: string }> {
+  if (!(await flagOn()) || !isSmartAccountChain(p.chainId) || p.permission.chainId !== p.chainId) throw Object.assign(new Error('Permissions are not available right now.'), { code: 'unavailable' });
+  const chain = resolveSendChain(undefined, p.chainId, customNetworks()); if (!chain) throw Object.assign(new Error('Unknown network'), { code: 'unavailable' });
+  const account = p.account as Address;
+  try {
+    if (evmAccountFromBytes(p.privateKey).address.toLowerCase() !== account.toLowerCase()) throw new GuardError('key_mismatch');
+    requirePinnedDelegation(await evmClientFor(chain).getCode({ address: account }), p.chainId); // redemption runs through the account's delegate: it must be the pinned one
+    const salt = BigInt(bytesToHex(crypto.getRandomValues(new Uint8Array(32))));
+    const d = buildPermissionDelegation(p.permission, account, salt);
+    const signature = await signPermission(d, p.permission, account, evmAccountFromBytes(p.privateKey));
+    const record: GrantRecord = {
+      id: permissionHash(d), origin: p.origin, chainId: p.chainId, account, sessionKey: p.permission.sessionKey, type: p.permission.type, allowance: p.permission.allowance.toString(), token: p.permission.token,
+      expiry: p.permission.expiry, grantedAt: Date.now(), context: permissionContext(d, signature),
+      delegation: { delegate: d.delegate, delegator: d.delegator, authority: d.authority, caveats: d.caveats, salt: d.salt.toString(), signature },
+    };
+    return { record, context: permissionContext(d, signature), delegationManager: DELEGATION_MANAGER };
+  } catch (e: any) {
+    if (e instanceof GuardError) { logWarn('smart account: guard refused a permission', e.reason); throw Object.assign(new Error(GUARD_MESSAGE), { code: 'guard_failed' }); }
+    throw e;
+  }
 }

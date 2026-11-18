@@ -21,6 +21,7 @@ import { makeRpc } from './rpc';
 import { createSigner } from './signer';
 import { multiBackend } from './multiBuild';
 import { ProviderService, type DeliverTarget } from './service';
+import { makeGrantStore } from '../../core/smartAccount/grantStore';
 import { flagOn as smartFlagOn, callsState, userOpStatus } from '../smartAccountService';
 import type { ViewDeps } from './view';
 import { ApprovalWindow } from './approvalWindow';
@@ -70,6 +71,7 @@ const callBundles = {
     await kvSession.set(BUNDLES_KEY, m);
   },
 };
+export const grantStore = makeGrantStore(kvLocal);
 // WalletConnect v2 (Harbour-side equivalent; Trust Wallet 26.41.0 ships no pairing/session client — see evidences/re-evidence/16-walletconnect).
 export const wc = new WalletConnectBridge({
   kv: kvLocal, perms, service: () => getProvider(), createKit, projectId: readProjectId,
@@ -92,7 +94,7 @@ export function getProvider(): ProviderService {
     vaultStatus: async () => { await ensureCtx(); const v = ctxCache!.vault; return { hasVault: await v.exists(), unlocked: await v.isUnlocked() }; },
     openApproval: () => approvalWindow.open(), closeApprovalIfIdle: () => approvalWindow.closeIfIdle(),
     deliver, emit, wc: wc.host, multi: multiBackend,
-    smart: { available: smartFlagOn, state: callsState, status: userOpStatus, bundles: callBundles },
+    smart: { available: smartFlagOn, state: callsState, status: userOpStatus, bundles: callBundles, grants: { list: grantStore.list, put: grantStore.put } },
     siteRisk: async (origin) => (await phishingRisk(origin, kvSession)).level,
     ethSignEnabled: async () => (await loadSettings()).developerSettings.isEthSignEnabled === true,
     probeChainId: async (url) => { const r = await probeRpcChainId(url, fetch, { fromSite: true }); if (!r.ok) throw new Error(r.error); return r.chainId; },

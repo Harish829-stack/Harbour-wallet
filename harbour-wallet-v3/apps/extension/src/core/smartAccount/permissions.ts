@@ -19,7 +19,7 @@ const onlyKeys = (o: Record<string, unknown>, keys: string[], what: string) => {
 
 export function normalizePermissionRequest(raw: unknown, now: number = Math.floor(Date.now() / 1000)): NormalizedPermission {
   if (!isObj(raw)) return bad('Expected a permission request object.');
-  onlyKeys(raw, ['chainId', 'to', 'expiry', 'permission', 'isAdjustmentAllowed'], 'request');
+  onlyKeys(raw, ['chainId', 'from', 'to', 'expiry', 'permission', 'isAdjustmentAllowed'], 'request');
   if (raw.isAdjustmentAllowed !== undefined && raw.isAdjustmentAllowed !== false) bad('Adjustable permissions are not supported.');
   if (typeof raw.chainId !== 'string' || !QTY.test(raw.chainId)) bad('Invalid chainId.');
   const chainId = Number(BigInt(raw.chainId as string));
@@ -41,4 +41,27 @@ export function normalizePermissionRequest(raw: unknown, now: number = Math.floo
   let token: string | null = null;
   if (p.type === 'erc20-token-allowance') { if (typeof d.tokenAddress !== 'string' || !isAddress(d.tokenAddress, { strict: false })) bad('Invalid token address.'); token = getAddress(d.tokenAddress as string); }
   return { chainId, sessionKey: getAddress(raw.to as string), expiry, type: p.type, allowance, token };
+}
+
+/** wallet_requestExecutionPermissions params: exactly ONE request, for the connected account on the connected chain. `from` may be omitted or must be that account. */
+export function normalizeGrantParams(params: unknown, me: string, chainId: number, now?: number): NormalizedPermission {
+  if (!Array.isArray(params) || params.length !== 1) bad('Send exactly one permission request.');
+  const r = (params as unknown[])[0];
+  if (!isObj(r)) return bad('Expected a permission request object.');
+  if (r.from !== undefined && !(typeof r.from === 'string' && isAddress(r.from, { strict: false }) && r.from.toLowerCase() === me.toLowerCase())) throw new ProviderError(ERR.UNAUTHORIZED, 'The requested account has not been authorized by the user.');
+  const p = normalizePermissionRequest(r, now);
+  if (p.chainId !== chainId) throw new ProviderError(ERR.CALLS_CHAIN_UNSUPPORTED);
+  return p;
+}
+
+export interface GrantRecord {
+  id: string; origin: string; chainId: number; account: string; sessionKey: string; type: PermissionType; allowance: string; token: string | null; expiry: number; grantedAt: number;
+  /** ABI-encoded signed delegation (what the site redeems); stored so the site can read its grant back. */
+  context: string;
+  delegation: { delegate: string; delegator: string; authority: string; caveats: Array<{ enforcer: string; terms: string; args: string }>; salt: string; signature: string };
+}
+/** The ERC-7715 response for a stored grant (the context is the ABI-encoded signed delegation the site redeems through the DelegationManager). */
+export function grantResponse(r: GrantRecord, context: string, delegationManager: string) {
+  const data: Record<string, string> = { allowance: '0x' + BigInt(r.allowance).toString(16) }; if (r.token) data.tokenAddress = r.token;
+  return { chainId: '0x' + r.chainId.toString(16), from: r.account, to: r.sessionKey, expiry: r.expiry, permission: { type: r.type, data, isAdjustmentAllowed: false }, context, delegationManager, dependencies: [] as unknown[] };
 }

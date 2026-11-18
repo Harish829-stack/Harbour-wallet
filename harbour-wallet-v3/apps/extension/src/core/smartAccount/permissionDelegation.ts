@@ -6,7 +6,7 @@
 import { hashTypedData, getAddress, type Hex } from 'viem';
 import { createCaveatBuilder, SIGNABLE_DELEGATION_TYPED_DATA } from '@metamask/smart-accounts-kit/utils';
 import {
-  ROOT_AUTHORITY, hashDelegation, decodeTimestampTerms, decodeNativeTokenTransferAmountTerms, decodeExactCalldataTerms, decodeERC20TransferAmountTerms, decodeValueLteTerms,
+  ROOT_AUTHORITY, hashDelegation, encodeDelegations, decodeTimestampTerms, decodeNativeTokenTransferAmountTerms, decodeExactCalldataTerms, decodeERC20TransferAmountTerms, decodeValueLteTerms,
 } from '@metamask/delegation-core';
 import { DELEGATION_MANAGER, ENFORCERS, isSmartAccountChain, type Address } from './constants';
 import { GuardError } from './guard';
@@ -76,3 +76,6 @@ export async function signPermission(d: PermissionDelegation, p: NormalizedPermi
   checkPermissionDelegation(d, p, delegator);
   return signer.signTypedData(delegationTypedData(d, p.chainId));
 }
+
+/** The ABI-encoded signed delegation chain a site passes to the DelegationManager (ERC-7715 `context`). MetaMask's encoder. */
+export const permissionContext = (d: PermissionDelegation, signature: Hex): Hex => encodeDelegations([{ ...d, signature }] as any) as Hex;
