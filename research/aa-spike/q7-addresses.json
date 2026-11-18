@@ -1,0 +1,10 @@
+{
+  "sepolia": {
+    "DelegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+    "EIP7702StatelessDeleGatorImpl": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B"
+  },
+  "baseSepolia": {
+    "DelegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+    "EIP7702StatelessDeleGatorImpl": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B"
+  }
+}
