@@ -71,3 +71,9 @@ test('backend simulation unsupported for the chain: still flagged as blind', asy
   const v = await buildView({ id: 'r3', kind: 'tx', ns: 'evm', method: 'eth_sendTransaction', origin: 'https://dapp.example', isTopFrame: true, params: { chainId: 1, tx: { from: ME, to: DAPP, value: '0x0', data: '0xdeadbeef00' } } }, { ...deps(false), simulate: async () => null });
   assert.ok(v.warnings.includes('simulationUnavailable') && v.warnings.includes('blindCall'));
 });
+
+test('atomic batch approval states the fee rule: free for the first smart-account transaction, otherwise paid by the user', async () => {
+  const v = await buildView({ id: 'r2', kind: 'calls', ns: 'evm', method: 'wallet_sendCalls', origin: 'https://dapp.example', isTopFrame: true, params: { chainId: 1, n: { calls: [{ to: DAPP, value: '0x1', data: '0x' }] } } }, deps(false));
+  const fee = v.multi.detail.Fee;
+  assert.match(fee, /Free for your first smart-account transaction/); assert.match(fee, /Otherwise paid from your account/);
+});

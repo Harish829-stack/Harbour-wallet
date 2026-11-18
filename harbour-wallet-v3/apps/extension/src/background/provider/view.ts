@@ -93,7 +93,7 @@ async function buildRawView(p: PendingRequest, d: ViewDeps): Promise<any> {
     case 'tx': return { ...base, ...(await txView(p, d)) };
     case 'calls': {
       const { n, chainId: cid } = p.params as { n: { calls: Array<{ to: string; value: string; data: string }> }; chainId: number }; const net = d.networks.get(cid);
-      const detail: Record<string, string> = { Network: net?.name ?? String(cid), Calls: `${n.calls.length} in one atomic batch (all succeed or none run)`, Fee: `Paid from your account, up to the network maximum` };
+      const detail: Record<string, string> = { Network: net?.name ?? String(cid), Calls: `${n.calls.length} in one atomic batch (all succeed or none run)`, Fee: `Free for your first smart-account transaction. Otherwise paid from your account, up to the network maximum` };
       n.calls.forEach((c, i) => {
         const v = BigInt(c.value); const dc = c.data === '0x' ? null : decodeCalldata(c.data);
         detail[`Call ${i + 1}`] = `${c.to}${v > 0n ? ` · ${formatUnits(v, net?.decimals ?? 18)} ${net?.symbol ?? ''}`.trimEnd() : ''} · ${c.data === '0x' ? 'native transfer' : dc && dc.kind !== 'unknown' ? String(dc.kind) : `function ${c.data.slice(0, 10)}`}`;
