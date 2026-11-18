@@ -4,5 +4,11 @@
     "package": "zod < 4.6.6",
     "reviewBy": "2027-01-31",
     "reason": "Memory exhaustion (denial of service only; no key or fund exposure). The patched line is zod 4.x, but @ton/ton (all versions, incl. 16.3.0) depends on zod ^3 and calls the one-argument z.record() that zod 4 removed, so it cannot be forced to 4. Harbour's own code does not import zod and viem does not use it at runtime. Reachable only through TON RPC responses. Re-check when @ton/ton moves to zod 4."
+  },
+  {
+    "id": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch <= 4.0.7",
+    "reviewBy": "2027-01-31",
+    "reason": "ReDoS through single-branch repeated extglobs (denial of service only; no key or fund exposure). No patched picomatch release exists yet: 4.0.7 is the newest and is inside the affected range, so it cannot be overridden. It reaches the build only through @walletconnect/core -> keyvaluestorage -> unstorage -> anymatch -> picomatch 2.3.2, where the patterns come from WalletConnect's own storage code, not from a site or network response. Harbour's own code does not import picomatch. The same version was already in the lockfile before the viem upgrade; the advisory is newer than the last passing gate. Re-check when picomatch publishes a fix."
   }
 ]
