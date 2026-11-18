@@ -28,11 +28,33 @@ export function cleanText(s: unknown, max = 280): string {
   return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;
 }
 const tag = (xml: string, name: string): string => { const m = new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, 'i').exec(xml); return m ? m[1] : ''; };
+/** Splits a feed into <item>/<entry> blocks in linear time. A feed is untrusted: input and block sizes are capped, and a start tag
+ *  with no closing tag ends the scan (a regex here was quadratic: 200k unclosed "<item >" took ~11 s in a service worker). */
+const MAX_FEED_CHARS = 1_000_000, MAX_BLOCK_CHARS = 30_000, MAX_BLOCKS = 60;
+export function feedBlocks(xml: string): string[] {
+  const text = xml.length > MAX_FEED_CHARS ? xml.slice(0, MAX_FEED_CHARS) : xml;
+  const lower = text.toLowerCase();
+  const out: string[] = [];
+  let i = 0;
+  while (out.length < MAX_BLOCKS) {
+    const a = lower.indexOf('<item', i), b = lower.indexOf('<entry', i);
+    const start = a < 0 ? b : b < 0 ? a : Math.min(a, b);
+    if (start < 0) break;
+    const name = lower.startsWith('<item', start) ? 'item' : 'entry';
+    const next = lower.charAt(start + name.length + 1);
+    if (!(next === '>' || /\s/.test(next))) { i = start + 1; continue; }
+    const close = lower.indexOf(`</${name}>`, start);
+    if (close < 0) break;
+    const end = close + name.length + 3;
+    if (end - start <= MAX_BLOCK_CHARS) out.push(text.slice(start, end));
+    i = end;
+  }
+  return out;
+}
 export function parseRss(xml: string, source: string): SentimentItem[] {
   if (typeof xml !== 'string') return [];
   const out: SentimentItem[] = [];
-  const blocks = xml.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) ?? [];
-  for (const b of blocks.slice(0, 60)) {
+  for (const b of feedBlocks(xml)) {
     const title = cleanText(tag(b, 'title'), 200);
     const linkTag = tag(b, 'link').trim() || (/<link[^>]*href=["']([^"']+)["']/i.exec(b)?.[1] ?? '');
     const url = safeHttpsLink(cleanText(linkTag.replace(/<!\[CDATA\[|\]\]>/g, ''), 2048));

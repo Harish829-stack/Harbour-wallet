@@ -129,3 +129,15 @@ test('fetchSentiment aggregates sources, buckets items, tolerates failing source
   await assert.rejects(S.fetchSentiment('BTC/../x', f), /Invalid/);
   const empty = await S.fetchSentiment('BTC', async () => { throw new Error('offline'); }); assert.equal(empty.score, null); assert.ok(empty.sources.every((s) => !s.ok));
 });
+
+test('RSS parser is linear on hostile feeds (unclosed tags, huge input) and still reads valid items', () => {
+  const t0 = Date.now();
+  assert.equal(S.parseRss('<item >'.repeat(200_000), 'x').length, 0);
+  assert.equal(S.parseRss('<item>' + 'a'.repeat(5_000_000), 'x').length, 0);
+  assert.equal(S.parseRss('<entry><title' + ' '.repeat(2_000_000), 'x').length, 0);
+  assert.ok(Date.now() - t0 < 1500, 'hostile feeds must not stall the worker');
+  const ok = '<rss><channel><item><title>A</title><link>https://n.example/a</link></item><items>x</items><ITEM><title>B</title><link>https://n.example/b</link></ITEM><entry><title>C</title><link href="https://n.example/c"/></entry></channel></rss>';
+  assert.deepEqual(S.parseRss(ok, 'F').map((i) => i.title), ['A', 'B', 'C']);
+  const many = '<item><title>T</title><link>https://n.example/z</link></item>'.repeat(200);
+  assert.equal(S.parseRss(many, 'F').length, 60);
+});
