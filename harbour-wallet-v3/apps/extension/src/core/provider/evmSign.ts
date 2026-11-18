@@ -29,13 +29,15 @@ export async function evmSendTransaction(pk: Uint8Array, tx: TxRequest, o: SendO
   const account = evmAccountFromBytes(pk);
   const chain = defineChain({ id: o.chainId, name: o.name, nativeCurrency: { name: o.symbol, symbol: o.symbol, decimals: 18 }, rpcUrls: { default: { http: o.urls } } });
   const client = createPublicClient({ chain, transport: fallback(o.urls.map((u) => http(u, { timeout: o.timeoutMs ?? 15_000, retryCount: 0 }))) });
-  const fee = { ...(o.fee ?? {}) };
-  const legacy = fee.gasPrice !== undefined || tx.gasPrice !== undefined || tx.type === '0x0';
+  // Finding 26: when the approval supplied a fee, that fee alone decides the transaction type and every fee value. A site's own
+  // gasPrice / maxFeePerGas / maxPriorityFeePerGas / type count only when no approved fee was supplied (the user never saw them as a choice).
+  const fee = o.fee && (o.fee.gasPrice !== undefined || o.fee.maxFeePerGas !== undefined || o.fee.maxPriorityFeePerGas !== undefined) ? { ...o.fee } : null;
+  const legacy = fee ? fee.gasPrice !== undefined : (tx.gasPrice !== undefined || tx.type === '0x0');
   const req: Record<string, unknown> = { account, to: tx.to as Hex | undefined, value: BigInt(tx.value), data: tx.data as Hex, chain };
   const gas = o.gas ?? big(tx.gas); if (gas !== undefined) req.gas = gas;
   if (tx.nonce !== undefined) req.nonce = Number(BigInt(tx.nonce));
-  if (legacy) { req.type = 'legacy'; req.gasPrice = fee.gasPrice ?? big(tx.gasPrice); }
-  else { req.type = 'eip1559'; const mf = fee.maxFeePerGas ?? big(tx.maxFeePerGas), mp = fee.maxPriorityFeePerGas ?? big(tx.maxPriorityFeePerGas); if (mf !== undefined) req.maxFeePerGas = mf; if (mp !== undefined) req.maxPriorityFeePerGas = mp; }
+  if (legacy) { req.type = 'legacy'; req.gasPrice = fee ? fee.gasPrice : big(tx.gasPrice); }
+  else { req.type = 'eip1559'; const mf = fee ? fee.maxFeePerGas : big(tx.maxFeePerGas), mp = fee ? fee.maxPriorityFeePerGas : big(tx.maxPriorityFeePerGas); if (mf !== undefined) req.maxFeePerGas = mf; if (mp !== undefined) req.maxPriorityFeePerGas = mp; }
   const prepared: any = await client.prepareTransactionRequest(req as any);
   const { from: _from, ...rest } = prepared;
   const serialized = await account.signTransaction({ ...rest, chainId: o.chainId });

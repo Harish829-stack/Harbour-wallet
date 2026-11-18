@@ -648,6 +648,42 @@ test('evmSendTransaction: prepares, signs locally and broadcasts a raw tx that r
   } finally { server.close(); }
 });
 
+// Finding 26: the fee the user approved decides the transaction; a site's own gasPrice / maxFeePerGas / type never replaces it.
+test('evmSendTransaction: a site-supplied gasPrice cannot replace the fee the user approved (finding 26)', async () => {
+  const { parseTransaction } = await import('viem'); let raw = null;
+  const server = http.createServer((rq, rs) => {
+    let b = ''; rq.on('data', (c) => (b += c)); rq.on('end', () => {
+      const j = JSON.parse(b); const one = (c) => { let result;
+        switch (c.method) {
+          case 'eth_chainId': result = '0x539'; break; case 'eth_getTransactionCount': result = '0x7'; break; case 'eth_estimateGas': result = '0x5208'; break;
+          case 'eth_gasPrice': result = '0x3b9aca00'; break; case 'eth_maxPriorityFeePerGas': result = '0x59682f00'; break;
+          case 'eth_getBlockByNumber': result = { number: '0x10', hash: '0x' + '11'.repeat(32), parentHash: '0x' + '22'.repeat(32), baseFeePerGas: '0x3b9aca00', gasLimit: '0x1c9c380', gasUsed: '0x0', timestamp: '0x5f5e100', transactions: [], miner: '0x' + '00'.repeat(20), difficulty: '0x0', extraData: '0x', logsBloom: '0x' + '00'.repeat(256), nonce: '0x0000000000000000', sha3Uncles: '0x' + '00'.repeat(32), stateRoot: '0x' + '00'.repeat(32), receiptsRoot: '0x' + '00'.repeat(32), transactionsRoot: '0x' + '00'.repeat(32), size: '0x1', totalDifficulty: '0x0', uncles: [] }; break;
+          case 'eth_sendRawTransaction': raw = c.params[0]; result = '0x' + Buffer.from(keccak_256(Buffer.from(raw.slice(2), 'hex'))).toString('hex'); break;
+          default: return { jsonrpc: '2.0', id: c.id, error: { code: -32601, message: 'nope ' + c.method } };
+        } return { jsonrpc: '2.0', id: c.id, result }; };
+      rs.setHeader('content-type', 'application/json'); rs.end(JSON.stringify(Array.isArray(j) ? j.map(one) : one(j)));
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r)); const url = `http://127.0.0.1:${server.address().port}`;
+  const GWEI = 10n ** 9n;
+  try {
+    const base = { from: ADDR0, to: ADDR1, value: '0x1', data: '0x' };
+    const opts = (fee) => ({ urls: [url], chainId: 1337, name: 'Local', symbol: 'ETH', gas: 1_000_000n, ...(fee ? { fee } : {}) });
+    // site asks for a legacy gasPrice of 50,000 gwei; the user approved an EIP-1559 fee of 3 gwei
+    await M.evmSendTransaction(PK1, { ...base, gasPrice: '0x' + (50_000n * GWEI).toString(16) }, opts({ maxFeePerGas: 3n * GWEI, maxPriorityFeePerGas: 1n * GWEI }));
+    let t = parseTransaction(raw); assert.equal(t.type, 'eip1559'); assert.equal(t.maxFeePerGas, 3n * GWEI); assert.equal(t.maxPriorityFeePerGas, 1n * GWEI); assert.equal(t.gasPrice, undefined);
+    // site asks for an inflated EIP-1559 fee and priority fee; the approved values win
+    await M.evmSendTransaction(PK1, { ...base, maxFeePerGas: '0x' + (50_000n * GWEI).toString(16), maxPriorityFeePerGas: '0x' + (49_000n * GWEI).toString(16) }, opts({ maxFeePerGas: 3n * GWEI }));
+    t = parseTransaction(raw); assert.equal(t.maxFeePerGas, 3n * GWEI); assert.notEqual(t.maxPriorityFeePerGas, 49_000n * GWEI);
+    // the approved fee is legacy: a site's type 0x2 does not turn it into an EIP-1559 transaction
+    await M.evmSendTransaction(PK1, { ...base, type: '0x2', maxFeePerGas: '0x' + (50_000n * GWEI).toString(16) }, opts({ gasPrice: 2n * GWEI }));
+    t = parseTransaction(raw); assert.equal(t.type, 'legacy'); assert.equal(t.gasPrice, 2n * GWEI);
+    // no approved fee supplied (internal callers): the site's values still apply as before
+    await M.evmSendTransaction(PK1, { ...base, gasPrice: '0x' + (7n * GWEI).toString(16) }, opts());
+    t = parseTransaction(raw); assert.equal(t.type, 'legacy'); assert.equal(t.gasPrice, 7n * GWEI);
+  } finally { server.close(); }
+});
+
 // ------------------------------------------------------------------ Solana
 const cu = (n) => { const o = []; do { let b = n & 0x7f; n >>= 7; if (n) b |= 0x80; o.push(b); } while (n); return Uint8Array.from(o); };
 const concat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let p = 0; for (const x of a) { o.set(x, p); p += x.length; } return o; };

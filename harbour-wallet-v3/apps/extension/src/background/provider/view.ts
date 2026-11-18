@@ -236,9 +236,10 @@ async function txView(p: PendingRequest, d: ViewDeps) {
   let fees: FeePresets | null = null; try { fees = await feePresets(chainId, d.rpc); } catch { fees = null; }
   out.fees = fees && { eip1559: fees.eip1559, presets: Object.fromEntries(Object.entries(fees.presets).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).map(([a, b]) => [a, (b as bigint).toString()]))])) };
   if (fees && gas !== null) {
-    const level = tx.maxFeePerGas || tx.gasPrice ? null : 'average';
-    const dappFee = BigInt(tx.maxFeePerGas ?? tx.gasPrice ?? '0x0');
-    const per = level ? maxFeeOf(fees.presets.average) : dappFee;
+    // Finding 26: every fee line is computed from the wallet's own preset. A site's gasPrice / maxFeePerGas is never what is signed (see
+    // evmSendTransaction), so it must not be what the screen shows either.
+    const level = 'average';
+    const per = maxFeeOf(fees.presets.average);
     out.defaultFeeLevel = level; out.estimatedFee = (gas * per).toString(); out.estimatedFeeFormatted = formatUnits(gas * per, net.decimals);
     if (balance !== null && value + gas * per > balance) warnings.add('insufficientFunds');
   } else if (balance !== null && value > balance) warnings.add('insufficientFunds');

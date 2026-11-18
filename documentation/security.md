@@ -34,7 +34,7 @@ Re-run a full control-by-control audit before a public release.
 
 ## Open items
 
-**Open code change, waiting for approval (finding 26, High):** a site's own `gasPrice` in `eth_sendTransaction` can replace the fee level the user chose on the approval screen, so the transaction can cost far more in fees than shown as the highest possible fee. It is in the signing path, so it was reported and not changed. Fix it before any build that signs on mainnet is handed out.
+**Fixed (finding 26, High):** the fee the user approved now alone decides the transaction type and every fee value in `evmSendTransaction` (a site's own `gasPrice`, `maxFeePerGas`, `maxPriorityFeePerGas` or `type` is ignored when an approved fee exists), and the approval screen computes its estimate from the wallet's own preset, so the screen and the signed transaction agree. Regression tests: `provider.test.js` (site asks 50,000 gwei, user approved 3 gwei) and `approval-preview.test.js`. A site that wants a higher fee (a speed-up) no longer gets it automatically; the user picks a faster level.
 
 The rest need a person, not a code change:
 
@@ -73,4 +73,4 @@ The delegate (MetaMask Stateless7702), the DelegationManager, the caveat enforce
 
 A dApp cannot enable, revoke or upgrade: those messages are UI-only. `wallet_sendCalls` needs the account already enabled and the user's approval; sponsorship is decided by the gateway-pinned policy and Pimlico, never by the site, and a refusal falls back to a user-paid operation (a reply that fails the guard signs nothing). Spending permissions (`wallet_requestExecutionPermissions`) are re-checked by the guard against the user-approved terms (delegate, native or ERC-20 allowance, expiry of at most 30 days, no calldata for native, nothing else) before signing; revoke is an on-chain `disableDelegation` by the user.
 
-Not done before mainnet (P7): independent review of `guard.ts`, `send.ts` and the key adapter; mainnet pins and a per-chain byte-diff of the DelegationManager; kill-switch drill; finding 26; a global cap on the sponsorship policy.
+Not done before mainnet (P7): independent review of `guard.ts`, `send.ts` and the key adapter; mainnet pins and a per-chain byte-diff of the DelegationManager; kill-switch drill; a global cap on the sponsorship policy.
