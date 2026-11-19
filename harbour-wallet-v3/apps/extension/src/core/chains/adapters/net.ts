@@ -1,6 +1,7 @@
 // Tolerant HTTP helpers for the non-EVM adapters: HTTP status is data (404 often means "account not found"), network failures throw.
 import type { ChainInfo } from '../types';
 import type { Fetcher } from './types';
+import { GATEWAY_URL } from '../../../kit/endpoints';
 
 export interface Resp { status: number; ok: boolean; body: any; text: string }
 export async function req(f: Fetcher, url: string, init?: RequestInit, ms = 8000): Promise<Resp> {
@@ -18,10 +19,14 @@ export async function rpc(f: Fetcher, url: string, method: string, params: unkno
   return { result: r.body.result, error: r.body.error, text: r.text, status: r.status };
 }
 export const trimUrl = (u: string) => u.replace(/\/+$/, '');
+/** Third-party APIs the Harbour gateway relays with its own key (backend gateway.go). Asked first, so the provider sees Harbour's
+ *  server instead of the user's IP next to their address; the public endpoints stay as the fallback when the gateway refuses. */
+const GATEWAY_RELAY: Record<string, string> = { tron: 'trongrid' };
 /** Endpoint list: registry endpoints (unless `only`), with adapter-level `first`/`last` additions, de-duplicated. */
 export function endpointsOf(chain: ChainInfo, o: { first?: string[]; last?: string[]; only?: string[] } = {}): string[] {
   const base = o.only ?? (chain.endpoints ?? []);
-  return [...(o.first ?? []), ...base, ...(o.last ?? [])].map(trimUrl).filter((u, i, a) => u && a.indexOf(u) === i);
+  const relay = !o.only && GATEWAY_URL && GATEWAY_RELAY[chain.id] ? [`${GATEWAY_URL}/${GATEWAY_RELAY[chain.id]}`] : [];
+  return [...relay, ...(o.first ?? []), ...base, ...(o.last ?? [])].map(trimUrl).filter((u, i, a) => u && a.indexOf(u) === i);
 }
 
 import type { BalanceAdapter } from './types';

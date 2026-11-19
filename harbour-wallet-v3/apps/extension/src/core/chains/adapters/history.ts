@@ -96,11 +96,14 @@ export function mapTrc20(chain: ChainInfo, body: any, me: string): HistoryItem[]
   return out;
 }
 async function tronHistory(chain: ChainInfo, me: string, f: Fetcher): Promise<HistoryItem[]> {
-  const base = endpointsOf(chain)[0] ?? 'https://api.trongrid.io';
-  const [a, b] = await Promise.allSettled([getJ(f, `${base}/v1/accounts/${me}/transactions?limit=50&order_by=block_timestamp,desc`, 12000), getJ(f, `${base}/v1/accounts/${me}/transactions/trc20?limit=50&order_by=block_timestamp,desc`, 12000)]);
-  if (a.status === 'rejected' && b.status === 'rejected') throw a.reason;
+  const urls = endpointsOf(chain); if (!urls.length) urls.push('https://api.trongrid.io');
   const ok = (r: PromiseSettledResult<any>) => (r.status === 'fulfilled' && r.value.ok ? r.value.body : null);
-  if (!ok(a) && !ok(b)) throw new Error('HTTP error');
+  // The first endpoint that answers either list (the gateway relay first, then the public TronGrid hosts).
+  const [a, b] = await firstOf(urls, async (base) => {
+    const both = await Promise.allSettled([getJ(f, `${base}/v1/accounts/${me}/transactions?limit=50&order_by=block_timestamp,desc`, 12000), getJ(f, `${base}/v1/accounts/${me}/transactions/trc20?limit=50&order_by=block_timestamp,desc`, 12000)]);
+    if (!ok(both[0]) && !ok(both[1])) throw both[0].status === 'rejected' ? both[0].reason : new Error('HTTP error');
+    return both;
+  });
   const tokens = mapTrc20(chain, ok(b), me); const seen = new Set(tokens.map((x) => x.id.split(':')[0]));
   return [...mapTronTxs(chain, ok(a), me).filter((x) => !(x.kind === 'contract' && seen.has(x.id))), ...tokens];
 }

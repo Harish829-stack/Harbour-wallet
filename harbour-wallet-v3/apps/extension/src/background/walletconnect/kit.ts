@@ -33,7 +33,8 @@ const storage = {
 export const WALLET_METADATA = { name: 'Harbour Wallet', description: 'Self-custody crypto wallet', url: 'https://harbour.invalid', icons: [] as string[] };
 
 export async function createKit(projectId: string): Promise<KitLike> {
-  const core = new Core({ projectId, storage: storage as any });
+  // telemetryEnabled: false — the SDK otherwise posts usage events (INIT with a client id and user agent) to pulse.walletconnect.org.
+  const core = new Core({ projectId, storage: storage as any, telemetryEnabled: false });
   const kit = await WalletKit.init({ core, metadata: WALLET_METADATA });
   return kit as unknown as KitLike;
 }

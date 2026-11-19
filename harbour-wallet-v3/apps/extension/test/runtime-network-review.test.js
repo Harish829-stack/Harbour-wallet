@@ -185,3 +185,16 @@ test('coalescer: concurrent and back-to-back callers share one run; failures are
   assert.equal(await c('other', job), 3);
   let boom = 0; await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); assert.equal(boom, 2);
 });
+// ---------- privacy / hardening ----------
+test('Tron data goes through the Harbour gateway relay first, with the public hosts as fallback', async () => {
+  const N = await load(`export * from './core/chains/adapters/net'; export { chainById } from './core/chains/index';`);
+  const e = N.endpointsOf(N.chainById('tron'));
+  assert.equal(e[0], 'https://api.test/v1/gw/trongrid'); assert.ok(e.includes('https://api.trongrid.io'));
+  assert.ok(!N.endpointsOf(N.chainById('cosmos')).some((u) => u.includes('/v1/gw/')));
+  const off = await load(`export * from './core/chains/adapters/net'; export { chainById } from './core/chains/index';`, { VITE_HB_API_URL: 'https://api.test', VITE_HB_GATEWAY_URL: '' });
+  assert.equal(off.endpointsOf(off.chainById('tron'))[0], 'https://api.trongrid.io');
+});
+test('WalletConnect is created with telemetry off', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.match(readFileSync(new URL('../src/background/walletconnect/kit.ts', import.meta.url), 'utf8'), /new Core\(\{[^}]*telemetryEnabled: false/);
+});
