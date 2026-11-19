@@ -31,7 +31,7 @@ type Prefs = { isPushEnabled: boolean; isSendAndReceiveEnabled: boolean; topics:
 const prefs = async (): Promise<Prefs> => (await loadSettings()).pushNotifications as Prefs;
 const activityOn = (p: Prefs) => p.isPushEnabled && p.isSendAndReceiveEnabled;
 
-/** Active account's public addresses for the watched chains (vault metadata only, works while locked). */
+/** Active account's public addresses for the watched chains. Reads the vault, so it throws `LOCKED` while the wallet is locked. */
 export async function watchedAddresses(getState: () => Promise<any>): Promise<Array<{ chainId: string; address: string }>> {
   const st = await getState();
   const id = st?.activeWalletId && st.wallets?.[st.activeWalletId] ? st.activeWalletId : Object.keys(st?.wallets ?? {})[0];
@@ -55,7 +55,10 @@ export async function pollActivity(getState: () => Promise<any>, f: typeof fetch
   if (await local.get<boolean>(REMOTE_KEY)) return 0; // the gateway pushes instead
   const seenAll = (await local.get<Record<string, string[]>>(SEEN_KEY)) ?? {};
   let shown = 0;
-  for (const { chainId, address } of await watchedAddresses(getState)) {
+  // The vault must be unlocked to read the addresses; while locked, skip this tick quietly (the next alarm tries again).
+  let watched: Awaited<ReturnType<typeof watchedAddresses>>;
+  try { watched = await watchedAddresses(getState); } catch (e: any) { if (e?.message === 'LOCKED') return 0; throw e; }
+  for (const { chainId, address } of watched) {
     const key = `${chainId}:${address}`;
     const r = await (isIndexedChain(chainId) ? fetchActivity(chainId, address) : fetchHistory(chainId, address, { solanaRpc: solanaRpcUrl() }, f)).catch(() => null);
     if (!r || !r.ok) continue;

@@ -53,7 +53,7 @@ try { void Promise.resolve((chrome.storage.local as any).setAccessLevel?.({ acce
 browser.alarms.create(CONFIG_ALARM, { periodInMinutes: 360 });
 browser.alarms.onAlarm.addListener(async (a) => {
   if (a.name === CONFIG_ALARM) { void applyRemoteConfig(); void syncRemotePush(vaultState); void syncAddresses(vaultState); return; }
-  if (a.name === ACTIVITY_ALARM) { void pollActivity(vaultState); return; }
+  if (a.name === ACTIVITY_ALARM) { void pollActivity(vaultState).catch((e) => logError('activity poll', e)); return; }
   if (a.name === ACTIVITY_PENDING_ALARM) { void reconcilePendingActivity(); return; }
   if (a.name !== LOCK_ALARM) return;
   try { await new VaultService(await getCore()).lock(); } catch { /* already locked */ }
