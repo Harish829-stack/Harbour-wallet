@@ -1,7 +1,7 @@
 import { local, KEYS } from '../../core/storage';
 import { ENABLED_CHAINS } from '../../core/chains/index';
 import { isIndexedChain } from '../../core/harbour/config';
-import { nativeBalance, backendServes } from '../../core/harbour/data';
+import { nativeBalance, backendServes, portfolioGeneration } from '../../core/harbour/data';
 import { fetchNativeBalances, addressFor } from '../../core/chains/adapters';
 import { fetchNativePrices, fetchTrending, fetchHot, fetchTrendingNetworks } from '../../core/priceService';
 import { solanaRpcUrl } from '../../core/rpc';
@@ -14,6 +14,10 @@ import { resolveSendChain, customChainInfo } from '../../core/sendService';
 import { activeEntry } from '../walletState';
 import type { HandlerMap } from '../handlers/types';
 import { defaultHiddenAssets } from './shared';
+import { coalescer } from '../../core/coalesce';
+
+/** Same request within 2 s (or while one is running) shares one read of every balance source. */
+const balances = coalescer<any>(2_000);
 
 export const handlers: HandlerMap = {
   getBalances: async (msg, ctx) => {
@@ -29,27 +33,29 @@ export const handlers: HandlerMap = {
         // User-added custom EVM networks are first-class home assets (id `custom-<chainId>`); built-ins never include them.
         const custom = customNetworks();
         const wanted: string[] = Array.isArray(msg.chainIds) && msg.chainIds.length ? msg.chainIds.map(String) : [...ENABLED_CHAINS, ...custom.map((n) => customChainInfo(n))].map((c) => c.id).filter((id) => !hidden.has(id));
-        const chains = wanted.map((id) => resolveSendChain(id, undefined, custom)).filter((c): c is NonNullable<typeof c> => !!c);
-        // Harbour networks read the backend's database (indexed, refreshed from chain); others keep the per-family adapters.
-        // A network the backend does not serve right now (smaller ENABLED_CHAINS) is read from RPC like any other, never shown as a backend 0.
-        const fromBackend = new Set((await Promise.all(chains.map(async (c) => (isIndexedChain(c.id) && await backendServes(c.id) ? c.id : '')))).filter(Boolean));
-        const hbChains = chains.filter((c) => fromBackend.has(c.id)); const others = chains.filter((c) => !fromBackend.has(c.id));
-        const results = await fetchNativeBalances(others.map((chain) => ({ chain, address: addressFor(chain, addresses) })));
-        await Promise.all(hbChains.map(async (c) => {
-          const r = await nativeBalance(c.id, addressFor(c, addresses));
-          results.set(c.id, { ok: r.ok, raw: r.raw, formatted: r.formatted, error: r.error } as any);
-        }));
-        const prices = await fetchNativePrices(chains.map((c) => c.cg ?? ''));
-        let totalUsd = 0;
-        const byChain: Record<string, any> = {};
-        for (const c of chains) {
-          const r = results.get(c.id)!; const mk = c.cg ? prices[c.cg] : undefined;
-          const price = c.testnet ? 0 : (mk?.price ?? null);
-          const usd = price != null && r.ok ? Number(r.formatted) * price : null;
-          if (usd != null) totalUsd += usd;
-          byChain[c.id] = { chainId: c.evmChainId ?? c.twId, wei: r.raw, formatted: r.formatted, symbol: c.symbol, ok: r.ok, error: r.error, usd, price, change: mk?.change ?? null };
-        }
-        return { ok: true, balances: byChain, totalUsd, pricesAvailable: Object.keys(prices).length > 0 };
+        return await balances(JSON.stringify([portfolioGeneration(), addresses, wanted]), async () => {
+          const chains = wanted.map((id) => resolveSendChain(id, undefined, custom)).filter((c): c is NonNullable<typeof c> => !!c);
+          // Harbour networks read the backend's database (indexed, refreshed from chain); others keep the per-family adapters.
+          // A network the backend does not serve right now (smaller ENABLED_CHAINS) is read from RPC like any other, never shown as a backend 0.
+          const fromBackend = new Set((await Promise.all(chains.map(async (c) => (isIndexedChain(c.id) && await backendServes(c.id) ? c.id : '')))).filter(Boolean));
+          const hbChains = chains.filter((c) => fromBackend.has(c.id)); const others = chains.filter((c) => !fromBackend.has(c.id));
+          const results = await fetchNativeBalances(others.map((chain) => ({ chain, address: addressFor(chain, addresses) })));
+          await Promise.all(hbChains.map(async (c) => {
+            const r = await nativeBalance(c.id, addressFor(c, addresses));
+            results.set(c.id, { ok: r.ok, raw: r.raw, formatted: r.formatted, error: r.error } as any);
+          }));
+          const prices = await fetchNativePrices(chains.map((c) => c.cg ?? ''));
+          let totalUsd = 0;
+          const byChain: Record<string, any> = {};
+          for (const c of chains) {
+            const r = results.get(c.id)!; const mk = c.cg ? prices[c.cg] : undefined;
+            const price = c.testnet ? 0 : (mk?.price ?? null);
+            const usd = price != null && r.ok ? Number(r.formatted) * price : null;
+            if (usd != null) totalUsd += usd;
+            byChain[c.id] = { chainId: c.evmChainId ?? c.twId, wei: r.raw, formatted: r.formatted, symbol: c.symbol, ok: r.ok, error: r.error, usd, price, change: mk?.change ?? null };
+          }
+          return { ok: true, balances: byChain, totalUsd, pricesAvailable: Object.keys(prices).length > 0 };
+        });
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
   },

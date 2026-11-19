@@ -174,3 +174,14 @@ test('wallet_getCallsStatus logs are only the own logs of the batch, never anoth
   const spoof = [ev(K.BEFORE_EXECUTION_EVENT), xfer(6), { ...ev(K.UOP_EVENT, other), address: '0x1111111111111111111111111111111111111111' }, xfer(7), ev(K.UOP_EVENT, mine)];
   assert.equal(K.userOpLogs(spoof, mine).length, 3);
 });
+// ---------- efficiency ----------
+test('coalescer: concurrent and back-to-back callers share one run; failures are not reused', async () => {
+  const C = await load(`export * from './core/coalesce';`);
+  let now = 0; const c = C.coalescer(2000, () => now);
+  let runs = 0; const job = () => { runs++; return new Promise((r) => setTimeout(() => r(runs), 5)); };
+  const [a, b] = await Promise.all([c('k', job), c('k', job)]); assert.equal(a, 1); assert.equal(b, 1);
+  now = 1500; assert.equal(await c('k', job), 1); assert.equal(runs, 1);
+  now = 4000; assert.equal(await c('k', job), 2);
+  assert.equal(await c('other', job), 3);
+  let boom = 0; await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); assert.equal(boom, 2);
+});

@@ -85,7 +85,10 @@ async function withTracking<T>(refs: AddressRef[], fn: () => Promise<T>): Promis
 // ---------- portfolio (cached briefly; realtime updates invalidate it) ----------
 const PF_TTL = 5_000;
 let pfCache: { k: string; at: number; p: Promise<Portfolio> } | null = null;
-export const invalidatePortfolio = (): void => { pfCache = null; };
+let pfGen = 0;
+export const invalidatePortfolio = (): void => { pfCache = null; pfGen++; };
+/** Changes every time the portfolio is invalidated (a realtime push, a confirmed send): callers caching balances key on it. */
+export const portfolioGeneration = (): number => pfGen;
 export function portfolio(evmAddress: string): Promise<Portfolio> {
   const refs = refsFor(evmAddress); const k = refs.map(key).join(',');
   if (pfCache && pfCache.k === k && Date.now() - pfCache.at < PF_TTL) return pfCache.p;
