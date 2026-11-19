@@ -64,3 +64,10 @@ npm-debug.log*
 .idea/
 .vscode/
 *.swp
+/documentation/smart-accounts
+/metamaskStateless.har
+/metamask-extension-main
+/.agents/
+agent/
+/s*n
+/s*k
