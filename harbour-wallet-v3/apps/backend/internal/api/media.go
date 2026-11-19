@@ -41,6 +41,19 @@ func (s *Server) handleTx(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := s.opt.Store.Tx(ctx, chain, hash)
 	if err == nil {
+		// SEC-2026-11-18-02: the indexed view (Harbour's own transfer rows) is shown only to a device that tracks one of the
+		// addresses involved. Anyone else gets the public chain view below, the same answer as for a transaction Harbour never
+		// indexed, so this endpoint cannot be used to learn which addresses belong to Harbour users (or their transfer amounts).
+		involved, ierr := s.deviceInvolvedInTx(ctx, chain, t)
+		if ierr != nil {
+			s.internalErr(w, r, ierr)
+			return
+		}
+		if !involved {
+			err = store.ErrNotFound
+		}
+	}
+	if err == nil {
 		type tr struct {
 			assetView
 			EventRef  string  `json:"event_ref"`
@@ -107,6 +120,42 @@ func (s *Server) handleTx(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"source": "chain", "chain": chain, "tx_hash": hash, "status": status,
 		"block_number": receipt.BlockNumber, "from": receipt.From, "to": receipt.To})
+}
+
+// deviceInvolvedInTx reports whether the calling device tracks the sender, the recipient or any transfer party of an indexed transaction.
+func (s *Server) deviceInvolvedInTx(ctx context.Context, chain string, t store.TxRow) (bool, error) {
+	dev := deviceFrom(ctx).ID
+	if dev == "" {
+		return false, nil
+	}
+	seen := map[string]bool{}
+	var cands []string
+	add := func(a *string) {
+		if a == nil || *a == "" {
+			return
+		}
+		v := strings.ToLower(*a)
+		if !seen[v] {
+			seen[v] = true
+			cands = append(cands, v)
+		}
+	}
+	add(t.From)
+	add(t.To)
+	for i := range t.Transfers {
+		add(t.Transfers[i].From)
+		add(t.Transfers[i].To)
+	}
+	for _, a := range cands {
+		ok, err := s.opt.Store.DeviceOwns(ctx, s.opt.LinkCrypto, dev, []store.AddressRef{{Chain: chain, Address: a}})
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // rpcError is a JSON-RPC error returned by the chain (as opposed to a transport failure).

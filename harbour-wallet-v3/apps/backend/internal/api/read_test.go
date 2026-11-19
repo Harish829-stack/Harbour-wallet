@@ -369,6 +369,24 @@ func TestReadScreensMakeNoRPCCalls(t *testing.T) {
 		t.Fatalf("unknown tx: %v hits=%d", tx, rpcHits.Load())
 	}
 
+	// SEC-2026-11-18-02: another device that tracks none of the transaction's addresses gets the public chain view, never Harbour's
+	// indexed rows (which would reveal that the addresses belong to a Harbour user, and their transfers).
+	other := hbclient.New(hs.URL)
+	_, err = other.Register(ctx)
+	must(t, err)
+	var otherTx map[string]any
+	_, err = other.Do(ctx, "GET", fmt.Sprintf("/v1/tx/base/0x%064x", 7), nil, &otherTx, nil)
+	must(t, err)
+	if otherTx["source"] != "chain" || otherTx["transfers"] != nil || otherTx["finality"] != nil {
+		t.Fatalf("unrelated device saw the indexed view: %v", otherTx)
+	}
+	// The tracking device still gets it.
+	_, err = c.Do(ctx, "GET", fmt.Sprintf("/v1/tx/base/0x%064x", 7), nil, &tx, nil)
+	must(t, err)
+	if tx["source"] != "indexed" {
+		t.Fatalf("tracking device lost the indexed view: %v", tx)
+	}
+
 	// Addresses a device doesn't track are refused.
 	if code := status(c.Do(ctx, "GET", "/v1/me/portfolio?addresses=base:0x1234000000000000000000000000000000000000", nil, nil, nil)); code != 403 {
 		t.Fatalf("foreign address: %d", code)

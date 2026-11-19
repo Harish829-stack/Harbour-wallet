@@ -112,3 +112,31 @@ func TestGatewayPimlicoPinsSponsorPolicy(t *testing.T) {
 		t.Errorf("batch: %s (rej=%v)", got, rej)
 	}
 }
+
+// SEC-2026-11-18-03: without a server-pinned sponsorship policy, pm_sponsorUserOperation is refused on mainnets (it would bill the
+// Pimlico account for any device's operations) and still allowed on the two testnets; other bundler calls are unaffected.
+func TestGatewayPimlicoUnpinnedSponsorTestnetOnly(t *testing.T) {
+	sponsor := `{"jsonrpc":"2.0","id":1,"method":"pm_sponsorUserOperation","params":[{"sender":"0x1111111111111111111111111111111111111111"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032"]}`
+	estimate := `{"jsonrpc":"2.0","id":1,"method":"eth_estimateUserOperationGas","params":[{"sender":"0x1111111111111111111111111111111111111111"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032"]}`
+	batch := `[` + estimate + `,` + sponsor + `]`
+	for chain, testnet := range map[string]bool{"1": false, "56": false, "137": false, "42161": false, "8453": false, "11155111": true, "84532": true} {
+		for _, policy := range []string{"", "sp_server_policy"} {
+			g, _ := testGateway(t, nil)
+			g.keys.Pimlico = "pimlico-secret"
+			g.keys.PimlicoPolicy = policy
+			for name, body := range map[string]string{"single": sponsor, "batch": batch} {
+				_, rej := g.resolve("POST", "/pimlico/"+chain, nil, []byte(body))
+				wantOK := testnet || policy != ""
+				if wantOK && rej != nil {
+					t.Errorf("chain %s policy %q %s: want allowed, got %v", chain, policy, name, rej)
+				}
+				if !wantOK && rej == nil {
+					t.Errorf("chain %s policy %q %s: unpinned mainnet sponsorship forwarded", chain, policy, name)
+				}
+			}
+			if _, rej := g.resolve("POST", "/pimlico/"+chain, nil, []byte(estimate)); rej != nil {
+				t.Errorf("chain %s policy %q: estimate refused: %v", chain, policy, rej)
+			}
+		}
+	}
+}

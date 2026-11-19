@@ -312,6 +312,32 @@ func jsonRPCClean(body []byte, allowed map[string]bool, check func(rpcCall) *gwR
 	return out, nil
 }
 
+// pimlicoTestnets are the chains where sponsorship may run without a server-pinned policy (Sepolia, Base Sepolia).
+var pimlicoTestnets = map[string]bool{"11155111": true, "84532": true}
+
+// hasSponsorCall reports whether a canonical JSON-RPC body (output of jsonRPCClean) contains a pm_sponsorUserOperation call.
+func hasSponsorCall(body []byte) bool {
+	trim := bytes.TrimSpace(body)
+	var calls []rpcCall
+	if len(trim) > 0 && trim[0] == '[' {
+		if json.Unmarshal(trim, &calls) != nil {
+			return true // unreadable: treat as sponsoring (fail closed)
+		}
+	} else {
+		var c rpcCall
+		if json.Unmarshal(trim, &c) != nil {
+			return true
+		}
+		calls = []rpcCall{c}
+	}
+	for _, c := range calls {
+		if c.Method == "pm_sponsorUserOperation" {
+			return true
+		}
+	}
+	return false
+}
+
 var sponsorPolicyID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,255}$`)
 
 // pinSponsorPolicy makes the server, not the client, choose the sponsorship policy (H1). Every pm_sponsorUserOperation is rebuilt as
@@ -845,6 +871,11 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		clean, rej := jsonRPCClean(body, aaRPCMethods, nil)
 		if rej != nil {
 			return nil, rej
+		}
+		// SEC-2026-11-18-03: with no server policy configured, Pimlico sponsors from the account's own balance on whatever chain is asked,
+		// so any freshly registered device could spend it on mainnet. Unpinned sponsorship is therefore limited to the testnets.
+		if g.keys.PimlicoPolicy == "" && !pimlicoTestnets[m[1]] && hasSponsorCall(clean) {
+			return nil, &gwReject{http.StatusForbidden, "sponsorship_not_configured", "Gas sponsorship is not available on this network."}
 		}
 		var ok bool
 		if clean, ok = pinSponsorPolicy(clean, g.keys.PimlicoPolicy); !ok {

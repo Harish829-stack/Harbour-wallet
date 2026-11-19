@@ -4,9 +4,13 @@ import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.config';
 // @ts-expect-error plain .mjs helper shared with scripts/release.mjs
 import { apiUrlStatus } from './scripts/api-url.mjs';
+// @ts-expect-error plain .mjs helper (SEC-2026-11-18-01)
+import { envSecrets } from './scripts/env-guard.mjs';
 
 export default defineConfig(({ mode }) => {
   // The backend URL is baked into the bundle: refuse anything but https (or a backend on this computer for local builds).
+  const leaked = envSecrets(process.cwd()) as string[];
+  if (leaked.length) throw new Error(`[harbour] Refusing to build: secret-looking entries in the extension's .env files (${leaked.join(', ')}). Move them out of this folder (keep signing keys offline) and rotate them.`);
   const api = apiUrlStatus(loadEnv(mode, process.cwd(), 'VITE_').VITE_HB_API_URL);
   if (!api.ok) throw new Error(api.error);
   if (api.local && mode === 'production') console.warn(`\n[harbour] Local build: the API is ${api.url}. This dist/ cannot be released (scripts/release.mjs refuses it).\n`);

@@ -28,6 +28,23 @@ export function sanitizeMediaUrl(input: unknown): string {
     return u.toString();
   } catch { return ''; }
 }
+/** SEC-2026-11-18-05: NFT metadata is chosen by whoever minted the token, including unsolicited airdrops. Loading an image from the
+ *  minter's own server tells that server the viewer's IP address and when they looked at this wallet, which links an IP to an address.
+ *  Only hosts that serve images for everyone (Harbour's media proxy, the indexer CDN, the content-addressed gateways) load
+ *  automatically; anything else is shown only after the user asks for it (NftImage). Inline data: images never touch the network. */
+const TRUSTED_MEDIA_HOSTS = new Set(['nft-cdn.alchemy.com', 'ipfs.io', 'arweave.net']);
+export function isAutoLoadMedia(src: string): boolean {
+  if (!src) return false;
+  if (/^data:image\//i.test(src)) return true;
+  try {
+    const u = new URL(src);
+    if (u.protocol !== 'https:' && !(HB_API_URL && src.startsWith(`${HB_API_URL}/v1/media/`))) return false;
+    if (HB_API_URL && src.startsWith(`${HB_API_URL}/v1/media/`)) return true;
+    return TRUSTED_MEDIA_HOSTS.has(u.hostname.toLowerCase());
+  } catch { return false; }
+}
+/** Host shown on the "load image" button so the user knows which server will see the request. */
+export function mediaHost(src: string): string { try { return new URL(src).hostname; } catch { return ''; } }
 /** External links (marketplace / project pages) opened in a new tab: https only. */
 export function sanitizeLink(input: unknown): string {
   if (typeof input !== 'string') return '';

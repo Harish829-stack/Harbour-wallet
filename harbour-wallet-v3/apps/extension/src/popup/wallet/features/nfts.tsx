@@ -10,6 +10,7 @@ import { NetworkField, type PickNetwork } from '../pickers';
 import type { Ctx } from '../screens';
 import { chainById, ENABLED_CHAINS } from '../../../core/chains/index';
 import { fmtRaw, Notice } from './earnParts';
+import { isAutoLoadMedia, mediaHost } from '../../../core/nfts/media';
 
 interface CollectionView { id: string; chainId: string; contract: string; name: string; symbol: string; image: string; owned: number; standard: string; suspicious: boolean; floorPrice?: number; preview: string[]; reason?: 'reported' | 'suspected' }
 interface ItemView { id: string; collectionId: string; chainId: string; contract: string; name: string; description: string; image: string; animationUrl: string; attributes: Array<{ key: string; value: string }>; standard: string; balance: string; externalUrl: string; transferable: boolean }
@@ -20,9 +21,19 @@ const notify = () => { try { window.dispatchEvent(new Event(EVENT)); } catch { /
 const netName = (id: string) => chainById(id)?.name ?? id;
 
 /** Sanitised URL only (core/nfts/media.ts); falls back to a placeholder glyph when missing or broken. */
+// Images from a third-party host load only after a click (SEC-2026-11-18-05, core/nfts/media.ts isAutoLoadMedia). Once the user allows
+// one host it stays allowed while this page is open (memory only, never stored).
+const allowedMediaHosts = new Set<string>();
 export const NftImage: React.FC<{ src: string; alt: string; size?: number | string; radius?: number; fit?: 'cover' | 'contain' }> = ({ src, alt, size = '100%', radius = 14, fit = 'cover' }) => {
   const [broken, setBroken] = useState(false);
+  const host = mediaHost(src);
+  const [allowed, setAllowed] = useState(() => isAutoLoadMedia(src) || allowedMediaHosts.has(host));
   const box: React.CSSProperties = { width: size, aspectRatio: '1', borderRadius: radius, background: T.bgAlt, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.sub, flexShrink: 0 };
+  if (src && !allowed) {
+    return <div style={box}><button type="button" data-testid="nft-media-load" title={`Load image from ${host}. That server will see your IP address.`} aria-label={`Load image from ${host}`}
+      onClick={(e) => { e.stopPropagation(); if (host) allowedMediaHosts.add(host); setAllowed(true); }}
+      style={{ border: 'none', background: 'transparent', color: T.sub, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 11, padding: 4 }}><Ic d={ICON.nft} size={22} /><span>Load image</span></button></div>;
+  }
   return <div style={box}>{src && !broken ? <img src={src} alt={alt} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} style={{ width: '100%', height: '100%', objectFit: fit, display: 'block' }} /> : <Ic d={ICON.nft} size={28} />}</div>;
 };
 function useChanged(fn: () => void) { useEffect(() => { window.addEventListener(EVENT, fn); return () => window.removeEventListener(EVENT, fn); }, [fn]); }
