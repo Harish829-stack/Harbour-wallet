@@ -174,11 +174,16 @@ const ROUTESCAN_MORE: Record<string, number> = { avalanchec: 43114 };
 // Testnets: faucet mints / airdrops arrive as incoming ERC-20 transfers, so every testnet needs a source or its Activity stays empty.
 // Blockscout hosts follow each project's public naming; Routescan serves the Avalanche / BNB testnets under /network/testnet. Live-unverified.
 const BLOCKSCOUT_TESTNET: Record<string, string> = {
-  'base-sepolia': 'https://base-sepolia.blockscout.com', 'arbitrum-sepolia': 'https://arbitrum-sepolia.blockscout.com', 'optimism-sepolia': 'https://optimism-sepolia.blockscout.com',
+  'base-sepolia': 'https://base-sepolia.blockscout.com', 'optimism-sepolia': 'https://optimism-sepolia.blockscout.com',
   'unichain-sepolia': 'https://unichain-sepolia.blockscout.com', 'scroll-sepolia': 'https://scroll-sepolia.blockscout.com', 'zksync-sepolia': 'https://zksync-sepolia.blockscout.com',
   'gnosis-chiado': 'https://gnosis-chiado.blockscout.com', 'ink-sepolia': 'https://explorer-sepolia.inkonchain.com', 'mantle-sepolia': 'https://explorer.sepolia.mantle.xyz',
-  'worldchain-sepolia': 'https://worldchain-sepolia.explorer.alchemy.com', 'hoodi': 'https://eth-hoodi.blockscout.com', 'polygon-amoy': 'https://polygon-amoy.blockscout.com',
+  'worldchain-sepolia': 'https://worldchain-sepolia.explorer.alchemy.com', 'hoodi': 'https://eth-hoodi.blockscout.com',
 };
+// Networks whose public Blockscout cannot be used from the extension (2026-11-19 capture: arbitrum-sepolia.blockscout.com answers a
+// Cloudflare browser challenge with 403; polygon-amoy.blockscout.com answers "default backend - 404" for every path). Their history
+// comes from Etherscan V2 through the Harbour gateway (the API key stays on the server) instead.
+export const ETHERSCAN_V2_HISTORY: Record<string, number> = { 'arbitrum-sepolia': 421614, 'polygon-amoy': 80002 };
+const etherscanOnly = (id: string): number | undefined => (GATEWAY_URL !== '' ? ETHERSCAN_V2_HISTORY[id] : undefined);
 const ROUTESCAN_TESTNET: Record<string, number> = { 'avalanche-fuji': 43113, 'smartchain-testnet': 97 };
 const blockscoutHost = (id: string) => BLOCKSCOUT[id] ?? BLOCKSCOUT_MORE[id] ?? BLOCKSCOUT_TESTNET[id];
 const routescanId = (id: string) => ROUTESCAN_CHAIN[id] ?? ROUTESCAN_MORE[id] ?? ROUTESCAN_TESTNET[id];
@@ -188,7 +193,7 @@ const nativeSymbol = (id: string) => SYMBOL[id] ?? chainById(id)?.symbol ?? '';
 /** True when a keyless public history source is wired for this chain (EVM explorers, Esplora, or a non-EVM family adapter). */
 export function historySupportedFor(chain: ChainInfo | undefined): boolean {
   if (!chain) return false;
-  if (chain.kind === 'evm') return !!(blockscoutHost(chain.id) || routescanId(chain.id));
+  if (chain.kind === 'evm') return !!(blockscoutHost(chain.id) || routescanId(chain.id) || etherscanOnly(chain.id));
   if (chain.kind === 'utxo') return true;
   return !!NON_EVM_HISTORY[chain.kind];
 }
@@ -219,17 +224,20 @@ async function evmHistory(chain: ChainInfo, address: string, f: F): Promise<Hist
   const id = chain.id; let native: HistoryItem[] | null = null; let tokens: HistoryItem[] | null = null; let err: unknown;
   const bs = blockscoutHost(id); const rs = routescanId(id);
   // Etherscan V2 through the gateway: Ethereum mainnet only (other chains need a paid plan), used when Blockscout fails.
-  const esV2 = (action: string) => `${GATEWAY_URL}/etherscan/v2?chainid=1&module=account&action=${action}&address=${address}&sort=desc&page=1&offset=50`;
+  const esOnly = etherscanOnly(id);
+  const esV2 = (action: string) => `${GATEWAY_URL}/etherscan/v2?chainid=${esOnly ?? 1}&module=account&action=${action}&address=${address}&sort=desc&page=1&offset=50`;
   const esFallback = GATEWAY_URL !== '' && id === 'ethereum';
   const nat = async () => { try {
     if (bs) { const b = await get(`${bs}/api/v2/addresses/${address}/transactions`, f); native = mapBlockscout(b, id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
       // Blockscout reports the exchange rate valid at the transaction's block when it has one; today's rate is never used.
       for (const t of Array.isArray(b?.items) ? b.items : []) { const r = Number(t?.historic_exchange_rate); const x = native.find((n) => n.id === t.hash); if (x && Number.isFinite(r) && r > 0 && Number(x.amount) > 0) x.usd = Number(x.amount) * r; } }
     else if (rs) native = mapEtherscanLike(await get(`${routescanBase(id)}?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50`, f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
+    else if (esOnly) native = mapEtherscanLike(await get(esV2('txlist'), f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) }));
   } catch (e) { err = e; if (esFallback) { try { native = mapEtherscanLike(await get(esV2('txlist'), f), id, address).map((x) => ({ ...x, symbol: nativeSymbol(id), url: explorerTxFor(id, x.id) })); err = undefined; } catch { /* keep first error */ } } } };
   const tok = async () => { try {
     if (bs) tokens = mapBlockscoutTokens(await get(`${bs}/api/v2/addresses/${address}/token-transfers?type=ERC-20`, f), id, address);
     else if (rs) tokens = mapEtherscanTokens(await get(`${routescanBase(id)}?module=account&action=tokentx&address=${address}&sort=desc&page=1&offset=50`, f), id, address);
+    else if (esOnly) tokens = mapEtherscanTokens(await get(esV2('tokentx'), f), id, address);
   } catch (e) { err ??= e; if (esFallback) { try { tokens = mapEtherscanTokens(await get(esV2('tokentx'), f), id, address); } catch { /* keep first error */ } } } };
   await Promise.all([nat(), tok()]);
   if (native === null && tokens === null) throw err ?? new Error('no source');

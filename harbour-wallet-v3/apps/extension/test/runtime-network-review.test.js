@@ -102,3 +102,15 @@ test('RPC: unknown_chain falls back to the public endpoints and later calls skip
   assert.match(none.error.message, /not available right now/);
   H.resetUnservedForTests(); H.setPublicRpcResolver(() => []);
 });
+// ---------- B4: dead Blockscout hosts ----------
+test('Arbitrum Sepolia and Polygon Amoy history use Etherscan V2 through the gateway, not the dead Blockscout hosts', async () => {
+  const T = await load(`export * from './core/txHistory'; export { chainById } from './core/chains/index';`);
+  for (const [id, chainid] of [['arbitrum-sepolia', 421614], ['polygon-amoy', 80002]]) {
+    assert.equal(T.historySupportedFor(T.chainById(id)), true, id);
+    const urls = [];
+    const f = async (url) => { urls.push(String(url)); return json({ status: '1', message: 'OK', result: [] }); };
+    const r = await T.fetchHistory(id, '0x1111111111111111111111111111111111111111', { solanaRpc: 'x' }, f);
+    assert.equal(r.ok, true, id);
+    assert.ok(urls.length && urls.every((u) => u.startsWith('https://api.test/v1/gw/etherscan/v2?chainid=' + chainid + '&')), urls.join(' '));
+  }
+});
