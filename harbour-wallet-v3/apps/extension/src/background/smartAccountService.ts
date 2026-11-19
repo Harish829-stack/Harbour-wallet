@@ -15,6 +15,7 @@ import { logWarn } from '../core/logger';
 import { DELEGATES, ENTRYPOINT_V07, SMART_ACCOUNT_FLAG, isSmartAccountChain, TYPE4_GAS_LIMIT, PREPARED_TTL_MS, type Address } from '../core/smartAccount/constants';
 import { buildSignedType4 } from '../core/smartAccount/delegation';
 import { sendOperation, verifyInclusion } from '../core/smartAccount/send';
+import { userOpLogs } from '../core/smartAccount/calls5792';
 import { buildPermissionDelegation, permissionContext, permissionHash, signPermission } from '../core/smartAccount/permissionDelegation';
 import { DELEGATION_MANAGER, SMART_ACCOUNT_CHAINS } from '../core/smartAccount/constants';
 import type { NormalizedPermission, GrantRecord } from '../core/smartAccount/permissions';
@@ -124,6 +125,7 @@ export async function approve(ctx: HandlerCtx, p: { requestId: unknown }) {
       checkAuthorization(built.authorization, { kind, chainId: e.chainId, txNonce });
       raw = built.raw;
     } finally { keys.dispose(); }
+    invalidateCallsState();
     const txHash = await c.client.sendRawTransaction({ serializedTransaction: raw });
     return { ok: true as const, txHash, kind: e.kind, chainId: e.chainId };
   } catch (err) { return errOf(err); }
@@ -180,7 +182,22 @@ export async function sendCalls(p: { chainId: number; client: ReturnType<typeof 
 // ---------- dApp batches (EIP-5792): atomic only, user-paid, submit now and report status later ----------
 export type CallsAccountState = 'pinned' | 'none' | 'other' | 'unavailable';
 /** Whether `account` runs the pinned smart account on `chainId` right now. 'unavailable' = flag off, unpinned chain or no bundler. */
-export async function callsState(chainId: number, account: string): Promise<CallsAccountState> {
+// Every wallet_getCapabilities / wallet_sendCalls / 7715 request re-read eth_getCode for every chain (55 reads in 3.5 min, often three
+// identical ones within 20 ms, in the 2026-11-19 capture). The answer only changes when this account enables or revokes, which this
+// worker does itself (approve() clears the cache), so a short cache is safe. It only decides what the site is told and whether a
+// prompt is shown: signing re-reads the code (sendOperation -> requirePinnedDelegation), so a stale 'pinned' can never sign.
+export const CALLS_STATE_TTL_MS = 15_000;
+const stateMemo = new Map<string, { at: number; p: Promise<CallsAccountState> }>();
+export const invalidateCallsState = (): void => { stateMemo.clear(); };
+export function callsState(chainId: number, account: string, now = Date.now()): Promise<CallsAccountState> {
+  const k = `${chainId}:${account.toLowerCase()}`; const hit = stateMemo.get(k);
+  if (hit && now - hit.at < CALLS_STATE_TTL_MS) return hit.p;
+  const p = readCallsState(chainId, account);
+  stateMemo.set(k, { at: now, p });
+  void p.then((v) => { if (v === 'unavailable' && stateMemo.get(k)?.p === p) stateMemo.delete(k); }); // never cache a failed read
+  return p;
+}
+async function readCallsState(chainId: number, account: string): Promise<CallsAccountState> {
   try {
     if (!bundlerUrl(chainId) || !(await flagOn())) return 'unavailable';
     const chain = resolveSendChain(undefined, chainId, customNetworks()); if (!chain) return 'unavailable';
@@ -208,7 +225,17 @@ export async function submitDappCalls(p: { chainId: number; account: string; pri
   }
 }
 /** Status of a submitted batch from the bundler: pending until it reports an included receipt. */
-export async function userOpStatus(chainId: number, userOpHash: string): Promise<{ state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown }> {
+type OpStatus = { state: 'pending' } | { state: 'done'; success: boolean; receipt: unknown };
+// A final answer never changes, but sites poll wallet_getCallsStatus long after it (each poll cost a bundler call and an RPC call).
+const finalStatus = new Map<string, OpStatus>(); const MAX_FINAL = 100;
+export const resetUserOpStatusForTests = (): void => { finalStatus.clear(); };
+export async function userOpStatus(chainId: number, userOpHash: string): Promise<OpStatus> {
+  const fk = `${chainId}:${userOpHash.toLowerCase()}`; const done = finalStatus.get(fk); if (done) return done;
+  const { cacheable, ...r } = await readUserOpStatus(chainId, userOpHash);
+  if (cacheable && r.state === 'done') { finalStatus.set(fk, r); if (finalStatus.size > MAX_FINAL) finalStatus.delete(finalStatus.keys().next().value as string); }
+  return r;
+}
+async function readUserOpStatus(chainId: number, userOpHash: string): Promise<OpStatus & { cacheable?: boolean }> {
   const url = bundlerUrl(chainId); if (!url || !/^0x[0-9a-fA-F]{64}$/.test(userOpHash)) return { state: 'pending' };
   const rc = await bundlerCall(url)('eth_getUserOperationReceipt', [userOpHash]).catch(() => null);
   const tx = rc?.receipt?.transactionHash;
@@ -218,7 +245,10 @@ export async function userOpStatus(chainId: number, userOpHash: string): Promise
   const chainRc = await evmClientFor(chain).getTransactionReceipt({ hash: tx as Hex }).catch(() => null);
   if (!chainRc) return { state: 'pending' };
   const r = verifyInclusion(chainRc, userOpHash);
-  return { state: 'done', success: r === 'success', receipt: { ...rc.receipt, success: r === 'success' } };
+  // Logs come from the user's own RPC receipt, scoped to this operation (never other operations in the same bundle).
+  const logs = userOpLogs(Array.isArray(chainRc.logs) ? chainRc.logs : [], userOpHash) ?? [];
+  // Cached as final only when our own receipt proves the outcome (never a bundler answer that did not match the chain).
+  return { state: 'done', success: r === 'success', receipt: { ...rc.receipt, logs, success: r === 'success' }, cacheable: r !== 'mismatch' };
 }
 
 

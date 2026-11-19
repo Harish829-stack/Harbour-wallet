@@ -5,6 +5,7 @@
 import { ERR, ProviderError } from '../provider/errors';
 import { MAX_CALLS, isSmartAccountChain } from './constants';
 import { normalizeCall } from './abi';
+import { ENTRYPOINT_V07 } from './constants';
 
 export type AtomicStatus = 'supported' | 'unsupported';
 export interface NormalizedCalls { version: '2.0.0' | '1.0'; id: string | null; chainId: number; from: string; atomicRequired: boolean; calls: Array<{ to: string; value: string; data: string }> }
@@ -65,6 +66,25 @@ export function buildCapabilities(requested: unknown, siteChainId: number, state
   }
   void siteChainId;
   return Object.fromEntries(ids.map((c) => [('0x' + c.toString(16)), { atomic: { status: states[c] } }]));
+}
+
+/** EntryPoint v0.7 events (topic0): UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256) and BeforeExecution(). */
+export const UOP_EVENT = '0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f';
+export const BEFORE_EXECUTION_EVENT = '0xbb47ee3e183a558b1a2ff0874b079f3fc5478b7454eacf2bfc5af2ff5878f972';
+/**
+ * The logs one user operation produced inside its bundle transaction: those after the EntryPoint's BeforeExecution (or the previous
+ * operation's UserOperationEvent) and before this operation's UserOperationEvent. This is how bundlers scope
+ * eth_getUserOperationReceipt `logs`. A bundle can hold other people's operations; their transfers must never reach a site as if
+ * they were this batch's (a dApp checking "was I paid?" would read them). Null when the operation's event is not in `logs`.
+ */
+export function userOpLogs<T extends { address?: unknown; topics?: unknown }>(logs: readonly T[], userOpHash: string, entryPoint: string = ENTRYPOINT_V07): T[] | null {
+  const ep = entryPoint.toLowerCase(); const want = userOpHash.toLowerCase();
+  const fromEp = (l: T, topic: string) => typeof l?.address === 'string' && l.address.toLowerCase() === ep && Array.isArray(l.topics) && String(l.topics[0] ?? '').toLowerCase() === topic;
+  const end = logs.findIndex((l) => fromEp(l, UOP_EVENT) && String((l.topics as unknown[])[1] ?? '').toLowerCase() === want);
+  if (end < 0) return null;
+  let start = 0;
+  for (let i = end - 1; i >= 0; i--) if (fromEp(logs[i], UOP_EVENT) || fromEp(logs[i], BEFORE_EXECUTION_EVENT)) { start = i + 1; break; }
+  return logs.slice(start, end);
 }
 
 /** EIP-5792 status: 100 pending, 200 confirmed, 500 failed before inclusion, 600 reverted. */

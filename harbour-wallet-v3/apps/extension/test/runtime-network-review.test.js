@@ -154,3 +154,23 @@ test('Stride, Neutron and ZetaChain have a working REST endpoint ahead of the pu
     assert.ok(e.includes(`https://${id}-rest.publicnode.com`), id);
   }
 });
+// ---------- smart accounts: wallet_getCallsStatus logs ----------
+test('wallet_getCallsStatus logs are only the own logs of the batch, never another operation in the same bundle', async () => {
+  const K = await load(`export * from './core/smartAccount/calls5792';`);
+  const EP = '0x0000000071727De22E5E9d8BAf0edAc6f37da032';
+  const t = (x) => '0x' + x.repeat(64).slice(0, 64);
+  const ev = (topic, ...rest) => ({ address: EP, topics: [topic, ...rest], data: '0x' });
+  const xfer = (n) => ({ address: '0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE', topics: [t('d'), t(String(n))], data: '0x' });
+  const mine = t('a'); const other = t('b');
+  // Captured shape (Sepolia, 2026-11-19): sponsor event, BeforeExecution, two transfers, UserOperationEvent, beneficiary payout.
+  const one = [{ address: '0x777777777777AeC03fd955926DbF81597e66834C', topics: [t('7')], data: '0x' }, ev(K.BEFORE_EXECUTION_EVENT), xfer(1), xfer(2), ev(K.UOP_EVENT, mine), xfer(9)];
+  assert.deepEqual(K.userOpLogs(one, mine), [xfer(1), xfer(2)]);
+  // Two operations in one bundle: each gets its own slice.
+  const two = [ev(K.BEFORE_EXECUTION_EVENT), xfer(3), ev(K.UOP_EVENT, other), xfer(4), xfer(5), ev(K.UOP_EVENT, mine.toUpperCase().replace('0X', '0x'))];
+  assert.deepEqual(K.userOpLogs(two, mine), [xfer(4), xfer(5)]);
+  assert.deepEqual(K.userOpLogs(two, other), [xfer(3)]);
+  assert.equal(K.userOpLogs(two, t('c')), null);
+  // A spoofed event from another contract does not count as a boundary.
+  const spoof = [ev(K.BEFORE_EXECUTION_EVENT), xfer(6), { ...ev(K.UOP_EVENT, other), address: '0x1111111111111111111111111111111111111111' }, xfer(7), ev(K.UOP_EVENT, mine)];
+  assert.equal(K.userOpLogs(spoof, mine).length, 3);
+});

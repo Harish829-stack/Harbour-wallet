@@ -220,3 +220,24 @@ test('kill switch: flag off and nothing to undo (plain account) shows nothing; a
   assert.deepEqual({ ...(await call('smartAccountStatus', { chainId: CHAIN })) }, { ok: true, available: false });
   assert.equal((await call('smartAccountPrepare', { kind: 'revoke', chainId: CHAIN })).code, 'unavailable');
 });
+
+test('dApp capability reads: eth_getCode is cached briefly, never on a failed read, and cleared by our own enable/revoke', async () => {
+  reset({ code: '0xef0100' + DELEGATE.slice(2) }); M.invalidateCallsState();
+  let reads = 0; const getCode = sa.client.getCode; sa.client.getCode = async (...a) => { reads++; return getCode(...a); };
+  const t0 = 1_000_000;
+  assert.equal(await M.callsState(CHAIN, ACCT, t0), 'pinned');
+  assert.equal(await M.callsState(CHAIN, ACCT.toLowerCase(), t0 + 100), 'pinned');
+  assert.equal(await M.callsState(CHAIN, ACCT, t0 + 200), 'pinned');
+  assert.equal(reads, 1, 'three capability reads, one eth_getCode');
+  sa.code = '0x';
+  assert.equal(await M.callsState(CHAIN, ACCT, t0 + M.CALLS_STATE_TTL_MS + 1), 'none'); assert.equal(reads, 2);
+  M.invalidateCallsState(); sa.code = '0xef0100' + DELEGATE.slice(2);
+  assert.equal(await M.callsState(CHAIN, ACCT, t0 + M.CALLS_STATE_TTL_MS + 2), 'pinned'); assert.equal(reads, 3);
+  // A failed read is not remembered.
+  M.invalidateCallsState(); sa.client.getCode = async () => { reads++; throw new Error('rpc down'); };
+  assert.equal(await M.callsState(CHAIN, ACCT, t0), 'unavailable');
+  await new Promise((r) => setTimeout(r, 0));
+  sa.client.getCode = async () => { reads++; return '0x'; };
+  assert.equal(await M.callsState(CHAIN, ACCT, t0 + 1), 'none');
+  M.invalidateCallsState();
+});
