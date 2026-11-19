@@ -1603,6 +1603,7 @@
   "symbol": "ZETA",
   "decimals": 18,
   "endpoints": [
+   "https://zetachain-api.polkachu.com",
    "https://zetachain-rest.publicnode.com"
   ],
   "explorer": "https://explorer.zetachain.com",
@@ -1779,6 +1780,7 @@
   "symbol": "STRD",
   "decimals": 6,
   "endpoints": [
+   "https://stride-api.polkachu.com",
    "https://stride-rest.publicnode.com"
   ],
   "explorer": "https://www.mintscan.io/stride",
@@ -1823,6 +1825,7 @@
   "symbol": "NTRN",
   "decimals": 6,
   "endpoints": [
+   "https://neutron-api.polkachu.com",
    "https://neutron-rest.publicnode.com"
   ],
   "explorer": "https://www.mintscan.io/neutron",

@@ -20,13 +20,20 @@ async function node(chain: ChainInfo, f: Fetcher, path: string, allowMissing = f
 }
 export const isTezosBaker = (s: unknown): s is string => typeof s === 'string' && /^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(s);
 
+/** The `n` bakers with the largest staking balance (TzKT rows; malformed balances count as 0). */
+export function topBakers(rows: unknown, n: number): any[] {
+  const bal = (b: any): bigint => { try { return BigInt(Math.trunc(Number(b?.stakingBalance) || 0)); } catch { return 0n; } };
+  return (Array.isArray(rows) ? rows : []).filter((b: any) => b && typeof b.address === 'string').sort((a: any, b: any) => (bal(b) > bal(a) ? 1 : bal(b) < bal(a) ? -1 : 0)).slice(0, n);
+}
 export async function fetchTezosOverview(_chain: ChainInfo, address: string, f: Fetcher, meta: ValidatorMeta[]): Promise<{ overview: StakeOverview; validators: Validator[] }> {
   const [acct, bakers] = await Promise.all([
     getJson(f, `${TZKT}/accounts/${encodeURIComponent(address)}`).catch((e) => { if (e?.status === 404) return {}; throw e; }),
-    getJson(f, `${TZKT}/delegates?active=true&sort.desc=stakingBalance&limit=50&select=address,alias,stakingBalance,delegatedBalance`).catch(() => []),
+    // TzKT no longer allows sorting delegates by stakingBalance (400 "Sorting by the specified field is not allowed", 2026-11-19):
+    // fetch the active bakers (a few hundred, four small fields each) and take the 50 largest here.
+    getJson(f, `${TZKT}/delegates?active=true&limit=1000&select=address,alias,stakingBalance,delegatedBalance`).catch(() => []),
   ]);
-  const live = new Map<string, any>((Array.isArray(bakers) ? bakers : []).map((b: any) => [String(b.address), b]));
-  const base: ValidatorMeta[] = meta.length ? meta : [...live.values()].map((b) => ({ id: String(b.address), name: String(b.alias ?? '').slice(0, 80) || String(b.address).slice(0, 10) }));
+  const live = new Map<string, any>(topBakers(bakers, 1000).map((b: any) => [String(b.address), b]));
+  const base: ValidatorMeta[] = meta.length ? meta : topBakers(bakers, 50).map((b) => ({ id: String(b.address), name: String(b.alias ?? '').slice(0, 80) || String(b.address).slice(0, 10) }));
   const validators: Validator[] = base.map((m) => ({ ...m, apr: null, commission: null, active: meta.length ? true : live.has(m.id), tokens: live.get(m.id)?.stakingBalance != null ? String(live.get(m.id).stakingBalance) : undefined }));
   const balance = BigInt(acct?.balance ?? 0);
   const delegate = acct?.delegate?.address ? String(acct.delegate.address) : '';

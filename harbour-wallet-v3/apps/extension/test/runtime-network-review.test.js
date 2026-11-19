@@ -114,3 +114,43 @@ test('Arbitrum Sepolia and Polygon Amoy history use Etherscan V2 through the gat
     assert.ok(urls.length && urls.every((u) => u.startsWith('https://api.test/v1/gw/etherscan/v2?chainid=' + chainid + '&')), urls.join(' '));
   }
 });
+// ---------- B5: staking data ----------
+test('Solana total supply: first endpoint only, cached 12 h, last good value on failure', async () => {
+  const S = await load(`export * from './core/staking/solana';`);
+  S.resetSupplyForTests();
+  let n = 0; let fail = false;
+  const f = async (url) => { n++; if (fail) throw new Error('timeout'); assert.equal(url, 'https://gw.test/helius'); return json({ jsonrpc: '2.0', id: 1, result: { value: { total: 6e17 } } }); };
+  const urls = ['https://gw.test/helius', 'https://public.test'];
+  assert.equal(await S.solanaTotalSupply(f, urls, 1000), 6e17);
+  assert.equal(await S.solanaTotalSupply(f, urls, 2000), 6e17); assert.equal(n, 1);
+  fail = true;
+  assert.equal(await S.solanaTotalSupply(f, urls, 1000 + S.SUPPLY_TTL_MS + 1), 6e17, 'stale value instead of no APR'); assert.equal(n, 2);
+  S.resetSupplyForTests();
+  assert.equal(await S.solanaTotalSupply(f, urls, 5000), null);
+});
+test('Cosmos tx search asks query= first and remembers the form that works per endpoint', async () => {
+  const C = await load(`export * from './core/chains/adapters/history'; export { chainById } from './core/chains/index';`);
+  C.resetTxSearchFormForTests();
+  const run = async (id, accepts) => {
+    const urls = [];
+    const f = async (url) => { urls.push(String(url)); return url.includes(`/txs?${accepts}=`) ? json({ tx_responses: [] }) : json({ code: 2 }, 500); };
+    await C.NON_EVM_HISTORY.cosmos(C.chainById(id), 'me1', f); return urls;
+  };
+  const hub = await run('cosmos', 'query'); assert.equal(hub.length, 2); assert.ok(hub.every((u) => u.includes('?query=')));
+  const kava1 = await run('kava', 'events'); assert.equal(kava1.length, 3); // learns on the first direction
+  const kava2 = await run('kava', 'events'); assert.equal(kava2.length, 2); assert.ok(kava2.every((u) => u.includes('?events=')));
+});
+test('Tezos bakers: largest staking balances first, without the sort TzKT refuses', async () => {
+  const Z = await load(`export * from './core/staking/tezos';`);
+  const rows = [{ address: 'tz1a', stakingBalance: 5 }, { address: 'tz1b', stakingBalance: 50 }, { bad: 1 }, { address: 'tz1c', stakingBalance: '20' }, { address: 'tz1d' }];
+  assert.deepEqual(Z.topBakers(rows, 2).map((b) => b.address), ['tz1b', 'tz1c']);
+  assert.deepEqual(Z.topBakers(null, 2), []);
+});
+test('Stride, Neutron and ZetaChain have a working REST endpoint ahead of the publicnode host that answers 404 for every path', async () => {
+  const R = await load(`export { chainById } from './core/chains/index';`);
+  for (const id of ['stride', 'neutron', 'zetachain']) {
+    const e = R.chainById(id)?.endpoints ?? [];
+    assert.equal(e[0], `https://${id}-api.polkachu.com`, id);
+    assert.ok(e.includes(`https://${id}-rest.publicnode.com`), id);
+  }
+});

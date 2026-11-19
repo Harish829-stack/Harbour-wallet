@@ -126,16 +126,21 @@ export function mapCosmosTxs(chain: ChainInfo, bodies: any[], me: string, denom:
   }
   return out;
 }
+// Cosmos SDK 0.50+ takes `query=` and answers `events=` with 500; older chains (Kava, Sei in the 2026-11-19 capture) only take
+// `events=`. Ask `query=` first and remember per endpoint which form worked, so each refresh costs one request per direction.
+const txSearchForm = new Map<string, 'query' | 'events'>();
+export const resetTxSearchFormForTests = (): void => { txSearchForm.clear(); };
 async function cosmosHistory(chain: ChainInfo, me: string, f: Fetcher): Promise<HistoryItem[]> {
   const { COSMOS_DENOM } = await import('./cosmos'); const denom = COSMOS_DENOM[chain.id]; if (!denom) throw new Error('no denom');
   return firstOf(endpointsOf(chain), async (u) => {
     const bodies: any[] = []; let fail = 0;
     for (const key of ['transfer.recipient', 'transfer.sender']) {
       const q = `${key}='${me}'`; let got = false;
-      // SDK <= 0.47 takes `events=`, SDK 0.50 takes `query=`.
-      for (const p of [`events=${encodeURIComponent(q)}`, `query=${encodeURIComponent(q)}`]) {
-        const r = await getJ(f, `${u}/cosmos/tx/v1beta1/txs?${p}&order_by=ORDER_BY_DESC&pagination.limit=25`, 12000);
-        if (r.ok && Array.isArray(r.body?.tx_responses)) { bodies.push(r.body); got = true; break; }
+      const known = txSearchForm.get(u);
+      const forms: Array<'query' | 'events'> = known ? [known, known === 'query' ? 'events' : 'query'] : ['query', 'events'];
+      for (const form of forms) {
+        const r = await getJ(f, `${u}/cosmos/tx/v1beta1/txs?${form}=${encodeURIComponent(q)}&order_by=ORDER_BY_DESC&pagination.limit=25`, 12000);
+        if (r.ok && Array.isArray(r.body?.tx_responses)) { bodies.push(r.body); got = true; txSearchForm.set(u, form); break; }
       }
       if (!got) fail++;
     }

@@ -11,6 +11,10 @@ import { getRpcUrls } from '../core/chains/rpcUrls';
 import { solanaRpcUrls } from '../core/rpc';
 
 const ATTEMPT_TIMEOUT_MS = 10_000;
+// Methods that legitimately take longer than 10 s on a healthy node (Solana getSupply walks the non-circulating accounts): cutting
+// them off sent the same slow request to every other endpoint of the pool (2026-11-19 capture).
+const SLOW_METHOD = /"method"\s*:\s*"(getSupply|getProgramAccounts)"/;
+const SLOW_TIMEOUT_MS = 30_000;
 const ROUNDS = 2;
 const RETRY_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 const SEND_METHOD = /"method"\s*:\s*"(eth_sendRawTransaction|eth_sendTransaction|sendTransaction|sendBoc|sendBocReturnHash)"/;
@@ -68,7 +72,7 @@ export function makeFailoverFetch(base: typeof fetch): typeof fetch {
       const order = first && !repo.isOpen(first) ? [first, ...ordered.filter((u) => u !== first)] : ordered;
       for (const u of order) {
         if (init.signal?.aborted) throw init.signal.reason ?? new DOMException('aborted', 'AbortError');
-        const t = withTimeout(init.signal, ATTEMPT_TIMEOUT_MS);
+        const t = withTimeout(init.signal, SLOW_METHOD.test(init.body) ? SLOW_TIMEOUT_MS : ATTEMPT_TIMEOUT_MS);
         try {
           const res = await base(u, { ...init, signal: t.signal });
           if (RETRY_STATUS.has(res.status)) { repo.report(u, false); recordNet('rpc', false, hostOf(u)); lastRes = res; continue; }

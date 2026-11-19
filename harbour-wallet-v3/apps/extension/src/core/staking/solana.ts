@@ -93,6 +93,27 @@ export function summarizeSolana(positions: Position[], base: number | null, deci
   return { chainId: 'solana', symbol: 'SOL', decimals, staked: staked.toString(), rewards: rewards.toString(), unbonding: unbonding.toString(), claimable: claimable.toString(), apr: base, positions, lockDays: 2 };
 }
 
+// Total supply only feeds the APR estimate and moves by fractions of a percent a day, but `getSupply` is slow (the gateway call was
+// cut off after 10 s in the 2026-11-19 capture) and the public endpoints refuse it (publicnode needs a token, api.mainnet-beta 403).
+// So: ask the first endpoint only, with a longer timeout, keep the answer for 12 h, and reuse the last good value on failure.
+export const SUPPLY_TTL_MS = 12 * 3600_000;
+let supplyMemo: { at: number; total: number } | null = null;
+let supplyInflight: Promise<number | null> | null = null;
+export const resetSupplyForTests = (): void => { supplyMemo = null; supplyInflight = null; };
+export async function solanaTotalSupply(f: Fetcher, urls: string[], now = Date.now()): Promise<number | null> {
+  if (supplyMemo && now - supplyMemo.at < SUPPLY_TTL_MS) return supplyMemo.total;
+  if (!urls.length) return supplyMemo?.total ?? null;
+  supplyInflight ??= (async () => {
+    try {
+      const j = await jsonPost(f, urls[0], { jsonrpc: '2.0', id: 1, method: 'getSupply', params: [{ commitment: 'confirmed', excludeNonCirculatingAccountsList: true }] }, 30_000);
+      const total = Number(j?.result?.value?.total);
+      if (j?.error || !(total > 0)) throw new Error('getSupply failed');
+      supplyMemo = { at: now, total }; return total;
+    } catch { return supplyMemo?.total ?? null; } finally { supplyInflight = null; }
+  })();
+  return supplyInflight;
+}
+
 export async function fetchSolanaOverview(urls: string[], address: string, f: Fetcher, meta: ValidatorMeta[]): Promise<{ overview: StakeOverview; validators: Validator[] }> {
   if (!isSolAddress(address)) throw stakeError('bad_address', 'Invalid Solana address');
   const [accts, votes, epoch, infl, supply] = await Promise.all([
@@ -100,10 +121,10 @@ export async function fetchSolanaOverview(urls: string[], address: string, f: Fe
     solRpc(f, urls, 'getVoteAccounts', [{ commitment: 'confirmed' }]).then(mapVoteAccounts),
     solRpc(f, urls, 'getEpochInfo', [{ commitment: 'confirmed' }]),
     solRpc(f, urls, 'getInflationRate', []).catch(() => null),
-    solRpc(f, urls, 'getSupply', [{ commitment: 'confirmed', excludeNonCirculatingAccountsList: true }]).catch(() => null),
+    solanaTotalSupply(f, urls),
   ]);
   const active = votes.filter((v) => !v.delinquent).reduce((n, v) => n + v.activatedStake, 0);
-  const base = solanaBaseApr(Number(infl?.validator), Number(supply?.value?.total), active);
+  const base = solanaBaseApr(Number(infl?.validator), Number(supply), active);
   const validators = solanaValidators(meta, votes, base);
   const names = new Map(validators.map((v) => [v.id, v.name])); const aprs = new Map(validators.map((v) => [v.id, v.apr]));
   const e: EpochInfo = { epoch: Number(epoch?.epoch), slotIndex: Number(epoch?.slotIndex), slotsInEpoch: Number(epoch?.slotsInEpoch) || 432000 };
