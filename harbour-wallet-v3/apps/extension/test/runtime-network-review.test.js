@@ -41,3 +41,64 @@ test('testnet DeFi client groups concurrent contract reads into one Multicall3 r
     assert.ok(calls.every((r) => r.params[0].to.toLowerCase() === '0xca11bde05977b3631167028862be2a173976ca11'));
   } finally { globalThis.fetch = real; }
 });
+// ---------- B3: a backend that serves fewer networks ----------
+test('networks the backend does not serve are never tracked, probed or asked for history', async () => {
+  H.resetTrackingForTests(); H.resetServedForTests();
+  const calls = [];
+  const base = async (url, init = {}) => {
+    const d = deviceBase(url); if (d) return d;
+    calls.push(`${init.method ?? 'GET'} ${new URL(url).pathname}`);
+    if (url.endsWith('/v1/me')) return json({ device_id: 'd', chains: ['sepolia', 'base-sepolia'] });
+    if (url.includes('/v1/me/addresses')) return json({ addresses: [] });
+    if (url.includes('/v1/me/history')) return json({ items: [] });
+    return json({}, 404);
+  };
+  H.setRawFetch(base);
+  await H.ensureTracked([{ chain: 'ethereum', address: '0xa' }, { chain: 'sepolia', address: '0xa' }, { chain: 'base', address: '0xa' }]);
+  const puts = calls.filter((c) => c.startsWith('PUT'));
+  assert.equal(puts.length, 1, 'one PUT with only the served network (no per-network probing)');
+  await assert.rejects(H.fetchHarbourHistory('ethereum', '0xa', () => undefined), (e) => e.code === 'not_served');
+  assert.equal(calls.filter((c) => c.includes('/v1/me/history')).length, 0);
+  assert.deepEqual(await H.fetchHarbourHistory('sepolia', '0xa', () => undefined), []);
+  assert.equal(await H.backendServes('ethereum'), false);
+  assert.equal(await H.backendServes('sepolia'), true);
+  assert.equal(calls.filter((c) => c === 'GET /v1/me').length, 1, '/v1/me is asked once and cached');
+});
+test('when /v1/me cannot be read, every network counts as served (previous behaviour)', async () => {
+  H.resetServedForTests();
+  H.setRawFetch(async (url) => deviceBase(url) ?? json({ error: { code: 'busy', message: 'x' } }, 503));
+  assert.equal(await H.servedChains(), null);
+  assert.equal(await H.backendServes('ethereum'), true);
+  H.resetServedForTests();
+});
+// ---------- B3/B4: RPC for a network the backend refuses ----------
+test('RPC: unknown_chain falls back to the public endpoints and later calls skip the backend', async () => {
+  H.resetUnservedForTests();
+  const seen = [];
+  const base = async (url, init = {}) => {
+    const d = deviceBase(url); if (d) return d;
+    seen.push(String(url));
+    if (url.startsWith('https://api.test/v1/rpc/')) return json({ error: { code: 'unknown_chain', message: "This network isn't supported.", retryable: false } }, 404);
+    if (url.startsWith('https://api.test/v1/tx/')) return json({ error: { code: 'unknown_chain', message: "This network isn't supported.", retryable: false } }, 404);
+    if (url === 'https://rpc-a.test') return json({}, 503);
+    if (url === 'https://rpc-b.test') return json({ jsonrpc: '2.0', id: JSON.parse(init.body).id, result: '0x5' });
+    return json({}, 404);
+  };
+  H.setRawFetch(base); H.setPublicRpcResolver((chain) => (chain === 'arbitrum-sepolia' ? ['https://api.test/v1/rpc/arbitrum-sepolia', 'https://rpc-a.test', 'https://rpc-b.test'] : []));
+  const f = H.makeHarbourFetch(base);
+  const r1 = await (await f('https://api.test/v1/rpc/arbitrum-sepolia', { method: 'POST', body: '{"jsonrpc":"2.0","id":3,"method":"eth_getBalance","params":["0xa","latest"]}' })).json();
+  assert.equal(r1.result, '0x5'); assert.equal(r1.id, 3);
+  assert.equal(H.isUnserved('arbitrum-sepolia'), true);
+  const before = seen.filter((u) => u.includes('/v1/rpc/')).length;
+  const r2 = await (await f('https://api.test/v1/rpc/arbitrum-sepolia', { method: 'POST', body: '{"jsonrpc":"2.0","id":4,"method":"eth_gasPrice"}' })).json();
+  assert.equal(r2.result, '0x5');
+  assert.equal(seen.filter((u) => u.includes('/v1/rpc/')).length, before, 'no second trip to the backend');
+  // A broadcast on such a network goes to the public endpoints too.
+  H.resetUnservedForTests();
+  const sent = await (await f('https://api.test/v1/rpc/arbitrum-sepolia', { method: 'POST', body: '{"jsonrpc":"2.0","id":5,"method":"eth_sendRawTransaction","params":["0x02ff"]}' })).json();
+  assert.equal(sent.result, '0x5');
+  // A network with no public endpoint gets a plain-language error, not a crash.
+  const none = await (await f('https://api.test/v1/rpc/polygon-amoy', { method: 'POST', body: '{"jsonrpc":"2.0","id":6,"method":"eth_chainId"}' })).json();
+  assert.match(none.error.message, /not available right now/);
+  H.resetUnservedForTests(); H.setPublicRpcResolver(() => []);
+});

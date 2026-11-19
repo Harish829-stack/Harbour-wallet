@@ -2,8 +2,10 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from './ErrorBoundary';
 import { logError } from '../core/logger';
-import { installHarbourFetch } from '../core/harbour/fetchHook';
+import { installHarbourFetch, setPublicRpcResolver } from '../core/harbour/fetchHook';
+import { publicRpcForBackend } from '../core/chains/rpcUrls';
 installHarbourFetch(); // gateway calls (market data, swap quotes, history) made from the popup are signed with the device key
+setPublicRpcResolver(publicRpcForBackend); // networks the backend does not serve fall back to their public endpoints
 window.addEventListener('error', (e) => logError('window error', e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => logError('unhandled rejection', e.reason));
 // A toolbar popup sizes itself to its content, so a fluid layout collapses to a sliver. Give the popup (not the side panel or a tab,

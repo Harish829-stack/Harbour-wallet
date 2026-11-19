@@ -61,6 +61,8 @@ export const getPortfolio = async (refs?: AddressRef[]) => checkPortfolio(await 
 export const getHistory = async (refs: AddressRef[], cursor?: string, limit = 50): Promise<History> =>
   checkHistory(await api('GET', `/v1/me/history?${[q(refs), `limit=${limit}`, cursor ? `cursor=${encodeURIComponent(cursor)}` : ''].filter(Boolean).join('&')}`), refs);
 export const getNfts = async (refs?: AddressRef[]) => checkNfts(await api('GET', `/v1/me/nfts${refs?.length ? `?${q(refs)}` : ''}`), refs);
+/** Device info, including `chains`: the networks this backend serves right now (its ENABLED_CHAINS), a subset of the build's list. */
+export const getMe = () => api<{ device_id: string; chains?: unknown }>('GET', '/v1/me');
 export const listAddresses = async () => checkAddresses(await api('GET', '/v1/me/addresses'));
 export const putAddresses = (add: AddressRef[], remove: AddressRef[]) =>
   api('PUT', '/v1/me/addresses', { add, remove }, { 'Idempotency-Key': crypto.randomUUID() });

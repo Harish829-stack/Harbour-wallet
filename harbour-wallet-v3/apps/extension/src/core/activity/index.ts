@@ -9,7 +9,7 @@ import { createActivityEngine, type Store, type ActivityEngine } from './engine'
 import { makeRpc } from './evm';
 import { mergeSources, hashOf } from './merge';
 import { isIndexedChain, isIndexedEvm } from '../harbour/config';
-import { fetchHarbourHistory } from '../harbour/data';
+import { fetchHarbourHistory, backendServes } from '../harbour/data';
 import { filterByAddedAssets, emptyAllow, type AssetAllow } from './filter';
 
 const CUSTOM = /^custom-(\d+)$/;
@@ -48,7 +48,7 @@ async function fetchActivityRaw(chainOrId: ChainInfo | string, address: string, 
   const id = typeof chainOrId === 'string' ? chainOrId : chainOrId.id;
   if (!address) return { ok: false, error: 'No address for this network.' };
   if (!evmOf(id)) return fetchHistory(chainOrId, address, opts, f);   // non-EVM: explorer adapter exactly as before
-  if (isIndexedChain(id)) return harbourActivity(id, address, eng);
+  if (isIndexedChain(id) && await backendServes(id)) return harbourActivity(id, address, eng);
   const chain = typeof chainOrId === 'string' ? chainById(chainOrId) : chainOrId;
   const [ex, own] = await Promise.allSettled([chain && historySupportedFor(chain) ? fetchHistory(chain, address, opts, f) : Promise.resolve(null), eng ? eng.read(id, address) : Promise.reject(new Error('activity engine not started'))]);
   const explorerRows = ex.status === 'fulfilled' && ex.value?.ok ? ex.value.items : []; const explorerOk = ex.status === 'fulfilled' && ex.value?.ok === true;

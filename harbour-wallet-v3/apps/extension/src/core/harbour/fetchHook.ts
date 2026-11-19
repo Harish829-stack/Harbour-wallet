@@ -16,7 +16,30 @@ export const sessionFor = (chain: string): string => `${chain}-${Math.floor(Date
 const rpcReply = (id: unknown, body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify({ jsonrpc: '2.0', id: id ?? null, ...body }), { status, headers: { 'Content-Type': 'application/json' } });
 
-export async function harbourRpc(chain: string, body: string, signal?: AbortSignal): Promise<Response> {
+// ---------- networks the backend does not serve ----------
+// A backend can run with fewer networks than the build knows (ENABLED_CHAINS). It answers 404 `unknown_chain` for the others; without
+// this, every gas quote / balance / dApp read on such a network failed (8 failed eth_gasPrice per Trending visit in the 2026-11-19
+// capture). The first refusal marks the network for a while and the same JSON-RPC request is sent to its public endpoints instead.
+export const UNSERVED_RETRY_MS = 10 * 60_000;
+const unserved = new Map<string, number>();
+export const isUnserved = (chain: string, now = Date.now()): boolean => { const t = unserved.get(chain); if (t === undefined) return false; if (now < t) return true; unserved.delete(chain); return false; };
+export const markUnserved = (chain: string, now = Date.now()): void => { unserved.set(chain, now + UNSERVED_RETRY_MS); };
+export const resetUnservedForTests = (): void => { unserved.clear(); };
+/** Public JSON-RPC endpoints of a backend chain name (registered by the runtime; empty = no fallback). Never Harbour API URLs. */
+let publicRpcOf: (chain: string) => string[] = () => [];
+export const setPublicRpcResolver = (f: (chain: string) => string[]): void => { publicRpcOf = f; };
+type Send = (url: string, init: RequestInit) => Promise<Response>;
+async function viaPublic(chain: string, body: string, id: unknown, send: Send, signal?: AbortSignal): Promise<Response> {
+  for (const url of publicRpcOf(chain).filter((u) => !u.startsWith(PREFIX))) {
+    try {
+      const res = await send(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: signal ?? AbortSignal.timeout(15_000) });
+      if (res.ok) return res;
+    } catch (e) { if (signal?.aborted) throw e; }
+  }
+  return rpcReply(id, { error: { code: -32000, message: 'This network is not available right now. Please try again later.', data: { harbour: 'unknown_chain' } } });
+}
+
+export async function harbourRpc(chain: string, body: string, signal?: AbortSignal, send?: Send): Promise<Response> {
   let parsed: any; try { parsed = JSON.parse(body); } catch { parsed = null; }
   if (parsed && !Array.isArray(parsed) && parsed.method === 'eth_sendRawTransaction' && typeof parsed.params?.[0] === 'string') {
     try {
@@ -27,6 +50,7 @@ export async function harbourRpc(chain: string, body: string, signal?: AbortSign
       try { onBroadcast?.(chain, r.tx_hash); } catch { /* listeners never affect the send */ }
       return rpcReply(parsed.id, { result: r.tx_hash });
     } catch (e) {
+      if (send && e instanceof HarbourApiError && e.code === 'unknown_chain') { markUnserved(chain); return viaPublic(chain, body, parsed.id, send, signal); }
       // JSON-RPC error with the API's plain-language message (viem surfaces `message` / `shortMessage`).
       const code = e instanceof HarbourApiError ? e.code : 'network_busy';
       const message = e instanceof Error ? e.message : 'Network busy, please try again.';
@@ -37,6 +61,7 @@ export async function harbourRpc(chain: string, body: string, signal?: AbortSign
     const res = await signedRequest('POST', `/v1/rpc/${chain}`, body, { 'X-HB-Session': sessionFor(chain) }, signal);
     if (res.ok || res.status === 429) return res; // 429 already carries a JSON-RPC error body
     const b = await res.json().catch(() => ({}));
+    if (send && res.status === 404 && b?.error?.code === 'unknown_chain') { markUnserved(chain); return viaPublic(chain, body, parsed?.id, send, signal); }
     return rpcReply(parsed?.id, { error: { code: -32000, message: b?.error?.message ?? 'Network busy, please try again.', data: { harbour: 'upstream' } } });
   } catch (e: any) {
     if (signal?.aborted) throw e;
@@ -60,14 +85,18 @@ export async function harbourGateway(url: string, init: RequestInit | undefined,
 
 /** Wraps fetch so requests to the Harbour RPC proxy and gateway are signed. Everything else passes through untouched. */
 export function makeHarbourFetch(base: typeof fetch): typeof fetch {
-  return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const wrapped = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     if (url.startsWith(GW_PREFIX)) return harbourGateway(url, init ?? (input instanceof Request ? { method: input.method, headers: input.headers } : undefined), base);
     if (!url.startsWith(PREFIX)) return base(input, init);
     const chain = url.slice(PREFIX.length).split(/[/?#]/)[0];
     if (!evmIdOfBackend(chain) || (init?.method ?? 'GET').toUpperCase() !== 'POST' || typeof init?.body !== 'string') return base(input, init);
-    return harbourRpc(chain, init.body, init.signal ?? undefined);
+    // Public endpoints go through this same wrapper, so a keyed gateway endpoint among them is still signed.
+    const send: Send = (u, i) => wrapped(u, i);
+    if (isUnserved(chain)) { let id: unknown = null; try { id = JSON.parse(init.body)?.id ?? null; } catch { /* batch or invalid: null id */ } return viaPublic(chain, init.body, id, send, init.signal ?? undefined); }
+    return harbourRpc(chain, init.body, init.signal ?? undefined, send);
   }) as typeof fetch;
+  return wrapped;
 }
 
 let installed = false;

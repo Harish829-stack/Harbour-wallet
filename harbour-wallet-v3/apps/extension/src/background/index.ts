@@ -3,8 +3,10 @@ import { sanitizeResult } from '../core/errors';
 import { uiSafe, findSecretField } from '../core/uiSafe';
 import { featureEnabled } from '../core/harbour/policy';
 import { installFailoverFetch } from '../kit/failoverFetch';
-import { installHarbourFetch } from '../core/harbour/fetchHook';
+import { installHarbourFetch, setPublicRpcResolver } from '../core/harbour/fetchHook';
+import { publicRpcForBackend } from '../core/chains/rpcUrls';
 installHarbourFetch(); // Harbour networks: sign requests to the API's RPC proxy, route broadcasts to /v1/tx (must be the innermost wrapper)
+setPublicRpcResolver(publicRpcForBackend); // networks the backend does not serve fall back to their public endpoints
 installFailoverFetch(); // RPC failover, circuit breaking and retry for every JSON-RPC call made from the service worker
 // Harbour Wallet background service worker entry. Boot, then route every popup message through the kernel event registry.
 import './globalShims';

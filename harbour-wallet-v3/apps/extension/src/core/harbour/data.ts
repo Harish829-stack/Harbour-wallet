@@ -6,12 +6,33 @@ import type { HistoryItem } from '../txHistory';
 import type { NftCollection, NftItem } from '../nfts/types';
 import type { CustomToken } from '../customTokens';
 import { INDEXED_CHAINS, backendChainOf, chainIdOfBackend, evmIdOfBackend } from './config';
-import { getPortfolio, getHistory, getNfts, putAddresses, listAddresses, mediaUrl, HarbourApiError, type AddressRef, type Portfolio, type HistoryRow, type NftView } from './client';
+import { getPortfolio, getHistory, getNfts, putAddresses, listAddresses, getMe, mediaUrl, HarbourApiError, type AddressRef, type Portfolio, type HistoryRow, type NftView } from './client';
 
 const lc = (s: string) => s.toLowerCase();
 /** The Harbour refs for one EVM address: the same address on every network the backend indexes. */
 export const refsFor = (evmAddress: string | undefined): AddressRef[] =>
   evmAddress && /^0x[0-9a-fA-F]{40}$/.test(evmAddress) ? INDEXED_CHAINS.map((c) => ({ chain: c.backend, address: lc(evmAddress) })) : [];
+
+// ---------- networks the backend serves ----------
+// The build knows every network the backend CAN serve (chainList.gen.ts); a backend may run with fewer (ENABLED_CHAINS, e.g. a local
+// testnet-only setup). GET /v1/me names the ones it serves, so the wallet neither probes the others (one PUT per network, history
+// 400s on every screen) nor shows a backend "0" for a network the backend never read. Unknown (request failed) = assume served.
+export const SERVED_TTL_MS = 10 * 60_000;
+let servedMemo: { at: number; p: Promise<Set<string> | null> } | null = null;
+export function servedChains(now = Date.now()): Promise<Set<string> | null> {
+  if (servedMemo && now - servedMemo.at < SERVED_TTL_MS) return servedMemo.p;
+  const p = getMe().then((m) => (Array.isArray(m?.chains) ? new Set((m.chains as unknown[]).filter((x): x is string => typeof x === 'string')) : null)).catch(() => null);
+  servedMemo = { at: now, p };
+  void p.then((v) => { if (v === null && servedMemo?.p === p) servedMemo = null; }); // retry soon after a failure
+  return p;
+}
+/** Whether the backend serves this registry network (true when it cannot tell, matching the behaviour before this check). */
+export async function backendServes(registryId: string): Promise<boolean> {
+  const b = backendChainOf(registryId); if (!b) return false;
+  const s = await servedChains(); return !s || s.has(b);
+}
+/** Test hook. */
+export const resetServedForTests = (): void => { servedMemo = null; };
 
 // ---------- tracking ----------
 const tracked = new Set<string>();
@@ -37,12 +58,14 @@ async function putResilient(add: AddressRef[], remove: AddressRef[]): Promise<Ad
 export const resetTrackingForTests = (): void => { tracked.clear(); refused.clear(); };
 /** Makes sure the device tracks these refs (cheap no-op once known). */
 export async function ensureTracked(refs: AddressRef[]): Promise<void> {
-  const missing = refs.filter((r) => !tracked.has(key(r)) && !isRefused(r));
+  const served = await servedChains();
+  const missing = refs.filter((r) => !tracked.has(key(r)) && !isRefused(r) && (!served || served.has(r.chain)));
   if (!missing.length) return;
   for (const r of await putResilient(missing, [])) tracked.add(key(r));
 }
 /** Replaces the device's tracked set with `want` (used by the background address sync). */
-export async function syncTracked(want: AddressRef[]): Promise<{ added: number; removed: number }> {
+export async function syncTracked(wantAll: AddressRef[]): Promise<{ added: number; removed: number }> {
+  const served = await servedChains(); const want = served ? wantAll.filter((r) => served.has(r.chain)) : wantAll;
   const have = (await listAddresses()).addresses.map((a) => ({ chain: a.chain, address: lc(a.address) }));
   const wantKeys = new Set(want.map(key)); const haveKeys = new Set(have.map(key));
   const add = want.filter((r) => !haveKeys.has(key(r)) && !isRefused(r)); const remove = have.filter((r) => !wantKeys.has(key(r)));
@@ -152,7 +175,8 @@ export function historyItems(rows: HistoryRow[], explorerTx: (registryId: string
 export async function fetchHarbourHistory(registryId: string, evmAddress: string, explorerTx: (registryId: string, hash: string) => string | undefined, limit = 200): Promise<HistoryItem[]> {
   const chain = backendChainOf(registryId); if (!chain) return [];
   const refs = [{ chain, address: lc(evmAddress) }];
-  const h = await withTracking(refs, async () => { await ensureTracked(refs); return getHistory(refs, undefined, limit); });
+  // Never ask for history of a network the backend refused or does not serve (it answers 400 every time).
+  const h = await withTracking(refs, async () => { await ensureTracked(refs); if (!tracked.has(key(refs[0]))) throw new HarbourApiError(0, 'not_served', 'History is not available for this network right now.', true); return getHistory(refs, undefined, limit); });
   return historyItems(h.items, explorerTx);
 }
 
@@ -176,10 +200,13 @@ export async function fetchHarbourNfts(evmAddress: string, registryIds: string[]
   const refs = refsFor(evmAddress).filter((r) => registryIds.includes(chainIdOfBackend(r.chain) ?? ''));
   if (!refs.length) return [];
   // The backend lists NFTs when they are first viewed (or after one moved): while `syncing`, poll briefly for the fresh list.
-  let r = await withTracking(refs, async () => { await ensureTracked(refs); return getNfts(refs); });
+  // Only the networks the backend accepted: one it does not serve would fail the whole request.
+  const use = async () => { await ensureTracked(refs); return refs.filter((x) => tracked.has(key(x))); };
+  let asked = refs;
+  let r = await withTracking(refs, async () => { asked = await use(); return asked.length ? getNfts(asked) : { nfts: [], syncing: false }; });
   for (let i = 0; r.syncing && i < NFT_SYNC_POLLS; i++) {
     await new Promise((res) => setTimeout(res, NFT_SYNC_WAIT_MS));
-    r = await getNfts(refs);
+    r = await getNfts(asked);
   }
   return nftCollections(r.nfts);
 }

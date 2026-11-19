@@ -1,7 +1,8 @@
 import type { ChainInfo } from './types';
 import { rpcOverride } from '../networkRegistry';
 import { gatewayRpc, configRpcs } from '../rpc';
-import { harbourRpcUrl } from '../harbour/config';
+import { harbourRpcUrl, evmIdOfBackend } from '../harbour/config';
+import { chainByEvmId } from './index';
 /** Ordered JSON-RPC URLs for an EVM chain: user override / custom network first, then env override, then the registry's public list. */
 export function getRpcUrls(chain: ChainInfo): string[] {
   const id = chain.evmChainId;
@@ -21,3 +22,5 @@ export function getPublicRpcUrls(chain: ChainInfo): string[] {
   for (const u of [...(chain.rpcs ?? []), ...(id != null ? configRpcs(id) : [])]) if (!out.includes(u)) out.push(u);
   return out;
 }
+/** Public endpoints for a backend chain name: where Harbour RPC calls go while the backend does not serve that network (fetchHook.ts). */
+export const publicRpcForBackend = (backend: string): string[] => { const c = chainByEvmId(evmIdOfBackend(backend)); return c ? getPublicRpcUrls(c) : []; };
