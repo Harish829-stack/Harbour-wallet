@@ -471,6 +471,45 @@ const gwLogsMaxSpan = 2000
 
 // boundedLogs applies the /v1/rpc eth_getLogs policy to the gateway route (audit A2): an address or topic filter is required, and the
 // range must be a blockHash or two explicit hex block numbers at most gwLogsMaxSpan apart.
+// solStakeProgram is the only program whose accounts the wallet lists (the user's own stake accounts, core/staking/solana.ts).
+const solStakeProgram = "Stake11111111111111111111111111111111111111"
+
+var reSolAddr = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{32,44}$`)
+
+// boundedSolana (SEC-2026-11-19-01): getProgramAccounts scans a whole program. Unrestricted, any registered device could run
+// Token-program scans on Harbour's Helius plan. Only the wallet's own shape passes: the Stake program with a memcmp on the staker
+// (offset 12) or withdrawer (offset 44) authority.
+func boundedSolana(c rpcCall) *gwReject {
+	if c.Method != "getProgramAccounts" {
+		return nil
+	}
+	var p []json.RawMessage
+	if json.Unmarshal(c.Params, &p) != nil || len(p) != 2 {
+		return errNotAllowed
+	}
+	var program string
+	if json.Unmarshal(p[0], &program) != nil || program != solStakeProgram {
+		return errNotAllowed
+	}
+	var opt struct {
+		Filters []struct {
+			Memcmp *struct {
+				Offset int    `json:"offset"`
+				Bytes  string `json:"bytes"`
+			} `json:"memcmp"`
+		} `json:"filters"`
+	}
+	if json.Unmarshal(p[1], &opt) != nil {
+		return errNotAllowed
+	}
+	for _, f := range opt.Filters {
+		if f.Memcmp != nil && (f.Memcmp.Offset == 12 || f.Memcmp.Offset == 44) && reSolAddr.MatchString(f.Memcmp.Bytes) {
+			return nil
+		}
+	}
+	return errNotAllowed
+}
+
 func boundedLogs(c rpcCall) *gwReject {
 	if c.Method != "eth_getLogs" {
 		return nil
@@ -778,7 +817,7 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		if method != http.MethodPost || g.keys.Helius == "" {
 			return nil, errUnavailable
 		}
-		clean, rej := jsonRPCClean(body, solRPCMethods, nil)
+		clean, rej := jsonRPCClean(body, solRPCMethods, boundedSolana)
 		if rej != nil {
 			return nil, rej
 		}

@@ -252,3 +252,37 @@ func TestGatewayUniswapRoute(t *testing.T) {
 		t.Fatalf("missing key should be uniswap_not_configured, got %v", rej)
 	}
 }
+
+// SEC-2026-11-19-01: getProgramAccounts only for the user's own stake accounts.
+func TestGatewayHeliusProgramAccountsOnlyOwnStakeAccounts(t *testing.T) {
+	g, _ := testGateway(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"jsonrpc":"2.0","id":1,"result":[]}`)
+	})
+	const owner = "7YDNx43jknG1dWJ53Vh2uEfRhdvGt9WZhvLMKzkRyhdv"
+	gpa := func(params string) string {
+		return `{"jsonrpc":"2.0","id":1,"method":"getProgramAccounts","params":` + params + `}`
+	}
+	for _, ok := range []string{
+		gpa(`["Stake11111111111111111111111111111111111111",{"encoding":"jsonParsed","commitment":"confirmed","filters":[{"memcmp":{"offset":12,"bytes":"` + owner + `"}}]}]`),
+		gpa(`["Stake11111111111111111111111111111111111111",{"filters":[{"dataSize":200},{"memcmp":{"offset":44,"bytes":"` + owner + `"}}]}]`),
+		`{"jsonrpc":"2.0","id":1,"method":"getBalance","params":["` + owner + `"]}`,
+	} {
+		if _, rej, err := call(t, g, "POST", "/helius/rpc", ok); rej != nil || err != nil {
+			t.Errorf("refused %s: rej=%v err=%v", ok, rej, err)
+		}
+	}
+	for _, bad := range []string{
+		gpa(`["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",{"filters":[{"memcmp":{"offset":32,"bytes":"` + owner + `"}}]}]`),
+		gpa(`["Stake11111111111111111111111111111111111111",{"encoding":"jsonParsed"}]`),
+		gpa(`["Stake11111111111111111111111111111111111111",{"filters":[{"dataSize":200}]}]`),
+		gpa(`["Stake11111111111111111111111111111111111111",{"filters":[{"memcmp":{"offset":0,"bytes":"` + owner + `"}}]}]`),
+		gpa(`["Stake11111111111111111111111111111111111111",{"filters":[{"memcmp":{"offset":12,"bytes":"0OIl"}}]}]`),
+		gpa(`["Stake11111111111111111111111111111111111111"]`),
+		gpa(`{"program":"Stake11111111111111111111111111111111111111"}`),
+		`[{"method":"getBalance","params":["` + owner + `"]},` + gpa(`["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",{}]`) + `]`,
+	} {
+		if _, rej, _ := call(t, g, "POST", "/helius/rpc", bad); rej == nil {
+			t.Errorf("accepted %s", bad)
+		}
+	}
+}
