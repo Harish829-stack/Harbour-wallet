@@ -41,6 +41,7 @@ test('testnet DeFi client groups concurrent contract reads into one Multicall3 r
     assert.ok(calls.every((r) => r.params[0].to.toLowerCase() === '0xca11bde05977b3631167028862be2a173976ca11'));
   } finally { globalThis.fetch = real; }
 });
+
 // ---------- B3: a backend that serves fewer networks ----------
 test('networks the backend does not serve are never tracked, probed or asked for history', async () => {
   H.resetTrackingForTests(); H.resetServedForTests();
@@ -71,6 +72,7 @@ test('when /v1/me cannot be read, every network counts as served (previous behav
   assert.equal(await H.backendServes('ethereum'), true);
   H.resetServedForTests();
 });
+
 // ---------- B3/B4: RPC for a network the backend refuses ----------
 test('RPC: unknown_chain falls back to the public endpoints and later calls skip the backend', async () => {
   H.resetUnservedForTests();
@@ -102,6 +104,7 @@ test('RPC: unknown_chain falls back to the public endpoints and later calls skip
   assert.match(none.error.message, /not available right now/);
   H.resetUnservedForTests(); H.setPublicRpcResolver(() => []);
 });
+
 // ---------- B4: dead Blockscout hosts ----------
 test('Arbitrum Sepolia and Polygon Amoy history use Etherscan V2 through the gateway, not the dead Blockscout hosts', async () => {
   const T = await load(`export * from './core/txHistory'; export { chainById } from './core/chains/index';`);
@@ -114,6 +117,7 @@ test('Arbitrum Sepolia and Polygon Amoy history use Etherscan V2 through the gat
     assert.ok(urls.length && urls.every((u) => u.startsWith('https://api.test/v1/gw/etherscan/v2?chainid=' + chainid + '&')), urls.join(' '));
   }
 });
+
 // ---------- B5: staking data ----------
 test('Solana total supply: first endpoint only, cached 12 h, last good value on failure', async () => {
   const S = await load(`export * from './core/staking/solana';`);
@@ -154,6 +158,7 @@ test('Stride, Neutron and ZetaChain have a working REST endpoint ahead of the pu
     assert.ok(e.includes(`https://${id}-rest.publicnode.com`), id);
   }
 });
+
 // ---------- smart accounts: wallet_getCallsStatus logs ----------
 test('wallet_getCallsStatus logs are only the own logs of the batch, never another operation in the same bundle', async () => {
   const K = await load(`export * from './core/smartAccount/calls5792';`);
@@ -174,6 +179,7 @@ test('wallet_getCallsStatus logs are only the own logs of the batch, never anoth
   const spoof = [ev(K.BEFORE_EXECUTION_EVENT), xfer(6), { ...ev(K.UOP_EVENT, other), address: '0x1111111111111111111111111111111111111111' }, xfer(7), ev(K.UOP_EVENT, mine)];
   assert.equal(K.userOpLogs(spoof, mine).length, 3);
 });
+
 // ---------- efficiency ----------
 test('coalescer: concurrent and back-to-back callers share one run; failures are not reused', async () => {
   const C = await load(`export * from './core/coalesce';`);
@@ -185,6 +191,7 @@ test('coalescer: concurrent and back-to-back callers share one run; failures are
   assert.equal(await c('other', job), 3);
   let boom = 0; await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); await assert.rejects(c('x', async () => { boom++; throw new Error('x'); })); assert.equal(boom, 2);
 });
+
 // ---------- privacy / hardening ----------
 test('Tron data goes through the Harbour gateway relay first, with the public hosts as fallback', async () => {
   const N = await load(`export * from './core/chains/adapters/net'; export { chainById } from './core/chains/index';`);
@@ -193,6 +200,13 @@ test('Tron data goes through the Harbour gateway relay first, with the public ho
   assert.ok(!N.endpointsOf(N.chainById('cosmos')).some((u) => u.includes('/v1/gw/')));
   const off = await load(`export * from './core/chains/adapters/net'; export { chainById } from './core/chains/index';`, { VITE_HB_API_URL: 'https://api.test', VITE_HB_GATEWAY_URL: '' });
   assert.equal(off.endpointsOf(off.chainById('tron'))[0], 'https://api.trongrid.io');
+});
+test('realtime URL: a deployed API may not hand out a temporary tunnel; development setups may', () => {
+  assert.equal(H.realtimeUrlAllowed('wss://rt.harbour.example/connection/websocket', 'https://api.harbour.example'), true);
+  assert.equal(H.realtimeUrlAllowed('wss://edges-loads-sphere-scanner.trycloudflare.com/connection/websocket', 'https://api.harbour.example'), false);
+  assert.equal(H.realtimeUrlAllowed('wss://edges-loads-sphere-scanner.trycloudflare.com/connection/websocket', 'http://localhost:8080'), true);
+  assert.equal(H.realtimeUrlAllowed('wss://a.trycloudflare.com/connection/websocket', 'https://b.trycloudflare.com'), true);
+  assert.equal(H.realtimeUrlAllowed('ws://rt.harbour.example/connection/websocket', 'https://api.harbour.example'), false);
 });
 test('WalletConnect is created with telemetry off', async () => {
   const { readFileSync } = await import('node:fs');

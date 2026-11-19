@@ -16,6 +16,16 @@ export const isSecureEndpoint = (u: string, scheme: 'http' | 'ws' = 'http'): boo
   try { const p = new URL(u).protocol; return p === `${scheme}s:` || (p === `${scheme}:` && isLoopbackUrl(u)); } catch { return false; }
 };
 export const HB_API_SECURE: boolean = isSecureEndpoint(HB_API_URL);
+/** Temporary tunnel hosts (new name on every restart; scripts/release.mjs refuses a release that points at one). */
+export const TUNNEL_HOST = /\.(trycloudflare\.com|ngrok(-free)?\.(app|io|dev)|loca\.lt|localtunnel\.me)$/i;
+/** The realtime URL the API hands out is acceptable: secure (isSecureEndpoint), and not a temporary tunnel unless the API itself is a
+ *  development setup (loopback or a tunnel). A deployed API pointing at a tunnel is a misconfiguration: the name can stop working, or
+ *  later belong to someone else, and the channel tokens would go there. The wallet then just polls. */
+export const realtimeUrlAllowed = (url: string, api: string = HB_API_URL): boolean => {
+  if (!isSecureEndpoint(url, 'ws')) return false;
+  let host = ''; let apiHost = ''; try { host = new URL(url).hostname; apiHost = new URL(api).hostname; } catch { return false; }
+  return !TUNNEL_HOST.test(host) || isLoopbackUrl(api) || TUNNEL_HOST.test(apiHost);
+};
 
 /** Networks served by the backend: registry id -> backend chain name (backend/config/chains.yaml) and EVM chain id.
  *  The list is generated from chains.yaml (backend/scripts/gen_chains.py). `indexed` chains also get history, activity and NFTs
