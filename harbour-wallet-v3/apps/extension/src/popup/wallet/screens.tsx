@@ -86,7 +86,7 @@ const NativeTokenDetailScreen: React.FC<Ctx> = (c) => {
               <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{a.name}</div><div style={{ fontSize: 12, color: T.sub }}>{price != null ? `${usd(price)} per ${a.sym}` : 'Price unavailable'}</div></div>
               <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 700 }} data-testid="native-balance">{!b ? '…' : b.ok === false ? 'Unavailable' : `${Number(b.formatted).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${a.sym}`}</div><div style={{ fontSize: 12, color: T.sub }}>{b?.ok === false ? "Couldn't load balance" : b?.usd != null ? usd(b.usd) : '—'}</div></div>
             </div>
-            {a.evm && a.native && chainCategory(a.id) !== 'testnet' && <Row onClick={() => c.nav.push('gasStation', { assetId: a.id })} left={<Coin sym="GAS" color={a.color} />} title="Gas station" sub="Live network fees" right={<Ic d={ICON.chevron} size={18} />} />}
+            {a.evm && a.native && !!chainById(a.id) && <Row onClick={() => c.nav.push('gasStation', { assetId: a.id })} left={<Coin sym="GAS" color={a.color} />} title="Gas station" sub="Live network fees" right={<Ic d={ICON.chevron} size={18} />} />}
           </>}
           {tab === 'history' && <TokenHistory c={c} assetId={a.id} address={address} color={a.color} />}
           {tab === 'about' && <TokenAbout c={c} assetId={a.id} sym={a.sym} name={a.name} />}

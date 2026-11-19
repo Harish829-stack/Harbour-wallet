@@ -8,6 +8,7 @@ import { evmChains, chainById } from '../../../core/chains/index';
 import { gwei, type GasQuote } from '../../../core/gasFees';
 import { formatUnits } from '../../../core/chains/adapters/types';
 import { money } from '../../settingsStore';
+import { allAssets } from '../data';
 
 type Res = { ok: true; quote: GasQuote; symbol: string; decimals: number; nativePriceUsd: number | null; testnet: boolean } | { ok: false; error: string };
 const REFRESH_MS = 15_000;
@@ -25,7 +26,10 @@ export const GasStationScreen: React.FC<Ctx> = (c) => {
     void load(); const t = setInterval(load, REFRESH_MS);
     return () => { dead = true; clearInterval(t); };
   }, [id, nonce]); // eslint-disable-line react-hooks/exhaustive-deps
-  const chains = evmChains();
+  // The user's own EVM networks (Home list), not the whole registry: the same list everywhere, and the opened network always first.
+  const chains = [...new Map([start, ...allAssets().filter((a) => a.native && a.evm).map((a) => chainById(a.id))]
+    .filter((x): x is NonNullable<typeof x> => !!x && x.kind === 'evm').map((x) => [x.id, x])).values()];
+  if (!chains.length) chains.push(...evmChains().filter((x) => x.id === 'ethereum'));
   const ch = chainById(id);
   const cost = (wei: string, r: Extract<Res, { ok: true }>) => {
     const native = Number(formatUnits(BigInt(wei), r.decimals));

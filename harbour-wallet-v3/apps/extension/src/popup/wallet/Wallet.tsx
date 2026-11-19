@@ -12,7 +12,7 @@ import { EarnTab } from './features/earn';
 import { TestnetDefiTab } from './defi/TestnetDefiTab';
 import { testnetDefiEnabled, BASE_SEPOLIA, SEPOLIA } from '../../integrations/testnet-defi/config';
 import { featureEnabled } from '../../core/harbour/policy';
-import { ASSETS, allAssets, usd } from './data';
+import { allAssets, usd } from './data';
 import { syncNetworks } from './networkStore';
 import { useTokenItems, refreshTokens, tokenColor } from './tokensStore';
 import { useSettingsState, updateSettings, refreshSettings, startActivityPings, moneyPrice, moneyCompact, fmtNumber } from '../settingsStore';
@@ -379,7 +379,7 @@ const TrendingTab: React.FC<{ nav: Nav }> = ({ nav }) => {
       ) : <div className="hb-stagger" key={`${mode.id}|${net?.coinId ?? ''}`}>{rows.map((t: any) => {
         const ch = t[field] ?? 0;
         return (
-          <div key={t.id ?? t.symbol} className="hb-tap hb-trow" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} onClick={() => nav.push('tokenDetail', { assetId: (ASSETS.find((a) => a.sym === (t.symbol || t.sym))?.id) ?? 'ethereum' })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <div key={t.id ?? t.symbol} className="hb-tap hb-trow" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} onClick={() => nav.push('marketToken', { coin: { id: String(t.id ?? ''), symbol: String(t.symbol || t.sym || ''), name: String(t.name || t.symbol || ''), price: typeof t.price === 'number' ? t.price : null } })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <div style={{ width: '42%', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <Coin sym={t.symbol || t.sym} size={34} />
               <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.symbol || t.sym}</div><div style={{ fontSize: 12, color: T.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net ? net.name : t.name}</div></div>

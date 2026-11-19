@@ -1604,7 +1604,8 @@
   "decimals": 18,
   "endpoints": [
    "https://zetachain-api.polkachu.com",
-   "https://zetachain-rest.publicnode.com"
+   "https://zetachain-rest.publicnode.com",
+   "https://rest.cosmos.directory/zetachain"
   ],
   "explorer": "https://explorer.zetachain.com",
   "txPath": "/cosmos/tx/",
@@ -1780,8 +1781,8 @@
   "symbol": "STRD",
   "decimals": 6,
   "endpoints": [
-   "https://stride-api.polkachu.com",
-   "https://stride-rest.publicnode.com"
+   "https://rest.cosmos.directory/stride",
+   "https://rest.lavenderfive.com/stride"
   ],
   "explorer": "https://www.mintscan.io/stride",
   "txPath": "/txs/",
@@ -1826,7 +1827,8 @@
   "decimals": 6,
   "endpoints": [
    "https://neutron-api.polkachu.com",
-   "https://neutron-rest.publicnode.com"
+   "https://neutron-rest.publicnode.com",
+   "https://rest.cosmos.directory/neutron"
   ],
   "explorer": "https://www.mintscan.io/neutron",
   "txPath": "/txs/",

@@ -9,10 +9,33 @@ import type { Position, StakeAction, StakeOverview, Validator, ValidatorMeta } f
 import { stakeError } from './types';
 
 const trim = (u: string) => u.replace(/\/+$/, '');
-export async function lcd<T = any>(chain: ChainInfo, f: Fetcher, path: string): Promise<T> {
+// A public REST host can answer for the WRONG chain (2026-11-19: stride-api.polkachu.com served Agoric, so Stride showed Agoric
+// validators and every delegator read failed with "hrp does not match bech32 prefix"). Each endpoint's bech32 prefix is checked
+// once per session before it is used for reads, signing context or broadcast; a host for another chain is skipped. A host that
+// cannot answer the check (old SDK, route disabled) is still used: the check only removes endpoints proven wrong.
+const identity = new Map<string, Promise<boolean>>();
+export const resetEndpointIdentityForTests = (): void => { identity.clear(); };
+function endpointMatches(chain: ChainInfo, u: string, f: Fetcher): Promise<boolean> {
+  if (!chain.hrp) return Promise.resolve(true);
+  const key = `${chain.id}|${u}`; let p = identity.get(key);
+  if (!p) {
+    p = jsonGet(f, `${u}/cosmos/auth/v1beta1/bech32`, 8000)
+      .then((j: any) => (typeof j?.bech32_prefix === 'string' && j.bech32_prefix ? j.bech32_prefix === chain.hrp : true))
+      .catch(() => { identity.delete(key); return true; }); // unknown: allowed, and asked again next time
+    identity.set(key, p);
+  }
+  return p;
+}
+export async function verifiedEndpoints(chain: ChainInfo, f: Fetcher): Promise<string[]> {
   const urls = (chain.endpoints ?? []).map(trim);
   if (!urls.length) throw stakeError('no_endpoint', `No public REST endpoint configured for ${chain.name}`);
-  return firstOf(urls, (u) => jsonGet(f, u + path, 10000)) as Promise<T>;
+  const ok = await Promise.all(urls.map((u) => endpointMatches(chain, u, f)));
+  const good = urls.filter((_, i) => ok[i]);
+  if (!good.length) throw stakeError('no_endpoint', `${chain.name} is not reachable right now. Please try again later.`);
+  return good;
+}
+export async function lcd<T = any>(chain: ChainInfo, f: Fetcher, path: string): Promise<T> {
+  return firstOf(await verifiedEndpoints(chain, f), (u) => jsonGet(f, u + path, 10000)) as Promise<T>;
 }
 
 // ---------- decimals ----------
@@ -80,7 +103,8 @@ export function mapChainValidator(v: any): ChainValidator | null {
 }
 export async function fetchBondedValidators(chain: ChainInfo, f: Fetcher): Promise<ChainValidator[]> {
   const j = await lcd(chain, f, '/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=1000');
-  return (Array.isArray(j?.validators) ? j.validators : []).map(mapChainValidator).filter((v: ChainValidator | null): v is ChainValidator => !!v);
+  // Only this chain's operators (a mis-routed host must never put another chain's validators in the picker).
+  return (Array.isArray(j?.validators) ? j.validators : []).map(mapChainValidator).filter((v: ChainValidator | null): v is ChainValidator => !!v && (!chain.hrp || validAddress(chain, v.operator)));
 }
 export function validAddress(chain: ChainInfo, valoper: string): boolean {
   return !!chain.hrp && new RegExp(`^${chain.hrp}valoper1[02-9ac-hj-np-z]{38}$`).test(valoper);
@@ -255,7 +279,7 @@ export async function fetchCosmosSigningContext(chain: ChainInfo, address: strin
   return { ...parseCosmosAccount(acct), chainId };
 }
 export async function broadcastCosmos(chain: ChainInfo, f: Fetcher, body: { tx_bytes: string; mode: string }): Promise<string> {
-  const urls = (chain.endpoints ?? []).map(trim);
+  const urls = await verifiedEndpoints(chain, f);
   const j: any = await firstOf(urls, async (u) => {
     const res = await f(`${u}/cosmos/tx/v1beta1/txs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const t = await res.json().catch(() => null);

@@ -150,13 +150,13 @@ test('Tezos bakers: largest staking balances first, without the sort TzKT refuse
   assert.deepEqual(Z.topBakers(rows, 2).map((b) => b.address), ['tz1b', 'tz1c']);
   assert.deepEqual(Z.topBakers(null, 2), []);
 });
-test('Stride, Neutron and ZetaChain have a working REST endpoint ahead of the publicnode host that answers 404 for every path', async () => {
+test('Stride, Neutron and ZetaChain REST: no host that answers for another chain, cosmos.directory as a fallback', async () => {
   const R = await load(`export { chainById } from './core/chains/index';`);
-  for (const id of ['stride', 'neutron', 'zetachain']) {
-    const e = R.chainById(id)?.endpoints ?? [];
-    assert.equal(e[0], `https://${id}-api.polkachu.com`, id);
-    assert.ok(e.includes(`https://${id}-rest.publicnode.com`), id);
-  }
+  const stride = R.chainById('stride')?.endpoints ?? [];
+  // stride-api.polkachu.com served Agoric (2026-11-19 capture: "expected 'agoric' got 'stride'"); publicnode 404s on every path.
+  assert.ok(!stride.some((u) => /polkachu|publicnode/.test(u)), stride.join());
+  assert.equal(stride[0], 'https://rest.cosmos.directory/stride');
+  for (const id of ['neutron', 'zetachain']) assert.ok((R.chainById(id)?.endpoints ?? []).includes(`https://rest.cosmos.directory/${id}`), id);
 });
 
 // ---------- smart accounts: wallet_getCallsStatus logs ----------

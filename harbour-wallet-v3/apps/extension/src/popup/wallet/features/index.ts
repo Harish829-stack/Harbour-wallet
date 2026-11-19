@@ -14,4 +14,5 @@ import { SCREENS_gas } from './gas';
 import { SCREENS_perps } from './perps';
 import { SCREENS_predictions } from './predictions';
 import { SCREENS_approvals } from './approvals';
-export const FEATURE_SCREENS: Record<string, React.FC<Ctx>> = { ...SCREENS_provider, ...SCREENS_send, ...SCREENS_earn, ...SCREENS_nfts, ...SCREENS_ramps, ...SCREENS_discover, ...SCREENS_onboarding, ...SCREENS_settings, ...SCREENS_walletconnect, ...SCREENS_ledger, ...SCREENS_perps, ...SCREENS_predictions, ...SCREENS_approvals, ...SCREENS_gas };
+import { SCREENS_market } from './market';
+export const FEATURE_SCREENS: Record<string, React.FC<Ctx>> = { ...SCREENS_provider, ...SCREENS_send, ...SCREENS_earn, ...SCREENS_nfts, ...SCREENS_ramps, ...SCREENS_discover, ...SCREENS_onboarding, ...SCREENS_settings, ...SCREENS_walletconnect, ...SCREENS_ledger, ...SCREENS_perps, ...SCREENS_predictions, ...SCREENS_approvals, ...SCREENS_gas, ...SCREENS_market };

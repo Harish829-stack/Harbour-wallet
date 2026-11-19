@@ -21,6 +21,7 @@ const DAYS: Record<ChartRange, string> = { '1H': '1', '1D': '1', '1W': '7', '1M'
 /** CoinGecko id for a native asset: the curated map first, then the registry's `cg` field (mainnets only). */
 export function coinIdFor(assetId: string): string | undefined {
   if (COINGECKO_COIN[assetId]) return COINGECKO_COIN[assetId];
+  const m = /^cg:([a-z0-9][a-z0-9-]{0,79})$/.exec(assetId); if (m) return m[1]; // market-only coin (Trending): a CoinGecko id, no wallet asset
   const c = chainById(assetId);
   return c && !c.testnet && c.cg ? c.cg : undefined;
 }
