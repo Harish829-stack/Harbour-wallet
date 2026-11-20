@@ -100,4 +100,34 @@ Pure code in `src/core/smartAccount/` (constants, `kit`, call validation, user o
 
 **Success is read from the chain, limits are per chain.** After `eth_sendUserOperation` the bundler's receipt only names a transaction; `verifyInclusion` (`core/smartAccount/send.ts`) reads the receipt through the wallet's own RPC path and accepts only the EntryPoint `UserOperationEvent` for that exact hash and sender, with its `success` flag deciding the result. A mismatch is `receipt_mismatch` and never triggers a fallback transaction; `wallet_getCallsStatus` uses the same check. Gas and fee ceilings are per chain (`CHAIN_LIMITS` in `constants.ts`, one entry required for every smart account chain, enforced by a test); a chain without an entry can never pass the fee cap.
 
-**Local testing.** The flag comes from the signed remote config, not `config/config.json`: sign a copy with `scripts/config-tool.mjs`, set `CONFIG_JSON` and `CONFIG_SIG` in the backend `.env`, set `VITE_HB_CONFIG_PUBKEY` in the env file the build uses (`.env.production` wins over `.env` for `npm run build`), and build with a loopback `VITE_HB_API_URL` so `http://localhost` pages get the provider. `research/aa-spike/dapp-test.html` (serve it from `127.0.0.1`) exercises every method; `scripts/p5-e2e.mjs` proves the permission limits on chain. Full design: `documentation/smart-accounts/`.
+**Local testing.** The flag comes from the signed remote config, not `config/config.json`: sign a copy with `scripts/config-tool.mjs`, set `CONFIG_JSON` and `CONFIG_SIG` in the backend `.env`, set `VITE_HB_CONFIG_PUBKEY` in the env file the build uses (`.env.production` wins over `.env` for `npm run build`), and build with a loopback `VITE_HB_API_URL` if you want `http://localhost` pages to get the provider (other builds inject it on `https://` pages only). The test dApps below exercise every method; `scripts/p5-e2e.mjs` proves the permission limits on chain. Full design: `documentation/smart-accounts/`.
+
+### Test dApp for smart accounts (testnets only)
+
+Two pages in `research/aa-spike/`: `dapp-test.html` (quick refusal checks, no libraries) and `dapp-full.html` (the full walkthrough below).
+
+**Run it**
+
+1. Turn the smart account on in Harbour (Settings -> Wallets -> the active wallet) on Sepolia or Base Sepolia, with some test ETH.
+2. Start the server: `cd research/aa-spike && python3 serve.py`.
+3. Open `https://127.0.0.1:8443/dapp-full.html` in the Chrome profile that has Harbour, accept the certificate warning once, and reload.
+
+`serve.py` uses HTTPS because Harbour injects `window.ethereum` on `https://` pages only (plus `http://localhost` in loopback-API builds). It serves only the three page files, never the rest of the folder (`.state/` holds the spike's test key), and keeps its self-signed certificate in `.state/` (git-ignored). Do not serve the folder with `python3 -m http.server`.
+
+**What each section does** (results print as PASS / FAIL in the log at the bottom; Copy log shares them)
+
+| Section | Use | Expected |
+|---|---|---|
+| 1. Account | Connect, switch to Sepolia / Base Sepolia, Refresh | Smart account shows ON (code `0xef0100` + the pinned delegate), capabilities `atomic: supported` |
+| 2. Batch ETH send | One row per transfer (To address, Amount in ETH), "+ Add transaction", Send batch, Check status | One approval in Harbour, then `PASS batch confirmed`. With "All or nothing" unticked it is still accepted and still atomic; an account that is OFF gets 5760 |
+| 3. Free transaction check | Check free transaction | AVAILABLE before the first sponsored operation, USED (with its transaction link) after. One per address |
+| 4. Session key | 1 make key, 2 fund it from Harbour, 3 grant an ETH allowance and expiry, 4 spend as the key | Grant checks PASS, then `PASS session key spend confirmed` |
+| 4. Try to break it | Over the limit, After expiry, Wrong calldata, Someone else redeems | PASS for each (simulated with `eth_call`, costs nothing). For expiry, grant with 1 minute and wait for it to pass |
+| 4. Revoke | Revoke the grant in Harbour Settings, wait for confirmation, then Try spending again | PASS: disabled on chain, spend refused with `CannotUseADisabledDelegation` |
+| 5. Negative checks | Run negative checks | 11 PASS, no approval prompt |
+
+**Safety rules built into the page.** Every button refuses to run unless the wallet and the RPC are on Sepolia or Base Sepolia. The session key is created in the tab's memory, never saved or logged, and is gone on reload (send nothing valuable to it). The page never asks for a real key. Requests leave the tab only to the wallet, the public RPCs listed under "Advanced" (reads and the session key's own transactions) and Blockscout (free-transaction lookup); every other request is blocked.
+
+**Libraries.** `dapp-full.lib.js` bundles viem and MetaMask's delegation packages from the extension's own `node_modules` (same versions as Harbour). After an extension dependency change, run `node research/aa-spike/build-dapp-full.mjs`: it rebuilds the file and updates the integrity hash in the page, so a stale or edited bundle will not load.
+
+**Verified (2026-11-20)** on Sepolia and Base Sepolia: batches confirmed, free transaction reported as used, grant, spend, over-limit, expiry, wrong calldata, wrong caller and the 11 negative checks all PASS on both chains; revoke PASS on Base Sepolia.

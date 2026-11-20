@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Harbour smart account full test dApp</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<style>
+body{font:14px system-ui,sans-serif;max-width:980px;margin:24px auto;padding:0 16px;color:#222}
+h1{font-size:20px} h2{font-size:15px;margin:22px 0 6px;border-top:1px solid #ddd;padding-top:12px}
+button{padding:6px 11px;margin:3px 4px 3px 0;cursor:pointer} button:disabled{opacity:.5;cursor:wait}
+input,select{padding:5px;margin:2px 4px 2px 0;font:12px ui-monospace,monospace}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:3px 0} .note{color:#666;font-size:12px;margin:4px 0}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:2px 10px;font:12px ui-monospace,monospace;background:#f6f6f6;padding:8px;border-radius:6px;word-break:break-all}
+.on{color:#0a7d2c;font-weight:600} .off{color:#666;font-weight:600} .warn{color:#b35c00;font-weight:600}
+table{border-collapse:collapse;width:100%} td{padding:2px} td input{width:100%;box-sizing:border-box}
+#out{background:#111;color:#ddd;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-all;min-height:220px;max-height:480px;overflow:auto;font:12px ui-monospace,monospace}
+#out a{color:#7cc4ff}
+.banner{background:#fff4e0;border:1px solid #f0c27a;padding:8px 10px;border-radius:6px;font-size:13px}
+</style></head><body>
+<h1>Harbour smart account full test dApp</h1>
+<div class="banner">Testnets only: every button refuses to run unless both the wallet and the RPC below are on Sepolia or Base Sepolia.
+What leaves this tab: wallet requests go to <code>window.ethereum</code>; on-chain reads and the session key's own transactions go to the public RPC shown below;
+the free-transaction lookup goes to Blockscout. The session key lives only in this tab's memory: it is never saved, logged or shown (only its address), and a reload drops it.
+Never paste a real key anywhere on this page.</div>
+<script>
+// Network guard, installed before the libraries load: fetch may only reach the two RPCs typed below and the two Blockscout hosts.
+// (MetaMask's kit carries an analytics client that is off by default and never called by the functions this page uses; this makes sure.)
+(() => {
+  const realFetch = window.fetch.bind(window);
+  const allowed = () => new Set(['eth-sepolia.blockscout.com', 'base-sepolia.blockscout.com', ...['rpc-11155111', 'rpc-84532'].map((id) => { try { return new URL(document.getElementById(id).value.trim()).host; } catch { return ''; } })]);
+  window.fetch = (input, init) => {
+    const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+    if (url.protocol !== 'https:' || !allowed().has(url.host)) { const m = 'Blocked a request to ' + url.host; console.warn(m); document.getElementById('out')?.append(document.createTextNode('✗ ' + m + '\n')); return Promise.reject(new Error(m)); }
+    return realFetch(input, init);
+  };
+  navigator.sendBeacon = () => false;
+})();
+</script>
+<script src="dapp-full.lib.js" integrity="sha384-ucAWlcWv+KFOB5b5GrRhG9XDo8SHMU1FOzwzUY+zTOGcrFbxj+aGqTe0YmjU4y+u" crossorigin="anonymous"></script>
+
+<h2>1. Account</h2>
+<div class="row"><button id="connect">Connect</button><button id="sepolia">Switch to Sepolia</button><button id="base">Switch to Base Sepolia</button><button id="refresh">Refresh</button><button id="caps">wallet_getCapabilities</button></div>
+<details class="note"><summary>Advanced: public RPCs used for reads and the session key's transactions</summary><div class="row">RPC Sepolia <input id="rpc-11155111" size="44" value="https://ethereum-sepolia-rpc.publicnode.com"> RPC Base Sepolia <input id="rpc-84532" size="30" value="https://sepolia.base.org"></div></details>
+<div class="kv"><span>Address</span><span id="v-acct">-</span><span>Network</span><span id="v-chain">-</span><span>ETH balance</span><span id="v-bal">-</span><span>Smart account</span><span id="v-sa">-</span><span>Capabilities</span><span id="v-caps">-</span></div>
+
+<h2>2. Batch ETH send (EIP-5792 <code>wallet_sendCalls</code>)</h2>
+<p class="note">Each row is one ETH transfer. All rows go out together in one batch, with one approval in Harbour.</p>
+<table><thead><tr><td style="width:30px">#</td><td>To address</td><td style="width:150px">Amount (ETH)</td><td style="width:40px"></td></tr></thead><tbody id="calls"></tbody></table>
+<div class="row"><button id="add-row">+ Add transaction</button></div>
+<div class="row"><label><input type="checkbox" id="atomic" checked> All or nothing</label>
+<span class="note">(if one fails, none go through. Unticked: still accepted when the smart account is on, and still runs all-or-nothing; with the smart account off you get error 5760.)</span></div>
+<div class="row"><button id="send">Send batch</button><button id="watch">Check status</button></div>
+
+<h2>3. Free (gasless) transaction check</h2>
+<p class="note">Harbour sponsors one smart-account operation per address (Pimlico policy). This looks up EntryPoint <code>UserOperationEvent</code> logs where this address is the sender and Pimlico's paymaster paid.
+Pimlico's verifying paymaster is shared by all Pimlico customers, so an operation sponsored by another app for this address would count too.</p>
+<div class="row"><button id="gasless">Check free transaction</button></div>
+
+<h2>4. Session key lifecycle (ERC-7715)</h2>
+<div class="kv"><span>Session key</span><span id="v-sk">none</span><span>Key ETH balance</span><span id="v-skbal">-</span><span>Current grant</span><span id="v-grant">none</span></div>
+<div class="row"><button id="sk-new">1. Make a session key</button> fund with <input id="sk-fund" size="8" value="0.003"> ETH <button id="sk-fundbtn">2. Ask Harbour to fund it</button><button id="sk-bal">Refresh key balance</button></div>
+<div class="row">3. Grant an ETH allowance: <input id="g-amt" size="9" value="0.0001"> ETH, expires in <input id="g-mins" size="5" value="60"> minutes <button id="grant">Request permission</button></div>
+<div class="row">4. Spend as the session key: to <input id="s-to" size="44" value="0x000000000000000000000000000000000000dEaD"> amount <input id="s-amt" size="9" value="0.00002"> <button id="spend">Spend (real transaction)</button></div>
+<div class="row">5. Try to break it (simulated with eth_call, costs nothing): <button id="b-over">Over the limit</button><button id="b-expiry">After expiry</button><button id="b-calldata">Wrong calldata</button><button id="b-caller">Someone else redeems</button></div>
+<p class="note">For the expiry check, grant with a 1 minute expiry, wait until the chain's time passes it, then press "After expiry".</p>
+<p class="note">6. Revoke: a site cannot revoke a permission (by design). Revoke it in Harbour Settings, wait for the transaction to confirm, then:</p>
+<div class="row"><button id="b-revoked">Try spending again after revoking</button><button id="list">7. List granted permissions</button></div>
+
+<h2>5. Negative checks (no approval prompt should appear; each prints PASS or FAIL)</h2>
+<div class="row"><button id="neg">Run negative checks</button></div>
+
+<h2>Log</h2>
+<div class="row"><button id="copy">Copy log</button><button id="clear">Clear log</button></div>
+<div id="out"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const out = $('out');
+const fmt = (x) => typeof x === 'string' ? x : JSON.stringify(x, (k, v) => typeof v === 'bigint' ? v.toString() : v, 2);
+const log = (...a) => { out.append(document.createTextNode(a.map(fmt).join(' ') + '\n')); out.scrollTop = out.scrollHeight; };
+const pass = (ok, name, note = '') => log((ok ? 'PASS  ' : 'FAIL  ') + name + (note ? '\n      ' + note : ''));
+const H = window.HB;
+if (!H) { log('dapp-full.lib.js did not load (missing, or its hash does not match the integrity attribute). Run: node build-dapp-full.mjs'); return; }
+log(`Libraries: ${Object.entries(H.VERSIONS).map(([k, v]) => k + '@' + v).join(', ')}`);
+
+// ---------- pinned constants (same values as harbour-wallet-v3/apps/extension/src/core/smartAccount/constants.ts) ----------
+const CHAINS = {
+  11155111: { name: 'Sepolia', hex: '0xaa36a7', viem: H.sepolia, explorer: 'https://sepolia.etherscan.io', blockscout: 'https://eth-sepolia.blockscout.com', scanBlocks: 300000n },
+  84532: { name: 'Base Sepolia', hex: '0x14a34', viem: H.baseSepolia, explorer: 'https://sepolia.basescan.org', blockscout: 'https://base-sepolia.blockscout.com', scanBlocks: 1500000n },
+};
+const DELEGATE = '0x63c0c19a282a1b52b07dd5a65b58948a07dae32b';
+const DM = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+const ENTRYPOINT = '0x0000000071727De22E5E9d8BAf0edAc6f37da032';
+const PIMLICO_PM = '0x777777777777aec03fd955926dbf81597e66834c';
+const UOP_EVENT = '0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f';
+const MODE_SINGLE = '0x' + '00'.repeat(32);
+const BURN = '0x000000000000000000000000000000000000dEaD';
+const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+const hex = (n) => '0x' + BigInt(n).toString(16);
+
+// ---------- state (closure only: nothing on window) ----------
+let account = null, chainId = null, lastId = null;
+let sessionAccount = null; // viem LocalAccount; the private key is never kept in a variable of this page
+let grant = null;
+
+const link = (label, url) => { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; out.append(a, document.createTextNode('\n')); out.scrollTop = out.scrollHeight; };
+const txLink = (hash, cid = chainId) => link('  ↗ ' + hash, CHAINS[cid].explorer + '/tx/' + hash);
+const eth = () => { if (!window.ethereum) throw new Error('No window.ethereum. Is Harbour installed and is this page served from http://127.0.0.1?'); return window.ethereum; };
+const req = async (method, params) => { try { const r = await eth().request({ method, params }); log('→', method, '\n ', r); return { ok: true, r }; } catch (e) { log('✗', method, '\n  code', e.code, '-', e.message); return { ok: false, e }; } };
+
+// ---------- testnet guard + public RPC ----------
+const cfg = () => CHAINS[chainId];
+const rpcUrl = () => $('rpc-' + chainId).value.trim();
+const clients = new Map();
+async function need({ connected = true } = {}) {
+  const id = Number(BigInt(await eth().request({ method: 'eth_chainId' })));
+  if (!CHAINS[id]) { chainId = null; throw new Error(`Refusing: this page runs on Sepolia or Base Sepolia only (the wallet is on chain ${id}).`); }
+  chainId = id;
+  if (connected) { if (!account) account = (await eth().request({ method: 'eth_accounts' }))[0] ?? null; if (!account) throw new Error('Connect first.'); }
+  await pub();
+  return CHAINS[id];
+}
+async function pub() {
+  const url = rpcUrl(); if (!/^https:\/\/\S+$/.test(url)) throw new Error('The RPC URL must start with https://');
+  const k = chainId + '|' + url; let c = clients.get(k);
+  if (!c) {
+    c = H.createPublicClient({ chain: cfg().viem, transport: H.http(url, { timeout: 20000 }) });
+    const id = await c.getChainId(); if (id !== chainId) throw new Error(`Refusing: the RPC ${url} is on chain ${id}, not ${cfg().name}.`);
+    clients.set(k, c);
+  }
+  return c;
+}
+const on = (id, fn) => { const b = $(id); b.onclick = async () => { b.disabled = true; try { await fn(); } catch (e) { log('✗', e?.shortMessage ?? e?.message ?? String(e)); } finally { b.disabled = false; } }; };
+
+// ---------- 1. account ----------
+function saState(code) {
+  const c = String(code ?? '0x').toLowerCase();
+  if (c === '0x' || c === '') return ['OFF (plain account, no code)', 'off'];
+  if (c.startsWith('0xef0100') && c.length === 48) { const to = '0x' + c.slice(8); return same(to, DELEGATE) ? ['ON (0xef0100 + MetaMask Stateless7702 delegate ' + to + ')', 'on'] : ['Delegated to ANOTHER contract: ' + to, 'warn']; }
+  return ['This address is a contract, not an EOA', 'warn'];
+}
+async function refresh() {
+  const c = await need(); const p = await pub();
+  $('v-acct').textContent = account; $('v-chain').textContent = `${c.name} (${chainId})`;
+  $('v-bal').textContent = H.formatEther(await p.getBalance({ address: account })) + ' ETH';
+  const [text, cls] = saState(await p.getCode({ address: account })); const sa = $('v-sa'); sa.textContent = text; sa.className = cls;
+  try { $('v-caps').textContent = JSON.stringify(await eth().request({ method: 'wallet_getCapabilities', params: [account] })); } catch (e) { $('v-caps').textContent = `error ${e.code}: ${e.message}`; }
+  if (sessionAccount) await keyBalance();
+}
+on('connect', async () => { const x = await req('eth_requestAccounts'); if (x.ok) { account = x.r[0]; await refresh(); } });
+on('sepolia', async () => { await req('wallet_switchEthereumChain', [{ chainId: '0xaa36a7' }]); });
+on('base', async () => { await req('wallet_switchEthereumChain', [{ chainId: '0x14a34' }]); });
+on('refresh', refresh);
+on('caps', async () => { await need(); await req('wallet_getCapabilities', [account]); });
+if (window.ethereum?.on) {
+  window.ethereum.on('accountsChanged', (a) => { account = a?.[0] ?? null; log('event accountsChanged', account); if (account) refresh().catch((e) => log('✗', e.message)); });
+  window.ethereum.on('chainChanged', (c) => { log('event chainChanged', c); refresh().catch((e) => log('✗', e.message)); });
+}
+
+// ---------- 2. batch ETH send ----------
+const renumber = () => [...$('calls').querySelectorAll('tr')].forEach((tr, i) => { tr.firstChild.textContent = i + 1; });
+function addRow(to = '', amount = '0.00001') {
+  const tr = document.createElement('tr');
+  const n = document.createElement('td'); tr.append(n);
+  for (const [cls, v, ph] of [['to', to, '0x… recipient address'], ['amount', amount, '0.00001']]) { const td = document.createElement('td'); const i = document.createElement('input'); i.className = cls; i.value = v; i.placeholder = ph; td.append(i); tr.append(td); }
+  const td = document.createElement('td'); const b = document.createElement('button'); b.textContent = '✕'; b.title = 'Remove'; b.onclick = () => { tr.remove(); renumber(); }; td.append(b); tr.append(td);
+  $('calls').append(tr); renumber();
+}
+function readRows() {
+  return [...$('calls').querySelectorAll('tr')].map((tr, i) => {
+    const to = tr.querySelector('.to').value.trim(), amount = tr.querySelector('.amount').value.trim();
+    if (!H.isAddress(to, { strict: false })) throw new Error(`Transaction ${i + 1}: the "To address" is not a valid address.`);
+    let wei; try { wei = H.parseEther(amount); } catch { throw new Error(`Transaction ${i + 1}: the amount is not a number.`); }
+    if (wei <= 0n) throw new Error(`Transaction ${i + 1}: the amount must be more than 0.`);
+    return { to: H.getAddress(to), value: hex(wei) };
+  });
+}
+on('add-row', async () => addRow());
+addRow(BURN); addRow(BURN);
+on('send', async () => {
+  const c = await need(); const calls = readRows(); if (!calls.length) { log('Add at least one transaction.'); return; }
+  const atomicRequired = $('atomic').checked;
+  const x = await req('wallet_sendCalls', [{ version: '2.0.0', chainId: c.hex, from: account, atomicRequired, calls }]);
+  if (x.ok) { lastId = { id: typeof x.r === 'string' ? x.r : x.r.id, chainId }; if (!atomicRequired) log('note: accepted with atomicRequired=false; Harbour runs it atomically anyway (allowed by EIP-5792).'); }
+  else if (x.e?.code === 5760) log(atomicRequired ? 'note: 5760 = the smart account is not on for this address (turn it on in Harbour).' : 'note: 5760 with atomicRequired=false = the account is OFF; Harbour has no non-atomic fallback yet.');
+});
+async function status() {
+  if (!lastId) { log('Send a batch first.'); return null; }
+  const x = await req('wallet_getCallsStatus', [lastId.id]); if (!x.ok) return null;
+  for (const r of x.r.receipts ?? []) txLink(r.transactionHash, lastId.chainId);
+  return x.r.status;
+}
+on('watch', async () => { for (let i = 0; i < 45; i++) { const s = await status(); if (s === null || s >= 200) { if (s === 200) log('PASS  batch confirmed'); else if (s) log('FAIL  batch status', s); return; } await new Promise((r) => setTimeout(r, 4000)); } log('Still pending after 3 minutes.'); });
+
+// ---------- 3. free transaction ----------
+async function scanRecent(sender) {
+  const p = await pub(); const latest = await p.getBlockNumber(); const stop = latest > cfg().scanBlocks ? latest - cfg().scanBlocks : 0n;
+  const logs = []; let step = 50000n, to = latest;
+  while (to > stop) {
+    const from = to - step + 1n > stop ? to - step + 1n : stop;
+    try { logs.push(...await p.request({ method: 'eth_getLogs', params: [{ address: ENTRYPOINT, topics: [UOP_EVENT, null, sender], fromBlock: hex(from), toBlock: hex(to) }] })); to = from - 1n; }
+    catch (e) { if (step <= 1000n) throw e; step /= 2n; }
+  }
+  return { logs, source: `an RPC scan of the last ${cfg().scanBlocks} blocks (older operations are not seen)` };
+}
+on('gasless', async () => {
+  const c = await need(); const sender = H.pad(account.toLowerCase()); let res = null;
+  try {
+    const u = `${c.blockscout}/api?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${ENTRYPOINT}&topic0=${UOP_EVENT}&topic2=${sender}&topic0_2_opr=and`;
+    const j = await (await fetch(u, { credentials: 'omit', referrerPolicy: 'no-referrer' })).json();
+    if (j.status === '1' && Array.isArray(j.result)) res = { logs: j.result, source: 'Blockscout (full history)' };
+    else if (/no (records|logs) found/i.test(j.message ?? '')) res = { logs: [], source: 'Blockscout (full history)' };
+    else throw new Error(j.message ?? 'unexpected reply');
+  } catch (e) { log(`Blockscout lookup failed (${e.message}); scanning recent blocks on the RPC instead.`); res = await scanRecent(sender); }
+  const pm = (l) => String(l.topics?.[3] ?? '').toLowerCase();
+  const sponsored = res.logs.filter((l) => pm(l) === H.pad(PIMLICO_PM));
+  const userPaid = res.logs.filter((l) => /^0x0*$/.test(pm(l)));
+  const [saText] = saState(await (await pub()).getCode({ address: account }));
+  log(`Free transaction check on ${c.name} via ${res.source}\n  smart account: ${saText}\n  operations sent by this address: ${res.logs.length} (sponsored by Pimlico: ${sponsored.length}, paid by the user: ${userPaid.length})`);
+  if (sponsored.length) { log('  USED: this address already had its free transaction. Only one is allowed per address, so the next operation is paid by the user.'); for (const l of sponsored) txLink(l.transactionHash); }
+  else log(`  AVAILABLE: no sponsored operation yet. The next smart-account operation should show as gasless on Harbour's confirmation screen${saText.startsWith('ON') ? '.' : ' (turn the smart account on first; that step itself is paid by the user).'}`);
+});
+
+// ---------- 4. session key ----------
+const needKey = () => { if (!sessionAccount) throw new Error('Make a session key first.'); return sessionAccount; };
+const needGrant = () => { if (!grant) throw new Error('Request a permission first.'); if (grant.chainId !== chainId) throw new Error(`The current grant is for ${CHAINS[grant.chainId].name}; switch back or grant again.`); if (!same(grant.delegation.delegate, needKey().address)) throw new Error('The grant is for a different session key.'); return grant; };
+async function keyBalance() { const b = await (await pub()).getBalance({ address: sessionAccount.address }); $('v-skbal').textContent = H.formatEther(b) + ' ETH'; return b; }
+on('sk-new', async () => {
+  sessionAccount = H.privateKeyToAccount(H.generatePrivateKey()); // the key exists only inside this viem account object, in this closure
+  grant = null; $('v-grant').textContent = 'none'; $('v-sk').textContent = sessionAccount.address; $('v-skbal').textContent = '-';
+  log('New session key (memory only, dropped on reload):', sessionAccount.address);
+});
+on('sk-fundbtn', async () => {
+  await need(); const k = needKey(); const v = H.parseEther($('sk-fund').value.trim());
+  if (v <= 0n || v > H.parseEther('0.02')) throw new Error('Fund with more than 0 and at most 0.02 test ETH.');
+  const x = await req('eth_sendTransaction', [{ from: account, to: k.address, value: hex(v) }]);
+  if (x.ok) { txLink(x.r); await (await pub()).waitForTransactionReceipt({ hash: x.r, timeout: 180000 }); log('funding confirmed'); await keyBalance(); }
+});
+on('sk-bal', async () => { await need(); needKey(); await keyBalance(); });
+
+on('grant', async () => {
+  const c = await need(); const k = needKey();
+  const mins = Number($('g-mins').value);
+  if (!(mins > 0)) throw new Error('Expiry must be more than 0 minutes.');
+  const expiry = Math.floor(Date.now() / 1000) + Math.round(mins * 60);
+  const allowance = H.parseEther($('g-amt').value.trim()); if (allowance <= 0n) throw new Error('The allowance must be more than 0.');
+  const permission = { type: 'native-token-allowance', data: { allowance: hex(allowance) } };
+  const x = await req('wallet_requestExecutionPermissions', [{ chainId: c.hex, to: k.address, expiry, permission }]);
+  if (!x.ok) return;
+  const g = Array.isArray(x.r) ? x.r[0] : x.r;
+  if (!g || !same(g.delegationManager, DM)) { log('✗ Refusing to use this grant: delegationManager is not the pinned', DM); return; }
+  const [d] = H.decodeDelegations(g.context);
+  const checks = [[same(d.delegate, k.address), 'delegate is this session key'], [same(d.delegator, account), 'delegator is the connected account'], [d.caveats.length === 3, 'exactly 3 caveats']];
+  for (const [ok, n] of checks) pass(ok, 'grant: ' + n);
+  if (!checks.every(([ok]) => ok)) return;
+  const hash = H.hashDelegation(d);
+  const onChain = await (await pub()).readContract({ address: DM, abi: H.DM_ABI, functionName: 'getDelegationHash', args: [{ ...d, salt: BigInt(d.salt) }] }).catch(() => null);
+  if (onChain) pass(same(onChain, hash), 'grant: hash matches the DelegationManager\'s getDelegationHash');
+  grant = { chainId, allowance, expiry: Number(g.expiry ?? expiry), context: g.context, delegation: d, hash };
+  $('v-grant').textContent = `${H.formatEther(allowance)} ETH, until ${new Date(grant.expiry * 1000).toLocaleString()}`;
+  log('grant id (delegation hash):', hash);
+});
+
+/** The execution the session key asks for: a plain ETH transfer. `data` is only set by the wrong-calldata check. */
+const execFor = (to, amount, data = '0x') => ({ target: to, value: amount, callData: data });
+const redeemData = (exec) => H.encodeFunctionData({ abi: H.DM_ABI, functionName: 'redeemDelegations', args: [[grant.context], [MODE_SINGLE], [H.encodeSingleExecution(exec)]] });
+/** Human-readable revert reason: MetaMask's decoder, the DelegationManager's custom errors, and any Error(string) text inside hex data. */
+function reasonOf(e) {
+  const parts = []; let d; try { d = H.decodeRevertReason(e); } catch {} if (d) parts.push(d.errorName, d.message);
+  const text = [e?.shortMessage, e?.details, e?.cause?.shortMessage, e?.cause?.details, e?.message].filter(Boolean).join(' | ');
+  for (const h of new Set((text + ' ' + (e?.data ?? '') + ' ' + (e?.cause?.data ?? '')).match(/0x[0-9a-fA-F]{8,}/g) ?? [])) {
+    try { parts.push(H.decodeErrorResult({ abi: H.DM_ABI, data: h }).errorName); } catch {}
+    parts.push(...(h.slice(2).match(/../g) ?? []).map((b) => parseInt(b, 16)).map((c) => (c >= 32 && c < 127 ? String.fromCharCode(c) : '\n')).join('').split('\n').filter((s) => s.length >= 6));
+  }
+  parts.push(text);
+  return [...new Set(parts.filter(Boolean).map(String))].join(' | ').slice(0, 500);
+}
+async function simulate(exec, from) { try { await (await pub()).call({ account: from ?? needKey().address, to: DM, data: redeemData(exec) }); return { ok: true }; } catch (e) { return { ok: false, reason: reasonOf(e) }; } }
+async function expectRefused(name, exec, re, from) { const r = await simulate(exec, from); if (r.ok) pass(false, name, 'it would have gone through'); else pass(re.test(r.reason), name, r.reason); }
+
+on('spend', async () => {
+  await need(); needGrant(); const k = needKey();
+  const to = H.getAddress($('s-to').value.trim()); const exec = execFor(to, H.parseEther($('s-amt').value.trim()));
+  const sim = await simulate(exec); if (!sim.ok) { log('✗ This spend would revert, so it was not sent:', sim.reason); return; }
+  const p = await pub(); const data = redeemData(exec);
+  const gas = ((await p.estimateGas({ account: k.address, to: DM, data })) * 14n) / 10n;
+  const wallet = H.createWalletClient({ account: k, chain: cfg().viem, transport: H.http(rpcUrl()) });
+  const hash = await wallet.sendTransaction({ to: DM, data, gas });
+  log(`→ the session key sent ${$('s-amt').value} ETH to ${to} from your account`); txLink(hash);
+  const r = await p.waitForTransactionReceipt({ hash, timeout: 180000 });
+  pass(r.status === 'success', 'session key spend confirmed', 'block ' + r.blockNumber); await keyBalance();
+});
+on('b-over', async () => { await need(); const g = needGrant(); await expectRefused(`spending more than the allowance (${H.formatEther(g.allowance + 1n)} ETH) is refused`, execFor(BURN, g.allowance + 1n), /allowance-exceeded/); });
+on('b-expiry', async () => {
+  await need(); const g = needGrant(); const blk = await (await pub()).getBlock();
+  if (blk.timestamp < BigInt(g.expiry)) { log(`Not expired yet: the chain's time must pass ${new Date(g.expiry * 1000).toLocaleTimeString()} (about ${Number(BigInt(g.expiry) - blk.timestamp)} s from now). Grant one with a 1 minute expiry to test quickly.`); return; }
+  await expectRefused('spending after expiry is refused', execFor(BURN, 0n), /expired-delegation/);
+});
+on('b-calldata', async () => {
+  await need(); needGrant();
+  await expectRefused('a call with calldata is refused (the grant allows plain ETH transfers only)', execFor(BURN, 0n, '0x12345678'), /invalid-calldata/);
+});
+on('b-caller', async () => { await need(); needGrant(); await expectRefused('another address cannot redeem the grant', execFor(BURN, 0n), /InvalidDelegate/, H.privateKeyToAccount(H.generatePrivateKey()).address); });
+on('b-revoked', async () => {
+  await need(); const g = needGrant();
+  const disabled = await (await pub()).readContract({ address: DM, abi: H.DM_ABI, functionName: 'disabledDelegations', args: [g.hash] });
+  if (!disabled) { log('Not revoked on chain yet (disabledDelegations is false). Revoke it in Harbour Settings, wait for the confirmation, then try again.'); return; }
+  pass(true, 'on chain: the DelegationManager marks this grant disabled');
+  await expectRefused('after revoking, the session key cannot spend', execFor(BURN, 0n), /CannotUseADisabledDelegation/);
+});
+on('list', async () => {
+  await need(); const x = await req('wallet_getGrantedExecutionPermissions', []); if (!x.ok || !Array.isArray(x.r)) return;
+  for (const g of x.r) {
+    let note = '';
+    try {
+      const gid = Number(BigInt(g.chainId)); const d = H.decodeDelegations(g.context)[0];
+      if (gid === chainId) note = (await (await pub()).readContract({ address: DM, abi: H.DM_ABI, functionName: 'disabledDelegations', args: [H.hashDelegation(d)] })) ? 'REVOKED on chain' : 'active on chain';
+      else note = 'on ' + (CHAINS[gid]?.name ?? gid);
+    } catch (e) { note = 'could not read status'; }
+    log(`- ${g.permission?.type} ${JSON.stringify(g.permission?.data)} to ${g.to}${sessionAccount && same(g.to, sessionAccount.address) ? " (this tab's key)" : ''}, expires ${new Date(g.expiry * 1000).toLocaleString()}, ${note}`);
+  }
+  if (!x.r.length) log('No active grants for this site.');
+});
+
+// ---------- 5. negative checks (the same 11 as dapp-test.html) ----------
+on('neg', async () => {
+  const c = await need(); const cid = c.hex; const now = Math.floor(Date.now() / 1000);
+  const base = { chainId: cid, to: sessionAccount?.address ?? '0x1111111111111111111111111111111111111111', expiry: now + 3600, permission: { type: 'native-token-allowance', data: { allowance: hex(H.parseEther('0.001')) } } };
+  const expect = async (name, method, params, codes) => { try { await eth().request({ method, params }); log('FAIL  ', name, '(it was accepted)'); } catch (e) { log(codes.includes(e.code) ? 'PASS  ' : 'FAIL  ', name, '→ code', e.code); } };
+  await expect('31-day expiry refused', 'wallet_requestExecutionPermissions', [{ ...base, expiry: now + 31 * 86400 }], [-32602]);
+  await expect('zero allowance refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-allowance', data: { allowance: '0x0' } } }], [-32602]);
+  await expect('unlimited allowance refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-allowance', data: { allowance: '0x' + 'f'.repeat(64) } } }], [-32602]);
+  await expect('two requests refused', 'wallet_requestExecutionPermissions', [base, base], [-32602]);
+  await expect('unknown permission type refused', 'wallet_requestExecutionPermissions', [{ ...base, permission: { type: 'native-token-stream', data: {} } }], [5700]);
+  await expect('mainnet chain refused', 'wallet_requestExecutionPermissions', [{ ...base, chainId: '0x1' }], [5710, 4200]);
+  await expect('another account in `from` refused', 'wallet_requestExecutionPermissions', [{ ...base, from: '0x000000000000000000000000000000000000dEaD' }], [4100]);
+  await expect('extra field refused', 'wallet_requestExecutionPermissions', [{ ...base, sneaky: true }], [-32602]);
+  await expect('a site cannot revoke (method does not exist)', 'wallet_revokeExecutionPermission', [{ permissionContext: '0x' }], [-32601]);
+  await expect('a site cannot ask for 7702 upgrade', 'wallet_upgradeDelegation', [], [-32601]);
+  await expect('tx with authorizationList refused', 'eth_sendTransaction', [{ from: account, to: account, authorizationList: [{ address: '0x0000000000000000000000000000000000000001', chainId: '0x1', nonce: '0x0' }] }], [-32602, 4200, -32603]);
+  log('Done. Any FAIL above is a bug: tell me which line.');
+});
+
+// ---------- log helpers ----------
+on('copy', async () => { await navigator.clipboard.writeText(out.textContent); log('(log copied)'); });
+on('clear', async () => { out.textContent = ''; });
+})();
+</script></body></html>
