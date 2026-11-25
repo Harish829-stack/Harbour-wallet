@@ -10,7 +10,9 @@ const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFile
 
 const MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', SOL = 'So11111111111111111111111111111111111111112';
 const mkCtx = () => { const st = { wallets: { w1: { activeAccount: 0, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses: { solana: SOL, ethereum: '0xabc' } }] } }, active: 'w1' }; let persisted = 0;
-  return { st, persisted: () => persisted, ctx: { vault: { getState: async () => st, persist: async () => { persisted++; } } } }; };
+  return { st, persisted: () => persisted, ctx: { vault: { getState: async () => st, persist: async () => { persisted++; },
+    // vault.update (BUG-06): read-modify-write on the vault queue; this fake writes when fn changed the state, like VaultService.update
+    update: async (fn) => { const before = JSON.stringify(st); const r = await fn(st, { stage() {}, after() {} }); if (JSON.stringify(st) !== before) persisted++; return r; } } } }; };
 const realFetch = globalThis.fetch;
 const routeFetch = () => { globalThis.fetch = async (url, init = {}) => { const b = init.body ? JSON.parse(init.body) : null; const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s });
   if (b?.method === 'getAccountInfo') return j({ jsonrpc: '2.0', id: 1, result: { value: { owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', data: { parsed: { type: 'mint', info: { decimals: 6 } } } } } });

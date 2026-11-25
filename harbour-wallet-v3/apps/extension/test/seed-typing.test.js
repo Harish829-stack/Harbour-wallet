@@ -41,8 +41,9 @@ test('QR import: the staged keystores are destroyed after 5 wrong one-time codes
 test('worker counts wrong QR codes on every path that tries one', () => {
   const o = readFileSync(new URL('../src/background/handlers/onboardingExtra.ts', import.meta.url), 'utf8');
   const w = readFileSync(new URL('../src/background/modules/wallet.ts', import.meta.url), 'utf8');
-  assert.equal((o.match(/await qrWrongCode\(m\.stageId\)/g) ?? []).length, 2, 'qrVerify + qrImportAll');
-  assert.match(w, /await qrWrongCode\(msg\.stageId\)/, 'qrSyncImport');
+  // BUG-07: every code check goes through qrCodeCheck (counted before the check, serialised).
+  assert.equal((o.match(/await qrCodeCheck\(m\.stageId,/g) ?? []).length, 2, 'qrVerify + qrImportAll');
+  assert.match(w, /await qrCodeCheck\(msg\.stageId,/, 'qrSyncImport');
   assert.match(readFileSync(new URL('../src/background/qrStage.ts', import.meta.url), 'utf8'), /TTL_MS = 5 \* 60_000/);
 });
 test('UI wiring: typing warning, paste clears clipboard + warns, re-mask on leave, idle wipe, no per-pause phrase sends, hold-to-reveal', () => {

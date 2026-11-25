@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>QA fixture dApp &#x202E;evil</title>
+<!-- Test-only page served from 127.0.0.1 by test/e2e/browser.test.js. It never moves real value: the only chain behind it is the
+     deterministic mock chain (test/e2e/mock-chain.mjs). window.qa exposes the calls so Playwright can drive them. -->
+<body>
+<h1>QA fixture dApp</h1>
+<pre id="out">ready</pre>
+<iframe id="frame" style="width:300px;height:80px"></iframe>
+<script>
+  const out = document.querySelector('#out');
+  const log = (v) => { out.textContent = JSON.stringify(v); return v; };
+  const call = (method, params) => window.ethereum.request({ method, ...(params !== undefined ? { params } : {}) })
+    .then((result) => log({ method, result }), (e) => log({ method, error: { code: e.code, message: e.message } }));
+  window.qa = {
+    call,
+    accounts: () => call('eth_requestAccounts'),
+    sign: (msg, addr) => call('personal_sign', [msg, addr]),
+    typed: (addr, td) => call('eth_signTypedData_v4', [addr, JSON.stringify(td)]),
+    send: (tx) => call('eth_sendTransaction', [tx]),
+    switchChain: (hex) => call('wallet_switchEthereumChain', [{ chainId: hex }]),
+    watch: () => call('wallet_watchAsset', { type: 'ERC20', options: { address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', symbol: 'DAI', decimals: 18 } }),
+    revoke: () => call('wallet_revokePermissions', [{ eth_accounts: {} }]),
+    events: [],
+  };
+  window.ethereum?.on?.('accountsChanged', (a) => window.qa.events.push(['accountsChanged', a]));
+  window.ethereum?.on?.('chainChanged', (c) => window.qa.events.push(['chainChanged', c]));
+</script>
+</body>

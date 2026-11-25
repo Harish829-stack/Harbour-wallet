@@ -992,6 +992,22 @@ test('5792 sendCalls: rejecting sends nothing; the account turning off before ap
   await ctx.svc.resolve(p.id, { approve: true }); assert.equal(sent.length, 0); assert.equal(ctx.log.delivered.at(-1).outcome.error.code, 5760);
 });
 
+// T-SA-027 (QA): two origins send a batch at the same time and both are approved at the same time: both ids stay retrievable
+// (the id -> userOp map is a read-modify-write on storage) and each origin only sees its own.
+test('5792 sendCalls (concurrent): two origins, concurrent requests and approvals; both bundles retrievable, isolated per origin', async () => {
+  const { ctx, sent } = smartSetup('pinned'); const sa = sender('https://a.example', { tabId: 1, documentId: 'da' }), sb = sender('https://b.example', { tabId: 2, documentId: 'db' });
+  await connectOnSepolia(ctx, sa); await connectOnSepolia(ctx, sb);
+  const IDA = '0x' + 'a1'.repeat(8), IDB = '0x' + 'b2'.repeat(8);
+  const [ra, rb] = await Promise.all([ctx.svc.handle(sa, req('wallet_sendCalls', batch({ id: IDA }))), ctx.svc.handle(sb, req('wallet_sendCalls', batch({ id: IDB })))]);
+  assert.equal(ra.done, false); assert.equal(rb.done, false);
+  const pend = await ctx.pending.list(); assert.equal(pend.length, 2, 'both prompts queued');
+  const res = await Promise.all(pend.map((p) => ctx.svc.resolve(p.id, { approve: true })));
+  assert.deepEqual(res.map((r) => r.ok), [true, true]); assert.equal(sent.length, 2, 'two bundles sent');
+  const st = async (s, id) => (await ctx.svc.handle(s, req('wallet_getCallsStatus', [id]))).outcome;
+  assert.equal((await st(sa, IDA)).result.status, 100); assert.equal((await st(sb, IDB)).result.status, 100);
+  assert.equal((await st(sa, IDB)).error.code, 5730, 'origin A cannot read origin B\'s bundle'); assert.equal((await st(sb, IDA)).error.code, 5730);
+});
+
 // ---------------------------------------------------------------- ERC-7715 (session-key permissions, P5)
 function grantSetup(state = 'pinned', flag = true) {
   const granted = []; const store = [];
