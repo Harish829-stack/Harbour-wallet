@@ -92,13 +92,14 @@ export const handlers: HandlerMap = {
         }
         const clean = sanitizeToken({ chainId, address: msg.address, ...meta, manual });
         if (!clean.ok) return { ok: false, error: clean.error };
-        const st: any = await vault.getState(); const entry = activeEntry(st);
+        return await vault.update((st: any) => {
+        const entry = activeEntry(st);
         if (!entry) return { ok: false, error: 'No wallet found' };
         const res = upsertToken(readTokens(entry[1].customTokens), clean.token);
         if ('error' in res) return { ok: false, error: res.error };
         entry[1].customTokens = res.list;
-        await vault.persist(st);
         return { ok: true, token: clean.token, existed: res.existed };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Could not add token' }; }
     }
   },
@@ -106,10 +107,12 @@ export const handlers: HandlerMap = {
     const { vault } = ctx as any;
  {
       try {
-        const st: any = await vault.getState(); const entry = activeEntry(st);
+        return await vault.update((st: any) => {
+        const entry = activeEntry(st);
         if (!entry) return { ok: false, error: 'No wallet found' };
         entry[1].customTokens = removeToken(readTokens(entry[1].customTokens), String(msg.id ?? ''));
-        await vault.persist(st); return { ok: true };
+        return { ok: true };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Could not remove token' }; }
     }
   },

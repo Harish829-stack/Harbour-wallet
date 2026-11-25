@@ -5,7 +5,10 @@
 const DOC = 'src/offscreen/clipboard.html';
 const PORT = 'harbour-offscreen';
 let port: chrome.runtime.Port | null = null;
-let onPort: (() => void) | null = null;
+// BUG-09: every caller waiting for the offscreen document shares ONE pending handshake (a single resolver slot was overwritten by a
+// second caller, and both called createDocument). Reset when it fails or the port disconnects.
+let portReady: Promise<chrome.runtime.Port> | null = null;
+const portWaiters = new Set<() => void>();
 const waiting = new Map<string, (ok: boolean) => void>();
 
 try {
@@ -17,8 +20,8 @@ try {
       if (m?.op === 'copied' && typeof m.id === 'string') { waiting.get(m.id)?.(m.ok === true); waiting.delete(m.id); }
       if (m?.op === 'cleared') void chrome.offscreen?.closeDocument().catch(() => {});
     });
-    p.onDisconnect.addListener(() => { if (port === p) port = null; });
-    onPort?.(); onPort = null;
+    p.onDisconnect.addListener(() => { if (port === p) { port = null; portReady = null; } });
+    for (const w of portWaiters) w(); portWaiters.clear();
   });
 } catch { /* not running as an extension (tests) */ }
 
@@ -28,15 +31,27 @@ async function hasDocument(): Promise<boolean> {
   return !!(await (chrome.offscreen as any)?.hasDocument?.().catch(() => false));
 }
 
-async function ensurePort(): Promise<chrome.runtime.Port> {
-  if (port) return port;
-  if (!chrome.offscreen) throw new Error('COPY_UNAVAILABLE');
-  if (await hasDocument()) await chrome.offscreen.closeDocument().catch(() => {}); // left from a previous worker; its port is gone
-  const connected = new Promise<void>((resolve, reject) => { onPort = resolve; setTimeout(() => reject(new Error('COPY_FAILED')), 5000); });
-  await chrome.offscreen.createDocument({ url: DOC, reasons: ['CLIPBOARD' as chrome.offscreen.Reason], justification: 'Copy a private key the user asked to copy, then clear the clipboard.' });
-  await connected;
-  if (!port) throw new Error('COPY_FAILED');
-  return port;
+function ensurePort(): Promise<chrome.runtime.Port> {
+  if (port) return Promise.resolve(port);
+  portReady ??= (async () => {
+    if (!chrome.offscreen) throw new Error('COPY_UNAVAILABLE');
+    if (await hasDocument()) await chrome.offscreen.closeDocument().catch(() => {}); // left from a previous worker; its port is gone
+    let waiter: () => void = () => {};
+    const connected = new Promise<void>((resolve, reject) => {
+      waiter = resolve; portWaiters.add(waiter);
+      setTimeout(() => reject(new Error('COPY_FAILED')), 5000);
+    });
+    connected.catch(() => {}); // observed below; avoids an unhandled rejection when createDocument fails first
+    try {
+      await chrome.offscreen.createDocument({ url: DOC, reasons: ['CLIPBOARD' as chrome.offscreen.Reason], justification: 'Copy a private key the user asked to copy, then clear the clipboard.' });
+      await connected;
+    } finally { portWaiters.delete(waiter); }
+    if (!port) throw new Error('COPY_FAILED');
+    return port;
+  })();
+  const pending = portReady;
+  pending.catch(() => { if (portReady === pending) portReady = null; }); // a failed handshake is retried by the next copy
+  return pending;
 }
 
 export async function copySecretToClipboard(text: string, clearAfterMs: number): Promise<void> {

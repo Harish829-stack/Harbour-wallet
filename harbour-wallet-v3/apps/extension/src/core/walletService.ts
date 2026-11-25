@@ -10,7 +10,8 @@ export class WalletService {
     const w = this.core.HDWallet.create(128, passwordKey);
     try { return w.mnemonic(); } finally { w.delete(); }
   }
-  isValidMnemonic(m: string): boolean { return this.core.Mnemonic.isValid(m); }
+  /** OBS-02: false (not a wallet-core embind error) for anything that is not a string. */
+  isValidMnemonic(m: unknown): boolean { return typeof m === 'string' && m.length <= 1000 && this.core.Mnemonic.isValid(m); }
   // Proven default list, not the old seven-chain launch subset. Config-driven
   // extra coins and the full blockchain registry remain separately tracked gaps.
   supportedCoins(): Array<{ name: string; coin: any }> {

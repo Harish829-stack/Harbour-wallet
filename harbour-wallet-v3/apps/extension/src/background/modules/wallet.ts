@@ -4,7 +4,7 @@ import { armLockTimer, clearLockTimer } from '../settingsService';
 import { passkeyMeta, enrollPasskey, removePasskey, unlockWithPasskey, dropLegacyPasskey } from '../../core/passkeyService';
 // Dumb-UI rule: no handler here returns a recovery phrase, private key or password (see handlers/secrets.ts, core/uiSafe.ts).
 import { ONE_TIME_CODE, codeMatchesKey, isWellFormedKey } from '../../core/qrSync';
-import { readQrStage, clearQrStage, qrWrongCode } from '../qrStage';
+import { readQrStage, clearQrStage, qrCodeCheck } from '../qrStage';
 import { verifyPasskeySecret } from '../../core/passkeyService';
 import { ensureAccounts, activeEntry, nextSeedLabel, type Acct } from '../walletState';
 import { canCreateWallet, WALLET_LIMIT_ERROR } from '../../core/importKey';
@@ -16,6 +16,7 @@ function securityNotice(title: string, message: string): void {
   try { void chrome.notifications?.create(`harbour-security-${Date.now()}`, { type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon128.png'), title, message, priority: 2 }); } catch { /* notifications unavailable */ }
 }
 import { dropVaultKeys } from '../handlers/onboardingExtra';
+import { trackingNotice } from '../harbour';
 
 let creatingWallet = false;
 /** Marks an addWallet call made inside the worker after the batch was authorised once (a JSON message from a page cannot carry a Symbol). */
@@ -61,9 +62,10 @@ export const handlers: HandlerMap = {
         finally { sk.delete(); }
         const addresses = wallet.deriveAddresses(mnemonic, newlyGenerated);
         const vaultId = (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))!.vaultId;
-        await local.set(walletId, keystore);
-        await local.set(KEYS.wallets(vaultId), [walletId]);
-        await vault.persist({ vaultId, activeWalletId: walletId, wallets: { [walletId]: { name, label: name, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated } }, createdAt: Date.now() });
+        await vault.update((state: any, tx: any) => {
+          tx.stage(walletId, keystore); tx.stage(KEYS.wallets(vaultId), [walletId]); // one write with the vault (BUG-04)
+          Object.assign(state, { vaultId, activeWalletId: walletId, wallets: { [walletId]: { name, label: name, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated } }, createdAt: Date.now() });
+        });
         await armLockTimer().catch(() => {});
         // The password was typed seconds ago: let onboarding offer biometrics without asking for it again (one-shot, 10 min).
         await grantReauth('manage', { method: 'password', ttlMs: 10 * 60_000 });
@@ -77,7 +79,11 @@ export const handlers: HandlerMap = {
     const { vault } = ctx as any;
  {
       try { const state = await vault.unlock(msg.password); await dropLegacyPasskey().catch(() => {}); await armLockTimer().catch(() => {}); return { ok: true, state }; }
-      catch (e: any) { return { ok: false, error: e.message }; }
+      catch (e: any) {
+        if (e?.message !== 'TOO_MANY_ATTEMPTS') return { ok: false, error: e.message };
+        const t = await local.get<{ lockedUntil?: number }>(KEYS.THROTTLE); // BUG-14: let the lock screen say how long to wait
+        return { ok: false, error: 'TOO_MANY_ATTEMPTS', retryAfterMs: Math.max(0, (t?.lockedUntil ?? 0) - Date.now()) };
+      }
     }
   },
   passkeyStatus: async (msg, ctx) => {
@@ -166,7 +172,8 @@ export const handlers: HandlerMap = {
         const w = entry[1];
         const accounts = ensureAccounts(w);
         const active = accounts[w.activeAccount] ?? accounts[0];
-        return { ok: true, addresses: active?.addresses ?? w.addresses ?? {}, accounts, activeAccount: w.activeAccount ?? 0, backupRequired: !!w?.seedPhraseBackupRequired };
+        const tracking = await trackingNotice().catch(() => undefined); // BUG-10: accounts the backend is not tracking (quota)
+        return { ok: true, addresses: active?.addresses ?? w.addresses ?? {}, accounts, activeAccount: w.activeAccount ?? 0, backupRequired: !!w?.seedPhraseBackupRequired, ...(tracking ? { tracking } : {}) };
       } catch (e: any) { return { ok: false, error: e.message }; }
     }
   },
@@ -177,7 +184,7 @@ export const handlers: HandlerMap = {
       try {
         const passwordKey = await session.get<string>(KEYS.PASSWORD);
         if (!passwordKey) return { ok: false, error: 'Wallet is locked' };
-        const state: any = await vault.getState();
+        return await vault.update(async (state: any) => {
         const entry = activeEntry(state);
         if (!entry) return { ok: false, error: 'No wallet found' };
         const [walletId, w] = entry;
@@ -195,8 +202,8 @@ export const handlers: HandlerMap = {
         accounts.push(account);
         w.activeAccount = accounts.length - 1;
         w.addresses = addresses; // keep the top-level mirror on the active account
-        await vault.persist(state);
         return { ok: true, account, accounts, activeAccount: w.activeAccount, addresses };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Add account failed' }; }
     }
   },
@@ -205,7 +212,7 @@ export const handlers: HandlerMap = {
  {
       try {
         const idx = Number(msg.index);
-        const state: any = await vault.getState();
+        return await vault.update((state: any) => {
         const entry = activeEntry(state);
         if (!entry) return { ok: false, error: 'No wallet found' };
         const [, w] = entry;
@@ -213,8 +220,8 @@ export const handlers: HandlerMap = {
         if (!Number.isInteger(idx) || idx < 0 || idx >= accounts.length) return { ok: false, error: 'Invalid account' };
         w.activeAccount = idx;
         w.addresses = accounts[idx].addresses;
-        await vault.persist(state);
         return { ok: true, activeAccount: idx, addresses: accounts[idx].addresses, accounts };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Switch failed' }; }
     }
   },
@@ -228,17 +235,23 @@ export const handlers: HandlerMap = {
         const code = String(msg.code ?? ''); const keys = (await readQrStage(msg.stageId)) ?? [];
         if (!ONE_TIME_CODE.test(code)) return { ok: false, error: 'INCORRECT_CODE' };
         if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
-        const mnemonics: string[] = []; let skipped = 0; let wrong = 0; const kdfBudget = { spent: 0 };
-        for (const k of keys) {
-          if (!isWellFormedKey(k) || k.type !== 'mnemonic') { skipped++; continue; }
-          if (!(await codeMatchesKey(k, code, kdfBudget))) { wrong++; continue; }
-          let sk: any;
-          try { sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(k))); } catch { skipped++; continue; }
-          try { if (sk.isMnemonic()) mnemonics.push(sk.decryptMnemonic(new TextEncoder().encode(code))); else skipped++; }
-          catch { wrong++; }
-          finally { sk.delete(); }
-        }
-        if (!mnemonics.length) return { ok: false, error: wrong ? await qrWrongCode(msg.stageId) : 'No seed-phrase wallets in this QR code', skipped };
+        // BUG-07: the attempt is counted before the (slow) check and checks never run in parallel; see qrCodeCheck.
+        const checked = await qrCodeCheck(msg.stageId, async () => {
+          const mnemonics: string[] = []; let skipped = 0; let wrong = 0; const kdfBudget = { spent: 0 };
+          for (const k of keys) {
+            if (!isWellFormedKey(k) || k.type !== 'mnemonic') { skipped++; continue; }
+            if (!(await codeMatchesKey(k, code, kdfBudget))) { wrong++; continue; }
+            let sk: any;
+            try { sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(k))); } catch { skipped++; continue; }
+            try { if (sk.isMnemonic()) mnemonics.push(sk.decryptMnemonic(new TextEncoder().encode(code))); else skipped++; }
+            catch { wrong++; }
+            finally { sk.delete(); }
+          }
+          return { wrongCode: !mnemonics.length && wrong > 0, value: { mnemonics, skipped } };
+        });
+        if (!checked.ok) return { ok: false, error: checked.error };
+        const { mnemonics, skipped } = checked.value;
+        if (!mnemonics.length) return { ok: false, error: 'No seed-phrase wallets in this QR code', skipped };
         if (msg.dryRun) return { ok: true, count: mnemonics.length, skipped };
         if (!(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; // adding seeds needs the unlock credential
         let imported = 0, duplicates = 0; let lastErr = '';
@@ -268,7 +281,8 @@ export const handlers: HandlerMap = {
         if (Object.keys((await vault.getState()).wallets ?? {}).length > 0 && (msg as any)[AUTHORIZED] !== true && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' };
         const mnemonic = importing ? msg.mnemonic.trim() : await wallet.generateMnemonic();
         const newlyGenerated = !importing;
-        const state: any = await vault.getState();
+        const res: any = await vault.update(async (state: any, tx: any) => {
+        if (!canCreateWallet(Object.keys(state.wallets ?? {}).length)) return { ok: false, error: WALLET_LIMIT_ERROR };
         const label = nextSeedLabel(state);
         const addresses = wallet.deriveAddresses(mnemonic, newlyGenerated);
         // Dedupe by the ethereum address (TW: MNEMONIC_ALREADY_EXISTS).
@@ -280,15 +294,19 @@ export const handlers: HandlerMap = {
         let keystore: Record<string, unknown>; let walletId: string;
         try { walletId = sk.identifier(); keystore = JSON.parse(new TextDecoder().decode(sk.exportJSON())); }
         finally { sk.delete(); }
-        await local.set(walletId, keystore);
+        // BUG-04: keystore, wallet id list and vault are written together by vault.update (one setMany), never the keystore first.
+        tx.stage(walletId, keystore);
         const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))!.vaultId;
         const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? Object.keys(state.wallets ?? {});
         if (!list.includes(walletId)) list.push(walletId);
-        await local.set(KEYS.wallets(vaultId), list);
+        tx.stage(KEYS.wallets(vaultId), list);
         state.wallets = state.wallets ?? {};
         state.wallets[walletId] = { name: label, label, type: 'mnemonic', addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: newlyGenerated };
         state.activeWalletId = walletId;
-        await vault.persist(state);
+        return { ok: true, walletId, label, addresses };
+        });
+        if (!res.ok) return res;
+        const { walletId, label, addresses } = res;
         if (newlyGenerated) await grantReauth('reveal', { method: 'created', walletId }); // PT-08: the backup screen may show THIS wallet's new phrase once, without re-auth
         return { ok: true, walletId, label, addresses, newlyGenerated, backupGranted: newlyGenerated };
       } catch (e: any) { return { ok: false, error: e?.message || 'Add wallet failed' }; }
@@ -300,13 +318,13 @@ export const handlers: HandlerMap = {
  {
       try {
         const id = String(msg.walletId ?? '');
-        const state: any = await vault.getState();
+        return await vault.update((state: any) => {
         if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
         state.activeWalletId = id;
         const w = state.wallets[id]; const accounts = ensureAccounts(w);
         const active = accounts[w.activeAccount] ?? accounts[0];
-        await vault.persist(state);
         return { ok: true, walletId: id, addresses: active?.addresses ?? w.addresses ?? {}, activeAccount: w.activeAccount ?? 0 };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Switch failed' }; }
     }
   },
@@ -350,11 +368,11 @@ export const handlers: HandlerMap = {
         const id = String(msg.walletId ?? '');
         const name = String(msg.name ?? '').trim();
         if (!name) return { ok: false, error: 'Name required' };
-        const state: any = await vault.getState();
+        return await vault.update((state: any) => {
         if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
         state.wallets[id].label = name;
-        await vault.persist(state);
         return { ok: true, walletId: id, label: name };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Rename failed' }; }
     }
   },
@@ -364,7 +382,7 @@ export const handlers: HandlerMap = {
       // Delete keystore + drop from vault; re-point active wallet (TW removeWallet). Vault unlocked.
       try {
         const id = String(msg.walletId ?? '');
-        const state: any = await vault.getState();
+        return await vault.update(async (state: any, tx: any) => {
         if (!state.wallets?.[id]) return { ok: false, error: 'Wallet not found' };
         if (Object.keys(state.wallets).length <= 1) return { ok: false, error: 'Cannot remove your only wallet' };
         // PT-04: deleting a keystore is irreversible. A wallet whose phrase was never backed up would be lost with its funds, so the
@@ -372,16 +390,16 @@ export const handlers: HandlerMap = {
         if (state.wallets[id].seedPhraseBackupRequired) return { ok: false, code: 'BACKUP_REQUIRED', error: 'Back up this wallet’s secret phrase before removing it. Without it the wallet and its funds cannot be recovered.' };
         if (!(await consumeReauth('manage'))) return { ok: false, error: 'AUTH_REQUIRED' };
         delete state.wallets[id];
-        await local.remove(id); // keystore lives at local[walletId]
         const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
         if (vaultId) {
           const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? [];
-          await local.set(KEYS.wallets(vaultId), list.filter((x) => x !== id));
+          tx.stage(KEYS.wallets(vaultId), list.filter((x) => x !== id));
         }
         if (state.activeWalletId === id) state.activeWalletId = Object.keys(state.wallets)[0];
-        await vault.persist(state);
+        tx.after(() => local.remove(id)); // the keystore (local[walletId]) is deleted only once the vault no longer lists the wallet
         const active = state.wallets[state.activeWalletId];
         return { ok: true, activeWalletId: state.activeWalletId, addresses: active?.addresses ?? {} };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Remove failed' }; }
     }
   },
@@ -392,15 +410,15 @@ export const handlers: HandlerMap = {
         const name = String(msg.name ?? '').trim();
         const idx = Number(msg.index);
         if (!name) return { ok: false, error: 'Name required' };
-        const state: any = await vault.getState();
+        return await vault.update((state: any) => {
         const id = String(msg.walletId ?? activeEntry(state)?.[0] ?? '');
         const w = state.wallets?.[id];
         if (!w) return { ok: false, error: 'Wallet not found' };
         const accounts = ensureAccounts(w);
         if (!Number.isInteger(idx) || idx < 0 || idx >= accounts.length) return { ok: false, error: 'Invalid account' };
         accounts[idx].name = name;
-        await vault.persist(state);
         return { ok: true, walletId: id, index: idx, name };
+        });
       } catch (e: any) { return { ok: false, error: e?.message || 'Rename failed' }; }
     }
   },

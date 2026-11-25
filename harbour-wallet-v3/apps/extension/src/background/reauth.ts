@@ -30,9 +30,15 @@ const valid = (g: unknown, need: { walletId?: string; method?: ReauthMethod }): 
   return true;
 };
 /** True once per grant: the grant is removed whether or not it was still valid. */
-export async function consumeReauth(p: ReauthPurpose, need: { walletId?: string; method?: ReauthMethod } = {}): Promise<boolean> {
-  const g = await session.get<unknown>(KEY[p]); await session.remove(KEY[p]);
-  return valid(g, need);
+// BUG-05: read + remove are two awaits; without a queue two concurrent consumers could both read the grant before either removed it.
+let consumeQueue: Promise<unknown> = Promise.resolve();
+export function consumeReauth(p: ReauthPurpose, need: { walletId?: string; method?: ReauthMethod } = {}): Promise<boolean> {
+  const run = consumeQueue.then(async () => {
+    const g = await session.get<unknown>(KEY[p]); await session.remove(KEY[p]);
+    return valid(g, need);
+  });
+  consumeQueue = run.then(() => undefined, () => undefined);
+  return run;
 }
 /** Non-consuming check (lets the UI ask for the password BEFORE a biometric ceremony instead of after it). */
 export async function hasReauth(p: ReauthPurpose, need: { walletId?: string; method?: ReauthMethod } = {}): Promise<boolean> {

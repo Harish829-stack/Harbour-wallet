@@ -7,6 +7,7 @@ const FREE_ATTEMPTS = 5, BASE_DELAY_MS = 5000, MAX_DELAY_MS = 300000;
 type Throttle = { failedAttempts: number; lockedUntil: number };
 /** One queue for every VaultService instance in this worker: unlock, password checks and re-keying never interleave. */
 let vaultQueue: Promise<unknown> = Promise.resolve();
+export interface VaultTx { stage(key: string, value: unknown): void; after(step: () => Promise<void>): void }
 
 export class VaultService {
   private pw: PasswordService;
@@ -38,6 +39,28 @@ export class VaultService {
     const unlockKey = await session.get<string>(KEYS.UNLOCK);
     if (!unlockKey) throw new Error('LOCKED');
     await local.set(KEYS.VAULT, await passworder.encrypt(unlockKey, state));
+  }
+  /**
+   * Read-modify-write of the decrypted vault state on the worker-wide vault queue (BUG-06: handlers that each did getState ... persist
+   * raced and the last writer won). `fn` mutates `state` in place; it may `stage` extra storage writes (a new keystore, the wallet id
+   * list) that are committed in the SAME `local.setMany` as the vault (BUG-04: no orphan keystore when the vault write fails), and
+   * queue `after` steps (deletions) that run only once the vault is saved. Nothing is written when `fn` throws or leaves the state and
+   * the staged set unchanged. `fn` must not call unlock / checkPassword / setPassword / update (same queue: it would wait on itself).
+   */
+  update<R>(fn: (state: any, tx: VaultTx) => Promise<R> | R): Promise<R> {
+    return this.serial(async () => {
+      const state: any = await this.getState();
+      const before = JSON.stringify(state);
+      const staged: Record<string, unknown> = {}; const after: Array<() => Promise<void>> = [];
+      const r = await fn(state, { stage: (k, v) => { staged[k] = v; }, after: (f) => { after.push(f); } });
+      if (Object.keys(staged).length || JSON.stringify(state) !== before) {
+        const unlockKey = await session.get<string>(KEYS.UNLOCK);
+        if (!unlockKey) throw new Error('LOCKED');
+        await local.setMany({ ...staged, [KEYS.VAULT]: await passworder.encrypt(unlockKey, state) });
+      }
+      for (const f of after) await f();
+      return r;
+    });
   }
   // Password attempts are serialized (TW UnlockThrottleService.guard): without this, parallel guesses would all read the same
   // failed-attempt counter before any of them arms the lockout, and the throttle could be bypassed. The queue is MODULE-level

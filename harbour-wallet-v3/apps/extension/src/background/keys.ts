@@ -15,6 +15,19 @@ export interface ActiveKeys {
   dispose(): void;
 }
 
+/** OBS-05: the active account's public addresses for read-only flows (quotes, balances): from the vault metadata, without
+ *  decrypting the keystore or building an HD wallet. Same lock and "no wallet" errors as openActiveKeys. */
+export async function activeAddresses(vault: VaultService): Promise<Record<string, string>> {
+  if (!(await session.get<string>(KEYS.PASSWORD))) throw new Error('Wallet is locked');
+  const st: any = await vault.getState();
+  const entries = Object.entries(st.wallets ?? {}) as [string, any][];
+  if (!entries.length) throw new Error('No wallet found');
+  const w = st.wallets[st.activeWalletId && st.wallets[st.activeWalletId] ? st.activeWalletId : entries[0][0]];
+  const accounts: any[] = Array.isArray(w.accounts) && w.accounts.length ? w.accounts : [{ derivationIndex: 0, addresses: w.addresses ?? {} }];
+  const active = accounts[typeof w.activeAccount === 'number' && accounts[w.activeAccount] ? w.activeAccount : 0];
+  return { ...(active?.addresses ?? {}) };
+}
+
 export async function openActiveKeys(core: any, vault: VaultService, wallet: WalletService): Promise<ActiveKeys> {
   const passwordKey = await session.get<string>(KEYS.PASSWORD);
   if (!passwordKey) throw new Error('Wallet is locked');

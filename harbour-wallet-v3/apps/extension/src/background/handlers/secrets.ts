@@ -110,10 +110,11 @@ export const handlers: HandlerMap = {
     try {
       const s = await readBackup(m.sessionId); if (!s) return { ok: false, error: 'BACKUP_EXPIRED' };
       const r = checkPicks(s, m.picked); if (!r.complete) return { ok: false, error: 'BACKUP_MISMATCH', ...r };
-      const state: any = await ctx.vault.getState();
-      if (!state.wallets?.[s.walletId]) return { ok: false, error: 'Wallet not found' };
-      state.wallets[s.walletId].seedPhraseBackupRequired = false;
-      await ctx.vault.persist(state);
+      const found = await ctx.vault.update((state: any) => {
+        if (!state.wallets?.[s.walletId]) return false;
+        state.wallets[s.walletId].seedPhraseBackupRequired = false; return true;
+      });
+      if (!found) return { ok: false, error: 'Wallet not found' };
       await session.remove(BACKUP_KEY);
       return { ok: true, walletId: s.walletId };
     } catch (e: any) { return fail(e, 'Could not save'); }

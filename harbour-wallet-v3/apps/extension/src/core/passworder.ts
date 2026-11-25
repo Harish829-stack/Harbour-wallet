@@ -5,7 +5,8 @@
 // high-entropy key (the vault unlock key and keystore passphrase from keySchedule.ts, or the 32-byte passkey secret), never a
 // human password, so password stretching belongs to keySchedule.ts and a second slow KDF here would only add latency to every
 // vault write. encrypt() refuses short inputs so a human password can never be passed in by mistake.
-const b64 = (u: Uint8Array) => btoa(String.fromCharCode(...u));
+// Chunked: spreading a whole large buffer into String.fromCharCode exceeds the engine's argument limit (BUG-18: vaults past ~7 wallets).
+const b64 = (u: Uint8Array) => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = (s: string) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const LEGACY_PBKDF2_ITERATIONS = 10000;
 const MIN_SECRET_CHARS = 32;

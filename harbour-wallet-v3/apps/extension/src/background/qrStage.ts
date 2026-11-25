@@ -29,11 +29,30 @@ export async function readQrStage(stageId: unknown): Promise<any[] | null> {
   return s.keys;
 }
 export async function clearQrStage(): Promise<void> { await session.remove(KEY); }
-/** Counts a wrong one-time code. Returns the error the UI should get: after QR_MAX_WRONG_CODES the staged keystores are deleted. */
-export async function qrWrongCode(stageId: unknown): Promise<'INCORRECT_CODE' | 'QR_TOO_MANY_ATTEMPTS'> {
-  const s = await session.get<{ stageId: string; keys: any[]; exp: number; wrong?: number }>(KEY);
-  if (!s || s.stageId !== stageId) return 'INCORRECT_CODE';
-  const wrong = (s.wrong ?? 0) + 1;
-  if (wrong >= QR_MAX_WRONG_CODES) { await session.remove(KEY); return 'QR_TOO_MANY_ATTEMPTS'; }
-  await session.set(KEY, { ...s, wrong }); return 'INCORRECT_CODE';
+let qrQueue: Promise<unknown> = Promise.resolve();
+/**
+ * Checks a one-time code against the staged keystores (BUG-07). Checks run one at a time on a worker-wide queue and each attempt is
+ * counted BEFORE `verify` runs (it is refunded when the code turns out right), so a batch of parallel guesses costs one strike each and
+ * the stage is destroyed after QR_MAX_WRONG_CODES wrong codes however they are sent. `verify` returns whether the code was wrong.
+ */
+export function qrCodeCheck<R>(stageId: unknown, verify: () => Promise<{ wrongCode: boolean; value: R }>):
+  Promise<{ ok: true; value: R } | { ok: false; error: 'INCORRECT_CODE' | 'QR_TOO_MANY_ATTEMPTS' | 'QR_EXPIRED' }> {
+  const run = qrQueue.then(async () => {
+    const s = await session.get<{ stageId: string; keys: any[]; exp: number; wrong?: number }>(KEY);
+    if (!s || typeof stageId !== 'string' || s.stageId !== stageId) return { ok: false as const, error: 'QR_EXPIRED' as const };
+    if (s.exp < Date.now()) { await session.remove(KEY); return { ok: false as const, error: 'QR_EXPIRED' as const }; }
+    const before = s.wrong ?? 0;
+    if (before >= QR_MAX_WRONG_CODES) { await session.remove(KEY); return { ok: false as const, error: 'QR_TOO_MANY_ATTEMPTS' as const }; }
+    await session.set(KEY, { ...s, wrong: before + 1 }); // counted first: a check that is interrupted still costs a strike
+    const r = await verify();
+    if (!r.wrongCode) { await session.set(KEY, { ...s, wrong: before }); return { ok: true as const, value: r.value }; }
+    if (before + 1 >= QR_MAX_WRONG_CODES) { await session.remove(KEY); return { ok: false as const, error: 'QR_TOO_MANY_ATTEMPTS' as const }; }
+    return { ok: false as const, error: 'INCORRECT_CODE' as const };
+  });
+  qrQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+/** Counts a wrong one-time code (kept for callers that verify outside qrCodeCheck). Serialized on the same queue. */
+export function qrWrongCode(stageId: unknown): Promise<'INCORRECT_CODE' | 'QR_TOO_MANY_ATTEMPTS'> {
+  return qrCodeCheck(stageId, async () => ({ wrongCode: true, value: null })).then((r) => (r.ok ? 'INCORRECT_CODE' : r.error === 'QR_EXPIRED' ? 'INCORRECT_CODE' : r.error));
 }

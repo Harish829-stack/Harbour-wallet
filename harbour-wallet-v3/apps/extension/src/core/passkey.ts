@@ -16,7 +16,8 @@ export const fromHex = (h: string): Uint8Array => {
   if (!/^([0-9a-f]{2})*$/i.test(h)) throw new Error('Invalid hex');
   return Uint8Array.from(h.match(/../g) ?? [], (x) => parseInt(x, 16));
 };
-export const b64url = (b: ArrayBuffer | Uint8Array): string => btoa(String.fromCharCode(...(b instanceof Uint8Array ? b : new Uint8Array(b)))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+const chunkedBinary = (u: Uint8Array): string => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return s; };
+export const b64url = (b: ArrayBuffer | Uint8Array): string => btoa(chunkedBinary(b instanceof Uint8Array ? b : new Uint8Array(b))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 export const SECRET_HEX = /^[0-9a-f]{64}$/;
 
 export class BiometricsError extends Error { constructor(message: string, public code: string) { super(message); this.name = 'BiometricsError'; } }

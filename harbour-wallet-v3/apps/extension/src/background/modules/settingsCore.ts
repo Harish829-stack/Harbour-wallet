@@ -50,11 +50,12 @@ export const handlers: HandlerMap = {
         const isValid = (coin: AddressBookCoin, addr: string) => { try { return core.AnyAddress.isValid(addr, core.CoinType[coin]); } catch { return false; } };
         const clean = sanitizeEntry({ name: msg.name, addresses: msg.addresses }, isValid);
         if (!clean.ok) return clean;
-        const st: any = await vault.getState();
+        return await vault.update((st: any) => {
         const res = upsertEntry(readEntries(st.addressBook), { id: typeof msg.id === 'string' ? msg.id : undefined, name: clean.name, addresses: clean.addresses }, () => crypto.randomUUID());
         if (!res.ok) return res;
-        st.addressBook = res.list; await vault.persist(st);
+        st.addressBook = res.list;
         return { ok: true, items: res.list, entry: res.entry };
+        });
       } catch (e: any) { return { ok: false, error: e?.message === 'LOCKED' ? 'Wallet is locked' : 'Could not save contact' }; }
     }
   },
@@ -62,10 +63,10 @@ export const handlers: HandlerMap = {
     const { vault } = ctx as any;
  {
       try {
-        const st: any = await vault.getState();
+        return await vault.update((st: any) => {
         st.addressBook = removeEntry(readEntries(st.addressBook), String(msg.id ?? ''));
-        await vault.persist(st);
         return { ok: true, items: st.addressBook };
+        });
       } catch (e: any) { return { ok: false, error: e?.message === 'LOCKED' ? 'Wallet is locked' : 'Could not remove contact' }; }
     }
   },

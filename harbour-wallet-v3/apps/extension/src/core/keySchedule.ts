@@ -28,6 +28,8 @@ export function v2Record(salt: string, p: Argon2Params = ARGON2_DEFAULT): KdfRec
 }
 
 export function deriveV2(password: string, salt: Uint8Array, p: Argon2Params): { unlockKey: string; passwordKey: string } {
+  // OBS-01: integers only (a string '64' or 1.5 used to pass the relational checks and fail later with a generic error).
+  if (![p.m, p.t, p.p].every((x) => Number.isSafeInteger(x))) throw new Error('VAULT_KDF_PARAMS_INVALID');
   if (!(p.m >= 8 * p.p && p.m <= MAX_M && p.t >= 1 && p.t <= MAX_T && p.p >= 1 && p.p <= MAX_P)) throw new Error('VAULT_KDF_PARAMS_INVALID');
   const master = argon2id(new TextEncoder().encode(password.normalize('NFKC')), salt, { m: p.m, t: p.t, p: p.p, dkLen: 32 });
   try {

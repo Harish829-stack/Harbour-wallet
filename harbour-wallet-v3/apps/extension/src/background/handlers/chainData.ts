@@ -62,19 +62,23 @@ export const handlers: HandlerMap = {
       meta = { name: probe.token.name || msg.name, symbol: probe.token.symbol || msg.symbol, decimals: probe.token.decimals };
       const name = cleanText(meta.name, 64), symbol = cleanText(meta.symbol, 32);
       if (!name) return { ok: false, error: 'Token name is required' }; if (!symbol) return { ok: false, error: 'Token symbol is required' };
-      const st: any = await ctx.vault.getState(); const entry = activeEntry(st); if (!entry) return { ok: false, error: 'No wallet found' };
+      return await ctx.vault.update((st: any) => {
+      const entry = activeEntry(st); if (!entry) return { ok: false, error: 'No wallet found' };
       const list = readChainTokens(entry[1].customChainTokens); const id = tokenId(chain.id, address); const i = list.findIndex((t) => t.id === id);
       const tok: ChainToken = { id, chain: chain.id, chainId: chain.twId, address, name, symbol, decimals: meta.decimals, standard: TOKEN_CHAINS[chain.id], manual: manual || probe.needsManual === true, addedAt: i >= 0 ? list[i].addedAt : Date.now() };
       if (i < 0 && list.length >= MAX_CHAIN_TOKENS) return { ok: false, error: `You can add up to ${MAX_CHAIN_TOKENS} custom tokens` };
       entry[1].customChainTokens = i >= 0 ? list.map((t, k) => (k === i ? tok : t)) : [...list, tok];
-      await ctx.vault.persist(st); return { ok: true, token: tok, existed: i >= 0 };
+      return { ok: true, token: tok, existed: i >= 0 };
+      });
     } catch (e: any) { return { ok: false, error: e?.message || 'Could not add token' }; }
   },
   chainDataTokenRemove: async (msg, ctx) => {
     try {
-      const st: any = await ctx.vault.getState(); const entry = activeEntry(st); if (!entry) return { ok: false, error: 'No wallet found' };
+      return await ctx.vault.update((st: any) => {
+      const entry = activeEntry(st); if (!entry) return { ok: false, error: 'No wallet found' };
       entry[1].customChainTokens = readChainTokens(entry[1].customChainTokens).filter((t) => t.id !== String(msg.id ?? ''));
-      await ctx.vault.persist(st); return { ok: true };
+      return { ok: true };
+      });
     } catch (e: any) { return { ok: false, error: e?.message || 'Could not remove token' }; }
   },
   chainDataTokenBalances: async (msg, ctx) => {

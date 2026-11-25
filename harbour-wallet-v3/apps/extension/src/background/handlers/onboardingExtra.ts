@@ -7,7 +7,7 @@ import type { HandlerMap, HandlerCtx, Msg } from './types';
 import { local, session, KEYS } from '../../core/storage';
 import { validatePassword } from '../../core/passwordPolicy';
 import { removePasskey, enrollPasskey } from '../../core/passkeyService';
-import { readQrStage, clearQrStage, qrWrongCode } from '../qrStage';
+import { readQrStage, clearQrStage, qrCodeCheck } from '../qrStage';
 import { armLockTimer } from '../settingsService';
 import { ALL_CHAINS, chainById } from '../../core/chains/index';
 import { fetchNativeBalance } from '../../core/chains/adapters';
@@ -56,7 +56,7 @@ export interface CreateKeySpec { kind: 'privateKey'; bytes: Uint8Array; ct: stri
 /** Writes one wallet (keystore + vault entry). The vault must be unlocked. Returns the new wallet id. */
 export async function persistImportedWallet(ctx: HandlerCtx, spec: CreateSpec | CreateKeySpec, name: string): Promise<{ walletId: string; addresses: Record<string, string> }> {
   const passwordKey = await session.get<string>(KEYS.PASSWORD); if (!passwordKey) throw new Error('LOCKED');
-  const state: any = await ctx.vault.getState();
+  return ctx.vault.update(async (state: any, tx) => {
   state.wallets = state.wallets ?? {};
   if (!canCreateWallet(Object.keys(state.wallets).length)) throw new Error(WALLET_LIMIT_ERROR);
   const { core, wallet } = ctx;
@@ -76,14 +76,14 @@ export async function persistImportedWallet(ctx: HandlerCtx, spec: CreateSpec | 
     type = 'privateKey'; blockchain = spec.group ? 'evm' : spec.ct;
   }
   const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))!.vaultId;
-  await local.set(walletId, keystore);
+  tx.stage(walletId, keystore); // committed with the vault in one write (BUG-04)
   const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? Object.keys(state.wallets);
   if (!list.includes(walletId)) list.push(walletId);
-  await local.set(KEYS.wallets(vaultId), list);
+  tx.stage(KEYS.wallets(vaultId), list);
   state.wallets[walletId] = { name, label: name, type, ...(blockchain ? { blockchain } : {}), addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses }], activeAccount: 0, seedPhraseBackupRequired: false, importedAt: Date.now() };
   state.activeWalletId = walletId;
-  await ctx.vault.persist(state);
   return { walletId, addresses };
+  });
 }
 
 /** First wallet: create the vault with the chosen password (TW SavePassword). Returns true when this call created it. */
@@ -227,10 +227,14 @@ export const handlers: HandlerMap = {
   async qrVerify(m, ctx) {
     const keys = (await readQrStage(m.stageId)) ?? [];
     if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
-    const r = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
-    for (const s of r.secrets) if (s.kind === 'privateKey') s.bytes.fill(0);
-    if (!r.secrets.length) return { ok: false, error: r.wrong ? await qrWrongCode(m.stageId) : 'No importable wallets in this QR code', skipped: r.skipped };
-    return { ok: true, count: r.secrets.length, skipped: r.skipped };
+    const c = await qrCodeCheck(m.stageId, async () => {
+      const r = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
+      for (const s of r.secrets) if (s.kind === 'privateKey') s.bytes.fill(0);
+      return { wrongCode: !r.secrets.length && !!r.wrong, value: { count: r.secrets.length, skipped: r.skipped } };
+    });
+    if (!c.ok) return { ok: false, error: c.error };
+    if (!c.value.count) return { ok: false, error: 'No importable wallets in this QR code', skipped: c.value.skipped };
+    return { ok: true, count: c.value.count, skipped: c.value.skipped };
   },
   async qrImportAll(m, ctx) {
     if (busy) return { ok: false, error: 'WALLET_CREATION_IN_PROGRESS' };
@@ -238,8 +242,13 @@ export const handlers: HandlerMap = {
     if (!keys.length || keys.length > 100) return { ok: false, error: 'QR_EXPIRED' };
     busy = true; let createdVault = false;
     try {
-      const dec = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
-      if (!dec.secrets.length) return { ok: false, error: dec.wrong ? await qrWrongCode(m.stageId) : 'No importable wallets in this QR code' };
+      const c = await qrCodeCheck(m.stageId, async () => {
+        const d = await decryptStoredKeys(ctx.core, keys, String(m.code ?? ''));
+        return { wrongCode: !d.secrets.length && !!d.wrong, value: d };
+      });
+      if (!c.ok) return { ok: false, error: c.error };
+      const dec = c.value;
+      if (!dec.secrets.length) return { ok: false, error: 'No importable wallets in this QR code' };
       { const cur = await readState(ctx); if (Object.keys(cur.state?.wallets ?? {}).length > 0 && !(await consumeReauth('addWallet'))) return { ok: false, error: 'AUTH_REQUIRED' }; }
       const v = await ensureVault(ctx, m.password); if (v.error) return { ok: false, error: v.error }; createdVault = v.created;
       let imported = 0, duplicates = 0, lastErr = '';

@@ -23,7 +23,8 @@ export const handlers: HandlerMap = {
         addresses[ct] = address; hw[ct] = norm(path);
       }
       if (!addresses.ethereum && !addresses.bitcoin) return { ok: false, error: 'Open the Ethereum or Bitcoin app on your Ledger and try again' };
-      const state: any = await ctx.vault.getState(); state.wallets = state.wallets ?? {};
+      return await ctx.vault.update(async (state: any, tx) => {
+      state.wallets = state.wallets ?? {};
       if (!canCreateWallet(Object.keys(state.wallets).length)) return { ok: false, error: WALLET_LIMIT_ERROR };
       const id = `ledger-${(addresses.ethereum ?? addresses.bitcoin).toLowerCase()}`;
       if (state.wallets[id]) return { ok: false, error: 'This Ledger account is already added' };
@@ -32,9 +33,9 @@ export const handlers: HandlerMap = {
       state.wallets[id] = { name: label, label, type: 'ledger', model: typeof msg.model === 'string' ? msg.model.slice(0, 40) : undefined, addresses, accounts: [{ derivationIndex: 0, name: 'Account 1', addresses, hw }], activeAccount: 0 };
       state.activeWalletId = id;
       const vaultId = state.vaultId ?? (await local.get<{ vaultId: string }>(KEYS.VAULT_ID))?.vaultId;
-      if (vaultId) { const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? []; if (!list.includes(id)) { list.push(id); await local.set(KEYS.wallets(vaultId), list); } }
-      await ctx.vault.persist(state);
+      if (vaultId) { const list = (await local.get<string[]>(KEYS.wallets(vaultId))) ?? []; if (!list.includes(id)) { list.push(id); tx.stage(KEYS.wallets(vaultId), list); } }
       return { ok: true, walletId: id, label, addresses };
+      });
     } catch (e: any) { return { ok: false, error: String(e?.message ?? 'Could not add the Ledger').slice(0, 200) }; }
   },
 };
