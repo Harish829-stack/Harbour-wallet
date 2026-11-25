@@ -1,0 +1,379 @@
+T-KEY-011	WEAK	key-schedule.test.js "new vaults use Argon2id…" (round trip only implicitly through the vault)	no direct encrypt/decrypt shape assertions (salt/IV sizes, base64 fields)
+T-KEY-013	COVERED	key-schedule.test.js "passworder refuses a human password…"	asserts /high-entropy/ rejection
+T-KEY-015	COVERED	key-schedule.test.js "passworder refuses a human password and still reads the old envelope"	v1 envelope built independently and decrypted
+T-KEY-017	COVERED	key-schedule.test.js "new vaults use Argon2id…" + pentest-regressions.test.js "PT-11: key material lives in extension-origin IndexedDB"	record v2 + params, vault v2, IDB placement
+T-KEY-018	COVERED	pentest-regressions.test.js "PT-05: createWallet against an existing vault changes nothing"
+T-KEY-020	COVERED	key-schedule.test.js "new vaults use Argon2id and unlock again after a lock"
+T-KEY-021	COVERED	vault-throttle.test.js "parallel wrong passwords cannot outrun the throttle"	counts 6 'Incorrect password' then TOO_MANY_ATTEMPTS
+T-KEY-022	WEAK	vault-throttle.test.js	asserts lockout blocks the right password; does not assert the backoff schedule (5 s·2^n), the 300 s cap or recovery after expiry
+T-KEY-023	COVERED	vault-throttle.test.js + pentest-regressions.test.js "PT-03: parallel wrong passwords through SEPARATE VaultService instances"
+T-KEY-026	COVERED	key-schedule.test.js "a v1 vault is upgraded on first unlock…"	asserts re-key of vault, both keystore kinds, perps & prediction blobs, passkey cleared, old keys fail
+T-KEY-027	COVERED	key-schedule.test.js "a failed upgrade changes nothing and the wallet still unlocks on v1"
+T-KEY-029	WEAK	key-schedule.test.js (through migration)	rekeyKeystore not tested directly (mismatch path KEYSTORE_REKEY_MISMATCH untested)
+T-KEY-031	COVERED	key-schedule.test.js "a biometrics-only wallet can add a password…"
+T-KEY-032	WEAK	key-schedule.test.js (only LOCKED path)	wrong PRF secret, weak password, already-has-password not asserted at handler level
+T-KEY-033	COVERED	key-schedule.test.js "HW-001: adding a password to a LEGACY biometrics-only wallet…"
+T-KEY-034	WEAK	vault-throttle.test.js (checkPassword during lockout)	correct/incorrect checkPassword leaving session keys untouched not asserted
+T-KEY-035	WEAK	pentest-regressions.test.js "re-auth grants never outlive the session (lock clears them)"	alarm/idle triggers and store/provider effects not asserted
+T-KEY-036	COVERED	settings.test.js "auto-lock options, default and sanitising" + settings-service.test.js "HW-011…", "changing the auto-lock timer persists it and arms the real alarm"
+T-KEY-040	WEAK	restore-vectors.test.js "BIP-39/44/84 reference vectors…"	ETH and BTC only; other families unpinned
+T-KEY-042	WEAK	add-account.test.js	ethereum only; accountPath for other coins not pinned
+T-KEY-043	WEAK	add-account.test.js "cross-check vs wallet-core getDerivedKey"	example-based, not property-based vs an independent derivation (viem)
+T-KEY-046	WEAK	core.test.js "addresses deterministic + keystore params" + key-schedule.test.js	cipher/n asserted; buildStoredKey export→import→decryptMnemonic round trip via WalletService not asserted
+T-KEY-048	WEAK	pentest-regressions.test.js PT-01 onboarding / PT-05	createWallet happy path response & state shape not asserted directly
+T-KEY-050	COVERED	pentest-regressions.test.js "PT-05…"
+T-KEY-053	WEAK	onboarding-import.test.js "onboarding mode and interrupted-setup recovery"	pure classification only; failure injection after vault.create absent
+T-KEY-054	WEAK	ui-secrets.test.js "no worker handler returns a phrase…"	source-regex check, not a runtime response check
+T-KEY-055	WEAK	multi-wallet.test.js "distinct seeds -> distinct eth addresses"	wallet-core level, not the addWallet handler
+T-KEY-056	WEAK	reauth-gate.test.js "addWallet… require the add-wallet grant"	source regex only; no behavioural assertion that addWallet returns AUTH_REQUIRED and consumes the grant
+T-KEY-057	WEAK	reauth-gate.test.js "a page cannot skip the gate: the batch marker is a Symbol"	source regex only
+T-KEY-058	WEAK	onboarding-import.test.js "wallet limit, names and duplicates"	pure canCreateWallet only; handler path not exercised
+T-KEY-059	WEAK	multi-wallet.test.js "same seed -> identical eth address"	duplicate refusal by the handler not asserted
+T-KEY-060	COVERED	pentest-regressions.test.js "PT-08: the reveal grant created for a NEW wallet reveals only that wallet…"
+T-KEY-061	COVERED	onboarding-import.test.js "classifySecret…"
+T-KEY-063	WEAK	onboarding-import.test.js "private-key validation uses the right curve per chain"	boundary keys (0, n, >n, wrong lengths) not enumerated
+T-KEY-067	WEAK	ui-secrets.test.js "backup session…"	pure planBackup/checkPicks; handlers backupBegin/Finish not exercised
+T-KEY-068	WEAK	ui-secrets.test.js "backup session…" (asserts no word in session record)	backupBegin response not scanned
+T-KEY-071	WEAK	ui-secrets.test.js "backup session…"	example with one repeated word; not property-based
+T-KEY-075	WEAK	pentest-regressions.test.js (grants)	TTL boundaries / 15-min cap not asserted
+T-KEY-076	COVERED	pentest-regressions.test.js "PT-08…" and "PT-01: enrolment needs a PASSWORD grant…"
+T-KEY-079	COVERED	passkey.test.js "passkeyService: enroll seals session keys, unlock restores them…"	security notification not asserted (minor)
+T-KEY-080	COVERED	pentest-regressions.test.js "PT-01…"
+T-KEY-081	COVERED	passkey.test.js "passkeyService: wrong secret, stale vault, locked enroll, removal" + "HW-001: legacy (user-handle) seals…"
+T-KEY-084	COVERED	pentest-regressions.test.js "PT-11: an existing install is migrated…"
+T-KEY-086	WEAK	pentest-regressions.test.js PT-11	isSecretKey not unit-tested (UUID case variants)
+T-KEY-087	COVERED	pentest-regressions.test.js "PT-11: key material lives in extension-origin IndexedDB…"
+T-KEY-088	COVERED	pentest-regressions.test.js "PT-11: … a removed key cannot be resurrected"
+T-KEY-089	WEAK	provider.test.js "HW-009: evmAccountFromBytes signs identically…"	zeroing on dispose not asserted
+T-KEY-090	COVERED	send.test.js "a signing key that does not belong to the account is refused" + pentest-regressions.test.js "PT-12"
+T-KEY-092	COVERED	qrsync.test.js (4 tests: decode, out-of-order, rejects non-UR/absurd seq/oversize, malformed keys)
+T-KEY-093	COVERED	audit-a5-a8.test.js "A5: …scrypt memory exceeds the cap…", "A5: total scrypt work…"
+T-KEY-094	WEAK	onboarding-import.test.js "QR import decrypts phrase and private-key wallets, rejects wrong codes"	core-level; qrSyncImport handler with grant not exercised
+T-KEY-095	COVERED	seed-typing.test.js "QR import: the staged keystores are destroyed after 5 wrong one-time codes"
+T-KEY-096	WEAK	qrsync.test.js "one-time code shape"	expiry and >100 keys not asserted
+T-KEY-097	WEAK	qrsync.test.js "malformed keys never reach wallet-core"	example-based, not fuzz
+T-KEY-099	WEAK	pentest-regressions.test.js "PT-04: removing a wallet needs the backup first…"	only-wallet and unknown-id paths not asserted
+T-KEY-100	WEAK	add-account.test.js	derivation only; handlers switchAccount/rename/listWallets not exercised
+T-KEY-102	WEAK	onboarding-import.test.js "onboarding mode and interrupted-setup recovery"	resetEmptyVault handler not exercised
+T-KEY-105	WEAK	smart-account-service.test.js "unavailable for … hardware / watch-only wallets"	reveal/addAccount refusal for ledger not asserted
+T-KEY-106	WEAK	key-schedule.test.js (perps blob re-key)	perpsEnable flow not exercised
+T-KEY-107	WEAK	ui-secrets.test.js "uiSafe blocks any response…"	case variants partly; depth limit, arrays>500, cycles not asserted
+T-KEY-108	WEAK	ui-secrets.test.js "no worker handler returns a phrase…"	source regex, not runtime over all messages
+T-KEY-110	COVERED	errors.test.js (4 tests)
+T-KEY-112	COVERED	failover.test.js "logger redacts API keys in URLs, hex secrets and mnemonic-shaped text"
+T-KEY-114	WEAK	eslint.config.js no-console rule (lint, not a test)
+T-KEY-120	WEAK	storage-access.test.js "worker pins storage.local and storage.session…"	source regex, not a behavioural boot test
+T-SIG-001	COVERED	provider.test.js "personal_sign accepts both param orders, hex and utf8, and rejects bad input"
+T-SIG-002	COVERED	provider.test.js "personal_sign accepts both param orders…"
+T-SIG-004	COVERED	provider.test.js "personal_sign vector (web3.js docs): \"Some data\""
+T-SIG-005	COVERED	provider.test.js "eth_sign is refused unless enabled, and then only for a 32-byte hash"
+T-SIG-006	COVERED	provider.test.js "eth_sign: text uses the personal prefix, otherwise only a raw 32-byte hash is accepted"
+T-SIG-007	COVERED	provider.test.js "eth_sign raw hash signs the digest unprefixed; wrong length refused"
+T-SIG-008	COVERED	provider.test.js "EIP-712 \"Mail\" vector from the specification (digest + signature)"
+T-SIG-009	COVERED	provider.test.js "typed data: V1 array form is unsupported (4200), invalid shapes are -32602"
+T-SIG-010	COVERED	provider.test.js "typed data: V1 array form… invalid shapes are -32602"
+T-SIG-011	COVERED	provider.test.js "PT-07 / EIP-3326: typed data / tx naming another known chain…" + audit-a5-a8.test.js "A6"
+T-SIG-012	COVERED	provider.test.js "personal_sign / eth_sign / typed data require a connection, the connected account, and the approval"
+T-SIG-013	COVERED	provider.test.js "typed data summary flags permit-style signatures and marketplace orders"
+T-SIG-014	WEAK	provider.test.js "EIP-712 v4 with arrays and nested structs matches an independent encoder"	one fixed example; not property-based
+T-SIG-016	COVERED	provider.test.js "eth_sendTransaction: approval signs/broadcasts with the connected account…" + "evmSendTransaction: prepares, signs locally and broadcasts…"
+T-SIG-017	COVERED	provider.test.js "pending signing approval is bound to the original connection, account and chain" / "chain changes invalidate queued typed-data approvals"
+T-SIG-018	COVERED	provider.test.js "pending signing approval is bound to the original connection, account and chain"
+T-SIG-019	COVERED	provider.test.js "eth_sendTransaction normalisation: strict fields, from binding, hex quantities"
+T-SIG-020	WEAK	policy.test.js "the three signing switches are explicit…"	release-build + loopback API case not asserted
+T-SIG-023	COVERED	chain-data.test.js "gas: EIP-1559 tiers…" + send.test.js "EVM native…", "EVM: legacy (pre-1559)…"
+T-SIG-025	COVERED	tokens.test.js "estimateSend (ERC-20)…", "estimateSend (native)…" + send.test.js "EVM: … insufficient funds and contract recipients are flagged"
+T-SIG-026	WEAK	send.test.js (per-family quote→sign tests, "${id}: quote -> sign gives a deterministic transaction")	deterministic but self-generated goldens; signature verification per family only for EVM/BTC/SOL/TRON/NEAR
+T-SIG-027	COVERED	send.test.js "EVM rejects malformed recipients…", XRP/Bitcoin dust/insufficient tests, "parseUnits / formatUnits are exact and strict"
+T-SIG-028	WEAK	send.test.js "parseUnits / formatUnits are exact and strict"	example-based, not property-based
+T-SIG-029	COVERED	provider.test.js "solana provider flow: connect, signMessage, signTransaction, signAndSendTransaction, disconnect" + "solana tx parse and signature slot filling verifies with ed25519"
+T-SIG-030	COVERED	audit-fixes.test.js "Solana: a serialized transaction message is refused as a \"message\"; text is not"
+T-SIG-032	COVERED	multi.test.js (10 tests) + multi-extra.test.js
+T-SIG-033	WEAK	multi-extra.test.js "ton: v4r2 identity…; ton_proof hash layout", multi.test.js "cosmos direct… ADR-36"	layout checks; no published spec vector pinned
+T-SIG-034	WEAK	multi-extra.test.js "psbt: absurd fees are refused, mismatching non_witness_utxo is refused"	example-based, no fuzz
+T-SIG-035	COVERED	policy.test.js "Harbour mainnets and curated testnets are classified and signable; unknown chains are refused" + "a user-added network becomes signable…"
+T-SIG-036	WEAK	policy.test.js	non-EVM isSigningChain negative not asserted
+T-SIG-038	COVERED	provider.test.js "SIWE (EIP-4361) parsing and mismatch detection"
+T-SIG-040	COVERED	provider.test.js "no wallet yet -> 4100; locked wallet keeps the request and asks the UI to unlock"
+T-SIG-041	WEAK	pentest-regressions.test.js "PT-04: turning biometric approval for sites OFF needs re-auth"	providerResolve without proof when biometricApproval on not asserted
+T-SIG-042	COVERED	provider.test.js "HW-2026-006: approvals for a phishing-listed origin are refused unless the user typed the site host" + "PT-10…"
+T-DAPP-001	COVERED	provider.test.js "parsePageRequest keeps only the 4 allowed keys and deep-copies params"
+T-DAPP-002	COVERED	provider.test.js "parsePageRequest rejects malformed, oversize and unsafe payloads"
+T-DAPP-003	WEAK	provider.test.js "parsePageRequest rejects … unsafe payloads"	nested __proto__ via JSON.parse and Object.prototype integrity not asserted
+T-DAPP-005	COVERED	provider.test.js "method allowlist: wallet UI messages and bridge-namespaced names are not dApp methods"
+T-DAPP-006	COVERED	provider.test.js "unsupported / unknown methods: 4200 vs -32601, and no UI-message injection"
+T-DAPP-010	COVERED	provider.test.js "pending requests survive a worker restart; re-sent request not duplicated…"
+T-DAPP-012	COVERED	provider.test.js "origin normalisation: https and local http only, opaque origins refused"
+T-DAPP-013	COVERED	provider.test.js "permissions are bound to the exact origin: other sites and sub-frames do not inherit a connection"
+T-DAPP-014	COVERED	provider.test.js "origin normalisation…"
+T-DAPP-015	COVERED	provider.test.js "eth_requestAccounts queues one approval…", "wallet_requestPermissions / getPermissions / revokePermissions"
+T-DAPP-016	COVERED	provider.test.js "permissions are bound to the exact origin…"
+T-DAPP-017	COVERED	walletconnect.test.js "PT-06: a WalletConnect session never shares or changes the real site's injected connection"
+T-DAPP-018	COVERED	provider.test.js "blacklisted sites get nothing but static chain info" + "blacklist matches by hostname…"
+T-DAPP-019	COVERED	provider.test.js "permission store: per-origin connections, namespaces, ids, serialised writes"
+T-DAPP-020	COVERED	provider.test.js "pending store: dedupe key, atomic take, expiry, settled hand-off" + "expired approvals cannot execute between garbage collection ticks"
+T-DAPP-021	COVERED	provider.test.js "pending requests survive a worker restart; re-sent request not duplicated"
+T-DAPP-022	COVERED	provider.test.js "page navigation drops its pending requests…" + "request replay identity includes the browser origin and document…"
+T-DAPP-023	COVERED	provider.test.js "token bucket limits bursts and refills over time"	maxKeys eviction not asserted (minor)
+T-DAPP-024	COVERED	provider.test.js "requests are rate limited per origin (-32005) and approvals per origin per minute"
+T-DAPP-025	COVERED	provider.test.js "wallet_switchEthereumChain: 4902 for unknown chains…"
+T-DAPP-026	COVERED	audit-fixes.test.js "dApp-supplied RPC URLs: LAN, metadata and IPv6 literals blocked; public and loopback allowed"
+T-DAPP-027	COVERED	provider.test.js "wallet_addEthereumChain: validates, checks the RPC chain id, saves, then switches"
+T-DAPP-028	COVERED	provider.test.js "chain id / add chain / watch asset normalisation"
+T-DAPP-029	COVERED	provider.test.js "a pending add cannot overwrite a network added in Settings before approval" + "ChainList repeat add…"
+T-DAPP-030	WEAK	audit-fixes.test.js "dApp-supplied RPC URLs…"	decimal/octal/hex IPv4 forms, 100.64/10, no-dot hosts not enumerated
+T-DAPP-031	COVERED	tokens.test.js "sanitizeToken validates network/address/metadata…", "hostile metadata is cleaned…", "upsert … list is capped"
+T-DAPP-032	COVERED	provider.test.js "read RPC is proxied to the origin chain; params must be an array"
+T-DAPP-035	WEAK	provider.test.js "locked vault hides grants from initial state…"	storage.onChanged init payload content not asserted
+T-DAPP-036	COVERED	provider.test.js "site risk: blocklist hit, whitelist override, cache, and honest \"unavailable\""
+T-DAPP-037	COVERED	provider.test.js "site risk…honest unavailable" + "HW-2026-018: siteRisk handles a ScamSniffer-sized list…"
+T-DAPP-038	COVERED	provider.test.js "PT-10: a clean dApp iframe inside a phishing-listed page is blocked…"
+T-DAPP-040	COVERED	walletconnect.test.js (16 tests)
+T-DAPP-041	COVERED	walletconnect.test.js "PT-06 migration…"
+T-DAPP-042	COVERED	walletconnect.test.js "parseWcUri accepts v2 links and refuses…", "session_request: refuses unknown sessions…"
+T-DAPP-043	COVERED	provider.test.js "calldata decoding…" + audit-fixes.test.js "decoder: Permit2 approve and multicall expose inner approvals"
+T-DAPP-045	COVERED	display-integrity.test.js (9 tests)
+T-DAPP-047	COVERED	provider.test.js "page navigation drops its pending requests; window close / expiry reject them with 4001"
+T-UX-001	WEAK	provider.test.js "calldata decoding: … unlimited allowance"	exact 2^159 boundary not asserted
+T-UX-002	COVERED	audit-fixes.test.js "spending cap rewrite (MetaMask style)…" + provider.test.js "PT-02…"
+T-UX-004	COVERED	approval-preview.test.js (13 tests)
+T-UX-005	COVERED	approval-scan.test.js (10 tests)
+T-UX-006	COVERED	approval-scan.test.js "pairs are de-duplicated and the scan is capped…" / "added tokens are checked … in ONE batched call"
+T-UX-007	COVERED	audit-fixes.test.js "EVM recipients: bad mixed-case checksum rejected…" + addressBook.test.js "wallet-core accepts real addresses…"
+T-UX-008	COVERED	audit-fixes.test.js "send: lookalike (address poisoning) detection and plan fingerprint" + phase8.test.js "ScamSniffer lists…"
+T-UX-009	COVERED	addressBook.test.js (6 tests)
+T-UX-010	WEAK	swap.test.js "toAtomic/fromAtomic are exact and reject junk", tokens.test.js "token amounts are exact base units…", send.test.js "parseUnits / formatUnits…"	example-based only
+T-UX-011	COVERED	settings.test.js "formatFiat…" (3 tests)	NaN not asserted (minor)
+T-UX-014	COVERED	tokens.test.js "hostile metadata is cleaned…" + nfts.test.js "spam heuristic"	backend SpamScore has no direct test
+T-UX-016	COVERED	swap.test.js "safety: …" (8 tests)
+T-UX-017	COVERED	swap.test.js "safety: bridge calls (BridgeData) are decoded…"
+T-UX-018	COVERED	audit-fixes.test.js "solana: lookup tables resolve and the swap guard refuses authority changes…"
+T-UX-020	COVERED	chain-data.test.js "gas: EIP-1559 tiers from feeHistory percentiles, legacy single tier"
+T-SA-001	COVERED	smart-account-core.test.js "pinned constants…" + smart-account-guard.test.js "every smart account chain has its own explicit limits entry…"
+T-SA-002	COVERED	smart-account-guard.test.js "intent: …" (3 tests) + "red-team finding 2…"
+T-SA-003	COVERED	smart-account-guard.test.js "delegation state: none, pinned, other…"
+T-SA-004	COVERED	smart-account-guard.test.js "sponsor reply…", "gas limits, fee and nonce over the bounds are refused", "max fee is every gas limit x maxFeePerGas…"
+T-SA-006	COVERED	smart-account-service.test.js "approve needs a fresh re-auth… signs a self-sent type-4 that recovers to the account"
+T-SA-007	COVERED	smart-account-guard.test.js "freshness: a prepared operation expires after 2 minutes…" + smart-account-service.test.js "fails closed…"
+T-SA-008	COVERED	smart-account-send.test.js (13 tests)
+T-SA-009	COVERED	smart-account-send.test.js "verifyInclusion…", "a receipt that is not for this operation is a mismatch…"
+T-SA-010	COVERED	provider.test.js "5792 normalizer: strict fields, caps, sizes, chain and from binding"
+T-SA-011	COVERED	provider.test.js "5792 sendCalls: one approval…", "5792 capabilities…"
+T-SA-012	COVERED	provider.test.js "5792: methods answer 4200 while the flag is off…", "7715: methods answer 4200…"
+T-SA-013	COVERED	smart-account-permissions.test.js "unlimited, zero, expired, over 30 days, unknown fields…"
+T-SA-014	COVERED	smart-account-grant-store.test.js "a site reads only its own grants…" + provider.test.js "7715: … a site reads back only its own grants"
+T-SA-016	COVERED	policy.test.js "smart accounts need the remote flag…"
+T-CH-001	WEAK	harbour-chains.test.js "every Harbour chain is a registry EVM chain with the same id…"	compares the generated list to the registry, not to backend config/chains.yaml
+T-CH-002	COVERED	chains.test.js (needs ../../../research data) + harbour-chains.test.js	ENV-DEPENDENT
+T-CH-003	COVERED	networks.test.js "field validation", "duplicates are rejected, edits are not"
+T-CH-004	COVERED	networks.test.js "RPC probe requires a JSON-RPC answer with the same chain id" + audit-fixes.test.js "site-supplied RPC probe: https only…"
+T-CH-005	COVERED	tokens.test.js (probe tests: valid, no contract, not a token, bytes32, dead node, bad input)
+T-CH-007	COVERED	runtime-network-review.test.js "coalescer: concurrent and back-to-back callers share one run…"	asserted on the coalescer, not via getBalances handler
+T-CH-008	COVERED	harbour.test.js "HW-014: schema guards reject malformed or foreign-address responses"
+T-CH-009	WEAK	send.test.js (builders) + defi-broadcast.test.js	sendQuote/sendSubmit handlers not exercised end-to-end
+T-CH-012	COVERED	harbour.test.js "RPC proxy: reads are signed, eth_sendRawTransaction becomes /v1/tx broadcast…" + runtime-network-review.test.js "RPC: unknown_chain falls back…" + defi-broadcast.test.js
+T-CH-013	WEAK	harbour.test.js "canonical string matches backend/internal/devicesig"	JS side compares to a literal; Go side has no golden test of Canonical (two-sided golden missing)
+T-CH-014	COVERED	failover.test.js (5 tests)
+T-DEFI-001	WEAK	swap.test.js / swap-providers.test.js (mapping + safety)	swapQuote→swapApprove→swapSubmit handler flow not exercised
+T-DEFI-002	COVERED	swap.test.js "safety: router must be the LI.FI Diamond and calldata must pay us" et al.
+T-DEFI-003	COVERED	swap.test.js "slippage helpers clamp and normalise", "CTA resolution…", "price impact severity…"
+T-DEFI-004	COVERED	swap-providers.test.js "dust picker keeps priced non-native balances…"
+T-DEFI-006	WEAK	staking.test.js, staking-phase5.test.js	builders/parsers covered; earnPrepare/earnSubmit handlers only for lock path (earn-lock.test.js)
+T-DEFI-007	COVERED	staking.test.js "amount parsing", "cosmos message builder validation"
+T-DEFI-008	COVERED	testnet-defi.test.js (12 tests) + testnet-defi-handlers.test.js (7 tests)
+T-DEFI-009	COVERED	testnet-defi-handlers.test.js "worker blocks unsupported network, RPC mismatch, disabled features…"
+T-DEFI-010	COVERED	hyperliquid-golden.test.js + phase7.test.js "Hyperliquid L1 (agent) signing matches the Python SDK vectors"
+T-DEFI-011	COVERED	polymarket-golden.test.js "order matches the official client" + phase7.test.js
+T-DEFI-012	COVERED	ramps.test.js (13 tests) + ramps-fund.test.js
+T-DEFI-013	WEAK	ramps.test.js "key sanitising rejects secrets-looking / malformed values and never echoes full keys"	at-rest encryption of user ramp keys not asserted
+T-DEFI-014	COVERED	settings.test.js "mapRates…", phase6.test.js market tests
+T-DEFI-015	COVERED	security-2026-11-18.test.js "SEC-05…" (2 tests)
+T-DEFI-016	COVERED	nfts.test.js "EVM NFT transfer plans…", send.test.js "NFT ERC-721: ownership is checked…"
+T-DATA-001	COVERED	activityEngine.test.js (6 tests) + activityFeed.test.js (4 tests) + eip7708.test.js
+T-DATA-003	COVERED	runtime-network-review.test.js "Arbitrum Sepolia and Polygon Amoy history use Etherscan V2…"
+T-DATA-005	COVERED	runtime-network-review.test.js "realtime URL: a deployed API may not hand out a temporary tunnel…" + harbour.test.js "API and realtime URLs…"	only-while-UI-open not asserted (minor)
+T-DATA-007	COVERED	harbour.test.js "a server-chosen proof-of-work difficulty above the cap is refused"	negative/non-integer not asserted (minor)
+T-DATA-008	COVERED	harbour.test.js "only device_unknown re-registers; a revoked device keeps its key"
+T-DATA-012	COVERED	harbour.test.js "HW-014: schema guards reject malformed or foreign-address responses"
+T-BE-001	COVERED	internal/api TestSecurityHeaders
+T-BE-007	WEAK	internal/api TestClientIPGroupsIPv6By64	the per-IP challenge limit (429 after N) not asserted
+T-BE-008	COVERED	internal/api TestDeviceFlow (registration)
+T-BE-009	WEAK	internal/api TestDeviceFlow, TestRegistrationCeilingNeedsProofOfWork	bad PoW / bad key / attestation size / challenge reuse not enumerated
+T-BE-010	COVERED	internal/api TestDeviceFlow "duplicate key" 409
+T-BE-011	COVERED	internal/api TestRegistrationCeilingNeedsProofOfWork
+T-BE-013	COVERED	internal/api TestEffectiveTierProbation
+T-BE-014	COVERED	internal/api TestDeviceFlow (/v1/me)
+T-BE-015	WEAK	internal/api TestDeviceFlow (forged key, stale clock)	other header/body/query/method tampering cases not enumerated
+T-BE-016	COVERED	internal/api TestReplayRejected
+T-BE-018	COVERED	internal/api TestFailedAuthIsLimitedPerClient (unknown devices)
+T-BE-019	COVERED	internal/api TestFailedAuthIsLimitedPerClient
+T-BE-026	COVERED	internal/api TestDeviceFlow (Idempotency-Key replay)
+T-BE-029	COVERED	internal/api TestScrubBroadcast + TestSendCountersDoNotStoreDeviceIDs
+T-BE-032	COVERED	internal/api TestDeviceFlow (addresses, deny-list, link encryption "plain" check, tracked rows)
+T-BE-033	WEAK	internal/api TestDeviceFlow ("nope" address → 400)	0/101 changes and non-EVM/unknown chain not asserted
+T-BE-034	WEAK	internal/api TestDeviceFlow (quota → 403)	rollback of partial rows not asserted
+T-BE-038	COVERED	internal/api TestDeviceFlow (rpc forwarded with X-HB-Priority user)
+T-BE-039	WEAK	internal/api TestDeviceFlow (write method refused)	batch limits/invalid JSON not asserted on /v1/rpc
+T-BE-040	WEAK	internal/api TestFilteredLogs + TestCanonLogFilterRefusesParserDifferentials	`[[null]]` / `[[]]` nested-topic cases absent (ASM-03)
+T-BE-041	COVERED	internal/api TestStripGatewayInternals
+T-BE-046	COVERED	internal/api TestReadScreensMakeNoRPCCalls ("Addresses a device doesn't track are refused")
+T-BE-047	COVERED	internal/api TestReadScreensMakeNoRPCCalls (portfolio totals, thin-liquidity and spam not priced, cached second call)
+T-BE-049	COVERED	internal/api TestReadScreensMakeNoRPCCalls (history paging, no duplicates, newest first)
+T-BE-052	WEAK	internal/api TestReadScreensMakeNoRPCCalls (NFTs via media proxy)	dirty-flag sync request not asserted
+T-BE-054	COVERED	internal/api TestReadScreensMakeNoRPCCalls (SEC-2026-11-18-02 block)
+T-BE-057	COVERED	internal/api TestSendRealtimePush (estimate)	only one chain type; +20 % / 21000 rule not asserted
+T-BE-058	WEAK	internal/api TestSendRealtimePush (untracked sender 403)	invalid value/data/address cases not enumerated
+T-BE-060	WEAK	internal/api TestSendRealtimePush (basic simulation)	simulator full mode only in adapters/risk TestAlchemySimulator
+T-BE-061	COVERED	internal/api TestSendRealtimePush (broadcast, pending row, realtime, push)
+T-BE-062	WEAK	internal/api TestSendRealtimePush (wrong chain, untracked sender)	pre-EIP-155 legacy, malformed raw, type-5 not asserted at API level
+T-BE-067	COVERED	internal/api TestSendRealtimePush ("Realtime tokens cover the balance channel and the pending tx")	JWT aud/exp not asserted
+T-BE-069	COVERED	internal/api TestKnownPushHost	b64 length checks not asserted (minor)
+T-BE-070	WEAK	internal/api TestSendRealtimePush (push subscription)	DELETE and route resync not asserted
+T-BE-071	COVERED	internal/api TestMediaProxyBlocksPrivateAddresses
+T-BE-072	COVERED	internal/api TestMediaProxyBlocksPrivateAddresses ("even via redirects")
+T-BE-073	WEAK	internal/api TestReadScreensMakeNoRPCCalls (SVG refused, large PNG re-encoded)	size/pixel caps and GIF/WebP not asserted
+T-BE-074	COVERED	internal/api TestReadScreensMakeNoRPCCalls (re-encoded image bounds)
+T-BE-080	COVERED	internal/api TestRealIPOnlyTrustsProxies
+T-BE-081	COVERED	internal/api TestClientIPGroupsIPv6By64
+T-BE-082	COVERED	internal/config TestLoadRepoConfig, TestEnabledChains, TestPublicUpstreamsAndAllChains	invalid configs only partly
+T-BE-083	COVERED	internal/config TestLoadSecretFiles, TestLoadSecretFilesIgnoresForeignVariables
+T-BE-084	COVERED	internal/store TestRequireTLS + deploy/postgres/initdb TestRequireTLSHBA
+T-BE-085	WEAK	internal/api TestDeviceFlow (re-applied migrations = none)	fresh-schema completeness not asserted
+T-GW-002	MISSING	—
+T-GW-003	COVERED	internal/api TestGatewayPricesShapeAndCache
+T-GW-004	WEAK	internal/api TestGatewayRejectsUnlistedRoutes	market param regexes not enumerated
+T-GW-005	COVERED	internal/api TestCleanQuery + TestGatewayRejectsUnlistedRoutes
+T-GW-007	COVERED	internal/api TestGatewayInjectsKeysAndScrubsEchoes + TestGatewayRejectsUnlistedRoutes
+T-GW-008	COVERED	internal/api TestGatewayUniswapRoute
+T-GW-009	COVERED	internal/api TestGatewayJupiterTokenSearchRejectsAbuse
+T-GW-011	COVERED	internal/api TestGatewayHeliusProgramAccountsOnlyOwnStakeAccounts
+T-GW-012	COVERED	internal/api TestJSONRPCGuardRejectsParserDifferentials, TestGatewayRPCRoutesRefuseTheDifferentialBody, TestGatewayAlchemyBroadcastAndLogsPolicy, TestGatewayRPCCannotBeSteeredPastTheAllowlist
+T-GW-013	COVERED	internal/api TestGatewayRPCCannotBeSteeredPastTheAllowlist (Ethereum via rpc-gateway)
+T-GW-015	COVERED	internal/api TestGatewayEtherscanSetsServerKeyAndIgnoresCallerKey
+T-GW-017	COVERED	internal/api TestGatewayPimlicoUnpinnedSponsorTestnetOnly
+T-GW-018	COVERED	internal/api TestGatewayPimlicoPinsSponsorPolicy
+T-GW-019	COVERED	internal/api TestGatewayPimlicoPinsSponsorPolicy (invalid policy → refused)
+T-GW-022	COVERED	internal/api TestGatewayInjectsKeysAndScrubsEchoes
+T-GW-023	COVERED	internal/api TestGatewayUpstreamAuthFailureIsBadGateway
+T-GW-024	WEAK	internal/api TestGatewayPassesClientErrorsThrough	size cap/timeout not asserted
+T-GW-025	COVERED	internal/api TestGatewayPricesShapeAndCache (hits/cache)	unit-level fake cache, not Redis
+T-GW-026	WEAK	internal/api TestGatewayRejectsUnlistedRoutes	allowed-route matrix not exhaustive
+T-IDX-003	COVERED	internal/gateway TestBlockLagRouting, TestStickySession
+T-IDX-004	COVERED	internal/gateway TestHedgingOnlyForUserFacing, TestProviderOutageUnderLoad
+T-IDX-005	WEAK	internal/gateway TestProviderOutageUnderLoad, TestBudgetShedsToOtherKeys	breaker state transitions not unit-asserted
+T-IDX-006	COVERED	internal/gateway TestFinalizedAndLatestCaching
+T-IDX-008	COVERED	internal/gateway TestCacheBoundedByBytes
+T-IDX-009	COVERED	internal/gateway TestCoalescedReads	copy-independence not asserted
+T-IDX-010	COVERED	internal/gateway TestBroadcastFanoutAndAlreadyKnown
+T-IDX-011	COVERED	internal/gateway TestGetLogsSplit
+T-IDX-012	COVERED	internal/gateway TestHeadFollowerOnly, TestHeadPollIsBatched, TestLocalAnswers
+T-IDX-014	COVERED	internal/indexer TestNewWalletMatchesChain, TestCappedBackfillAndOlderPages, TestDormantAddressAndLazyNFTs	failing-source path not asserted
+T-IDX-016	COVERED	internal/store TestIngestEventsBatched + internal/indexer TestLivePath
+T-IDX-020	WEAK	internal/store (MediaKey via TestRefCodec?)	keyed/deterministic property not asserted
+T-IDX-021	COVERED	internal/indexer TestLivePath + adapters/sources/alchemy TestNotifyAPI
+T-IDX-022	COVERED	internal/indexer TestLivePath
+T-IDX-023	COVERED	internal/store TestGapFillScopes, TestLastHeartbeatAndGapRowFor	ingest Start publish not asserted
+T-IDX-024	WEAK	internal/indexer TestLivePath (reorg part?)	Repair path coverage partial
+T-IDX-026	WEAK	adapters/sources/alchemy TestVerifyWebhook	HTTP handler (unknown webhook, size limit) untested; internal/ingest has no tests
+T-IDX-029	COVERED	adapters/sources/alchemy TestVerifyWebhook
+T-IDX-031	WEAK	internal/api TestSendRealtimePush (tracker confirms)	failed/dropped/replaced/backoff not asserted; internal/txtrack has no tests
+T-IDX-032	MISSING	—
+T-IDX-033	COVERED	adapters/notify/webpush TestSend	410 cleanup covered in adapter
+T-IDX-034	COVERED	internal/prices TestPoller + adapters/prices TestQuotes
+T-IDX-035	COVERED	internal/api TestSendRealtimePush (Centrifugo publishes)
+T-IDX-037	COVERED	contracttest TestSuitesAgainstFakes + adapters/*/TestContract
+T-IDX-039	COVERED	internal/evmtx TestDecode, TestSender, TestType4DecodeAndSender	EIP-4844 fixture not present
+T-IDX-040	WEAK	internal/evmtx TestDecode	type 5 / length overflow / recID 2 not all asserted
+T-IDX-043	WEAK	internal/evmtx (encode used in sender tests)	no round-trip property
+T-IDX-044	MISSING	—
+T-IDX-050	MISSING	—
+T-DB-001	WEAK	internal/api TestDeviceFlow (migrate twice)	object-level schema assertions absent
+T-DB-016	COVERED	internal/store TestRefCodec	example-based
+T-DB-021	COVERED	internal/store TestPruneTimeSeries	deliveries/pending prune not asserted
+T-X-007	WEAK	key-schedule, migrations.test.js, passkey, settings-service, walletconnect PT-06 migration	no single "every legacy format at once" upgrade test
+T-X-010	WEAK	scripts/audit-gate.mjs (run by npm run verify, not a test)
+T-PM-001	WEAK	provider.test.js (normalisers per method)	not table-driven over every method
+T-PM-002	WEAK	provider.test.js "personal_sign / eth_sign / typed data require a connection…"	not every needsConnection method
+T-PM-003	WEAK	provider.test.js "reject resolves the dApp with 4001…"	not every approval method
+T-PM-007	COVERED	provider.test.js "serializeError maps to EIP-1193 / EIP-1474 codes without leaking internals"	result shapes per method not golden-tested
+T-MSG-001	WEAK	provider.test.js "internal wallet router never accepts a content-script / web-page sender" + accessPolicy.test.js	predicate-level; not every message dispatched through the real router
+T-REG-001	COVERED	runtime-network-review.test.js "realtime URL…"
+T-REG-002	COVERED	runtime-network-review.test.js "Tron data goes through the Harbour gateway relay first…", "WalletConnect is created with telemetry off"
+T-REG-003	COVERED	runtime-network-review.test.js "coalescer…"
+T-REG-004	COVERED	runtime-network-review.test.js "wallet_getCallsStatus logs are only the own logs…" + smart-account-service.test.js "dApp capability reads: eth_getCode is cached briefly…"
+T-REG-005	COVERED	runtime-network-review.test.js (Solana supply, Cosmos tx search, Tezos bakers, Stride/Neutron/ZetaChain)
+T-REG-006	COVERED	runtime-network-review.test.js "Arbitrum Sepolia and Polygon Amoy history…"
+T-REG-007	COVERED	runtime-network-review.test.js "networks the backend does not serve…", "RPC: unknown_chain falls back…"
+T-REG-008	COVERED	runtime-network-review.test.js "testnet DeFi client groups concurrent contract reads into one Multicall3 request"
+T-REG-009	COVERED	internal/api TestGatewayHeliusProgramAccountsOnlyOwnStakeAccounts
+T-REG-010	COVERED	security-2026-11-18.test.js "SEC-01: env guard flags secret-named and key-shaped entries…"
+T-REG-011	COVERED	security-2026-11-18.test.js "SEC-05…"
+T-REG-012	COVERED	internal/api TestGatewayPimlicoUnpinnedSponsorTestnetOnly
+T-REG-013	COVERED	internal/api TestReadScreensMakeNoRPCCalls (SEC-2026-11-18-02)	pending-source variant (T-BE-055) missing
+T-REG-014	COVERED	audit-a5-a8.test.js (A5, A6, A8)
+T-REG-015	WEAK	storage-access.test.js	source regex
+T-REG-016	COVERED	approval-preview.test.js + internal/api TestDeviceFlow (eth_simulateV1 forwarded)
+T-REG-017	COVERED	internal/api TestJSONRPCGuardRejectsParserDifferentials et al.
+T-REG-018	COVERED	testnet-defi.test.js "Uniswap API swap: proxy target, exact approval…"
+T-REG-019	COVERED	pentest-regressions.test.js (PT-01/03/04/05/08/11)
+T-REG-020	COVERED	pentest-regressions.test.js (PT-02/12), provider.test.js (PT-07/PT-10), walletconnect.test.js (PT-06)	PT-09 only via source-regex wiring test
+T-REG-021	MISSING	—	no a11y test exists
+T-REG-022	COVERED	internal/store TestRequireTLS + initdb TestRequireTLSHBA
+T-REG-023	COVERED	internal/api TestScrubBroadcast, TestSecurityHeaders, TestSendCountersDoNotStoreDeviceIDs	security-event log content not asserted
+T-REG-024	COVERED	internal/config TestLoadSecretFiles
+T-REG-025	WEAK	internal/api TestDeviceFlow (quotas)	JWT audience and migrate role check not asserted
+T-REG-026	MISSING	—	redefined: legacy worker not deployed (ASM-14)
+T-REG-027	COVERED	restore-vectors.test.js + display-integrity "page title … escaped"
+T-REG-028	WEAK	phase8.test.js "release zips are byte-identical…"	key-source behaviour not asserted
+T-REG-029	WEAK	.npmrc ignore-scripts (config, not a test)
+T-REG-030	COVERED	passkey.test.js "HW-001…" (3 tests)
+T-REG-031	MISSING	—	UI
+T-REG-032	COVERED	harbour.test.js "HW-014…"
+T-REG-033	WEAK	provider.test.js "HW-009…"	zeroing not asserted
+T-REG-034	COVERED	provider.test.js "HW-004: receive/buy/fund routes gated on backupRequired"
+T-REG-035	WEAK	(no direct assertion that isTrust/trustwallet are absent)
+T-REG-036	COVERED	settings-service.test.js "HW-011…" + settings.test.js
+T-REG-037	COVERED	provider.test.js "site risk…", "HW-2026-019…", "wallet_switchEthereumChain…(HW-2026-005)"
+T-EXT-001	MISSING	—
+T-EXT-003	WEAK	pentest-regressions.test.js "PT-01/09/11 wiring" (regex on Trusted Types part of CSP)	full CSP not asserted
+T-EXT-005	COVERED	accessPolicy.test.js (2 tests)
+T-EXT-006	WEAK	provider.test.js "internal wallet router never accepts a content-script / web-page sender"	predicate only, not real router per message
+T-EXT-008	WEAK	storage-access.test.js	source regex
+T-EXT-010	MISSING	—
+T-EXT-016	COVERED	migrations.test.js (3 tests)
+T-EXT-021	COVERED	settings.test.js "applyPatch validates every field…", "applyPatch ignores junk…", "normalizeSettings tolerates corrupt / old storage"
+T-EXT-022	COVERED	pentest-regressions.test.js "PT-04: only settings that WEAKEN security need re-auth"
+T-EXT-023	COVERED	settings.test.js "locale list and pick"
+T-EXT-024	WEAK	audit-fixes.test.js "gateway cleanSearch bounds query strings; remote config expires"	signature verify KAT not asserted
+T-EXT-025	WEAK	audit-fixes.test.js "…remote config expires"	version downgrade/filters not asserted
+T-EXT-028	COVERED	policy.test.js "the three signing switches are explicit and on in this build"
+T-EXT-029	COVERED	policy.test.js "smart accounts need the remote flag…"
+T-EXT-031	WEAK	phase8.test.js "release zips are byte-identical…"	sign/verify tamper not asserted
+T-EXT-032	COVERED	check-frozen.test.js (2 tests)
+T-EXT-034	COVERED	security-2026-11-18.test.js "SEC-01…"
+T-EXT-036	COVERED	provider.test.js "HW-004…"
+T-EXT-042	COVERED	settings.test.js "normalizeSettings tolerates corrupt / old storage" + settings-service.test.js "corrupt stored settings fall back…"
+T-KEY-135	MISSING	—	settings-service.test.js "concurrent saves do not lose updates" covers settings only, not vault persists
+T-DAPP-060	MISSING	—
+T-SIG-045	MISSING	—
+T-SA-018	COVERED	smart-account-core.test.js "authorization digest and both type-4 transactions equal the kit"
+T-SA-019	COVERED	smart-account-core.test.js "kit-built typed data signs to the pinned vectors…"
+T-SA-020	COVERED	smart-account-send.test.js "sponsorship refused and the estimate also fails…", "reverted and pending operations are reported", "a receipt not yet visible…"
+T-SA-023	WEAK	provider.test.js 5792 tests	status codes asserted partially
+T-SA-024	COVERED	provider.test.js "7715: one approval, nothing signed before it, response shape…"
+T-SA-025	COVERED	smart-account-kit-offline.test.js + smart-account-send.test.js "a provider reply cannot change callData…"
+T-SA-026	COVERED	smart-account-send.test.js "a paymaster outside the allow-list signs nothing", "not enabled, foreign delegate, bad intent and a fee over the cap are refused…"
+T-SA-027	MISSING	—
+T-SA-028	COVERED	smart-account-service.test.js "grantPermission: signs the checked delegation…" + provider.test.js "7715…"
+T-CH-018	COVERED	chains.test.js "EVM chain ids are unique and match wallet-core"	ENV-DEPENDENT
+T-CH-019	COVERED	defi-broadcast.test.js "indexed network: broadcast through the Harbour RPC URL, public RPC untouched", "API refusal is final…"
+T-CH-020	COVERED	failover.test.js "network errors fail over too, and non-RPC requests pass through untouched"
+T-DATA-016	WEAK	harbour.test.js mappers	no two-sided golden fixtures
+T-IDX-061	COVERED	internal/gateway TestProviderOutageUnderLoad et al. (server via httptest)
+T-UX-026	COVERED	approval-preview.test.js "batch: an unlimited approval names the spender… high-risk warning", "unknown call with no preview is flagged…"
+T-UX-030	WEAK	display-integrity.test.js "page title and network name set by a site are escaped…"	view-model level, not rendered UI
+T-DAPP-061	COVERED	provider.test.js "wallet_watchAsset reads symbol/decimals from the chain, never from the page"
+T-EXT-047	MISSING	—
+T-BE-097	WEAK	internal/api TestReadScreensMakeNoRPCCalls	realtime/vapid/media covered elsewhere; assets prices covered
+T-GW-027	COVERED	internal/api TestGatewayRPCCannotBeSteeredPastTheAllowlist (full stack for RPC routes)	other routes unit-only
+T-X-012	MISSING	—

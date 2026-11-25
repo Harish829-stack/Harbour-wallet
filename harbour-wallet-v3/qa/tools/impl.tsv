@@ -1,0 +1,461 @@
+T-BE-021	COVERED	apps/backend/internal/devicesig/devicesig_test.go TestCanonicalMatchesIndependentGoldenVectors, TestVerifyRFC8032Test1, TestVerifyRejectsMalformedInputs	new (Phase 4)
+T-BE-022	COVERED	devicesig_test.go TestSignVerifyPropertyAndSingleByteMutation	new
+T-BE-023	COVERED	devicesig_test.go FuzzVerify	new
+T-IDX-044	COVERED	devicesig_test.go TestPowKnownAnswers, TestPowBoundaries	new
+T-IDX-045	COVERED	devicesig_test.go TestValidNonceBoundaries	new
+T-IDX-059	COVERED	devicesig_test.go TestSolvePowProperty	new
+T-IDX-039	COVERED	internal/evmtx TestDecode, TestSender, TestType4DecodeAndSender + qa_test.go TestEIP155ExampleKnownAnswer	strengthened
+T-IDX-040	COVERED	internal/evmtx/qa_test.go TestDecodeAndSenderRefuseMalformed, TestSenderRefusesInvalidRecoveryID	new
+T-IDX-041	COVERED	qa_test.go TestMutatedTransactionsNeverKeepSenderAndHash, FuzzDecodeSender	new
+T-IDX-042	COVERED	qa_test.go TestSenderAcceptsHighSTwin	documents ASM-12
+T-IDX-043	COVERED	qa_test.go TestRLPEncodeRoundTripProperty	new
+T-UX-012	COVERED	internal/api/qa_unit_test.go TestFormatUnitsHostileDecimalsDoNotPanic	BUG-03 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-UX-013	COVERED	qa_unit_test.go TestFormatUnitsMatchesBigRatProperty, TestFormatUnitsExact	new
+T-UX-021	COVERED	qa_unit_test.go TestFriendlyChainErrorMapping	new
+T-BE-040	COVERED	qa_unit_test.go TestFilteredLogsRejectsNestedEmptyTopics + qa_integration_test.go TestQARPCNestedNullTopicsForwarded	BUG-02 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-BE-056	COVERED	qa_unit_test.go TestTxHashFormat	new
+T-BE-079	COVERED	qa_unit_test.go TestNormalizeAddress	new
+T-GW-020	COVERED	qa_unit_test.go FuzzJSONRPCClean	new
+T-GW-021	COVERED	qa_unit_test.go FuzzCanonLogFilter	new
+T-BE-006	COVERED	qa_integration_test.go TestQAChallengeShapeAndStorage	new
+T-BE-007	COVERED	qa_integration_test.go TestQAChallengeLimitPerAddress + TestClientIPGroupsIPv6By64	strengthened
+T-BE-009	COVERED	qa_integration_test.go TestQARegistrationRejectsMalformed	strengthened
+T-BE-015	COVERED	qa_integration_test.go TestQASignedRequestTampering	strengthened
+T-BE-017	COVERED	qa_integration_test.go TestQARevokedDeviceRefusedAfterCacheWindow	new
+T-BE-027	COVERED	qa_integration_test.go TestQAIdempotencyMisuse	new
+T-BE-028	COVERED	qa_integration_test.go TestQAIdempotencyKeyReleasedAfterRetryableFailure	new
+T-BE-033	COVERED	qa_integration_test.go TestQAPutAddressesValidation	strengthened
+T-BE-034	COVERED	qa_integration_test.go TestQAQuotaExceededRollsBack	strengthened
+T-BE-035	COVERED	qa_integration_test.go TestQAPutAddressesIsAtomic	BUG-01 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-BE-036	COVERED	qa_integration_test.go TestQAConcurrentAddsRespectQuota	new
+T-BE-039	COVERED	qa_integration_test.go TestQARPCRefusals	strengthened
+T-BE-055	COVERED	qa_integration_test.go TestQAPendingTxNotRevealedToOtherDevice	new
+T-BE-058	COVERED	qa_integration_test.go TestQAEstimateValidation	strengthened
+T-BE-062	COVERED	qa_integration_test.go TestQABroadcastRefusesUnsafeTransactions	strengthened
+T-BE-091	COVERED	qa_integration_test.go TestQAParallelReplayAcceptedOnce	new
+T-RT-001	COVERED	qa_integration_test.go TestQAEverySignedRouteNeedsSignature	new
+T-IDX-046	COVERED	internal/store/qa_linkcrypto_test.go TestLinkCryptoSealOpenBinding	new
+T-IDX-047	COVERED	qa_linkcrypto_test.go TestLinkCryptoTagsDomainSeparated	new
+T-IDX-048	COVERED	qa_linkcrypto_test.go TestLinkCryptoRoundTripProperty	new
+T-IDX-049	COVERED	qa_linkcrypto_test.go TestSecretBox	new
+T-IDX-052	COVERED	qa_linkcrypto_test.go TestPrimitivesKnownAnswers	new
+T-IDX-017	COVERED	qa_linkcrypto_test.go TestValidAmount	new (unit level of the ingest guard)
+T-DB-001	COVERED	internal/store/qa_db_test.go TestQAFreshSchemaHasEveryObject	strengthened
+T-DBO-001	COVERED	qa_db_test.go TestQAFreshSchemaHasEveryObject	tables, functions, roles, partitions, bytea refs; index-level golden is T-DB-025
+T-DB-003	COVERED	qa_db_test.go TestQAConcurrentMigrate	new
+T-DB-004	COVERED	qa_db_test.go TestQAFailedMigrationRollsBack	new
+T-DB-005	COVERED	qa_db_test.go TestQAMigration0010PreservesData	new
+T-DB-011	COVERED	qa_db_test.go TestQADeviceKeyConstraints	new
+T-DB-013	COVERED	qa_db_test.go TestQADeviceDeleteCascades	new
+T-DB-015	COVERED	qa_db_test.go TestQAServiceRoleIsLeastPrivilege (foreign table refused by SECURITY DEFINER helper)	new
+T-DB-016	COVERED	qa_db_test.go TestQARefCodecProperty + TestRefCodec	strengthened
+T-DB-017	COVERED	qa_db_test.go TestQAServiceRoleIsLeastPrivilege	new
+T-DB-019	COVERED	qa_db_test.go TestQAEnsureAppLoginInputHandling	new
+T-DB-023	COVERED	qa_db_test.go TestQALinkTableResistsCorrelation	new
+T-IDX-015	COVERED	qa_db_test.go TestQAClaimBackfillConcurrent	new
+T-IDX-053	COVERED	qa_db_test.go TestQAConcurrentIngestDedupes	new
+T-IDX-026	COVERED	internal/ingest/ingest_test.go TestDeliveryAuthentication	new (package had no tests)
+T-IDX-027	COVERED	ingest_test.go TestStaleDeliveryNotPublished	new
+T-IDX-028	COVERED	ingest_test.go TestPublishFailureIsRetryable	new
+T-IDX-001	COVERED	internal/gateway/qa_server_test.go TestQAGatewayRoutesRequireBearerToken	new
+T-IDX-002	COVERED	qa_server_test.go TestQAGatewayEmptyTokenHandlerIsOpen (handler contract; refusal to start lives in cmd/rpc-gateway/main.go:33-36)	partial: main not exec-tested
+T-KEY-004	COVERED	apps/extension/test/qa/crypto-kat.test.js "T-KEY-004"	RFC 9106 + independent HKDF(Argon2id)
+T-KEY-005	COVERED	crypto-kat.test.js "T-KEY-005"	determinism, sensitivity, independence
+T-KEY-006	COVERED	crypto-kat.test.js "T-KEY-006"	range refusals + timing; OBS-01 noted
+T-KEY-007	COVERED	crypto-kat.test.js "T-KEY-007"	NFKC
+T-KEY-008	COVERED	crypto-kat.test.js "T-KEY-008"	master zeroised
+T-KEY-010	COVERED	crypto-kat.test.js "T-KEY-010"	PBKDF2-SHA512 vs node + published
+T-KEY-011	COVERED	crypto-kat.test.js "T-KEY-011"	envelope shape
+T-KEY-012	COVERED	crypto-kat.test.js "T-KEY-012"	fast-check round trip, salt/IV uniqueness
+T-KEY-014	COVERED	crypto-kat.test.js "T-KEY-014"	tamper → exact error
+T-KEY-125	COVERED	crypto-kat.test.js "T-KEY-125"	both directions vs node:crypto
+T-KEY-143	COVERED	crypto-kat.test.js "T-KEY-143"	golden format through VaultService.unlock
+T-KEY-126	COVERED	crypto-kat.test.js "T-KEY-126"	TREZOR BIP-39
+T-KEY-038	COVERED	crypto-kat.test.js "T-KEY-038"	12 words, valid, unique
+T-KEY-039	COVERED	crypto-kat.test.js "T-KEY-038"	locked refusal
+T-KEY-040	COVERED	crypto-kat.test.js "T-KEY-040"	reference addresses + independent SLIP-10
+T-KEY-041	COVERED	crypto-kat.test.js "T-KEY-041"	BIP-32 vector 1
+T-KEY-042	COVERED	crypto-kat.test.js "T-KEY-042"	every coin path
+T-KEY-043	COVERED	crypto-kat.test.js "T-KEY-043"	property vs scure
+T-KEY-045	COVERED	crypto-kat.test.js "T-KEY-045"	empty passphrase
+T-KEY-046	COVERED	crypto-kat.test.js "T-KEY-046"	keystore under session key
+T-KEY-121	COVERED	crypto-kat.test.js "T-KEY-046"	aes-128-ctr/scrypt params
+T-KEY-141	COVERED	crypto-kat.test.js "T-KEY-141"	property
+T-KEY-127	COVERED	crypto-kat.test.js "T-KEY-127"	Web3 Secret Storage vector
+T-KEY-062	COVERED	crypto-kat.test.js "T-KEY-062"	EIP-155 key
+T-KEY-063	COVERED	crypto-kat.test.js "T-KEY-063"	curve range
+T-KEY-140	COVERED	crypto-kat.test.js "T-KEY-140"	rekey property
+T-SIG-045	COVERED	crypto-kat.test.js "T-SIG-045"	RFC 8032
+T-KEY-001	COVERED	apps/extension/test/qa/vault-handlers.test.js "T-KEY-001"	boundaries + messages
+T-KEY-002	COVERED	vault-handlers.test.js "T-KEY-002"	sampled list
+T-KEY-003	COVERED	vault-handlers.test.js "T-KEY-003"	fast-check unicode
+T-KEY-016	COVERED	vault-handlers.test.js "T-KEY-016"	malformed envelopes, no secret echo
+T-KEY-019	COVERED	vault-handlers.test.js "T-KEY-019 / T-KEY-052"	concurrent create
+T-KEY-052	COVERED	vault-handlers.test.js "T-KEY-019 / T-KEY-052"	concurrent createWallet
+T-KEY-022	COVERED	vault-handlers.test.js "T-KEY-022"	fake clock, exact schedule to cap
+T-KEY-024	COVERED	vault-handlers.test.js "T-KEY-024"	VAULT_IS_EMPTY
+T-KEY-025	COVERED	vault-handlers.test.js "T-KEY-025"	corrupt blob
+T-KEY-028	COVERED	vault-handlers.test.js "T-KEY-028"	v1 fixture, corrupt keystore, nothing written
+T-KEY-029	COVERED	vault-handlers.test.js "T-KEY-029" + crypto-kat.test.js "T-KEY-140"	identity preserved, pk keystore
+T-KEY-030	COVERED	vault-handlers.test.js "T-KEY-030"	null cases
+T-KEY-032	COVERED	vault-handlers.test.js "T-KEY-032"	passkeyAddPassword refusals
+T-KEY-034	COVERED	vault-handlers.test.js "T-KEY-034"	session untouched, shared throttle
+T-KEY-035	COVERED	vault-handlers.test.js "T-KEY-035 / T-KEY-037"	lock message path (alarm/idle paths: T-EXT suites)
+T-KEY-037	COVERED	vault-handlers.test.js "T-KEY-035 / T-KEY-037"	idempotent
+T-KEY-044	COVERED	crypto-kat.test.js "T-KEY-040"	solanaSolana vs default, independent SLIP-10
+T-KEY-048	COVERED	vault-handlers.test.js "T-KEY-048"	state + 10-min manage grant + IDB placement
+T-KEY-049	COVERED	vault-handlers.test.js "T-KEY-049"	8 invalid inputs, no write
+T-KEY-051	COVERED	vault-handlers.test.js "T-KEY-051"	vault dropped, retry
+T-KEY-053	COVERED	vault-handlers.test.js "T-KEY-053 / T-KEY-102"	interrupted + reset
+T-KEY-102	COVERED	vault-handlers.test.js "T-KEY-053 / T-KEY-102"	resetEmptyVault
+T-KEY-054	COVERED	vault-handlers.test.js "T-KEY-054"	response keys exact, phrase scan
+T-KEY-055	COVERED	vault-handlers.test.js "T-KEY-055"	keystore under passwordKey
+T-KEY-056	COVERED	vault-handlers.test.js "T-KEY-056"	AUTH_REQUIRED, consumed
+T-KEY-057	COVERED	vault-handlers.test.js "T-KEY-057"	JSON forgery
+T-KEY-058	COVERED	vault-handlers.test.js "T-KEY-058"	MAX_WALLETS
+T-KEY-059	COVERED	vault-handlers.test.js "T-KEY-059"	duplicate
+T-KEY-131	COVERED	vault-handlers.test.js "T-KEY-131"	no orphan
+T-KEY-137	COVERED	vault-handlers.test.js "T-KEY-137"	BUG-04 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-KEY-075	COVERED	vault-handlers.test.js "T-KEY-075"	ms boundaries, cap, binding
+T-KEY-077	COVERED	vault-handlers.test.js "T-KEY-077"	shared throttle
+T-KEY-078	COVERED	vault-handlers.test.js "T-KEY-078"	purposeOf
+T-KEY-147	COVERED	vault-handlers.test.js "T-KEY-147"	BUG-05 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-KEY-082	COVERED	vault-handlers.test.js "T-KEY-082"	biometrics-only
+T-KEY-098	COVERED	vault-handlers.test.js "T-KEY-098"	remove
+T-KEY-099	COVERED	vault-handlers.test.js "T-KEY-099"	refusals, no change
+T-KEY-103	COVERED	vault-handlers.test.js "T-KEY-103"	refused with wallets / locked
+T-KEY-100	COVERED	vault-handlers.test.js "T-KEY-100"	accounts and wallets
+T-KEY-101	COVERED	vault-handlers.test.js "T-KEY-101"	refusals
+T-KEY-129	COVERED	vault-handlers.test.js "T-KEY-129"	legacy entries
+T-KEY-134	COVERED	vault-handlers.test.js "T-KEY-134"	race consistent
+T-KEY-135	COVERED	vault-handlers.test.js "T-KEY-135"	BUG-06 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-KEY-138	COVERED	vault-handlers.test.js "T-KEY-138"	IDB abort consistent
+T-KEY-139	COVERED	vault-handlers.test.js "T-KEY-139"	OBS-02
+T-KEY-123	COVERED	vault-handlers.test.js "T-KEY-123 / T-KEY-124"	only v2 written
+T-KEY-124	COVERED	vault-handlers.test.js "T-KEY-123 / T-KEY-124"	no v1 leftovers
+T-KEY-086	COVERED	vault-handlers.test.js "T-KEY-086"	exact
+T-KEY-144	COVERED	vault-handlers.test.js "T-KEY-144"	golden keys
+T-KEY-142	COVERED	vault-handlers.test.js "T-KEY-142"	property
+T-KEY-132	COVERED	vault-handlers.test.js "T-KEY-132"	atomic batches
+T-KEY-136	COVERED	vault-handlers.test.js "T-KEY-136"	IDB failure recoverable
+T-KEY-067	COVERED	apps/extension/test/qa/secrets.test.js "T-KEY-067"	full backup flow, opaque ids, class-only session
+T-KEY-068	COVERED	secrets.test.js "T-KEY-068"	BIP-39 word scan of response + session
+T-KEY-069	COVERED	secrets.test.js "T-KEY-069"	4 refusals, nothing rendered
+T-KEY-070	COVERED	secrets.test.js "T-KEY-070"	mismatch/expired, fake clock
+T-KEY-071	COVERED	secrets.test.js "T-KEY-071"	fast-check repeated words
+T-KEY-072	COVERED	secrets.test.js "T-KEY-072"	painted not returned, copy via offscreen port
+T-KEY-073	COVERED	secrets.test.js "T-KEY-073"	copy refusals
+T-KEY-074	COVERED	secrets.test.js "T-KEY-074"	offscreen page timer, clamps, malformed
+T-KEY-064	COVERED	secrets.test.js "T-KEY-064"	pk import, signing key, duplicate
+T-KEY-065	COVERED	secrets.test.js "T-KEY-065"	fuzz decodePrivateKeyBytes
+T-KEY-066	COVERED	secrets.test.js "T-KEY-066"	response shape, nothing stored
+T-KEY-089	COVERED	secrets.test.js "T-KEY-089"	account #2 vs scure, zeroed
+T-KEY-091	COVERED	secrets.test.js "T-KEY-091"	locked / no EVM
+T-SIG-024	COVERED	secrets.test.js "T-SIG-024"	address-bound key
+T-KEY-094	COVERED	secrets.test.js "T-KEY-094"	dry run, grant, import, stage cleared
+T-KEY-096	COVERED	secrets.test.js "T-KEY-096"	code format, expiry, size
+T-KEY-097	COVERED	secrets.test.js "T-KEY-097"	fast-check + mutations
+T-KEY-128	COVERED	secrets.test.js "T-KEY-128"	Web3 scrypt vector, param caps, budget
+T-KEY-133	COVERED	secrets.test.js "T-KEY-133"	BUG-07 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-KEY-107	COVERED	secrets.test.js "T-KEY-107"	all names/casings, depth, cycles
+T-KEY-113	COVERED	secrets.test.js "T-KEY-113"	property
+T-KEY-114	COVERED	secrets.test.js "T-KEY-114"	source scan
+T-MSG-001	COVERED	apps/extension/test/qa/worker-router.test.js "T-MSG-001"	182 msgs × 6 outsider senders through the real router; no state change, no fetch
+T-MSG-002	COVERED	worker-router.test.js "T-MSG-002 / T-KEY-108"	empty body locked + unlocked, uiSafe, leak scan, crash log scan
+T-MSG-003	COVERED	worker-router.test.js "T-MSG-003"	fast-check bodies per message (50 local / 200 CI; KDF msgs 3)
+T-MSG-004	COVERED	worker-router.test.js "T-MSG-004"	value-moving while locked, broadcast spy
+T-MSG-006	COVERED	worker-router.test.js "T-MSG-006"	live registry == inventory (found 22 missing rows, inventory fixed)
+T-MSG-007	COVERED	worker-router.test.js "T-MSG-007"	grant-gated through router + setSettings weaken
+T-MSG-008	COVERED	worker-router.test.js "T-MSG-008"	invalid values, 0 crashes
+T-KEY-108	COVERED	worker-router.test.js "T-MSG-002 / T-KEY-108"	all messages, both states
+T-KEY-120	COVERED	worker-router.test.js "T-KEY-120"	boot access levels (behavioural, real index.ts)
+T-KEY-035	COVERED	vault-handlers.test.js "T-KEY-035 / T-KEY-037" + worker-router.test.js "T-KEY-035"	lock msg + alarm + idle
+T-PM-001	COVERED	apps/extension/test/qa/provider-port.test.js "T-PM-001"	all PM × 8 malformed param shapes through the real port; BUG-08 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-PM-002	COVERED	provider-port.test.js "T-PM-002"	4100, no window
+T-PM-003	COVERED	provider-port.test.js "T-PM-003"	5 approval kinds, 4001, one window, no broadcast
+T-PM-004	COVERED	provider-port.test.js "T-PM-004"	local shapes, rpc proxy, unsupported 4200
+T-PM-005	COVERED	provider-port.test.js "T-PM-005"	fast-check per method (30 local / 200 CI)
+T-DAPP-003	COVERED	provider-port.test.js "T-DAPP-003"	proto keys nested + JSON.parse
+T-DAPP-004	COVERED	provider-port.test.js "T-DAPP-004"	fc.anything incl. bigint/typed arrays
+T-DAPP-060	COVERED	provider-port.test.js "T-DAPP-060"	init/evt/res golden
+T-DAPP-033	COVERED	provider-port.test.js "T-DAPP-033"	read-only proxy, no from
+T-DAPP-034	COVERED	provider-port.test.js "T-DAPP-034 / T-DAPP-035"	origin-scoped events, allowlist
+T-DAPP-035	COVERED	provider-port.test.js "T-DAPP-034 / T-DAPP-035"	init after lock: no secret, no accounts
+T-DAPP-054	COVERED	provider-port.test.js "T-DAPP-054"	one connection record
+T-SIG-041	COVERED	provider-port.test.js "T-SIG-041"	bound, expiring, single-use proof; disabling needs grant
+T-DAPP-051	WEAK	apps/extension/test/qa/page-bridge.test.js "T-DAPP-051 (node-level)"	real inpage+content+worker path in node; browser run pending (Playwright)
+T-DAPP-007	COVERED	page-bridge.test.js "T-DAPP-007" + provider-port.test.js "T-DAPP-007 (worker side)"	nonce/source/origin/second hello; untrusted frames 4100
+T-DAPP-008	COVERED	page-bridge.test.js "T-DAPP-008"	late content script
+T-DAPP-039	COVERED	page-bridge.test.js "T-DAPP-039 / T-DAPP-046"	blocked domains, patterns, no injection
+T-DAPP-046	COVERED	page-bridge.test.js "T-DAPP-039 / T-DAPP-046"	update path, MAIN/allFrames/document_start
+T-DAPP-009	COVERED	page-bridge.test.js "T-DAPP-009"	duplicate id, 200 inflight, local -32601/4200
+T-DAPP-011	COVERED	page-bridge.test.js "T-DAPP-011"	reload → 4900 + disconnect
+T-DAPP-048	COVERED	page-bridge.test.js "T-DAPP-048"	EIP-1193 + legacy + EIP-6963 + no impersonation
+T-DAPP-049	COVERED	page-bridge.test.js "T-DAPP-049"	page tampering
+T-DAPP-050	COVERED	page-bridge.test.js "T-DAPP-050"	onlyIfTrusted
+T-DAPP-062	COVERED	page-bridge.test.js "T-DAPP-062"	provider surfaces
+T-SIG-043	WEAK	provider-port.test.js "T-SIG-043 (worker)"	window close → 4001 for all; UI click path pending (Playwright)
+T-SIG-003	COVERED	apps/extension/test/qa/signing-units.test.js "T-SIG-003"	0x / odd hex as text
+T-SIG-047	COVERED	signing-units.test.js "T-SIG-047"	property + viem cross-check
+T-SIG-048	COVERED	signing-units.test.js "T-SIG-048"	key sizes; OBS-03 documented
+T-SIG-014	COVERED	signing-units.test.js "T-SIG-014"	independent EIP-712 encoder, random trees, spec Mail vector
+T-SIG-015	COVERED	signing-units.test.js "T-SIG-015"	fuzz
+T-SIG-046	COVERED	signing-units.test.js "T-SIG-046"	@ethereumjs/tx oracle, legacy+1559, 5 chain ids
+T-SIG-028	COVERED	signing-units.test.js "T-SIG-028"	property 0..36 decimals
+T-SIG-031	COVERED	signing-units.test.js "T-SIG-031"	fuzz 5000
+T-SIG-034	COVERED	signing-units.test.js "T-SIG-034"	fuzz 4000, time bound
+T-SIG-039	COVERED	signing-units.test.js "T-SIG-039"	fuzz
+T-DAPP-044	COVERED	signing-units.test.js "T-DAPP-044"	fuzz + approve selector
+T-SIG-036	COVERED	signing-units.test.js "T-SIG-036"	all non-EVM registry chains + fakes
+T-SIG-020	COVERED	signing-units.test.js "T-SIG-020"	esbuild define release/dev × loopback/https/http
+T-DAPP-030	COVERED	signing-units.test.js "T-DAPP-030"	decimal/hex/octal/short IPv4, IPv6, dotless
+T-DAPP-059	COVERED	signing-units.test.js "T-DAPP-059"	property, sliding windows
+T-DAPP-058	COVERED	signing-units.test.js "T-DAPP-058" + provider-port.test.js "T-DAPP-058 (worker)"	property + worker limits
+T-EXT-001	COVERED	apps/extension/test/qa/ext-infra.test.js "T-EXT-001 / T-EXT-003"	manifest config + built dist/manifest.json
+T-EXT-002	COVERED	ext-infra.test.js "T-EXT-002"	localhost/127/https
+T-EXT-003	COVERED	ext-infra.test.js "T-EXT-001 / T-EXT-003"	exact CSP, no unsafe tokens, built artefact
+T-EXT-006	COVERED	worker-router.test.js "T-MSG-001"	all 182 messages × 6 senders, no state change/fetch
+T-EXT-008	COVERED	worker-router.test.js "T-KEY-120"	behavioural boot
+T-EXT-007	COVERED	ext-infra.test.js "T-EXT-007"	flags stripped through router
+T-EXT-009	COVERED	ext-infra.test.js "T-EXT-009"	duplicate, unknown, redaction
+T-EXT-010	COVERED	ext-infra.test.js "T-EXT-010"	disjoint maps
+T-EXT-011	COVERED	ext-infra.test.js "T-EXT-011"	malformed raw / proto names
+T-EXT-012	COVERED	ext-infra.test.js "T-EXT-012"	port snapshot/patch/foreign/ids/throw
+T-EXT-013	COVERED	ext-infra.test.js "T-EXT-013"	19/20 retries, step name
+T-EXT-014	COVERED	ext-infra.test.js "T-EXT-014"	queue semantics
+T-EXT-015	COVERED	ext-infra.test.js "T-EXT-015"	1 h guard with fake clock
+T-EXT-017	COVERED	ext-infra.test.js "T-EXT-017 / T-EXT-044"	hydrate rules
+T-EXT-044	COVERED	ext-infra.test.js "T-EXT-017 / T-EXT-044"	property
+T-EXT-018	COVERED	ext-infra.test.js "T-EXT-018"	field + value scan of store and persisted tuple
+T-EXT-043	COVERED	ext-infra.test.js "T-EXT-043"	debounce, complete tuples
+T-EXT-024	COVERED	ext-infra.test.js "T-EXT-024"	RFC 8032 + tampering
+T-EXT-025	COVERED	ext-infra.test.js "T-EXT-025 / T-EXT-026"	downgrade, expiry, filters
+T-EXT-026	COVERED	ext-infra.test.js "T-EXT-025 / T-EXT-026"	AMB-11 documented
+T-EXT-045	COVERED	ext-infra.test.js "T-EXT-045"	fuzz 3000
+T-EXT-027	COVERED	ext-infra.test.js "T-EXT-027"	500/timeout/bad JSON/bad sig through router
+T-EXT-030	COVERED	ext-infra.test.js "T-EXT-030" + "T-EXT-030b"	BUG-09 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-EXT-037	COVERED	ext-infra.test.js "T-EXT-037"	bounded text, malformed, click URL allowlist
+T-EXT-046	COVERED	ext-infra.test.js "T-EXT-046"	alarm, side panel, slice
+T-EXT-019	COVERED	ext-infra.test.js "T-EXT-019"	second worker instance on same storage, resend dedupe, single signature
+T-CH-013	COVERED	apps/extension/test/qa/canonical-golden.test.js "T-CH-013" + e2e/fullstack.test.js (live API accepts every signed request)	shared Go goldens (4 vectors incl. unicode/lowercase method)
+T-DATA-011	COVERED	canonical-golden.test.js "T-DATA-011"	shared PoW goldens
+T-DATA-014	COVERED	canonical-golden.test.js "T-DATA-014"	property + first-solution check
+T-DATA-015	COVERED	canonical-golden.test.js "T-DATA-015"	fuzz 5 checkers
+T-UX-029	COVERED	canonical-golden.test.js "T-UX-029 (extension half)" + apps/backend/internal/api/qa_unit_test.go TestFriendlyChainErrorNeverEchoesInput, TestFriendlyChainErrorMapping	both halves
+T-DATA-006	COVERED	apps/extension/test/e2e/fullstack.test.js "T-DATA-006"	real Go API, non-extractable key, PoW, /v1/me
+T-DATA-009	COVERED	e2e/fullstack.test.js "T-DATA-009 / T-DATA-010"	10 concurrent → 1 registration (real API)
+T-DATA-010	COVERED	e2e/fullstack.test.js "T-DATA-009 / T-DATA-010"	legacy record wiped
+T-DATA-004	COVERED	e2e/fullstack.test.js "T-DATA-004 / T-DATA-017" + e2e/quota.test.js	add/remove sync against real API; quota path BUG-10
+T-DATA-017	COVERED	e2e/fullstack.test.js "T-DATA-004 / T-DATA-017"	payload keys, no names, EVM only
+T-DATA-018	COVERED	e2e/fullstack.test.js "T-DATA-018"	debounce, final set
+T-DATA-016	COVERED	e2e/fullstack.test.js "T-DATA-016" + canonical-golden.test.js	live two-sided contract
+T-CH-009	COVERED	e2e/fullstack.test.js "T-CH-009 / T-UX-028"	quote→submit→API broadcast→chain
+T-UX-028	COVERED	e2e/fullstack.test.js "T-CH-009 / T-UX-028"	feeMax ≥ signed gas×maxFee
+T-CH-010	COVERED	e2e/fullstack.test.js "T-CH-010"	stale/insufficient/unknown chain/locked
+T-CH-021	COVERED	e2e/fullstack.test.js "T-CH-021"	double submit → one tx
+T-DATA-002	COVERED	e2e/fullstack.test.js "T-DATA-002"	broadcast tap → pending → alarm → confirmed
+T-DATA-013	COVERED	e2e/fullstack.test.js "T-DATA-013 / T-CH-017 / T-SIG-021"	503 storms
+T-CH-017	COVERED	e2e/fullstack.test.js "T-DATA-013 / T-CH-017 / T-SIG-021"	quote/submit under upstream errors
+T-SIG-021	COVERED	e2e/fullstack.test.js "T-DATA-013 / T-CH-017 / T-SIG-021"	broadcast 503 → ≤1 tx
+T-UX-001	COVERED	apps/extension/test/qa/ux-sa-units.test.js "T-UX-001 / T-UX-022"	boundaries
+T-UX-022	COVERED	ux-sa-units.test.js "T-UX-001 / T-UX-022"	monotonic property
+T-UX-023	COVERED	ux-sa-units.test.js "T-UX-023"	viem decode oracle
+T-UX-010	COVERED	ux-sa-units.test.js "T-UX-010" + signing-units.test.js "T-SIG-028"	all converters 0..36
+T-UX-027	COVERED	ux-sa-units.test.js "T-UX-027"	BUG-11 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-UX-024	COVERED	ux-sa-units.test.js "T-UX-024 / T-UX-015"	property
+T-UX-015	COVERED	display-integrity.test.js (existing, T-DAPP-045) + ux-sa-units.test.js "T-UX-024 / T-UX-015"	
+T-UX-019	COVERED	ux-sa-units.test.js "T-UX-019"	fuzz
+T-UX-025	COVERED	ux-sa-units.test.js "T-UX-025"	property incl. legacy
+T-SA-005	COVERED	ux-sa-units.test.js "T-SA-005"	property both SA chains, unpinned paymaster
+T-SA-021	COVERED	ux-sa-units.test.js "T-SA-021"	fuzz 3000
+T-SA-022	COVERED	ux-sa-units.test.js "T-SA-022"	exact pinned form
+T-SA-029	COVERED	ux-sa-units.test.js "T-SA-029"	independent RLP digest + recovery
+T-SA-023	COVERED	ux-sa-units.test.js "T-SA-023"	status codes, receipts
+T-BE-002	COVERED	apps/backend/internal/api/qa_unit2_test.go TestQABodyLimitBeforeSignatureWork	413 before lookup (nil store proves it)
+T-BE-003	COVERED	qa_unit2_test.go TestQARecovererHidesPanics	real handler panic
+T-BE-004	COVERED	qa_unit2_test.go TestQALogsCarryNoIdentifiers	route pattern only
+T-BE-030	COVERED	qa_unit2_test.go TestQALogsCarryNoIdentifiers	security events tags only
+T-BE-090	COVERED	qa_unit2_test.go TestQAErrorShape	shape + no Go text
+T-RT-002	COVERED	qa_unit2_test.go TestQAWrongMethod405	14 routes × methods
+T-BE-020	COVERED	qa_unit2_test.go TestQAAuthFailuresBounded	50k cap, per-client, minute roll
+T-BE-051	COVERED	qa_unit2_test.go TestQACursorRoundTrip	500 cursors + malformed
+T-BE-068	COVERED	qa_unit2_test.go TestQASignHS256MatchesIndependentJWT	RFC 7515 A.1 key
+T-BE-073	COVERED	qa_unit2_test.go TestQAMediaRefusesDangerousImages	SVG/HTML/10MiB+1/25Mpx PNG & GIF headers/WebP/private/URL schemes
+T-BE-078	COVERED	qa_unit2_test.go FuzzQAFetchImage	go fuzz target + seeds
+T-BE-095	COVERED	qa_unit2_test.go FuzzQARealIP	go fuzz target + seeds
+T-GW-002	COVERED	qa_unit2_test.go TestQAGatewayConfigRoute	shared golden with extension
+T-EXT-047	COVERED	apps/extension/test/qa/canonical-golden.test.js "T-EXT-047" + qa_unit2_test.go TestQAGatewayConfigRoute	two-sided golden
+T-GW-004	COVERED	qa_unit2_test.go TestQAGatewayPlanRefusals	plan cases
+T-GW-006	COVERED	qa_unit2_test.go TestQAGatewayPlanRefusals	plan cases
+T-GW-010	COVERED	qa_unit2_test.go TestQAGatewayPlanRefusals	plan cases
+T-GW-014	COVERED	qa_unit2_test.go TestQAGatewayPlanRefusals	plan cases
+T-GW-016	COVERED	qa_unit2_test.go TestQAGatewayPlanRefusals	plan cases
+T-GW-026	COVERED	qa_unit2_test.go TestQAGatewayRouteMatrix + TestQAWrongMethod405	resolver × GET/POST, router × others
+T-GW-024	COVERED	qa_unit2_test.go TestQAGatewayUpstreamFailures	cap, 500 text, timeout
+T-BE-005	COVERED	qa_integration2_test.go TestQAHealthzDependencyDown	Redis unreachable
+T-BE-012	COVERED	qa_integration2_test.go TestQAChallengeSingleUseUnderRace	8 parallel → 1
+T-BE-024	COVERED	qa_integration2_test.go TestQARequestRateLimitExact	exact
+T-BE-092	COVERED	qa_integration2_test.go TestQARequestRateLimitExact	50 parallel → 10
+T-BE-025	COVERED	qa_integration2_test.go TestQABackfillBudget	rollback + TTL once
+T-BE-037	COVERED	qa_integration2_test.go TestQABackfillBudget	deny-list not charged
+T-BE-031	COVERED	qa_integration2_test.go TestQAMeContract	field kinds
+T-RT-003	COVERED	qa_integration2_test.go TestQAMeContract + qa_unit2_test.go TestQAErrorShape + e2e/fullstack.test.js T-DATA-016	success + error shapes
+T-BE-042	COVERED	qa_integration2_test.go TestQARPCGatewayFailures	8 MiB+ answer
+T-BE-043	COVERED	qa_integration2_test.go TestQARPCGatewayFailures	gateway down
+T-BE-044	COVERED	qa_integration2_test.go TestQARPCGatewayFailures	batch counts per call
+T-BE-045	COVERED	qa_integration2_test.go TestQAHandleRPCRandomBodies	seeded property, 306 bodies
+T-RT-004	COVERED	qa_integration2_test.go TestQAHandleRPCRandomBodies + qa_unit2_test.go FuzzQAFetchImage/FuzzQARealIP + qa_unit_test.go FuzzJSONRPCClean/FuzzCanonLogFilter	no 500 / no panic
+T-BE-048	COVERED	qa_integration2_test.go TestQAPortfolioCacheIsPerDevice	no bleed
+T-BE-050	COVERED	qa_integration2_test.go TestQAReadRouteValidation	3 bad cursors
+T-BE-053	COVERED	qa_integration2_test.go TestQAReadRouteValidation + TestQAChartRangeDefault	OBS-04
+T-BE-059	COVERED	qa_integration2_test.go TestQAEstimateFallbacks	would_fail
+T-BE-063	COVERED	qa_integration2_test.go TestQABroadcastNodeAnswers	already known
+T-BE-064	COVERED	qa_integration2_test.go TestQABroadcastNodeAnswers	local hash wins
+T-BE-066	COVERED	qa_integration2_test.go TestQABroadcastNodeAnswers	11th limited
+T-BE-093	COVERED	qa_integration2_test.go TestQAParallelSameTxBroadcast	5 → same hash, 1 row
+T-BE-075	COVERED	qa_integration2_test.go TestQAMediaRouteGuards	keys + per-IP limit
+T-GW-001	COVERED	qa_integration2_test.go TestQAGatewayQuota	429
+T-BE-085	COVERED	qa_integration2_test.go TestQAMigrateTwiceIsNoop + store/qa_db_test.go	second run no-op
+T-BE-094	WEAK	qa_integration2_test.go TestQASignedRoutesWithRedisDown + TestQAHealthzDependencyDown + e2e fullstack 503 test	Redis down covered; Postgres-down per route not yet
+T-IDX-005	COVERED	apps/backend/internal/gateway/qa_unit_test.go TestQABreakerTransitions	all transitions with explicit clock
+T-IDX-058	COVERED	gateway/qa_unit_test.go TestQABreakerInvariantsProperty	300 random runs
+T-IDX-007	COVERED	gateway/qa_unit_test.go FuzzQAParseBlockRef	go fuzz + seeds
+T-IDX-013	COVERED	rpchttp/qa_unit_test.go TestQABuildURLAndParseQuantity	no key in errors
+T-IDX-066	COVERED	rpchttp/qa_unit_test.go FuzzQAParseQuantity	go fuzz + seeds
+T-IDX-032	COVERED	notifier/qa_unit_test.go TestQANotificationTextHelpers + TestQADisplayAmountHostileDecimals (xfail BUG-03)	
+T-IDX-020	COVERED	store/qa_mediakey_test.go TestQAMediaKeyKeyed	independent HMAC
+T-IDX-038	COVERED	ratelimit/qa_unit_test.go TestQAWaitCancelAndUnlimited	
+T-DB-009	COVERED	apps/backend/internal/store/qa_db2_test.go TestQAMigrations0003And0004Data	data-preserving
+T-DB-006	COVERED	qa_db2_test.go TestQAMigrations0007To0009Data	pseudo transfers/balances/spam/event_keys/summary
+T-DB-007	COVERED	qa_db2_test.go TestQAMigrations0007To0009Data	added_at truncation + default + role
+T-DB-008	COVERED	qa_db2_test.go TestQAMigrations0007To0009Data	dormant + nft_dirty per state
+T-DB-010	COVERED	qa_db2_test.go TestQAForwardOnlyVersionTable	forward-only, version PK
+T-DB-002	COVERED	qa_db2_test.go TestQAPartitioning	partman path asserted when available (both paths: run with/without pg_partman)
+T-DB-014	COVERED	qa_db2_test.go TestQAPartitioning	DEFAULT partition, AMB-16 error surfaced, rows kept
+T-DB-012	COVERED	qa_db2_test.go TestQAConstraintViolationsNamed	unique/check/fk/key length
+T-DBO-002	COVERED	qa_db2_test.go TestQAConstraintViolationsNamed	named constraints from catalog
+T-DBO-003	COVERED	qa_db2_test.go TestQANotNullEverywhere	generated from information_schema
+T-DB-020	COVERED	qa_db2_test.go TestQANumericBounds	max uint256 + 79 digits
+T-DB-024	COVERED	qa_db2_test.go TestQAInsertPendingDuplicate	idempotent
+T-DB-018	COVERED	qa_db2_test.go TestQASecurityDefinerExposure	harbour_ensure_partition only (documented)
+T-DB-022	COVERED	qa_db2_test.go TestQAHotQueriesUseIndexes	EXPLAIN with seqscan off
+T-DB-025	COVERED	qa_db2_test.go TestQASchemaGolden + testdata/schema.golden.sql	normalised pg_dump golden
+T-EXT-038	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-038 / T-KEY-047"	real Chromium + built extension + Go API + mock chain
+T-KEY-047	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-038 / T-KEY-047"	lock → reload → unlock in the real popup
+T-KEY-115	COVERED	apps/extension/test/e2e/browser.test.js "T-KEY-115 / T-EXT-035"	lockout enforced in UI; raw code shown = BUG-14 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-EXT-035	COVERED	apps/extension/test/e2e/browser.test.js "T-KEY-115 / T-EXT-035"	typed password not kept in DOM after submit
+T-KEY-116	COVERED	apps/extension/test/e2e/browser.test.js "T-KEY-116"	phrase only as images; no word run in text/alt/aria
+T-EXT-004	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-004"	Trusted Types block innerHTML/insertAdjacentHTML/script.src
+T-DAPP-051	COVERED	apps/extension/test/e2e/browser.test.js "T-DAPP-051 / T-PM-006 / T-SIG-022 / T-X-012"	browser: connect, switch, personal_sign, v4 typed, send, watchAsset, revoke
+T-PM-006	COVERED	apps/extension/test/e2e/browser.test.js "T-DAPP-051 ..."	wallet_switchEthereumChain → chainId 0xaa36a7
+T-SIG-022	COVERED	apps/extension/test/e2e/browser.test.js "T-DAPP-051 ..."	signatures verified with viem verifyMessage/verifyTypedData
+T-X-012	COVERED	apps/extension/test/e2e/browser.test.js "T-DAPP-051 ..."	full dApp journey end-to-end incl. chain receipt
+T-SIG-043	COVERED	apps/extension/test/e2e/browser.test.js "T-SIG-043 / T-SIG-044 / T-UX-030"	Reject click → 4001 in real UI
+T-SIG-044	COVERED	apps/extension/test/e2e/browser.test.js "T-SIG-043 / T-SIG-044 / T-UX-030"	closing the approval window → 4001
+T-UX-030	COVERED	apps/extension/test/e2e/browser.test.js "T-SIG-043 / T-SIG-044 / T-UX-030"	origin above actions; bidi not raw; keyboard reachable
+T-DAPP-052	COVERED	apps/extension/test/e2e/browser.test.js "T-DAPP-052"	cross-origin iframe origin shown, not the top page
+T-EXT-020	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-020"	SW killed via CDP while approval pending; settles, one valid signature
+T-CH-011	COVERED	apps/extension/test/e2e/browser.test.js "T-CH-011"	popup Send UI: confirm amount/to/fee, hash shown = chain tx, value exact
+T-EXT-040	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-040 / T-EXT-041 / T-KEY-118"	axe-core critical on Home = BUG-13 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-EXT-041	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-040 / T-EXT-041 / T-KEY-118"	see BUG-13 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-KEY-118	COVERED	apps/extension/test/e2e/browser.test.js "T-EXT-040 / T-EXT-041 / T-KEY-118"	unlock + onboarding screens clean
+T-EXT-031	COVERED	apps/extension/test/qa/release-tooling.test.js "T-EXT-031", "T-EXT-031 (refusals)"	real scripts in a sandbox repo, throwaway Ed25519 key; tamper/pin/signer-swap/determinism
+T-EXT-033	COVERED	release-tooling.test.js "T-EXT-033"	verify.mjs leak-scan section executed in vm on fake bundles + fake key files
+T-X-009	COVERED	release-tooling.test.js "T-X-009"	apiUrlStatus matrix, vite.config throw, bundled policy HB_API_SECURE/mainnetSigningReady
+T-KEY-122	COVERED	apps/extension/test/e2e/keys-lifecycle.test.js (3 tests)	spy wraps openActiveKeys/openConnectionKeys at bundle time; success + failure on real API/mock chain; value-moving handlers driven to failure
+T-REG-033	COVERED	secrets.test.js T-KEY-089 + e2e/keys-lifecycle.test.js T-KEY-122	zeroing asserted on returned bytes, per handler
+T-REG-015	COVERED	worker-router.test.js T-KEY-120	behavioural: the booted worker calls setAccessLevel(TRUSTED_CONTEXTS) for local and session
+T-MSG-005	COVERED	apps/extension/test/qa/value-guards.test.js (3 tests)	insecure-API build: 54 value-moving calls on non-signing chains refused, no key material taken (spy), no broadcast; provider switch/tx refused; testnet control signs
+T-KEY-104	COVERED	apps/extension/test/e2e/ledger.test.js "T-KEY-104"	throwaway device key signs prepared tx; wrong signer/replay/bad sig/tampered tx refused; broadcast on mock chain; no keystore stored
+T-KEY-105	COVERED	apps/extension/test/e2e/ledger.test.js "T-KEY-105"	reveal/copy/addAccount/sendSubmit/smart account/perps/earn/dApp sign refused for Ledger (OBS-06)
+T-KEY-146	COVERED	apps/extension/test/qa/venue-secrets.test.js (2 tests)	agent pk + Polymarket key/secret/passphrase never in any response; creds encrypted at rest; secret never sent, only HMAC
+T-KEY-145	COVERED	venue-secrets.test.js "T-KEY-145"	feature off / locked / no agent → refused, no exchange/POST call
+T-KEY-106	COVERED	venue-secrets.test.js "T-KEY-146 / T-KEY-106" + vault-handlers T-KEY-123	real perpsEnable; blob decrypts under session passwordKey; survives lock/unlock; v1→v2 re-key in T-KEY-123
+T-DEFI-017	WEAK	venue-secrets.test.js "T-DEFI-017"	perps + predictions failure modes done; swap/earn/ramps/staking failure matrix pending
+T-KEY-109	COVERED	apps/extension/test/qa/ui-port-scan.test.js	port open before wallet exists; 29 messages (snapshot/patches/responses) deep-scanned for secret fields, password/session keys, phrases (incl. painted generated phrase), private keys, BIP-39 runs
+T-KEY-085	COVERED	apps/extension/test/qa/vault-handlers.test.js "T-KEY-085"	fake IDB read-back hook + abort: boot and lazy migration keep and serve the legacy copy; verified move removes it
+T-SIG-049	COVERED	apps/extension/test/qa/send-guards.test.js (3 tests)	pending nonce, plan reuse, fee jump, malformed amounts, tier fallback, self-send warning; zero amount = BUG-15 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-SIG-050	COVERED	send-guards.test.js "T-SIG-050"	broadcast raw decoded with @ethereumjs/tx: signer=active account, chainId from registry despite from/chainId/tx overrides
+T-X-011	COVERED	aggregate of T-KEY-019/023/052, T-BE-012/036, T-DB-003, T-IDX-009/015, T-DATA-009 (all COVERED)	plus new concurrency evidence: BUG-04/05/06/07/09 xfails
+T-X-007	COVERED	apps/extension/test/qa/legacy-upgrade.test.js (2 tests)	v1 KDF+vault+keystore in storage.local, store v0, legacy passkey seal, perps agent under old key, pre-PT-06 WC session, auto-lock 0, raw-seed device: all upgraded at boot/unlock, nothing lost, artefacts removed
+T-X-001	COVERED	apps/extension/test/qa/amounts.prop.test.js (4) + apps/backend/internal/api/qa_amounts_test.go (2)	string oracle to 2^256-1 at 0..36 decimals; parse/format inverse; approve cap exact; static scan for Number() on amounts (5 reviewed exceptions); Go formatUnits exact, valueUSD within 1e-12
+T-SIG-026	COVERED	apps/extension/test/qa/family-verify.test.js (5) + test/send.test.js per-family	independent noble/msgpack/protobuf verifiers: Stellar, Tezos, Algorand, Sui, Cosmos (+ EVM/BTC/SOL/TRON/NEAR in send.test.js); remaining families deterministic+structural
+T-DEFI-001	COVERED	apps/extension/test/qa/swap-flow.test.js (2 tests)	fake gateway LI.FI + ERC-20 ledger: approve exact amount to Diamond, fresh stepTransaction validated, broadcast decoded, status success; forged spender/receiver/target/amount/chain/value/min refused unsigned
+T-DEFI-005	COVERED	swap-flow.test.js "T-DEFI-005" + "T-DEFI-001: unlimited..." (expired route)	429/500/no routes → plain error, no routes; a route older than expiresAt+5 min refused
+T-BE-094	COVERED	apps/backend/internal/api/qa_pgdown_test.go TestQAPostgresDownEverySignedRoute + qa_integration2_test.go (Redis down, gateway failures)	PG made unavailable (ALLOW_CONNECTIONS false + terminate): 17 signed routes → JSON 5xx retryable, no hang, no internals; same Idempotency-Key executes after recovery
+T-IDX-024	COVERED	apps/backend/internal/indexer/qa_repair_test.go TestQARepairConfirmationsHoldAndFinality + live_test.go TestLivePath	3-confirmation removal, younger mismatch kept and holds finality, re-mined tx moved, balance refreshed, finalized only up to verified block
+T-IDX-056	COVERED	apps/backend/internal/indexer/qa_resilience_test.go (2 tests)	RPC down → logged, 10-min backoff, resumes; Postgres down → loops survive, progress after recovery; NATS down >5 s at start → consumers never start = BUG-16 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-BE-060	COVERED	apps/backend/internal/api/qa_integration3_test.go TestQASimulateModes	stub simulator: full mode with formatted amounts (unknown decimals unformatted), reverted message, ErrUnsupported silent basic, error → basic + warn
+T-BE-065	COVERED	qa_integration3_test.go TestQABroadcastRetryAfterPendingInsertFailure	one-shot trigger failure on pending insert → 500 retryable (no internals); same Idempotency-Key → already known → 200, one row
+T-BE-070	COVERED	qa_integration3_test.go TestQAPushRoutesFollowAddresses	routes = tracked addresses, resync on +/-, keyed tags (no plain address), DELETE removes sub + routes, no routes without sub
+T-BE-077	COVERED	qa_integration3_test.go TestQAMediaDisconnectAndConcurrency	client disconnect → fetch completes, cached positively, one upstream hit
+T-BE-076	COVERED	qa_integration3_test.go TestQAMediaDisconnectAndConcurrency	10 cold fetches: ≤4 upstream at once; others 200/503
+T-BE-086	COVERED	apps/backend/cmd/migrate/qa_migrate_test.go TestQAMigrateRequiresAppRoleUnlessAllowed	real binary, non-CREATEROLE owner, harbour_app held aside: exit≠0; HB_ALLOW_MISSING_APP_ROLE=1 → 0 + warning
+T-BE-098	COVERED	cmd/migrate/qa_migrate_test.go TestQAMigrateLoginsAndNoPasswordInLogs	app + 2 service logins work with their passwords, members of harbour_app, not superuser; no password in output incl. error paths
+T-BE-097	COVERED	apps/backend/internal/api/read_test.go TestReadScreensMakeNoRPCCalls (verified Phase 3) + qa_integration*_test.go	seeded Postgres/Redis: portfolio totals/pricing/spam, history paging, chart, asset, tx (own vs other device), nfts + media; no RPC from read routes
+T-BE-052	COVERED	apps/backend/internal/api/qa_integration3_test.go TestQANFTsDirtyFlagRequestsSync	dirty list → one nfts.sync per minute for 3 reads, syncing flag, /v1/media URLs only, spam without image, clean list not syncing
+T-CH-001	COVERED	apps/extension/test/qa/chains-contract.test.js (2)	chains.yaml read with js-yaml vs chainList.gen.ts and the registry: ids, chain ids, indexed=sources, testnet flags, testnets unpriced, all enabled+served
+T-CH-006	COVERED	apps/extension/test/qa/tokens-networks.test.js "T-CH-006"	100 manual tokens persist across lock/unlock, case-insensitive upsert, 101st refused, remove frees a slot, not in clear storage, invalid input refused
+T-CH-016	COVERED	tokens-networks.test.js "T-CH-016"	legacy token rows (no addedAt/networkId) kept with stable id, malformed dropped; built-in chain saved as custom → RPC override, one identity
+T-DEFI-013	COVERED	tokens-networks.test.js "T-DEFI-013"	plan expectation revised to the documented design (publishable keys, stored unencrypted): secret/junk formats refused, UI sees masked previews only, clear, tampered storage re-validated
+T-DAPP-057	COVERED	apps/extension/test/qa/wc-resilience.test.js (3)	SW restart: alarm resume reconnects and the pending request is answered; relay down → next alarm retries; failed send swallowed = BUG-17 | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-DAPP-055	COVERED	apps/extension/test/qa/provider-resilience.test.js (2)	local quota at connect → site error, no connection recorded, retry works (OBS-07 raw message); session quota at queue → immediate error, no orphan pending
+T-DAPP-056	COVERED	provider-resilience.test.js "T-DAPP-056"	hanging RPC: error to site bounded by 8 s per probe, nothing saved (OBS-08)
+T-IDX-031	COVERED	apps/backend/internal/txtrack/qa_txtrack_test.go TestQATrackerOutcomes	confirmed/failed published with block+from; not found → block-time backoff; RPC error → 15 s; aged → dropped; unknown chain dropped unpublished; replaced nonce → dropped after 3 checks; settled never re-checked
+T-IDX-055	COVERED	qa_txtrack_test.go TestQATwoTrackersProcessEachRowOnce	4 concurrent RunOnce over 60 rows: each checked once, published once (SKIP LOCKED claim)
+T-IDX-036	COVERED	apps/backend/internal/events/qa_events_test.go TestQABusAtLeastOnceAndDurableResume	embedded JetStream: handler error → redelivered, durable consumer resumes with only new messages, acked not redelivered
+T-IDX-060	COVERED	apps/backend/internal/qacontract/contract_test.go (3)	producer structs carry every consumer field (go/ast on unexported consumers) for balance/tx.status (2 producers)/activity; golden wire JSON for 7 payloads + channels; extension routes channel prefixes
+T-IDX-057	COVERED	apps/backend/internal/gateway/qa_pool_prop_test.go TestQAPickNeverReturnsIneligibleProperty	2000 random pools: never excluded/open/below minBlock/no budget; nil only when nothing eligible
+T-IDX-030	COVERED	apps/backend/adapters/sources/alchemy/qa_fuzz_test.go FuzzQAWebhookParsing	WebhookID/VerifyWebhook/ParseWebhook: no panic (444k execs, 20 s); parsed amounts non-negative integers, 0x hashes
+T-IDX-025	COVERED	apps/backend/internal/indexer/qa_spam_test.go TestQASpamScore	real tokens < 50; URL/airdrop/telegram/no-decimals/empty ≥ 50; look-alike and long symbols score higher; 20k random inputs in 0..100; zero-width alone = 40 (OBS-09)
+T-IDX-063	COVERED	apps/backend/internal/indexer/qa_refresh_nfts_test.go TestQARefreshExtraRefsAndSweep + indexer_test.go (rebase refresh, older read ignored, balance.changed)	extra refs read, as_of_block + balances_refreshed_at set; sweep only stale, per chain
+T-IDX-064	COVERED	qa_refresh_nfts_test.go TestQANFTSyncReplaceMediaAndDirty	2 pages, malformed token id skipped, media key = HMAC key of source, as_of max page, dirty cleared, MarkNFTsMoved re-dirties, provider error leaves list, sale replaces atomically
+T-IDX-065	COVERED	apps/backend/internal/notifier/qa_routing_test.go TestQAPushRouting	Postgres+Redis+capturing channel: only routed device notified, dedupe, spam/stale silent, unverified generic title, tx status only to sender and only settled, malformed dropped, keyed Redis tags
+T-IDX-054	COVERED	apps/backend/internal/indexer/qa_repair_conc_test.go TestQARepairConcurrentWithLiveIngest	repair loop during 40 live deliveries: no repair error, all live events survive, orphan removed (repair is not lock-serialised with ingest; outcome checked)
+T-IDX-018	COVERED	apps/backend/internal/store/qa_ingest_prop_test.go TestQAIngestProjectionProperty	200 random events (amounts to 2^200, native+tokens), each sent twice, shuffled, 37-event batches: rows = unique events, per-address net = oracle exactly, one activity row per (address, tx)
+T-IDX-062	COVERED	apps/backend/internal/store/qa_ingest_malformed_test.go + adapters/chains/evm/qa_malformed_test.go + alchemy FuzzQAWebhookParsing + gateway FuzzQAParseBlockRef	store refuses a batch with any malformed event atomically (OBS-10), 78-digit max stored; EVM client: 10 garbage answers × result/truncated/500/error → errors, no panic, no invented head/fees/inclusion
+T-REG-025	COVERED	apps/backend/internal/realtime/qa_jwt_test.go TestQARealtimeTokensAudienceAndBinding + cmd/migrate/qa_migrate_test.go	aud claim = Centrifugo config audience, channel/device binding, namespaces refuse client subscribe; migrate role check (T-BE-086)
+T-REG-028	COVERED	apps/extension/test/qa/release-tooling.test.js "T-EXT-031 (refusals)"	no key without HB_RELEASE_KEY_PEM / --key-file; key file must be 0600 and outside the repo; never created implicitly
+T-REG-029	COVERED	apps/extension/test/qa/supply-chain.test.js "T-REG-029"	.npmrc ignore-scripts/save-exact/audit-level, verify.mjs runs audit gate + lockfile check, prod deps exact
+T-REG-035	COVERED	apps/extension/test/qa/page-bridge.test.js "T-DAPP-048"	isTrust/isTrustWallet/isCoinbaseWallet/isRabby/isPhantom absent, isMetaMask false, no window.trustwallet
+T-X-010	WEAK	apps/extension/test/qa/supply-chain.test.js (2 tests)	npm audit gate behaviour with a fake npm + checked-in exceptions valid; govulncheck could not run (no network to golang.org / vuln DB in this environment)
+T-X-004	COVERED	apps/backend/internal/api/qa_integration3_test.go TestQAClockSkewBoundary	fixed server clock: ±ClockSkew accepted, ±(ClockSkew+1 s) refused with an error code
+T-X-003	COVERED	apps/extension/test/qa/time-boundaries.test.js (2) + apps/backend/internal/api/qa_integration3_test.go TestQADailyCounterUTCMidnight + indexer_test partitions	TZ=America/New_York across spring-forward/fall-back: grants last real ms; lock alarm relative; backend daily budget resets at 00:00 UTC with server TZ=UTC+14
+T-X-002	COVERED	apps/extension/test/qa/number-lint.test.js	allow-listed lint over src/core/** (outside chains/send): every Number()/parseFloat() on an amount-like value classified display/fiat/metadata; new hits and stale entries fail
+T-SIG-037	COVERED	apps/extension/test/qa/session-boundary.test.js (2)	sessionFor stable within a minute, rolls at exact boundary (+59.999 s / +60 s / -1 ms), distinct per chain
+T-SIG-033	WEAK	apps/extension/test/qa/spec-vectors.test.js (2)	ton_proof digest and ADR-036 sign bytes match an independent construction from the spec text (field binding, sorted keys, escapes); the published spec example vectors were not available offline so they are not asserted
+T-KEY-130	COVERED	apps/extension/test/qa/biometrics-failures.test.js (3)	fake authenticator: PRF unsupported/enabled:false, null credential, cancel/abort/timeout, missing/short PRF, wrong challenge, empty result, availability throwing -> clear coded errors, no secret returned (sealing only happens after a secret, passkeyService)
+T-KEY-111	COVERED	apps/extension/test/qa/sanitize.prop.test.js (2)	fast-check random nested trees vs a structural oracle; no input mutation; non-string error untouched; depth>5 untouched; single-token codes pass
+T-X-006	WEAK	apps/extension/test/qa/roundtrip.prop.test.js (2)	PendingStore records + settled outcomes identical across JSON storage and worker restart (fast-check); vault-state / keystore export-import / cursor round trips are exercised by example tests elsewhere but not as properties
+T-KEY-009	COVERED	apps/extension/test/qa/kdf-perf.test.js	default params pinned (47104 KiB, t=2, p=1); one derive < 5 s; buffer growth ceiling
+T-X-008	COVERED	apps/extension/test/qa/flag-gating.test.js (3)	perps/predictions/smart-account handlers refuse in the handler with flag absent/false/non-boolean or venue killed (no venue/bundler call); control shows the flag on opens the gate; build flags covered by T-X-009/T-MSG-005
+T-UX-003	COVERED	apps/extension/test/e2e/browser.test.js (T-UX-003)	real built extension in Chromium: dApp requests approve(spender, 2^256-1); user edits the spend-limit field to 10; the transaction that reaches the chain decodes to approve(same spender, 10*10^18)
+T-KEY-117	COVERED	apps/extension/test/e2e/browser.test.js (T-KEY-117)	built extension, Playwright fake clock: short press no reveal; Space-hold reveals; window blur re-masks; second hold reveals; auto-hide at 60 s; hold control returns. Copy button N/A by design (secret is an image, no copy path; T-KEY-116)
+T-KEY-083	COVERED	apps/extension/test/e2e/browser.test.js (T-KEY-083 / T-KEY-130)	Chromium CDP virtual authenticator with PRF: enrol via the real enrol screen, status prf-v1, lock, biometric unlock restores the session
+T-KEY-130	COVERED	apps/extension/test/qa/biometrics-failures.test.js (3) + browser.test.js (T-KEY-083 / T-KEY-130)	plus real-browser run: authenticator without PRF is refused with a clear alert and no seal stored
+T-SA-027	COVERED	apps/extension/test/provider.test.js (5792 sendCalls concurrent)	two origins, concurrent requests and approvals: 2 prompts, 2 bundles sent, both ids retrievable, cross-origin lookup 5730
+T-DEFI-017	WEAK	apps/extension/test/qa/defi-failure-matrix.test.js (16) + swap-flow.test.js (T-DEFI-005)	8 failure modes x ramps quotes/market ref and staking list/details/prepare on 7 chains + dead-review submit: friendly errors, no review from bad data, nothing broadcast; swap quote failures in swap-flow; perps/predictions/NFT providers and 429 backoff timing not in the matrix
+T-X-005	COVERED	apps/extension/test/qa/locale-format.test.js (5)	formatFiat in de/ja/zh-TW/ar/en + fallback, floor, signed; ar checked for directional marks and a single digit script; OBS-13 pinned
+T-CH-015	WEAK	apps/extension/test/qa/locale-format.test.js (T-CH-015)	slow-method regex matches only getSupply/getProgramAccounts and the 10 s / 30 s selection is asserted from the source; no timed behavioural run
+T-X-013	COVERED	apps/extension/test/qa/utc-keys.prop.test.js (3) + apps/backend/internal/api/qa_integration3_test.go TestQADailyCounterUTCMidnight	TZ=Pacific/Kiritimati (UTC+14): weekday/month-day/DTSTART/DTSTAMP from UTC for random instants around day/month boundaries vs an ISO-string oracle; Go side at UTC midnight
+T-GOF-001	COVERED	qa/TEST_SUMMARY.md section 3 (measured on the user machine, Go 1.26.10, Postgres 16 + Redis 7.4 in Docker)	overall 76.0% statements with -coverpkg=./... (target 70); per package own tests: api 85.1, devicesig 90.9, evmtx 94.0, gateway 86.7, ratelimit 100; store 87.1% average per function (111 funcs; a function average, not statement-weighted); only 0% packages are main() entry points and tiny stubs
+T-BE-096	COVERED	apps/backend/internal/config/qa_fuzz_test.go (FuzzLoad + 2 tests)	Green on the user machine (60 s fuzz, ~22k execs, no panic). Fuzz target seeded with the real YAML; no panic, error or usable config; bad/missing files return errors
+T-BE-087	COVERED	apps/backend/internal/hbclient/qa_canon_test.go (+ extension canonical-golden.test.js for the TS twin)	Green on the user machine. Go client signs the shared golden vectors (every line but the random nonce) and the server-side re-derivation verifies; TS side already green against the same files
+T-BE-088	COVERED	apps/backend/internal/api/qa_load_test.go	Green on the user machine, opt-in HB_QA_PERF=1: 200 rps signed GET /v1/me for 30 s over 40 devices; zero non-200, p99 < 100 ms, goroutines back to baseline. Run without -race
+T-BE-089	COVERED	apps/backend/internal/devicesig/qa_pow_test.go + apps/extension/test/qa/pow-perf.test.js	JS half green (3 solves at difficulty 20, median < 10 s). Go half green on the user machine: CheckPow constant-time, 14-bit solve, opt-in 20-bit solve
+T-IDX-019	COVERED	apps/backend/internal/indexer/qa_debounce_test.go (8)	Green on the user machine. Burst coalescing with merged refs, per-id windows, fresh second window, window extension, Flush now and waits, cancelled ctx, concurrency cap 8. Real short timers, not a fake clock (the debouncer uses time.AfterFunc)
+T-IDX-050	COVERED	apps/backend/internal/store/qa_perf_test.go	Green on the user machine, opt-in HB_QA_PERF=1: 10k addresses, 1M transfers, 1M activity rows; history page p95 9.5 ms, tx lookup p95 0.7 ms, ingest of 500 events 127 ms (duplicates 14 ms); plans use the indexes
+T-IDX-051	COVERED	apps/backend/internal/gateway/qa_load_test.go	Green on the user machine, opt-in HB_QA_PERF=1: 1000 rps distinct eth_getBalance via the gateway handler to fake nodes; zero failures, median overhead < 5 ms vs direct, bounded goroutines
+T-RT-005	COVERED	apps/backend/internal/realtime/qa_load_test.go	Green on the user machine, opt-in HB_QA_PERF=1: 50 balance + 50 tx events/s for 10 s to a fake Centrifugo; none lost, p99 < 100 ms, heap growth < 20 MiB, goroutines stable
+T-DAPP-053	COVERED	apps/extension/test/qa/perf-ext.test.js (2)	1000-read burst: all answered, served count within the documented limiter budget (120 burst + 60/s), no unexpected errors, heap < 64 MiB; paced 40/s all served. Rate-limited reads answer -32005 as designed. | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-EXT-039	COVERED	apps/extension/test/qa/perf-ext.test.js	1000 live-slice patches with a connected popup port: p95 < 50 ms; only the live slice is broadcast.
+T-KEY-119	COVERED	apps/extension/test/qa/perf-ext.test.js (2)	Found BUG-18: vault persist throws RangeError (btoa spread) from the 8th wallet; passworder fails at >=250k bytes. Lock/unlock/getState stay fast up to the failure. Pinned as a known bug. | Fixed 2026-11-23: the known-bug marker is now a plain assertion (regression test).
+T-REG-026	COVERED	apps/extension/test/qa/reg-static.test.js (3)	Static scan: no third-party hostnames in source beyond a reviewed allowlist; only exception is the Bonfida SNS proxy (OBS-15).
+T-REG-021	COVERED	apps/extension/test/e2e/browser.test.js	Browser E2E: Back from a nested screen returns to the previous layer (scoped to .hb-layer.idle).
+T-REG-031	COVERED	apps/extension/test/e2e/browser.test.js	Browser E2E: Token approvals scan shows coverage and the empty state.
+T-DEFI-006	COVERED	apps/extension/test/qa/earn-flow.test.js (7)	Mock-chain success paths: Cosmos stake/unstake/claim/max, refusals (bad validator, minimum, over balance, no rewards, same destination), node rejection; TRON freeze+vote with 2 broadcasts, claim/unstake summaries, rejection. Other families: family-verify + signing-units + defi-failure-matrix; EVM in e2e keys-lifecycle.
+T-SA-015	COVERED	apps/extension/test/smart-account-send.test.js (existing)	sendOperation returns sponsored true/false from the actual paymaster reply and falls back to user-paid on refusal. UI label is derived from the gasless flag, not from the reply: see OBS-16.
+T-EXP-001	COVERED	qa/COVERAGE_BASELINE.md + qa/tools/v8-line-coverage.cjs	Coverage run of all 41 QA files; QA-only line coverage 63.4% of mapped src lines; baseline per directory and per file recorded. Key files: keySchedule 100, passworder 100, storage 100, walletService 100, vaultService 81, swap/safety 82, provider/ratelimit 100, smartAccount/delegation 100. Low QA-only files (smartAccount/send, provider/multi, typed, solanaTx) are covered by the original suites. No enforced threshold gate.
+T-DEFI-017	COVERED	apps/extension/test/qa/defi-failure-matrix.test.js (16) + defi-failure-matrix-venues.test.js (8) + swap-flow.test.js (T-DEFI-005)	8 failure modes x ramps, staking on 7 chains, perps, predictions and NFT handlers: friendly failure, nothing posted to a venue, bounded calls per request (no retry storm under 429)
+T-X-006	COVERED	apps/extension/test/qa/roundtrip.prop.test.js (2) + roundtrip-state.prop.test.js (5)	PendingStore + settled outcomes; any JSON state through passworder, sizes around the 32 KiB chunk and 1 MiB, VaultService save/lock/unlock with a staged keystore, wallet-core keystore export/import (mnemonic and private key), history cursors byte for byte
+T-CH-015	COVERED	apps/extension/test/qa/failover-timing.test.js (3) + locale-format.test.js (regex)	fake clock, node that answers after 15 s: normal call cut off at 10 s and moved to the next endpoint; getSupply/getProgramAccounts wait and succeed; slow methods cut off at 30 s (mutation 30 s -> 10 s fails 2 tests)

@@ -1,0 +1,404 @@
+[
+ [
+  "^(KEY-05|KEY-07|KEY-22)$",
+  "INT",
+  "Integrated with real IndexedDB/WebCrypto/wallet-core through the vault rows T-KEY-017/020/026/084/087 (categorised by their primary concern).",
+  "PTR-VAULT-INT"
+ ],
+ [
+  "^(SIG-06|SIG-07)$",
+  "INT",
+  "Integrated through T-CH-009 (send flow) and T-SIG-026 (ext-int signing per family).",
+  "PTR-SEND-INT"
+ ],
+ [
+  "^DAPP-09$",
+  "INT",
+  "Integrated through the provider service in T-DAPP-021/022 and T-EXT-019.",
+  "PTR-PEND-INT"
+ ],
+ [
+  "^IDX-20$",
+  "INT",
+  "Integration over real HTTP + Postgres + NATS is T-IDX-026..028 (categorised SEC/RES).",
+  "PTR-INGEST-INT"
+ ],
+ [
+  "^(IDX-29|IDX-30)$",
+  "NEG",
+  "Bad inputs enumerated in T-IDX-045 (nonces) and T-IDX-046 (tampered/short blobs, short secret).",
+  "PTR-IDX-NEG"
+ ],
+ [
+  "^(DAPP-02)$",
+  "NEG",
+  "Invalid calls on the Solana/multi surfaces are asserted in T-DAPP-050 and the parameterised T-PM-001.",
+  "PTR-DAPP02-NEG"
+ ],
+ [
+  "^IDX-07$",
+  "PROP",
+  "No generative input domain (fan-out over a fixed member list); outcomes enumerated in T-IDX-010.",
+  "NOPROP"
+ ],
+ [
+  "^(KEY-0[789]|KEY-29|EXT-08)$",
+  "CON",
+  "Internal function, not a cross-component contract; stored formats are guarded by T-KEY-143/144 and T-EXT-016.",
+  "NOCON"
+ ],
+ [
+  "^KEY-21$",
+  "KAT",
+  "The PRF output is produced by the authenticator; the seal is the KEY-05 envelope whose KAT is T-KEY-125.",
+  "PTR-KEY05-KAT"
+ ],
+ [
+  "^BE-04$",
+  "KAT",
+  "The PoW and Ed25519 primitives used by registration have KATs in T-IDX-044 and T-BE-021.",
+  "PTR-POW-KAT"
+ ],
+ [
+  "^(?!(KEY-0[345]|KEY-1[123]|KEY-16|KEY-24|SIG-0[2346789]|EXT-11|DATA-05|BE-06|BE-23|IDX-2[089]|IDX-30|SA-0[56]|DEFI-0[45])$).*",
+  "KAT",
+  "No cryptographic primitive or published test vector applies to this feature (it only calls primitives whose KATs live in KEY-/SIG-/IDX- crypto rows).",
+  "NOKAT"
+ ],
+ [
+  ".*",
+  "REG",
+  "No bug-fix commit touching this feature exists in git history; §16 lists every fix commit and its regression test.",
+  "NOREG"
+ ],
+ [
+  "^(?!(KEY-06|KEY-14|KEY-18|KEY-19|KEY-21|SIG-05|SIG-13|EXT-10|EXT-15|UX-02|UX-04|UX-05|UX-06|CH-05|DEFI-01|DAPP-08)$).*",
+  "UI",
+  "Feature has no screen of its own (backend, worker or library code); its visible output is checked through the owning screen's UI tests (T-EXT-041).",
+  "NOUI"
+ ],
+ [
+  "^(BE|GW|IDX|DB)-",
+  "E2E",
+  "Server-side: exercised end-to-end by the full-stack flow T-X-012 where it is on the user path, and otherwise over real HTTP/Postgres/Redis in be-int; a browser E2E adds no extra observable.",
+  "NOE2E-BE"
+ ],
+ [
+  ".*",
+  "E2E",
+  "Library/worker logic with no independent user flow; it is reached by the flow-level E2E tests (T-KEY-047, T-DAPP-051, T-CH-011, T-SIG-022, T-X-012) and asserted precisely at unit/integration level.",
+  "NOE2E-LIB"
+ ],
+ [
+  ".*",
+  "PERF",
+  "Not a hot path and its inputs are bounded by validation; smoke-level performance tests exist only for the hot paths (KDF, provider reads, UI port fan-out, API, DB queries, gateway, ingest).",
+  "NOPERF"
+ ],
+ [
+  "^KEY-02$",
+  "MIG",
+  "Vault/KDF format migrations are asserted in T-KEY-015, T-KEY-026 and the format contract T-KEY-143.",
+  "PTR-VAULT-MIG"
+ ],
+ [
+  "^(KEY-21|KEY-29)$",
+  "MIG",
+  "Legacy seal and perps/prediction blob migrations are asserted in T-KEY-033, T-KEY-081 and T-KEY-026.",
+  "PTR-SEAL-MIG"
+ ],
+ [
+  "^(DAPP-08|DAPP-11|DAPP-12)$",
+  "MIG",
+  "Stored permission/network/token formats are migrated and asserted in T-DAPP-041 and T-CH-016.",
+  "PTR-PERM-MIG"
+ ],
+ [
+  "^EXT-11$",
+  "MIG",
+  "Stored config version monotonicity (the only persisted field) is asserted in T-EXT-025.",
+  "PTR-CFG-MIG"
+ ],
+ [
+  "^(SA-0[5-9]|DATA-01)$",
+  "MIG",
+  "Format introduced in the current release with no earlier stored version; future changes are guarded by contract tests T-SA-023/T-SA-024 and T-DATA-001.",
+  "NOMIG-NEW"
+ ],
+ [
+  "^(KEY-1[89]|KEY-20|KEY-24|DAPP-09|SA-07)$",
+  "MIG",
+  "State lives only in storage.session (cleared when the browser closes), so no cross-version stored data exists.",
+  "NOMIG-SESSION"
+ ],
+ [
+  "^(BE|GW)-",
+  "MIG",
+  "Redis state is TTL-bounded (≤48 h) and Postgres schema migrations are owned by DB-* rows (T-DB-*, T-DBO-001).",
+  "NOMIG-EPH"
+ ],
+ [
+  "^IDX-",
+  "MIG",
+  "Persists only through DB tables whose migrations are covered by T-DB-001..010 and T-DBO-001.",
+  "NOMIG-DB"
+ ],
+ [
+  ".*",
+  "MIG",
+  "No persisted state or versioned format is owned by this feature.",
+  "NOMIG"
+ ],
+ [
+  "^(KEY-18|KEY-21|EXT-10)$",
+  "CONC",
+  "Single interactive session per user action; records are id-bound and one-shot (asserted in T-KEY-070, T-KEY-079); no concurrent writer exists.",
+  "NOCONC-UI"
+ ],
+ [
+  "^(SA-05|SA-06)$",
+  "CONC",
+  "Prepared operations are one-shot; double approval is asserted in T-SA-007.",
+  "PTR-SA-ONESHOT"
+ ],
+ [
+  "^(CH-02|CH-03)$",
+  "CONC",
+  "Network list races are asserted in T-DAPP-029; token writes go through the vault and are covered by T-KEY-135.",
+  "PTR-CH-CONC"
+ ],
+ [
+  "^CH-04$",
+  "CONC",
+  "Request coalescing under concurrency is asserted in T-CH-007.",
+  "PTR-CH04"
+ ],
+ [
+  "^DAPP-17$",
+  "CONC",
+  "WalletKit delivers relay events sequentially and every request passes the ProviderService pending store, whose concurrency is asserted in T-DAPP-021.",
+  "NOCONC-SER"
+ ],
+ [
+  "^DATA-01$",
+  "CONC",
+  "Alarms run sequentially per name; reconcile idempotency is asserted in T-DATA-002.",
+  "NOCONC-ALARM"
+ ],
+ [
+  "^EXT-07$",
+  "CONC",
+  "The persisted queue is drained once inside the boot pipeline; no concurrent drainer exists.",
+  "NOCONC-BOOT"
+ ],
+ [
+  "^(BE-03|BE-25)$",
+  "CONC",
+  "Single atomic Redis INCR / single-statement upsert keyed by device; no read-modify-write.",
+  "NOCONC-ATOMIC"
+ ],
+ [
+  "^BE-08$",
+  "CONC",
+  "Concurrent same-key requests are asserted in T-BE-027.",
+  "PTR-IDEM-CONC"
+ ],
+ [
+  "^(BE-1[0145-9]|BE-2[034]|BE-0[29]|GW-)",
+  "CONC",
+  "Read-only or stateless request handling; shared caches are covered by the -race detector on all Go unit tests.",
+  "NOCONC-RO"
+ ],
+ [
+  "^IDX-",
+  "CONC",
+  "In-memory shared structures (pools, breakers, caches, debouncer) are exercised under go test -race; cross-process races have dedicated tests (T-IDX-015/053/054/055).",
+  "NOCONC-RACE"
+ ],
+ [
+  "^DB-",
+  "CONC",
+  "Concurrency is asserted at the store/service level (T-BE-036, T-IDX-015, T-IDX-053, T-DB-003).",
+  "NOCONC-DB"
+ ],
+ [
+  ".*",
+  "CONC",
+  "Pure or single-writer code with no shared mutable state (JS worker is single-threaded and the function does not await between read and write).",
+  "NOCONC"
+ ],
+ [
+  "^(BE|GW)-",
+  "RES",
+  "Dependency failures (Redis, Postgres, rpc-gateway, upstreams) for every route are injected by T-BE-094 and T-GW-023/024.",
+  "PTR-BE-RES"
+ ],
+ [
+  "^DB-",
+  "RES",
+  "Connection loss is a service concern, asserted in T-BE-094 and T-IDX-056.",
+  "PTR-DB-RES"
+ ],
+ [
+  ".*",
+  "RES",
+  "No I/O or external dependency (pure or in-memory logic).",
+  "NORES"
+ ],
+ [
+  "^(KEY-0[1-4]|KEY-1[1-3]|KEY-17|KEY-23|KEY-3[01]|SIG-0[1-4]|SIG-1[0-2]|UX-|SA-0[1-4]|SA-10|EXT-0[1-5]|EXT-1[1-4]|DATA-06|IDX-0[2-9]|IDX-10|IDX-19|IDX-2[6-9]|IDX-30|BE-0[579]|BE-2[789]|BE-30|GW-1[78])",
+  "INT",
+  "Pure function/module with no collaborator of its own; it is integrated through its callers' INT tests (vault, provider, send, API stacks) and T-GW-027/T-IDX-061.",
+  "NOINT-PURE"
+ ],
+ [
+  "^(DAPP-0[1-7]|DAPP-1[05689]|EXT-0[789]|EXT-15|CH-0[17]|DEFI-0[4-7]|DATA-01)$",
+  "INT",
+  "Integrated through the provider/UI flows asserted in T-DAPP-051, T-EXT-019/020/038 and the feature's INT rows; no separate collaborator boundary.",
+  "NOINT-FLOW"
+ ],
+ [
+  "^(BE-0[12]|BE-1[01]|BE-2[49]|BE-3[02]|GW-0[2-9]|GW-1[0-6])$",
+  "INT",
+  "Exercised through the full API stack by T-BE-097 / T-GW-027 / T-X-012.",
+  "PTR-BE-INT"
+ ],
+ [
+  "^X-",
+  "INT",
+  "Cross-cutting concern; integration is covered by the rows it aggregates.",
+  "NOINT-X"
+ ],
+ [
+  "^(KEY-04|KEY-09|KEY-17|KEY-2[78]|KEY-3[01])$",
+  "NEG",
+  "Negative inputs are asserted through the owning flow: T-KEY-021/024 (wrong password), T-KEY-069 (no grant), T-KEY-103, T-KEY-104 (address mismatch), T-KEY-107/112 (odd inputs).",
+  "PTR-KEY-NEG"
+ ],
+ [
+  "^(SIG-1[0-3])$",
+  "NEG",
+  "Invalid inputs asserted in T-SIG-035 (bad chain ids), T-SIG-039 (fuzz), T-SIG-040/041 (locked/no proof).",
+  "PTR-SIG-NEG"
+ ],
+ [
+  "^(DAPP-0[37]|DAPP-09|DAPP-1[4-9]|DAPP-20)$",
+  "NEG",
+  "Invalid inputs asserted in T-DAPP-007, T-DAPP-012/014, T-DAPP-020, T-DAPP-034/035, T-DAPP-037, T-DAPP-039, T-DAPP-042/043/045, T-DAPP-046/047.",
+  "PTR-DAPP-NEG"
+ ],
+ [
+  "^(EXT-|UX-|SA-|CH-0[1-46-7]|DEFI-|DATA-)",
+  "NEG",
+  "Invalid-value handling of every message is covered by T-MSG-008 and the feature's UNIT rows that enumerate bad inputs.",
+  "PTR-MSG-NEG"
+ ],
+ [
+  "^(BE-0[579]|BE-2[789]|BE-3[02])$",
+  "NEG",
+  "Bad inputs enumerated in T-BE-013 (tiers), T-BE-024 (over limit), T-BE-030, T-BE-079/080, T-BE-082/083/084, T-BE-086.",
+  "PTR-BE-NEG"
+ ],
+ [
+  "^X-",
+  "NEG",
+  "Cross-cutting; negative cases live in the aggregated rows.",
+  "NONEG-X"
+ ],
+ [
+  "^(KEY-0[1-4]|KEY-0[7-9]|KEY-1[0-2]|KEY-29)$",
+  "SEC",
+  "Security assertion implemented in a row of another category: T-KEY-022/023 (brute force), T-KEY-123/124 (KDF), T-KEY-032 (PRF), T-KEY-077 (re-auth throttle), T-KEY-035 (lock clears grants), T-KEY-038/045 (entropy, passphrase), T-KEY-101, T-KEY-146.",
+  "PTR-KEY-SEC"
+ ],
+ [
+  "^(SIG-0[467]|SIG-1[12])$",
+  "SEC",
+  "Security assertions in T-SIG-005..007 (raw-hash gating), T-SIG-050 (send builders), T-SIG-037 (session scoping), T-SIG-038 (SIWE issues).",
+  "PTR-SIG-SEC"
+ ],
+ [
+  "^(DAPP-0[6]|DAPP-1[069]|DAPP-20)$",
+  "SEC",
+  "Security assertions in T-DAPP-006/009, T-DAPP-023/024, T-DAPP-039, T-DAPP-046, T-SIG-043.",
+  "PTR-DAPP-SEC"
+ ],
+ [
+  "^(EXT-0[4679]|EXT-12)$",
+  "SEC",
+  "Security assertions in T-EXT-008, T-EXT-012, T-EXT-015, T-EXT-019/020, T-EXT-028.",
+  "PTR-EXT-SEC"
+ ],
+ [
+  "^(SA-10)$",
+  "SEC",
+  "Availability gating is asserted in T-EXT-029 / T-SA-016.",
+  "PTR-SA-SEC"
+ ],
+ [
+  "^(DATA-04)$",
+  "SEC",
+  "Channel authorisation is enforced and asserted server-side in T-BE-067.",
+  "PTR-DATA-SEC"
+ ],
+ [
+  "^(BE-0[57]|BE-27)$",
+  "SEC",
+  "Security assertions in T-BE-013 (probation tiers), T-BE-024/092 (quotas), T-BE-079 (address normalisation).",
+  "PTR-BE-SEC"
+ ],
+ [
+  "^BE-32$",
+  "SEC",
+  "Developer CLIs (hbdevice, hbkeys, hbverify, clients/ts) are not deployed or reachable from any trust boundary.",
+  "NOSEC-DEV"
+ ],
+ [
+  "^(IDX|DB)-",
+  "SEC",
+  "Internal input from authenticated services only (TB11); boundary security is asserted by T-IDX-001, T-IDX-026/027, T-IDX-046/047, T-DB-017/019/023.",
+  "NOSEC-INTERNAL"
+ ],
+ [
+  "^(X-)",
+  "SEC",
+  "Cross-cutting; security assertions live in the aggregated rows.",
+  "NOSEC-X"
+ ],
+ [
+  "^(KEY-0[89]|KEY-1[0-1]|KEY-23|KEY-29|SIG-1[01]|DAPP-0[2367]|DAPP-1[4-69]|DAPP-20|EXT-0[1-79]|EXT-1[2-5]|UX-11|SA-0[169]|SA-10|CH-0[167]|DATA-0[34]|BE-0[1579]|BE-2[7]|BE-3[0-2]|IDX-0[3-689]|IDX-1[3-9]|IDX-2[1-7]|DB-|X-0[3-9])",
+  "PROP",
+  "No parser, codec, arithmetic or algebraic invariant with a generative input domain; behaviour is enumerated exactly by its UNIT/INT rows (and DB constraints by T-DBO-002/003).",
+  "NOPROP"
+ ],
+ [
+  "^(KEY-0[2-4]|KEY-2[23])$",
+  "PROP",
+  "Generative invariants for the vault/KDF/storage stack live in T-KEY-012, T-KEY-140..142.",
+  "PTR-KEY-PROP"
+ ],
+ [
+  "^(BE-08|BE-2[89])$",
+  "PROP",
+  "Covered by T-BE-095/096 fuzzers and the deterministic idempotency matrix T-BE-026..029.",
+  "PTR-BE-PROP"
+ ],
+ [
+  "^(KEY-0[1-4]|KEY-1[0-3]|KEY-2[3]|KEY-3[01]|SIG-|DAPP-0[579]|DAPP-1[0-35689]|DAPP-20|EXT-0[2-79]|EXT-1[2-5]|UX-|SA-0[1-6]|SA-09|SA-10|CH-07|DATA-0[34]|BE-29|BE-3[0-2]|IDX-0[2-9]|IDX-1[0-9]|IDX-2[0-3]|IDX-2[6-9]|IDX-30)",
+  "CON",
+  "Internal function, not a cross-component contract; component contracts are covered by T-MSG-006, T-PM-007, T-DAPP-060, T-DATA-016, T-RT-003, T-IDX-060.",
+  "NOCON"
+ ],
+ [
+  "^DB-",
+  "CON",
+  "The schema contract is the golden schema dump T-DB-025 and object check T-DBO-001 (categorised MIG).",
+  "PTR-DB-CON"
+ ],
+ [
+  "^X-",
+  "CON",
+  "Cross-cutting; contracts are covered in the aggregated rows.",
+  "NOCON-X"
+ ]
+]
