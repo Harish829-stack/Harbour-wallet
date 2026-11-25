@@ -1,0 +1,8 @@
+activity.new {"tracked_address_id":7,"chain":"base","tx_hash":"0x1","asset":"native","kind":"native","amount_raw":"5","symbol":"ETH","decimals":6,"spam_score":0,"block_time":"2026-11-20T00:00:00Z"}
+address.added {"tracked_address_id":7,"chain":"base","address":"0xab","deny_backfill":true}
+balance.changed {"tracked_address_id":7,"chain":"base","address":"0xab","as_of_block":9,"balances":[{"asset_ref":"native","amount_raw":"1"}]}
+centrifugo.chans ["balances:base.0xab","tx:base.0xcd"]
+chain.raw {"source":"alchemy","body":{"x":1}}
+price.tick {"at":"2026-11-20T00:00:00Z","prices":{"1":2.5}}
+tx.status/api {"chain":"base","tx_hash":"0x1","status":"pending","from":"0xab"}
+tx.status/track {"chain":"base","tx_hash":"0x1","status":"confirmed","block_number":5,"from":"0xab"}

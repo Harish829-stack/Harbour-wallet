@@ -347,10 +347,23 @@ func TestHedgingOnlyForUserFacing(t *testing.T) {
 	if fastest > time.Second {
 		t.Fatalf("hedged read never beat the slow upstreams: %v", fastest)
 	}
-	// Background: exactly one upstream call per read.
-	before := int64(0)
-	for _, n := range r.nodes {
-		before += n.count("eth_getBalance")
+	// Background: exactly one upstream call per read. OBS-14: hedge requests of the reads above may still be on their way to the
+	// slow nodes under a loaded parallel run; wait until the per-node counts stop moving before taking the "before" count.
+	total := func() int64 {
+		var n int64
+		for _, node := range r.nodes {
+			n += node.count("eth_getBalance")
+		}
+		return n
+	}
+	before := total()
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
+		time.Sleep(250 * time.Millisecond)
+		if now := total(); now != before {
+			before = now
+			continue
+		}
+		break
 	}
 	call(r.g, "eth_getBalance", `["0x00000000000000000000000000000000000000ff","latest"]`, gateway.CallOptions{})
 	after := int64(0)

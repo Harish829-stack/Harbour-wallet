@@ -1,0 +1,41 @@
+{
+ "comment": "Canonical strings computed independently (Python hashlib) from the HB1 spec in internal/devicesig/devicesig.go. Shared by Go devicesig tests and extension test/qa/canonical-golden.test.js (T-BE-021, T-CH-013).",
+ "vectors": [
+  {
+   "method": "GET",
+   "path_and_query": "/v1/me",
+   "date": "1700000000",
+   "nonce": "AAAAAAAAAAAAAAAAAAAAAAAA",
+   "device": "123e4567-e89b-12d3-a456-426614174000",
+   "body_b64": "",
+   "canonical": "HB1\nGET\n/v1/me\n1700000000\nAAAAAAAAAAAAAAAAAAAAAAAA\n123e4567-e89b-12d3-a456-426614174000\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "method": "post",
+   "path_and_query": "/v1/tx/sepolia/broadcast?x=1&y=%20z",
+   "date": "1700000001",
+   "nonce": "nonce_with-dash_123",
+   "device": "123e4567-e89b-12d3-a456-426614174000",
+   "body_b64": "eyJyYXciOiIweDAyIn0=",
+   "canonical": "HB1\nPOST\n/v1/tx/sepolia/broadcast?x=1&y=%20z\n1700000001\nnonce_with-dash_123\n123e4567-e89b-12d3-a456-426614174000\nf30164c899d539cb01bfd8b019eff2ea8f53b176405d9c485936a593aa7e6a8e"
+  },
+  {
+   "method": "PUT",
+   "path_and_query": "/v1/me/addresses",
+   "date": "1",
+   "nonce": "abcdefghijklmnop",
+   "device": "00000000-0000-0000-0000-000000000000",
+   "body_b64": "eyJhZGQiOlt7ImNoYWluIjoiYmFzZSIsImFkZHJlc3MiOiIweEFBIn1dLCJuIjoiw6ninJMifQ==",
+   "canonical": "HB1\nPUT\n/v1/me/addresses\n1\nabcdefghijklmnop\n00000000-0000-0000-0000-000000000000\nc0d9b13c5058f8506cb419d4ae879722ef6ecc2ef8238c7e830d25aaacbaccdf"
+  },
+  {
+   "method": "Delete",
+   "path_and_query": "/v1/me/push?q=%E2%9C%93&empty=",
+   "date": "1999999999",
+   "nonce": "_-_-AbCdEfGhIjKlMnOpQrSt",
+   "device": "00000000-0000-0000-0000-000000000001",
+   "body_b64": "eyJuYW1lIjoiWm/DqyDwn5qAIiwibm90ZSI6IuKArmV2aWwifQ==",
+   "canonical": "HB1\nDELETE\n/v1/me/push?q=%E2%9C%93&empty=\n1999999999\n_-_-AbCdEfGhIjKlMnOpQrSt\n00000000-0000-0000-0000-000000000001\n175efabb1503283a186db04ce64a96da1f91bb5c70a353c5b57c66b970e0a120"
+  }
+ ]
+}

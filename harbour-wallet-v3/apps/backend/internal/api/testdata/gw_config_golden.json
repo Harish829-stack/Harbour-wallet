@@ -1,0 +1,6 @@
+{
+ "comment": "Shared golden for T-GW-002 (Go handler) and T-EXT-047 (extension refreshConfig). Throwaway test key generated with node:crypto; never a production key.",
+ "config": "{\"version\":7,\"expiresAt\":4102444800,\"flags\":{\"swap\":true,\"smartAccounts\":false},\"chains\":{\"sepolia\":true},\"killedProviders\":[\"p1\"],\"announcements\":[{\"id\":\"a1\",\"title\":\"Maintenance\",\"body\":\"Short window\",\"url\":\"https://status.example\"}]}",
+ "signature": "zL/aPgBtICHXqjsGiz2cEQ71H+QAeaCEcaVb42RYq3BL9AI+FsACCrE06ZXFVSsHgxXUMbuQuvziphNipsDdCg==",
+ "public_key": "u7e5G6RmdGx8IACF0URo5ESGIL8Qhas+CE16I34v9D0="
+}

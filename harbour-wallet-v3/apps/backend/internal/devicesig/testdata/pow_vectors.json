@@ -1,0 +1,84 @@
+{
+ "comment": "sha256(challenge ':' pub ':' counter) leading-zero-bit counts computed independently with Python (T-IDX-044, T-DATA-011).",
+ "vectors": [
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "0",
+   "leading_zero_bits": 1
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "1",
+   "leading_zero_bits": 0
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "2",
+   "leading_zero_bits": 0
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "17",
+   "leading_zero_bits": 1
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "255",
+   "leading_zero_bits": 1
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "999999",
+   "leading_zero_bits": 1
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "0",
+   "leading_zero_bits": 1
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "1",
+   "leading_zero_bits": 0
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "2",
+   "leading_zero_bits": 0
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "17",
+   "leading_zero_bits": 0
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "255",
+   "leading_zero_bits": 6
+  },
+  {
+   "challenge": "x",
+   "pub": "y",
+   "counter": "999999",
+   "leading_zero_bits": 7
+  },
+  {
+   "challenge": "Y2hhbGxlbmdl",
+   "pub": "cHVia2V5",
+   "counter": "13859",
+   "leading_zero_bits": 14,
+   "first_solution_for_12_bits": true
+  }
+ ]
+}
