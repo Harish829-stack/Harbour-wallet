@@ -358,12 +358,15 @@ export function InkTabs<K extends string>({ tabs, value, onChange, label, gap = 
     for (const el of Object.values(refs.current) as Array<HTMLButtonElement | null>) if (el) observer.observe(el);
     return () => observer.disconnect();
   }, [value, tabKey]);
-  return <div ref={strip} role="tablist" style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${T.border}`, position: 'relative', ...style }}>
+  // BUG-13: only the tabs live inside role="tablist"; extra controls passed as children sit beside it (ARIA aria-required-children).
+  return <div ref={strip} style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${T.border}`, position: 'relative', ...style }}>
+    <div role="tablist" style={{ display: 'flex', alignItems: 'center' }}>
     {tabs.map((k) => <button key={k} role="tab" aria-selected={value === k} tabIndex={value === k ? 0 : -1} onKeyDown={(e) => {
       const index = tabs.indexOf(k);
       const next = e.key === 'ArrowRight' ? (index + 1) % tabs.length : e.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
       if (next >= 0) { e.preventDefault(); onChange(tabs[next]); refs.current[tabs[next]]?.focus(); }
     }} ref={(el) => { refs.current[k] = el; }} className="hb-inktab" onClick={() => onChange(k)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: pad, marginRight: gap, fontWeight: 700, fontSize, color: value === k ? T.text : T.sub }}>{label(k)}</button>)}
+    </div>
     {children}
     {ink && <span className="hb-ink" style={{ width: ink.w, transform: `translateX(${ink.x}px)` }} />}
   </div>;

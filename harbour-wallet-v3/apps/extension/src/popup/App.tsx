@@ -52,6 +52,16 @@ const Shell: React.FC<{ children: React.ReactNode; header?: boolean; k?: string 
 );
 
 
+/** BUG-14: worker codes become sentences on the lock screen (the throttle code used to be shown verbatim). */
+function unlockError(res: { error?: string; retryAfterMs?: number }): string {
+  if (res.error === 'TOO_MANY_ATTEMPTS') {
+    const s = Math.ceil(Math.max(0, Number(res.retryAfterMs) || 0) / 1000);
+    return s > 0 ? `Too many attempts. Try again in ${s >= 120 ? `${Math.ceil(s / 60)} minutes` : `${s} second${s === 1 ? '' : 's'}`}.` : 'Too many attempts. Try again in a moment.';
+  }
+  if (res.error === 'VAULT_IS_EMPTY') return 'No wallet found on this device.';
+  return res.error || 'Incorrect password';
+}
+
 export function App() {
   const [route, setRoute] = useState(window.location.hash);
   useEffect(() => { const change = () => setRoute(window.location.hash); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, []);
@@ -68,6 +78,7 @@ function WalletApp() {
   const [totalUsd, setTotalUsd] = useState<number | null>(null);
   const [balLoading, setBalLoading] = useState(false);
   const [backupRequired, setBackupRequired] = useState(false);
+  const [trackingNotice, setTrackingNotice] = useState<string | undefined>(undefined);
   const [accounts, setAccounts] = useState<Array<{ derivationIndex: number; name: string; addresses: Record<string, string> }>>([]);
   const [activeAccount, setActiveAccount] = useState(0);
   const [hiddenAssets, setHiddenAssets] = useState<string[]>([]);
@@ -102,7 +113,7 @@ function WalletApp() {
       setBalLoading(true);
       try {
         const acc = await bg({ type: 'getAccounts' });
-        if (!cancelled && acc?.ok) { setAddrs(acc.addresses ?? {}); setBackupRequired(!!acc.backupRequired); setAccounts(acc.accounts ?? []); setActiveAccount(acc.activeAccount ?? 0); }
+        if (!cancelled && acc?.ok) { setAddrs(acc.addresses ?? {}); setBackupRequired(!!acc.backupRequired); setTrackingNotice(typeof acc.tracking?.message === 'string' ? acc.tracking.message : undefined); setAccounts(acc.accounts ?? []); setActiveAccount(acc.activeAccount ?? 0); }
         const prefs = await bg({ type: 'getUiPrefs' });
         if (!cancelled && prefs?.ok) { setHiddenAssets(prefs.hiddenAssets ?? []); setNetworkFilter(prefs.networkFilter ?? null); }
         const res = await bg({ type: 'getBalances', addresses: acc?.addresses });
@@ -161,7 +172,7 @@ function WalletApp() {
   const doUnlock = async () => {
     if (busy || !pwFilled) return; setErr(''); setBusy(true);
     const password = pw.take(); setPwFilled(false);
-    try { const res = await bg({ type: 'unlock', password }); if (res.ok) setScreen('home'); else setErr(res.error || 'Incorrect password'); } finally { setBusy(false); }
+    try { const res = await bg({ type: 'unlock', password }); if (res.ok) setScreen('home'); else setErr(unlockError(res)); } finally { setBusy(false); }
   };
 
   if (screen === 'loading') return <Shell k={screen} header={false}><div role="status" style={{ color: T.sub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginTop: 80 }}><Spinner size={28} />Loading your wallet…</div></Shell>;
@@ -205,6 +216,7 @@ function WalletApp() {
     accounts={accounts} activeAccount={activeAccount}
     hiddenAssets={hiddenAssets} networkFilter={networkFilter}
     backupRequired={backupRequired}
+    trackingNotice={trackingNotice}
     onRefresh={() => setRefreshTick((n) => n + 1)}
     onLock={() => bg({ type: 'lock' }).then(() => setScreen('unlock'))}
   />;

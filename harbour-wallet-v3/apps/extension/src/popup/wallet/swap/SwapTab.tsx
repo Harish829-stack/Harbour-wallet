@@ -83,9 +83,12 @@ export const SwapTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav,
   const fee = step?.networkFee ? BigInt(step.networkFee.amount) : 0n;
   const nativeSell = from?.address === 'native';
   const feeNative = step?.networkFee?.isNative !== false;
-  // gasless (beta) EVM swaps get their fee sponsored; if sponsorship fails the background falls back and the chain rejects an unfunded tx
-  const sponsored = !!s.gaslessAvailable && !!from && domainById(from.domainId)?.kind === 'evm';
-  const cannotCoverGas = !sponsored && !!step && !insufficientBalance && feeNative && nativeBal < fee + (nativeSell && atomic ? atomic : 0n);
+  // Gasless (beta) EVM swaps MAY get their fee sponsored: the paymaster decides per operation, and when it refuses the background falls back
+  // to a user-paid transaction. OBS-16: the screen therefore never says the fee is covered; it says sponsorship will be tried.
+  const sponsorPossible = !!s.gaslessAvailable && !!from && domainById(from.domainId)?.kind === 'evm';
+  const shortOfGas = !!step && !insufficientBalance && feeNative && nativeBal < fee + (nativeSell && atomic ? atomic : 0n);
+  const cannotCoverGas = !sponsorPossible && shortOfGas;
+  const dependsOnSponsor = sponsorPossible && shortOfGas;
   const feeSymbol = step?.networkFee?.symbol ?? (from ? domainById(from.domainId)?.nativeSymbol : '');
   const showsAllowance = step?.approval?.needed === true;
   const needsPriceImpactAck = severity === 'severe' && !s.ack;
@@ -151,6 +154,7 @@ export const SwapTab: React.FC<{ nav: Nav; notice?: React.ReactNode }> = ({ nav,
       {errText && <Notice tone="error">{errText}</Notice>}
       {msg && <Notice tone="error">{msg}</Notice>}
       {cannotCoverGas && <Notice tone="warning">Not enough {feeSymbol} to cover network fee</Notice>}
+      {dependsOnSponsor && <Notice tone="warning" data-testid="swap-sponsor-notice">Not enough {feeSymbol} for the network fee. Harbour will ask to sponsor it (beta); if sponsorship is refused for this swap, it fails and nothing is spent.</Notice>}
 
       {(step || q.loading) && atomic && atomic > 0n && !errText && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${T.border}`, paddingTop: 4 }} data-testid="swap-details">

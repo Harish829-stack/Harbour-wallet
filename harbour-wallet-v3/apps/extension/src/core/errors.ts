@@ -3,7 +3,7 @@
 const NETWORK_TEXT = 'The network is unreachable or busy right now. Please check your connection and try again.';
 const GENERIC_TEXT = 'Something went wrong. Please try again.';
 const NETWORK = /fetch failed|failed to fetch|network ?error|network request|timeout|timed out|abort(ed)?\b|rate.?limit|circuit open|failed to load|you are offline|\bECONN|ENOTFOUND|socket|all RPC endpoints|no (nodes|provider) available|load failed/i;
-const TECHNICAL = /TypeError|SyntaxError|ReferenceError|RangeError|Unexpected (token|end)|JSON|undefined|\bnull\b|is not a function|cannot read|Failed to execute|https?:\/\/|0x[0-9a-f]{16,}|\bat \S+:\d+:\d+|invalid response|stack|\bECONN|CORS|\[object/i;
+const TECHNICAL = /TypeError|SyntaxError|ReferenceError|RangeError|Unexpected (token|end)|JSON|undefined|\bnull\b|is not a function|cannot read|Failed to execute|https?:\/\/|0x[0-9a-f]{16,}|\bat (?:\S+ \()?\S+:\d+:\d+\)?|invalid response|stack|\bECONN|CORS|\[object/i;
 const CODE = /^\S+$/; // a single token with no spaces is a code, not prose
 
 const forStatus = (s: number): string => {

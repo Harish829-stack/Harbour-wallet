@@ -86,13 +86,13 @@ export function formatFiat(usd: number, ctx: FiatCtx): string {
   const v = toFiat(usd, ctx);
   if (!Number.isFinite(v)) return '—';
   if (isCryptoCurrency(ctx.code)) {
-    if (v !== 0 && Math.abs(v) < 1e-8) return `<${trimDecimals(1e-8, 8, ctx.locale)} ${ctx.code}`;
+    if (v !== 0 && Math.abs(v) < 1e-8) return `${v < 0 ? '-' : ''}<${trimDecimals(1e-8, 8, ctx.locale)} ${ctx.code}`; // OBS-13: keep the sign
     return `${trimDecimals(v, 8, ctx.locale)} ${ctx.code}`;
   }
   const f = nf(ctx.locale, { style: 'currency', currency: ctx.code });
   const digits = f.resolvedOptions().maximumFractionDigits ?? 2;
   const min = 10 ** -digits;
-  if (v !== 0 && Math.abs(v) < min) return `<${f.format(min)}`;
+  if (v !== 0 && Math.abs(v) < min) return v < 0 ? `>${f.format(-min)}` : `<${f.format(min)}`; // OBS-13: a tiny loss stays a loss (">-$0.01")
   return f.format(v);
 }
 export const formatFiatSigned = (usd: number, ctx: FiatCtx) => `${usd > 0 ? '+' : ''}${formatFiat(usd, ctx)}`;

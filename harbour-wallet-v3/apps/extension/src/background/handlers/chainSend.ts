@@ -66,6 +66,8 @@ async function quoteFor(ctx: HandlerCtx, msg: Msg, pr: Prepared) {
   if (msg.isMax) { const t = q.tiers.find((x) => x.id === tier) ?? q.tiers[1]; amount = t.max; q = await fam.quote(env(ctx.core), { ...base, amount }); }
   return { params: { ...base, amount } as SendParams, quote: q, tier };
 }
+/** A transfer of nothing still costs a network fee: never sign one (also covers a Max that came out as 0 because the fee exceeds the balance). */
+function refuseZero(p: SendParams): void { if (p.amount <= 0n) throw new SendError('zero-amount', p.isMax ? 'Your balance does not cover the network fee.' : 'Enter an amount greater than zero.'); }
 const stripPlaceholder = (q: SendQuote, placeholder: boolean) => (placeholder ? { ...q, issues: q.issues.filter((i) => i.code !== 'self-send' && i.code !== 'smart-contract') } : q);
 
 async function saveRecord(rec: SentTx) { const cur = readSent(await local.get(SENT_TX_KEY)); await local.set(SENT_TX_KEY, upsertSent(cur, rec)); }
@@ -128,6 +130,7 @@ export const handlers: HandlerMap = {
     try {
       const pr = await prepare(ctx, msg); if (pr.placeholder) throw new Error('Enter a recipient address');
       const { params, quote, tier } = await quoteFor(ctx, msg, pr);
+      refuseZero(params); // BUG-15: enforced in the worker, not only by the Send screen
       const expected = await planHashOf({ chainId: pr.chain.id, from: pr.from, to: pr.to, assetKey: pr.assetKey, amount: msg.isMax ? 'max' : params.amount.toString(), memo: msg.memo ? String(msg.memo).trim() : '' });
       if (msg.planHash !== expected) throw new Error('The transaction changed after you reviewed it. Go back and review it again.');
       const picked = quote.tiers.find((t) => t.id === tier)!;
@@ -148,6 +151,7 @@ export const handlers: HandlerMap = {
       for (const [k, v] of ledgerPending) if (Date.now() - v.at > LEDGER_TTL) ledgerPending.delete(k);
       const pr = await prepare(ctx, msg); if (pr.placeholder) throw new Error('Enter a recipient address');
       const { params, quote, tier } = await quoteFor(ctx, msg, pr);
+      refuseZero(params); // BUG-15: enforced in the worker, not only by the Send screen
       const blocking = quote.issues.find((i) => i.blocking); if (blocking) throw new SendError(blocking.code, blocking.message);
       const id = crypto.randomUUID();
       if (pr.chain.kind === 'evm') {

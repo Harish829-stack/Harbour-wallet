@@ -7,7 +7,7 @@ import { createPublicClient, http, defineChain, erc20Abi, maxUint256, isAddress,
 import { evmAccountFromBytes } from '../core/provider/evmAccount';
 import { local } from '../core/storage';
 import { rpcUrl, solanaRpcUrl, protectedRpcUrl } from '../core/rpc';
-import { openActiveKeys } from './keys';
+import { openActiveKeys, activeAddresses } from './keys';
 import type { VaultService } from '../core/vaultService';
 import type { WalletService } from '../core/walletService';
 import type { SwapAsset, SwapHistoryItem, SwapRoute, SwapSettings, SwapStep, SwapQuoteResult } from '../core/swap/types';
@@ -111,8 +111,7 @@ async function btcBalance(address: string): Promise<bigint> {
 
 // ---------- balances ----------
 export async function getBalances(deps: SwapDeps, assets: SwapAsset[]): Promise<Record<string, string>> {
-  const keys = await openActiveKeys(deps.core, deps.vault, deps.wallet);
-  const addresses = keys.addresses; keys.dispose();
+  const addresses = await activeAddresses(deps.vault); // read-only: no keystore decryption (OBS-05)
   const out: Record<string, string> = {};
   await Promise.all(SWAP_DOMAINS.map(async (d) => {
     const list = assets.filter((a) => a.domainId === d.id);
@@ -160,7 +159,7 @@ export async function maxSpendable(deps: SwapDeps, asset: SwapAsset): Promise<{ 
   let reserve: bigint;
   if (d.kind === 'utxo') {
     // exact: wallet-core's max plan at the average fee rate, plus room for the 80-byte OP_RETURN memo output
-    const keys = await openActiveKeys(deps.core, deps.vault, deps.wallet); const from = keys.addresses.bitcoin; keys.dispose();
+    const from = (await activeAddresses(deps.vault)).bitcoin;
     const q = await utxoFamily.quote(sendEnv(deps.core), { chain: btcChain(), from, to: from, amount: 0n, asset: { kind: 'native' } } as any);
     const avg = q.tiers.find((t) => t.id === 'average')!;
     const max = avg.max > 0n ? avg.max - BigInt(Math.ceil(Number(avg.detail?.split(' ')[0] ?? 2) * 90)) : 0n;
@@ -188,8 +187,7 @@ async function tryGasless(chainId: number, client: any, privateKey: Uint8Array, 
 export async function quote(deps: SwapDeps, p: { from: SwapAsset; to: SwapAsset; amount: string; slippage: string }): Promise<{ ok: true; result: SwapQuoteResult } | ReturnType<typeof fail>> {
   try {
     const settings = await getSettings();
-    const keys = await openActiveKeys(deps.core, deps.vault, deps.wallet);
-    const addrs = keys.addresses; keys.dispose();
+    const addrs = await activeAddresses(deps.vault);
     const fd = domainById(p.from.domainId); const td = domainById(p.to.domainId);
     if (!fd || !td) throw swapError('unsupported_domain');
     const fromAddress = addrs[fd.addressKey]; const toAddress = addrs[td.addressKey];

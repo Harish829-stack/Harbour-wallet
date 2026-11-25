@@ -79,8 +79,8 @@ export const Wallet: React.FC<{
   addrs: Record<string, string>; balances: Record<string, any>; totalUsd: number | null; loading: boolean;
   accounts?: Array<{ derivationIndex: number; name: string; addresses: Record<string, string> }>; activeAccount?: number;
   hiddenAssets?: string[]; networkFilter?: string | null;
-  backupRequired?: boolean; onRefresh: () => void; onLock: () => void;
-}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, onRefresh, onLock }) => {
+  backupRequired?: boolean; trackingNotice?: string; onRefresh: () => void; onLock: () => void;
+}> = ({ addrs, balances, totalUsd, loading, accounts, activeAccount, hiddenAssets, networkFilter, backupRequired, trackingNotice, onRefresh, onLock }) => {
   injectStyles();
   const [tabState, setTabState] = useState<{ tab: Tab; direction: string }>({ tab: 'home', direction: 'hb-tab-fade' });
   const tab = tabState.tab;
@@ -193,6 +193,9 @@ export const Wallet: React.FC<{
             <div className="hb-tap" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav.push('backup'); } }} onClick={() => nav.push('backup')} style={{ background: 'var(--hb-warn-bg)', border: '1px solid var(--hb-warn-line)', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               <Ic d={ICON.shield} size={18}/><div style={{ flex: 1, fontSize: 13, color: 'var(--hb-warn-ink)' }}>Back up your secret phrase</div><span style={{ color: 'var(--hb-warn-ink)' }}><Ic d={ICON.chevron} size={16} /></span>
             </div>
+          )}
+          {trackingNotice && (
+            <div role="status" data-testid="tracking-limit-notice" style={{ background: 'var(--hb-warn-bg)', borderRadius: 12, padding: '10px 12px', margin: '0 0 12px', fontSize: 12, color: 'var(--hb-warn-ink)' }}>{trackingNotice}</div>
           )}
           <section className="hb-balance-hero" aria-label="Portfolio balance">
             <div className="hb-balance-topline"><span>Total balance</span><div className="hb-balance-tools">

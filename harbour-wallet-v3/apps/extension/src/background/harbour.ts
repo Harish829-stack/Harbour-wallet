@@ -10,6 +10,20 @@ import { chainById, explorerTxUrl } from '../core/chains/index';
 import { logWarn } from '../core/logger';
 
 const TRACKED_KEY = 'harbour:tracked';
+/** Addresses the backend refused to track for quota reasons on the last sync (BUG-10); null when everything is tracked. */
+export const TRACKING_STATUS_KEY = 'harbour:trackingStatus';
+export interface TrackingStatus { untracked: string[]; limit: string; at: number }
+/** What the wallet tells the user about it (undefined when every account is tracked). */
+export async function trackingNotice(): Promise<{ limited: true; untracked: number; message: string } | undefined> {
+  const s = await local.get<TrackingStatus | null>(TRACKING_STATUS_KEY);
+  if (!s || !Array.isArray(s.untracked) || !s.untracked.length) return undefined;
+  const n = s.untracked.length;
+  return { limited: true, untracked: n, message: `Harbour reached its tracking limit for this device: balances and history for ${n} account${n === 1 ? '' : 's'} are not updated yet. It tries again automatically.` };
+}
+const activeEvm = (st: any): string | undefined => {
+  const w = st?.wallets?.[st?.activeWalletId]; const accts: any[] = Array.isArray(w?.accounts) && w.accounts.length ? w.accounts : [{ addresses: w?.addresses ?? {} }];
+  const e = (accts[w?.activeAccount ?? 0] ?? accts[0])?.addresses?.ethereum; return typeof e === 'string' && /^0x[0-9a-fA-F]{40}$/.test(e) ? e.toLowerCase() : undefined;
+};
 type GetState = () => Promise<any>;
 
 // ---------- address sync ----------
@@ -29,8 +43,12 @@ export function syncAddresses(getState: GetState): Promise<void> {
     let st: any; try { st = await getState(); } catch { return; } // locked: try again after unlock
     const addrs = evmAddresses(st); const fp = addrs.join(',');
     if ((await local.get<string>(TRACKED_KEY)) === fp) return;
-    const r = await syncTracked(addrs.flatMap((a) => refsFor(a)));
-    await local.set(TRACKED_KEY, fp);
+    // The active account goes first, so it is the one tracked when the device is at its quota.
+    const active = activeEvm(st); const ordered = active ? [active, ...addrs.filter((a) => a !== active)] : addrs;
+    const r = await syncTracked(ordered.flatMap((a) => refsFor(a)));
+    // BUG-10: a quota-limited sync is remembered (shown in the wallet) and NOT marked done, so the next sync tries the rest again.
+    await local.set(TRACKING_STATUS_KEY, r.untracked.length ? { untracked: r.untracked, limit: r.limit ?? 'quota', at: Date.now() } satisfies TrackingStatus : null);
+    if (!r.untracked.length) await local.set(TRACKED_KEY, fp);
     if (r.added || r.removed) { invalidatePortfolio(); void reconnectRealtime(); }
   })().catch((e) => logWarn(`harbour address sync failed: ${e?.message ?? e}`)).finally(() => { syncing = null; });
   return syncing;

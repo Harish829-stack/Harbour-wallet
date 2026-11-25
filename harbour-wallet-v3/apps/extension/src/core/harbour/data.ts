@@ -63,16 +63,33 @@ export async function ensureTracked(refs: AddressRef[]): Promise<void> {
   if (!missing.length) return;
   for (const r of await putResilient(missing, [])) tracked.add(key(r));
 }
-/** Replaces the device's tracked set with `want` (used by the background address sync). */
-export async function syncTracked(wantAll: AddressRef[]): Promise<{ added: number; removed: number }> {
+/** Quota refusals of PUT /v1/me/addresses: the device may not track more right now (address cap or daily backfill budget). */
+const QUOTA_CODES = new Set(['backfill_quota', 'quota_exceeded']);
+export interface SyncResult { added: number; removed: number; untracked: string[]; limit?: string }
+/**
+ * Replaces the device's tracked set with `want` (used by the background address sync). BUG-10: removals are sent on their own, then
+ * additions one address (all its networks) at a time in the order given, so when the device hits its address or daily backfill quota
+ * the addresses that fit are still tracked and the rest are reported back (`untracked`, `limit`) instead of the whole sync failing.
+ */
+export async function syncTracked(wantAll: AddressRef[]): Promise<SyncResult> {
   const served = await servedChains(); const want = served ? wantAll.filter((r) => served.has(r.chain)) : wantAll;
   const have = (await listAddresses()).addresses.map((a) => ({ chain: a.chain, address: lc(a.address) }));
   const wantKeys = new Set(want.map(key)); const haveKeys = new Set(have.map(key));
   const add = want.filter((r) => !haveKeys.has(key(r)) && !isRefused(r)); const remove = have.filter((r) => !wantKeys.has(key(r)));
   const accepted = new Set<string>(have.filter((r) => wantKeys.has(key(r))).map(key));
-  for (let i = 0; i < Math.max(add.length, remove.length); i += 100) for (const r of await putResilient(add.slice(i, i + 100), remove.slice(i, i + 100))) accepted.add(key(r));
+  for (let i = 0; i < remove.length; i += 100) await putResilient([], remove.slice(i, i + 100));
+  const groups = new Map<string, AddressRef[]>(); for (const r of add) { const g = groups.get(r.address) ?? []; g.push(r); groups.set(r.address, g); }
+  const untracked: string[] = []; let limit: string | undefined;
+  for (const [address, refs] of groups) {
+    if (limit) { untracked.push(address); continue; }
+    try { for (const r of await putResilient(refs, [])) accepted.add(key(r)); }
+    catch (e) {
+      if (!(e instanceof HarbourApiError) || !QUOTA_CODES.has(e.code)) throw e;
+      limit = e.code; untracked.push(address);
+    }
+  }
   tracked.clear(); for (const r of want) if (accepted.has(key(r))) tracked.add(key(r));
-  return { added: add.length, removed: remove.length };
+  return { added: add.length, removed: remove.length, untracked, ...(limit ? { limit } : {}) };
 }
 /** Runs fn; if the API says an address isn't tracked yet, tracks it and retries once. */
 async function withTracking<T>(refs: AddressRef[], fn: () => Promise<T>): Promise<T> {

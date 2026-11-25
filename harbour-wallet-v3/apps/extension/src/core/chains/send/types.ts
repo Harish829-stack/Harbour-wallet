@@ -41,7 +41,7 @@ export interface FeeTier {
 }
 export type IssueCode =
   | 'insufficient-funds' | 'insufficient-fee' | 'low-gas' | 'dust' | 'smart-contract' | 'memo-required' | 'inactive-account' | 'reserve'
-  | 'below-minimum' | 'invalid-recipient' | 'invalid-memo' | 'estimate-failed' | 'network' | 'self-send' | 'token-not-registered' | 'info';
+  | 'below-minimum' | 'invalid-recipient' | 'invalid-memo' | 'estimate-failed' | 'network' | 'self-send' | 'token-not-registered' | 'info' | 'zero-amount';
 export interface SendIssue { code: IssueCode; message: string; blocking: boolean }
 export interface SendQuote {
   tiers: FeeTier[];

@@ -2,6 +2,7 @@
 // TW's Send flow warns on: insufficient gas (`send.low-gas-warning`), a recipient that is a smart contract
 // (`send.confirmation.risk.smart-contract`: "Sending tokens directly to a contract may result in permanent loss") and
 // shows the estimated network fee (`send-tx.content.network-fee.estimated-fee`) [certain: message ids in App chunk].
+import { GATEWAY_URL } from '../kit/endpoints';
 import { getAddress, isAddress, parseEther, type PublicClient } from 'viem';
 import { encodeTransfer, parseTokenAmount, tokenBalance } from './erc20';
 
@@ -133,11 +134,18 @@ export async function resolveEns(name: string, mainnetRpcs: string[], call: Rpc)
   }
   throw last;
 }
-/** Bonfida SNS public proxy (Solana .sol names). */
-export async function resolveSns(name: string, f: typeof fetch): Promise<string> {
-  const r = await f(`https://sns-sdk-proxy.bonfida.workers.dev/resolve/${encodeURIComponent(name.trim().toLowerCase().replace(/\.sol$/, ''))}`, { signal: AbortSignal.timeout(8000) });
+/**
+ * Solana .sol names. OBS-15: resolved through the Harbour gateway (/v1/gw/sns/resolve/<name>), which relays to the SNS resolver, so the
+ * third-party service never sees the user's IP or device; without a gateway the lookup is not offered.
+ */
+export async function resolveSns(name: string, f: typeof fetch, gatewayUrl: string = GATEWAY_URL): Promise<string> {
+  const label = name.trim().toLowerCase().replace(/\.sol$/, '');
+  if (!/^[a-z0-9-]{1,63}$/.test(label)) throw new Error('Name could not be resolved');
+  if (!gatewayUrl) throw new Error('.sol names are not available in this build');
+  const r = await f(`${gatewayUrl}/sns/resolve/${encodeURIComponent(label)}`, { signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('Name could not be resolved'); const j: any = await r.json();
-  if (j?.s !== 'ok' || typeof j.result !== 'string') throw new Error('Name could not be resolved'); return j.result;
+  if (j?.s !== 'ok' || typeof j.result !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(j.result)) throw new Error('Name could not be resolved');
+  return j.result;
 }
 
 // ---- chain resolution incl. user-added EVM networks ----

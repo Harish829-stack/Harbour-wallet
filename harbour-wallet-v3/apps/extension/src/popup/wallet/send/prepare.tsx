@@ -4,7 +4,7 @@ import { Screen, Btn, Coin, Spinner, IconBtn, Empty } from '../ui';
 import type { Ctx } from '../screens';
 import { useTokenItems } from '../tokensStore';
 import { useDraft, setDraft, resetDraft, getDraft } from './store';
-import { sendTarget, useSendSupport, useQuote, fmtAmount, decimalOnly, priceUsd, fiatToCrypto, shortAddr, MEMO_LABEL, tierOf } from './lib';
+import { sendTarget, useSendSupport, useQuote, fmtAmount, fmtBalance, decimalOnly, priceUsd, fiatToCrypto, shortAddr, MEMO_LABEL, tierOf } from './lib';
 import { Notice, AddressScanner, ContactsSheet, FeeRow, FeeSheet, type Contact } from './parts';
 import { money, getSettingsState } from '../../settingsStore';
 import { chainById } from '../../../core/chains/index';
@@ -67,7 +67,7 @@ export const SendPrepare: React.FC<Ctx> = (c) => {
   const amountRaw = q.data?.amountRaw ?? '0'; const haveAmount = d.isMax ? amountRaw !== '0' : Number(cryptoAmount) > 0;
   const shownAmount = d.isMax && q.data ? (d.fiat && price ? ((Number(fmtAmount(amountRaw, decimals, 12)) * price) / usdPer).toFixed(2) : fmtAmount(amountRaw, decimals, Math.min(decimals, 8))) : d.amount;
   const usdVal = (cryptoAmount ? Number(cryptoAmount) : d.isMax && q.data ? Number(fmtAmount(amountRaw, decimals, 12)) : 0) * (price ?? 0);
-  const balanceTxt = q.data ? `${fmtAmount(quote!.assetBalance, decimals)} ${a.sym}` : `${c.balances[assetId]?.formatted ?? '0'} ${a.sym}`;
+  const balanceTxt = q.data ? `${fmtBalance(quote!.assetBalance, decimals)} ${a.sym}` : `${c.balances[assetId]?.formatted ?? '0'} ${a.sym}`;
   const feeFiat = (raw: string) => { const fp = chainById(chainId)?.id ? priceUsd(c, chainId) : null; return fp ? money(Number(fmtAmount(raw, quote?.feeDecimals ?? 18, 12)) * fp) : undefined; };
   const addrOk = rcp.status === 'valid';
   const canNext = addrOk && haveAmount && !!q.data && !blocking && !q.loading && !q.error;

@@ -20,10 +20,19 @@ export const chainOfAsset = (a: Asset | undefined): ChainInfo | undefined => (a 
 /** Asset descriptor the background understands: chain registry id + optional custom-token id. */
 export const sendTarget = (assetId: string) => { const a = assetOf(assetId); const chain = chainOfAsset(a); return { a, chain, chainId: chain?.id ?? '', tokenId: a?.token ? a.id : undefined }; };
 
+const trimFrac = (s: string, maxFrac: number): string => { const [w, f = ''] = s.split('.'); const frac = f.slice(0, maxFrac).replace(/0+$/, ''); return `${w}${frac ? '.' + frac : ''}`; };
+/**
+ * Amounts the user is about to pay (send amount, network fee) at most `maxFrac` decimals. Rounds UP at the last shown digit, so a debit is
+ * never shown smaller than what is signed (BUG-11: 123456789 wei used to show as "0 ETH").
+ */
 export const fmtAmount = (raw: string | bigint, decimals: number, maxFrac = 8): string => {
-  const s = formatUnits(BigInt(raw), decimals); const [w, f = ''] = s.split('.'); const frac = f.slice(0, maxFrac).replace(/0+$/, '');
-  return `${w}${frac ? '.' + frac : ''}`;
+  const v = BigInt(raw);
+  if (decimals <= maxFrac || v <= 0n) return trimFrac(formatUnits(v, decimals), maxFrac);
+  const unit = 10n ** BigInt(decimals - maxFrac);
+  return trimFrac(formatUnits(((v + unit - 1n) / unit), maxFrac), maxFrac);
 };
+/** Balances: round DOWN, so the wallet never shows more than is spendable. */
+export const fmtBalance = (raw: string | bigint, decimals: number, maxFrac = 8): string => trimFrac(formatUnits(BigInt(raw), decimals), maxFrac);
 export const decimalOnly = (v: string, decimals: number): string => { let s = v.replace(/,/g, '.').replace(/[^0-9.]/g, ''); const i = s.indexOf('.'); if (i >= 0) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '').slice(0, decimals); return s; };
 export const shortAddr = (a: string, n = 6) => (a && a.length > 2 * n + 3 ? `${a.slice(0, n)}…${a.slice(-4)}` : a);
 

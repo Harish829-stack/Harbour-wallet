@@ -5,6 +5,7 @@ import type { HandlerMap } from './types';
 import { ALL_CHAINS } from '../../core/chains/index';
 import { fetchNativeBalance, BALANCE_ADAPTERS } from '../../core/chains/adapters';
 import { walletKind } from '../../core/settingsExtra';
+import { trackingNotice } from '../harbour';
 
 
 export const handlers: HandlerMap = {
@@ -18,7 +19,8 @@ export const handlers: HandlerMap = {
         accounts: (Array.isArray(w.accounts) && w.accounts.length ? w.accounts : [{ derivationIndex: 0, name: 'Account 1', addresses: w.addresses ?? {} }])
           .map((a: any, i: number) => ({ index: i, derivationIndex: a.derivationIndex ?? i, name: a.name ?? `Account ${i + 1}`, addresses: a.addresses ?? {} })),
       }));
-      return { ok: true, wallets, activeWalletId: st.activeWalletId ?? wallets[0]?.id ?? null };
+      const tracking = await trackingNotice().catch(() => undefined);
+      return { ok: true, wallets, activeWalletId: st.activeWalletId ?? wallets[0]?.id ?? null, ...(tracking ? { tracking } : {}) };
     } catch (e: any) { return { ok: false, error: e?.message || 'List failed' }; }
   },
 
