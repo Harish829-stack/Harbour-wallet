@@ -21,7 +21,14 @@ export class ApprovalWindow {
     if (id !== undefined) { try { if (await this.w.get(id)) { await this.w.update(id, { focused: true, drawAttention: true }); return; } } catch { /* window is gone */ } }
     let left: number | undefined, top: number | undefined;
     try { const l = await this.w.getLastFocused(); if (l && l.left !== undefined && l.width !== undefined) { left = Math.max(0, l.left + l.width - APPROVAL_W - 16); top = Math.max(0, (l.top ?? 0) + 72); } } catch { /* default position */ }
-    const created = await this.w.create({ url: this.url, type: 'popup', width: APPROVAL_W, height: APPROVAL_H, left, top, focused: true });
+    // BUG-12: Chrome refuses bounds that are not at least half on screen (a focused window larger than the display puts our
+    // corner off-screen). Retry once without coordinates and let Chrome place the window.
+    let created: { id?: number } | undefined;
+    try { created = await this.w.create({ url: this.url, type: 'popup', width: APPROVAL_W, height: APPROVAL_H, left, top, focused: true }); }
+    catch (e) {
+      if (left === undefined && top === undefined) throw e;
+      created = await this.w.create({ url: this.url, type: 'popup', width: APPROVAL_W, height: APPROVAL_H, focused: true });
+    }
     if (created?.id !== undefined) await this.kv.set(PKEYS.WINDOW, created.id);
   }
   /** Close the window when nothing is waiting any more. */

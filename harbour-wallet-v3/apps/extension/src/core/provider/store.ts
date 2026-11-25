@@ -151,6 +151,12 @@ export class PendingStore {
     return this.lock.run(async () => { const m = (await this.kv.get<Record<string, { outcome: Outcome; at: number }>>(PKEYS.SETTLED)) ?? {}; const t = this.now();
       for (const [k, v] of Object.entries(m)) if (t - v.at > SETTLED_TTL_MS) delete m[k]; m[key] = { outcome, at: t }; await this.kv.set(PKEYS.SETTLED, m); });
   }
+  /**
+   * The journaled outcome for `key`, if any. It is deliberately NOT removed (OBS-11): a content script that re-sends the same request
+   * within SETTLED_TTL_MS (worker restart, page reconnect) gets the same answer again instead of a second prompt. Entries expire by TTL.
+   */
+  settledOutcome(key: string): Promise<Outcome | undefined> { return this.takeSettled(key); }
+  /** @deprecated name kept for callers and tests: same as settledOutcome (read, not take). */
   takeSettled(key: string): Promise<Outcome | undefined> {
     return this.lock.run(async () => { const m = (await this.kv.get<Record<string, { outcome: Outcome; at: number }>>(PKEYS.SETTLED)) ?? {}; const v = Object.prototype.hasOwnProperty.call(m, key) ? m[key] : undefined; if (!v) return undefined; if (this.now() - v.at > SETTLED_TTL_MS) { delete m[key]; await this.kv.set(PKEYS.SETTLED, m); return undefined; } return v.outcome; });
   }

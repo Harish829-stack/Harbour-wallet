@@ -109,9 +109,11 @@ export function getProvider(): ProviderService {
     addToken: async ({ walletId, ...t }) => {
       try {
         await ensureCtx(); const vault = ctxCache!.vault; const clean = sanitizeToken({ ...t, manual: false }); if (!clean.ok) return { ok: false, error: clean.error };
-        const st: any = await vault.getState(); const w = st.wallets?.[walletId] ?? activeEntry(st)?.[1]; if (!w) return { ok: false, error: 'No wallet found' };
-        const res = upsertToken(readTokens(w.customTokens), clean.token); if ('error' in res) return { ok: false, error: res.error };
-        w.customTokens = res.list; await vault.persist(st); return { ok: true };
+        return await vault.update((st: any) => {
+          const w = st.wallets?.[walletId] ?? activeEntry(st)?.[1]; if (!w) return { ok: false, error: 'No wallet found' };
+          const res = upsertToken(readTokens(w.customTokens), clean.token); if ('error' in res) return { ok: false, error: res.error };
+          w.customTokens = res.list; return { ok: true };
+        });
       } catch (e: any) { return { ok: false, error: e?.message ?? 'Could not add the token' }; }
     },
     version: (() => { try { return browser.runtime.getManifest().version; } catch { return '0'; } })(),

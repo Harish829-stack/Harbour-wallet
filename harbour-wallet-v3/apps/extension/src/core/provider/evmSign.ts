@@ -7,6 +7,8 @@ import type { TxRequest } from './methods';
 export type SignMode = 'personal' | 'rawHash';
 /** personal_sign / eth_sign. `personal` applies the EIP-191 prefix; `rawHash` signs a 32-byte digest as-is (legacy eth_sign on non-text data). */
 export async function evmSignMessage(pk: Uint8Array, bytesHex: string, mode: SignMode): Promise<Hex> {
+  // OBS-03: only hex is ever signed (callers normalise first; this makes the function safe on its own).
+  if (typeof bytesHex !== 'string' || !/^0x([0-9a-fA-F]{2})*$/.test(bytesHex)) throw new Error('The message must be 0x-prefixed hex.');
   const account = evmAccountFromBytes(pk);
   if (mode === 'rawHash') { if (!/^0x[0-9a-fA-F]{64}$/.test(bytesHex)) throw new Error('A raw signature needs exactly 32 bytes.'); return account.sign!({ hash: bytesHex as Hex }); }
   return account.signMessage({ message: { raw: bytesHex as Hex } });

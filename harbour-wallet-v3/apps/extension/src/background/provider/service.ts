@@ -1,8 +1,9 @@
 import { isPrivateNetworkUrl } from '../../core/provider/origin';
+import { parseTransaction } from 'viem';
 import { BUILD_PROVIDER_POLICY, DEFAULT_EVM_CHAIN, type ProviderPolicy } from '../../core/harbour/policy';
 // The dApp provider's brain: request router (allowlist -> permission checks -> approval queue) and approval resolution.
 // Everything environment-specific (storage, signing, RPC, windows, ports) is injected so the whole flow is unit-testable with fakes.
-import { ERR, ProviderError, serializeError } from '../../core/provider/errors';
+import { ERR, HARDWARE_SIGN_MSG, ProviderError, serializeError } from '../../core/provider/errors';
 import type { InitState, Namespace, PageRequest, SenderInfo } from '../../core/provider/protocol';
 import { senderKey } from '../../core/provider/protocol';
 import { EVM_METHODS, UNSUPPORTED_EVM, isHexData, normalizeAddChain, normalizeEthSign, normalizePersonalSign, normalizeSendTx, normalizeSolMessage, normalizeSolTx, normalizeSwitchChain, normalizeTypedData, normalizeWatchAsset, parseChainIdHex, sameAddress, specFor, toHexQuantity, type TxRequest, hexToBytes, bytesToHex } from '../../core/provider/methods';
@@ -158,6 +159,7 @@ export class ProviderService {
         case 'rpc': {
           if (!this.rpcLimiter.take(s.origin) || !this.rpcAllLimiter.take('*')) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many requests from this site. Please wait a moment.');
           const params = req.params === undefined ? [] : Array.isArray(req.params) ? req.params : (() => { throw new ProviderError(ERR.INVALID_PARAMS, 'Params must be an array.'); })();
+          if (req.method === 'eth_sendRawTransaction') checkRawTx(params); // BUG-08: never forward a string that is not a signed transaction
           return ok(await this.d.rpc(chainId, req.method, params));
         }
         case 'permissionsRevoke': { if (evmConn) { await this.d.perms.disconnect(s.origin, 'evm'); this.d.emit(s.origin, 'evm', 'accountsChanged', []); this.d.emit(s.origin, 'evm', 'disconnect', { code: ERR.DISCONNECTED, message: 'Disconnected by the user.' }); } return ok(null); }
@@ -365,14 +367,21 @@ export class ProviderService {
     if (existing) return { done: false }; // a content-script resend after a worker restart: the original request is still waiting
     const st = await this.d.vaultStatus();
     if (!st.hasVault) throw new ProviderError(ERR.UNAUTHORIZED, 'Harbour has no wallet yet. Create or import one first.');
+    // OBS-06: a site connected to a hardware-wallet account is told up front that signing is not available, instead of after approval.
+    if (bound && !NON_SIGNING_KINDS.has(kind) && (await this.d.signer.accountOf(bound.walletId, bound.accountIndex).catch(() => null))?.hardware) throw new ProviderError(ERR.UNSUPPORTED_METHOD, HARDWARE_SIGN_MSG);
     if (!this.approvalLimiter.take(s.origin)) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many requests from this site. Wait a moment and try again.');
     const all = await this.d.pending.list();
     if (all.length >= MAX_PENDING_TOTAL || all.filter((p) => p.origin === s.origin).length >= MAX_PENDING_PER_ORIGIN) throw new ProviderError(ERR.LIMIT_EXCEEDED, 'Too many pending requests.');
     if ((kind === 'connect' || kind === 'permissions' || kind === 'solConnect' || kind === 'multiConnect') && all.some((p) => p.origin === s.origin && p.kind === kind)) throw new ProviderError(ERR.RESOURCE_UNAVAILABLE);
     const c = bound;
     const binding = c ? { id: c.id, walletId: c.walletId, accountIndex: c.accountIndex, chainId: c.chainId, evmAddress: c.evmAddress, solanaAddress: c.solanaAddress, others: c.others, ...(c.scoped ? { scoped: true as const } : {}) } : undefined;
-    await this.d.pending.add({ binding, key, reqId: req.id, ns: req.ns, method: req.method, kind, params, origin: s.origin, topOrigin: s.topOrigin, isTopFrame: s.isTopFrame, tabId: s.tabId, frameId: s.frameId, documentId: s.documentId, title: s.title, icon: s.icon });
-    await this.d.openApproval().catch(() => {});
+    const added = await this.d.pending.add({ binding, key, reqId: req.id, ns: req.ns, method: req.method, kind, params, origin: s.origin, topOrigin: s.topOrigin, isTopFrame: s.isTopFrame, tabId: s.tabId, frameId: s.frameId, documentId: s.documentId, title: s.title, icon: s.icon });
+    // BUG-12: if no approval window can be shown, the site gets an answer instead of waiting silently for a prompt nobody sees.
+    try { await this.d.openApproval(); }
+    catch {
+      await this.d.pending.take(added.id).catch(() => undefined);
+      throw new ProviderError(ERR.INTERNAL, 'Harbour could not open its approval window. Click the Harbour icon and try again.');
+    }
     return { done: false };
   }
 
@@ -409,8 +418,8 @@ export class ProviderService {
     const delivered = await this.d.deliver({ tabId: p.tabId, frameId: p.frameId, documentId: p.documentId }, p.reqId, outcome).catch(() => false);
     void delivered; // tombstone remains until TTL even after successful delivery
   }
-  /** Called when a content script (re)connects and re-sends a request: hand back a stored outcome if one exists. */
-  takeSettled(key: string) { return this.d.pending.takeSettled(key); }
+  /** Called when a content script (re)connects and re-sends a request: hand back the stored outcome if one exists (kept until its TTL). */
+  takeSettled(key: string) { return this.d.pending.settledOutcome(key); }
   async rejectWhere(pred: (p: PendingRequest) => boolean, error = new ProviderError(ERR.USER_REJECTED)): Promise<number> {
     const list = await this.d.pending.takeWhere(pred);
     for (const p of list) await this.settle(p, { error: serializeError(error) });
@@ -447,7 +456,7 @@ export class ProviderService {
     const p = await this.d.pending.claim(id); if (!p) return { ok: false, error: 'This request is no longer pending or is already executing.' };
     let outcome: Outcome; let message: string | undefined;
     try { outcome = { result: await this.execute(p, decision) }; }
-    catch (e) { const w = serializeError(e); outcome = { error: w }; message = w.message; }
+    catch (e) { const w = serializeError(storageSafe(e)); outcome = { error: w }; message = w.message; }
     await this.settle(p, outcome);
     await this.d.closeApprovalIfIdle().catch(() => {});
     return message ? { ok: false, error: message } : { ok: true };
@@ -608,12 +617,10 @@ export class ProviderService {
         if (!network) throw new ProviderError(ERR.INVALID_PARAMS);
         // First RPC that answers with the requested chain ID wins; a rate-limited or dead endpoint just moves on to the next one.
         const candidates = [...new Set([network.rpcUrl, ...(network.rpcUrls ?? [])])].slice(0, 6);
-        let chosen: string | null = null; let wrong: number | null = null;
-        for (const url of candidates) {
-          const seen = await this.d.probeChainId(url).catch(() => null);
-          if (seen === chainId) { chosen = url; break; }
-          if (seen != null) wrong = seen;
-        }
+        // OBS-08: probed in parallel, so an unreachable network costs one probe timeout (8 s), not one per candidate URL.
+        const seen = await Promise.all(candidates.map((url) => this.d.probeChainId(url).catch(() => null)));
+        const at = seen.indexOf(chainId); const chosen: string | null = at >= 0 ? candidates[at] : null;
+        const wrong: number | null = seen.find((x): x is number => x != null && x !== chainId) ?? null;
         if (!chosen) { if (wrong != null) throw new ProviderError(ERR.INVALID_PARAMS, `This RPC belongs to chain ID ${wrong}, not ${chainId}.`); throw new ProviderError(ERR.INTERNAL, 'Could not reach any RPC URL for this network (they may be rate-limited). Try again in a moment.'); }
         network.rpcUrl = chosen;
         if (this.d.networks.get(chainId)) return null;
@@ -679,3 +686,25 @@ export function permission(c: Connection, origin: string) {
   return { parentCapability: 'eth_accounts', invoker: origin, caveats: [{ type: 'restrictReturnedAccounts', value: [c.evmAddress] }], date: c.connectedAt, id: c.id };
 }
 void EVM_METHODS; void hexToBytes; void toHexQuantity;
+
+/** Max signed transaction size accepted from a site (bytes); matches the backend broadcast limit. */
+const MAX_RAW_TX_BYTES = 256 * 1024;
+/** eth_sendRawTransaction from a site: exactly one 0x-hex string that decodes as a signed transaction envelope, else -32602. */
+export function checkRawTx(params: unknown[]): void {
+  const raw = params[0];
+  if (params.length !== 1 || typeof raw !== 'string' || !/^0x([0-9a-fA-F]{2})+$/.test(raw) || raw.length > 2 + 2 * MAX_RAW_TX_BYTES) throw new ProviderError(ERR.INVALID_PARAMS, 'Expected one signed transaction as 0x-prefixed hex.');
+  let tx: any;
+  try { tx = parseTransaction(raw as `0x${string}`); } catch { throw new ProviderError(ERR.INVALID_PARAMS, 'This is not a valid signed transaction.'); }
+  const signed = tx && (tx.r !== undefined && tx.s !== undefined) && (tx.v !== undefined || tx.yParity !== undefined);
+  if (!signed) throw new ProviderError(ERR.INVALID_PARAMS, 'The transaction is not signed.');
+}
+
+/** Approval kinds that never use a key (connecting, switching or adding a network, watching a token). */
+const NON_SIGNING_KINDS = new Set<PendingKind>(['connect', 'permissions', 'switchChain', 'addChain', 'watchAsset', 'solConnect', 'wcSession', 'multiConnect']);
+
+/** OBS-07: a browser storage failure (quota, aborted IndexedDB transaction) is reported to the site as a plain sentence, not the browser's text. */
+function storageSafe(e: unknown): unknown {
+  if (e instanceof ProviderError) return e;
+  const m = String((e as any)?.message ?? '');
+  return /quota|QUOTA_BYTES|IndexedDB|IDB|storage|TransactionInactive|AbortError/i.test(m) ? new ProviderError(ERR.INTERNAL, 'Harbour could not save this change. Free up some browser storage and try again.') : e;
+}

@@ -4,11 +4,13 @@ import { session, local, KEYS } from '../../core/storage';
 import type { VaultService } from '../../core/vaultService';
 import type { WalletService } from '../../core/walletService';
 import { ensureAccounts, activeEntry } from '../walletState';
-import { ERR, ProviderError } from '../../core/provider/errors';
+import { ERR, HARDWARE_SIGN_MSG, ProviderError } from '../../core/provider/errors';
 import { MULTI_CHAINS } from '../../core/provider/multiChains';
 import { chainById } from '../../core/chains/index';
 
-export interface AccountEntry { index: number; derivationIndex: number; name: string; evm?: string; solana?: string; multi?: Record<string, string> }
+export interface AccountEntry { index: number; derivationIndex: number; name: string; evm?: string; solana?: string; multi?: Record<string, string>; hardware?: boolean }
+/** Wallets whose keys live on a device (no local keystore): they cannot sign for sites yet. */
+export const isHardwareWallet = (w: any): boolean => /ledger|keystone|trezor|hardware|gridplus/i.test(String(w?.type ?? ''));
 const multiOf = (a: Record<string, string> | undefined): Record<string, string> => Object.fromEntries(Object.keys(MULTI_CHAINS).filter((k) => a?.[k]).map((k) => [k, a![k]]));
 export interface WalletAccounts { walletId: string; walletName: string; activeAccount: number; accounts: AccountEntry[] }
 const evmOf = (a: Record<string, string> | undefined) => a?.ethereum ?? Object.values(a ?? {}).find((v) => /^0x[0-9a-fA-F]{40}$/.test(v));
@@ -21,7 +23,7 @@ export async function readWalletAccounts(vault: VaultService): Promise<WalletAcc
 }
 export async function readAccountOf(vault: VaultService, walletId: string, index: number): Promise<AccountEntry | null> {
   const st: any = await vault.getState(); const w = st.wallets?.[walletId]; if (!w) return null; const a = ensureAccounts(w)[index]; if (!a) return null;
-  return { index, derivationIndex: a.derivationIndex, name: a.name || `Account ${index + 1}`, evm: evmOf(a.addresses), solana: a.addresses?.solana, multi: multiOf(a.addresses) };
+  return { index, derivationIndex: a.derivationIndex, name: a.name || `Account ${index + 1}`, evm: evmOf(a.addresses), solana: a.addresses?.solana, multi: multiOf(a.addresses), ...(isHardwareWallet(w) ? { hardware: true } : {}) };
 }
 
 export interface ConnKeys { evmPrivateKey(): Uint8Array; solanaKey(): { key: any; address: string }; chainKey(chain: string): { key: any; address: string }; dispose(): void }
@@ -37,6 +39,7 @@ export async function openConnectionKeys(core: any, vault: VaultService, wallet:
   if (conn.evmAddress && evmOf(acct.addresses)?.toLowerCase() !== conn.evmAddress.toLowerCase()) throw new ProviderError(ERR.UNAUTHORIZED, 'The connected account has changed. Reconnect the site.');
   for (const [chain, o] of Object.entries(conn.others ?? {})) if (acct.addresses?.[chain] !== o.address) throw new ProviderError(ERR.UNAUTHORIZED, 'The connected account has changed. Reconnect the site.');
   if (conn.solanaAddress && acct.addresses?.solana !== conn.solanaAddress) throw new ProviderError(ERR.UNAUTHORIZED, 'The connected account has changed. Reconnect the site.');
+  if (isHardwareWallet(w)) throw new ProviderError(ERR.UNSUPPORTED_METHOD, HARDWARE_SIGN_MSG); // OBS-06
   const derivationIndex = acct.derivationIndex ?? 0;
   const ks = await local.get<any>(conn.walletId); if (!ks) throw new ProviderError(ERR.INTERNAL, 'Wallet keystore not found.');
   const sk = core.StoredKey.importJSON(new TextEncoder().encode(JSON.stringify(ks)));

@@ -38,3 +38,6 @@ export function serializeError(e: unknown): WireError {
   const msg = typeof any?.shortMessage === 'string' ? any.shortMessage : typeof any?.message === 'string' ? any.message : DEFAULT_MESSAGE[ERR.INTERNAL];
   return { code: ERR.INTERNAL, message: msg.slice(0, MAX_MSG) };
 }
+
+/** OBS-06: shown to a site that asks a hardware-wallet account to sign (there is no local key; device signing for sites is not built). */
+export const HARDWARE_SIGN_MSG = 'Hardware wallets cannot sign for sites in Harbour yet. Switch to a software wallet to continue.';

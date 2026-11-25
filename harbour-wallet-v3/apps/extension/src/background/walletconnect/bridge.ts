@@ -6,10 +6,15 @@ import { ERR, serializeError } from '../../core/provider/errors';
 import { mapRequest, mapResult, originOfMetadata, parseWcUri, sanitizeText, summarizeProposal, WC_ERR, type SupportedNamespace } from '../../core/walletconnect';
 import type { ProviderService, WcHost } from '../provider/service';
 import { isWcKey, normalizeOrigin, wcKey } from '../../core/provider/origin';
+import { logWarn } from '../../core/logger';
 
 export const WC_TAB = -1;                       // synthetic tab id: replies for these requests go to the relay, not a content script
 export const SESSIONS_KEY = 'harbour:wc:sessions';
 export const PROJECT_ID_KEY = 'harbour:wc:projectId';
+/** Answers the relay refused at the moment of sending (BUG-17); re-sent on the next resume/ensure, for UNSENT_TTL_MS. */
+export const UNSENT_KEY = 'harbour:wc:unsent';
+const UNSENT_TTL_MS = 10 * 60_000; const UNSENT_MAX = 50;
+interface Unsent { topic: string; response: { id: number; jsonrpc: '2.0'; result?: unknown; error?: { code: number; message: string } }; at: number }
 export interface WcSessionRecord { topic: string; origin: string; name: string; url: string; icon?: string; chains: string[]; methods: string[]; connectedAt: number; expiry?: number }
 
 /** The subset of @reown/walletkit this bridge uses. */
@@ -66,12 +71,26 @@ export class WalletConnectBridge {
     if (this.kit) return Promise.resolve(this.kit);
     this.starting ??= (async () => {
       const id = await this.d.projectId(); if (!id) return null;
-      const kit = await this.d.createKit(id); this.attach(kit); this.kit = kit; return kit;
+      const kit = await this.d.createKit(id); this.attach(kit); this.kit = kit; void this.flushUnsent(kit).catch(() => {}); return kit;
     })().finally(() => { this.starting = null; });
     return this.starting;
   }
   /** Service-worker wake-up: reconnect to the relay only when there is something to listen for. */
-  async resume(): Promise<void> { if ((await this.sessions()).length) await this.ensure().catch(() => null); }
+  async resume(): Promise<void> {
+    if (!(await this.sessions()).length) return;
+    const kit = await this.ensure().catch(() => null);
+    if (kit) await this.flushUnsent(kit);
+  }
+  /** Re-sends answers that failed to reach the relay (oldest first); keeps the ones that fail again, drops expired ones. */
+  async flushUnsent(kit: KitLike): Promise<void> {
+    const list = (await this.d.kv.get<Unsent[]>(UNSENT_KEY)) ?? []; if (!list.length) return;
+    const keep: Unsent[] = []; const t = this.now();
+    for (const u of list) {
+      if (t - u.at > UNSENT_TTL_MS) continue;
+      try { await kit.respondSessionRequest({ topic: u.topic, response: u.response }); } catch { keep.push(u); }
+    }
+    await this.d.kv.set(UNSENT_KEY, keep);
+  }
   private attach(kit: KitLike) {
     kit.on('session_proposal', (e) => { void this.onProposal(e).catch(() => {}); });
     kit.on('session_request', (e) => { void this.onRequest(e).catch(() => {}); });
@@ -127,7 +146,14 @@ export class WalletConnectBridge {
     const kit = this.kit ?? (await this.ensure()); if (!kit) return;
     const response = 'result' in o ? { id, jsonrpc: '2.0' as const, result: mapResult(kind ?? shapeKind(o.result), o.result) }
       : { id, jsonrpc: '2.0' as const, error: { code: o.error.code === ERR.USER_REJECTED ? WC_ERR.USER_REJECTED : o.error.code, message: o.error.message } };
-    await kit.respondSessionRequest({ topic, response }).catch(() => {});
+    try { await kit.respondSessionRequest({ topic, response }); }
+    catch (e) {
+      // BUG-17: the user already decided; keep the answer and re-send it on the next keep-alive instead of dropping it.
+      logWarn(`WalletConnect answer not sent, will retry: ${String((e as any)?.message ?? e).slice(0, 120)}`);
+      const list = ((await this.d.kv.get<Unsent[]>(UNSENT_KEY)) ?? []).filter((u) => !(u.topic === topic && u.response.id === id));
+      list.push({ topic, response, at: this.now() });
+      await this.d.kv.set(UNSENT_KEY, list.slice(-UNSENT_MAX));
+    }
   }
   private async onRequest(e: any) {
     const topic = String(e?.topic ?? ''); const id = Number(e?.id); if (!topic || !Number.isInteger(id)) return;
