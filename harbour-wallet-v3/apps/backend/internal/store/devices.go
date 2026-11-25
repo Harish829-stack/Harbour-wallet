@@ -177,10 +177,39 @@ var ErrQuota = errors.New("store: address quota exceeded")
 // It returns the tracked rows and which of them were newly tracked by
 // anyone (callers publish address.added for those).
 func (s *Store) AddDeviceAddresses(ctx context.Context, lc *LinkCrypto, deviceID string, refs []AddressRef, deny map[string]bool, maxAddresses int) (rows []TrackedAddress, created []TrackedAddress, err error) {
+	rows, created, _, err = s.ReplaceDeviceAddresses(ctx, lc, deviceID, nil, refs, deny, maxAddresses)
+	return rows, created, err
+}
+
+// ReplaceDeviceAddresses unlinks `remove` and links `add` in ONE transaction (BUG-01): the quota is checked against the count after the
+// removals, and when the add part is refused (ErrQuota or any error) the removals are rolled back too.
+func (s *Store) ReplaceDeviceAddresses(ctx context.Context, lc *LinkCrypto, deviceID string, remove, add []AddressRef, deny map[string]bool, maxAddresses int) (rows []TrackedAddress, created []TrackedAddress, removed int, err error) {
+	refs := add
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		rows, created, removed = nil, nil, 0
 		// Serialize quota checks per device.
 		if _, err := tx.Exec(ctx, `SELECT 1 FROM devices WHERE id=$1::uuid FOR UPDATE`, deviceID); err != nil {
 			return err
+		}
+		for _, r := range remove {
+			var id int64
+			err := tx.QueryRow(ctx, `SELECT id FROM tracked_addresses WHERE chain_id=$1 AND address=$2`, r.Chain, r.Address).Scan(&id)
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			tag, err := tx.Exec(ctx, `DELETE FROM device_addresses WHERE link_hash=$1`, lc.linkHash(deviceID, id))
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 1 {
+				removed++
+				if _, err := tx.Exec(ctx, `UPDATE tracked_addresses SET device_count = GREATEST(device_count - 1, 0) WHERE id = $1`, id); err != nil {
+					return err
+				}
+			}
 		}
 		var count int
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM device_addresses WHERE device_id=$1::uuid`, deviceID).Scan(&count); err != nil {
@@ -226,9 +255,9 @@ func (s *Store) AddDeviceAddresses(ctx context.Context, lc *LinkCrypto, deviceID
 		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
-	return rows, created, nil
+	return rows, created, removed, nil
 }
 
 // RemoveDeviceAddresses unlinks addresses from a device. Tracked rows stay

@@ -375,6 +375,17 @@ func (s *Server) dailyCounter(ctx context.Context, key string, n int64, limit in
 	return v == 1, nil
 }
 
+// refundDaily gives back n units charged by dailyCounter today (a request that was refused after the charge).
+func (s *Server) refundDaily(ctx context.Context, key string, n int64) {
+	if n <= 0 {
+		return
+	}
+	k := fmt.Sprintf("%s:%s", key, s.opt.Now().UTC().Format("20060102"))
+	if err := s.opt.Redis.DecrBy(ctx, k, n).Err(); err != nil {
+		s.opt.Log.Warn("refund daily counter failed", "key", key, "err", err)
+	}
+}
+
 var dailyCounterScript = redis.NewScript(`
 local v = redis.call('INCRBY', KEYS[1], ARGV[1])
 if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[3]) end

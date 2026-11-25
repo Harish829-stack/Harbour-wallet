@@ -100,12 +100,10 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	removed, err := s.opt.Store.RemoveDeviceAddresses(ctx, s.opt.LinkCrypto, d.ID, rem)
-	if err != nil {
-		s.internalErr(w, r, err)
-		return
-	}
-	var rows, created []store.TrackedAddress
+	// BUG-01: budget first (refused before anything changes), then removals and additions in one transaction; the budget is refunded
+	// when the transaction refuses the request.
+	var charged int64
+	bfKey := "hb:bf:" + s.devTag(d.ID)
 	if len(add) > 0 {
 		// Backfills cost provider budget: cap new ones per device per day.
 		n, err := s.opt.Store.CountUntracked(ctx, add, s.deny)
@@ -114,7 +112,7 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if n > 0 {
-			ok, err := s.dailyCounter(ctx, "hb:bf:"+s.devTag(d.ID), int64(n), s.tier(d.Tier).BackfillsPerDay)
+			ok, err := s.dailyCounter(ctx, bfKey, int64(n), s.tier(d.Tier).BackfillsPerDay)
 			if err != nil {
 				s.internalErr(w, r, err)
 				return
@@ -123,15 +121,18 @@ func (s *Server) handlePutAddresses(w http.ResponseWriter, r *http.Request) {
 				writeErr(w, http.StatusTooManyRequests, "backfill_quota", "You've added many new addresses today. Please try again tomorrow.", true)
 				return
 			}
+			charged = int64(n)
 		}
-		rows, created, err = s.opt.Store.AddDeviceAddresses(ctx, s.opt.LinkCrypto, d.ID, add, s.deny, s.tier(d.Tier).MaxAddresses)
+	}
+	rows, created, removed, err := s.opt.Store.ReplaceDeviceAddresses(ctx, s.opt.LinkCrypto, d.ID, rem, add, s.deny, s.tier(d.Tier).MaxAddresses)
+	if err != nil {
+		s.refundDaily(ctx, bfKey, charged)
 		if errors.Is(err, store.ErrQuota) {
 			writeErr(w, http.StatusForbidden, "quota_exceeded", "You've reached the maximum number of tracked addresses.", false)
 			return
-		} else if err != nil {
-			s.internalErr(w, r, err)
-			return
 		}
+		s.internalErr(w, r, err)
+		return
 	}
 	for _, t := range created {
 		b, _ := json.Marshal(AddressAddedEvent{TrackedAddressID: t.ID, Chain: t.Chain, Address: t.Address, DenyBackfill: t.DenyBackfill})
@@ -256,12 +257,33 @@ func filteredLogs(params json.RawMessage) bool {
 	if json.Unmarshal(params, &p) != nil || len(p) != 1 {
 		return false
 	}
-	if a := bytes.TrimSpace(p[0].Address); len(a) > 0 && string(a) != "null" && string(a) != "[]" && string(a) != `""` {
+	// BUG-02: a filter counts only when it names at least one concrete value. Nodes treat null, [] and OR-lists of nulls ([null],
+	// [null,null]) as wildcards, so those must not satisfy "an address or a topic is required".
+	if hasConcrete(p[0].Address) {
 		return true
 	}
 	for _, t := range p[0].Topics {
-		if t := bytes.TrimSpace(t); len(t) > 0 && string(t) != "null" && string(t) != "[]" {
+		if hasConcrete(t) {
 			return true
+		}
+	}
+	return false
+}
+
+// hasConcrete reports whether a JSON log-filter value (a string or an OR-list of strings) contains at least one non-empty string.
+func hasConcrete(raw json.RawMessage) bool {
+	var v any
+	if len(bytes.TrimSpace(raw)) == 0 || json.Unmarshal(raw, &v) != nil {
+		return false
+	}
+	switch x := v.(type) {
+	case string:
+		return strings.TrimSpace(x) != ""
+	case []any:
+		for _, e := range x {
+			if s, ok := e.(string); ok && strings.TrimSpace(s) != "" {
+				return true
+			}
 		}
 	}
 	return false

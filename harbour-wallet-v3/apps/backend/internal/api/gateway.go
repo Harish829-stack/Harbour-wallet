@@ -63,6 +63,8 @@ func GatewayKeysFromEnv() GatewayKeys {
 // GatewayHosts are the upstream base URLs (overridden in tests).
 type GatewayHosts struct {
 	LiFi, Jupiter, JupiterTokens, Relay, Thor, CoinGecko, CoinGeckoPro, GeckoTerminal, Helius, Etherscan, TronGrid, TonCenter, Pimlico, Uniswap string
+	// SNS resolves Solana .sol names (OBS-15: the extension no longer calls it directly, so it never sees the user's IP).
+	SNS string
 	// Alchemy is a format with one %s for the network slug, e.g. "https://%s.g.alchemy.com".
 	Alchemy string
 }
@@ -76,6 +78,7 @@ func DefaultGatewayHosts() GatewayHosts {
 		CoinGeckoPro: "https://pro-api.coingecko.com/api/v3", GeckoTerminal: "https://api.geckoterminal.com/api/v2",
 		Helius: "https://mainnet.helius-rpc.com", Etherscan: "https://api.etherscan.io/v2/api", TronGrid: "https://api.trongrid.io",
 		TonCenter: "https://toncenter.com", Pimlico: "https://api.pimlico.io/v2", Alchemy: "https://%s.g.alchemy.com",
+		SNS: "https://sns-sdk-proxy.bonfida.workers.dev",
 	}
 }
 
@@ -110,6 +113,7 @@ var (
 	reJupQuery  = regexp.MustCompile(`^[A-Za-z0-9._ -]{1,64}$`)
 	reRelay     = regexp.MustCompile(`^/relay/(quote/v2|intents/status/v[23])$`)
 	reThor      = regexp.MustCompile(`^/thornode/thorchain/(quote/swap|tx/status/[0-9A-Fa-f]{64}|inbound_addresses)$`)
+	reSNS       = regexp.MustCompile(`^/sns/resolve/[a-z0-9-]{1,63}$`)
 	reGT        = regexp.MustCompile(`^/gt/networks/(trending_pools|[a-z0-9_-]{2,32}/(tokens/[A-Za-z0-9]{20,64}|pools/[A-Za-z0-9]{20,90}/ohlcv/(minute|hour|day)))$`)
 	reAlchRPC   = regexp.MustCompile(`^/alchemy/(\d{1,9})/rpc$`)
 	reAlchNFT   = regexp.MustCompile(`^/alchemy/(\d{1,9})/nft/(getNFTsForOwner|getContractMetadata|getNFTMetadata|getFloorPrice|isSpamContract|getOwnersForNFT)$`)
@@ -741,6 +745,11 @@ func (g *gateway) resolve(method, path string, q url.Values, body []byte) (*gwCa
 		return g.coingecko("/coins/markets?"+v.Encode(), 120*time.Second), nil
 	case path == "/v2/market/trending":
 		return g.coingecko("/search/trending", 300*time.Second), nil
+	case strings.HasPrefix(path, "/sns/"):
+		if method != http.MethodGet || !reSNS.MatchString(path) || g.hosts.SNS == "" {
+			return nil, errNotFound
+		}
+		return &gwCall{method: http.MethodGet, url: g.hosts.SNS + strings.TrimPrefix(path, "/sns"), header: map[string]string{"accept": "application/json"}, ttl: 300 * time.Second}, nil
 	case strings.HasPrefix(path, "/gt/"):
 		if method != http.MethodGet || !reGT.MatchString(path) {
 			return nil, errNotFound

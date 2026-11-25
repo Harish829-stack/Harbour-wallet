@@ -81,6 +81,8 @@ type Indexer struct {
 	assets *store.AssetCache
 	wake   chan struct{}
 	deb    *debouncer
+	// consumeRetry is the first retry delay of a failed event consumer (0 = 1 s); tests shorten it.
+	consumeRetry time.Duration
 
 	live       *LiveOptions
 	manageWake chan struct{}
@@ -176,23 +178,49 @@ func (ix *Indexer) Wake() {
 	}
 }
 
+// consume runs one event consumer for as long as ctx lives. BUG-16: Consume fails when NATS is unreachable (JetStream's API
+// timeout when the indexer starts before NATS); it used to log once and the consumer was gone for good. Now it is retried with
+// backoff (1 s doubling to 5 s) until it runs. The cap stays short: JetStream can refuse for a few seconds after a restart while
+// it recovers its streams, and every retry is a single cheap API call.
+func (ix *Indexer) consume(ctx context.Context, durable, subject string, h func(context.Context, []byte) error) {
+	backoff := ix.consumeRetry
+	if backoff <= 0 {
+		backoff = time.Second
+	}
+	for {
+		err := ix.bus.Consume(ctx, durable, subject, h)
+		if ctx.Err() != nil {
+			return
+		}
+		if err == nil {
+			err = errors.New("consumer stopped")
+		}
+		ix.log.Error("consume failed; retrying", "durable", durable, "subject", subject, "err", err, "retry_in", backoff)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		if backoff *= 2; backoff > 5*time.Second {
+			backoff = 5 * time.Second
+		}
+	}
+}
+
 // Run blocks until ctx ends.
 func (ix *Indexer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Add(4 + ix.cfg.Workers)
 	go func() {
 		defer wg.Done()
-		err := ix.bus.Consume(ctx, "indexer-address-added", events.SubjectAddressAdded, func(context.Context, []byte) error {
+		ix.consume(ctx, "indexer-address-added", events.SubjectAddressAdded, func(context.Context, []byte) error {
 			ix.Wake() // the row is already 'pending'; the event only removes polling delay
 			return nil
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume address.added", "err", err)
-		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := ix.bus.Consume(ctx, "indexer-history-more", events.SubjectHistoryMore, func(ctx context.Context, b []byte) error {
+		ix.consume(ctx, "indexer-history-more", events.SubjectHistoryMore, func(ctx context.Context, b []byte) error {
 			var m struct {
 				TrackedAddressID int64 `json:"tracked_address_id"`
 			}
@@ -201,13 +229,10 @@ func (ix *Indexer) Run(ctx context.Context) {
 			}
 			return ix.LoadOlder(ctx, m.TrackedAddressID)
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume address.history.more", "err", err)
-		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := ix.bus.Consume(ctx, "indexer-nfts-sync", events.SubjectNFTSync, func(ctx context.Context, b []byte) error {
+		ix.consume(ctx, "indexer-nfts-sync", events.SubjectNFTSync, func(ctx context.Context, b []byte) error {
 			var m struct {
 				TrackedAddressID int64 `json:"tracked_address_id"`
 			}
@@ -216,9 +241,6 @@ func (ix *Indexer) Run(ctx context.Context) {
 			}
 			return ix.SyncNFTsByID(ctx, m.TrackedAddressID)
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume address.nfts.sync", "err", err)
-		}
 	}()
 	go func() { defer wg.Done(); ix.sweepLoop(ctx) }()
 	ix.runLive(ctx, &wg)
@@ -290,6 +312,9 @@ func (ix *Indexer) ingestOpts(c *Chain, latest, finalized uint64) store.IngestOp
 	return store.IngestOptions{
 		Chain: c.Name, Family: c.Family, NativeSym: c.Native.Symbol, NativeDec: c.Native.Decimals,
 		Assets: ix.assets, Spam: SpamScore,
+		OnSkip: func(ev index.ActivityEvent, reason string) {
+			ix.log.Warn("malformed event skipped", "chain", c.Name, "tx", ev.TxHash, "ref", ev.EventRef, "reason", reason)
+		},
 		Classify: func(b uint64) string {
 			if c.Finality == nil {
 				return string(chain.Confirmed)

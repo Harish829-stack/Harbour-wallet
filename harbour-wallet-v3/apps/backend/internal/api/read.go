@@ -87,11 +87,14 @@ func formatUnits(raw string, dec *int) string {
 		return v.String()
 	}
 	d := *dec
+	if !store.ValidDecimals(d) { // BUG-03: hostile token metadata (negative or absurd decimals) renders as unknown
+		return ""
+	}
 	s := v.String()
 	neg := strings.HasPrefix(s, "-")
 	s = strings.TrimPrefix(s, "-")
-	for len(s) <= d {
-		s = "0" + s
+	if len(s) <= d {
+		s = strings.Repeat("0", d-len(s)+1) + s
 	}
 	out := s[:len(s)-d] + "." + strings.TrimRight(s[len(s)-d:], "0")
 	out = strings.TrimSuffix(out, ".")
@@ -107,6 +110,9 @@ func valueUSD(raw string, dec *int, px float64) float64 {
 	}
 	v, ok := new(big.Float).SetString(raw)
 	if !ok {
+		return 0
+	}
+	if !store.ValidDecimals(*dec) {
 		return 0
 	}
 	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(*dec)), nil))
@@ -507,9 +513,12 @@ func (s *Server) requestNFTSync(ctx context.Context, tracked []store.TrackedAddr
 
 // GET /v1/me/portfolio/chart?range=7d|30d|90d|1y
 func (s *Server) handleChart(w http.ResponseWriter, r *http.Request) {
-	days := map[string]int{"7d": 7, "30d": 30, "90d": 90, "1y": 365}[r.URL.Query().Get("range")]
+	// OBS-04: no range means 30 days; an unknown range is refused instead of silently answered with 30 days.
+	rng := r.URL.Query().Get("range")
+	days := map[string]int{"": 30, "7d": 7, "30d": 30, "90d": 90, "1y": 365}[rng]
 	if days == 0 {
-		days = 30
+		writeErr(w, http.StatusBadRequest, "bad_range", "range must be one of 7d, 30d, 90d, 1y.", false)
+		return
 	}
 	key := s.cacheKey(r, "chart")
 	if s.cached(w, r, key) {

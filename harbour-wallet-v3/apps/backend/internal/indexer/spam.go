@@ -23,8 +23,8 @@ func SpamScore(symbol, name string, decimals *int) int {
 		score += 40
 	}
 	for _, r := range text {
-		if r == '\u200b' || r == '\u200c' || r == '\u200d' || r == '\ufeff' {
-			score += 40
+		if r == '\u200b' || r == '\u200c' || r == '\u200d' || r == '\ufeff' || r == '\u2060' {
+			score += 60 // OBS-09: an invisible character has no honest use in token metadata; enough on its own to hide the token
 			break
 		}
 	}
@@ -34,8 +34,10 @@ func SpamScore(symbol, name string, decimals *int) int {
 			nonASCII++
 		}
 	}
-	if nonASCII > 0 && nonASCII < len([]rune(strings.TrimSpace(text))) {
-		score += 20 // mixed scripts: look-alike symbols (e.g. a Cyrillic letter in "USDC")
+	if lookAlikeSymbol(symbol) {
+		score += 50 // OBS-09: a ticker mixing Latin letters with letters of another script ("USDС" with a Cyrillic С) imitates a real one
+	} else if nonASCII > 0 && nonASCII < len([]rune(strings.TrimSpace(text))) {
+		score += 20 // mixed scripts elsewhere (e.g. a name in another script): a weak signal
 	}
 	if decimals == nil {
 		score += 30
@@ -50,4 +52,20 @@ func SpamScore(symbol, name string, decimals *int) int {
 		score = 100
 	}
 	return score
+}
+
+// lookAlikeSymbol reports a symbol that mixes ASCII letters with non-ASCII letters (homoglyph tickers).
+func lookAlikeSymbol(symbol string) bool {
+	ascii, other := false, false
+	for _, r := range symbol {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		if r <= unicode.MaxASCII {
+			ascii = true
+		} else {
+			other = true
+		}
+	}
+	return ascii && other
 }

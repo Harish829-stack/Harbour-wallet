@@ -232,26 +232,20 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		settled := newSettledRefresher(ix, o.SettledRefresh)
-		err := ix.bus.Consume(ctx, "indexer-txstatus", "tx.status.*", func(ctx context.Context, b []byte) error {
+		ix.consume(ctx, "indexer-txstatus", "tx.status.*", func(ctx context.Context, b []byte) error {
 			settled.handle(ctx, b)
 			return nil // best effort: never redeliver
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume tx status", "err", err)
-		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := ix.bus.Consume(ctx, "indexer-activity", "chain.*.activity.raw", func(ctx context.Context, b []byte) error {
+		ix.consume(ctx, "indexer-activity", "chain.*.activity.raw", func(ctx context.Context, b []byte) error {
 			return ix.HandleDelivery(ctx, b)
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume activity", "err", err)
-		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := ix.bus.Consume(ctx, "indexer-gapfill", SubjectGapFill, func(ctx context.Context, _ []byte) error {
+		ix.consume(ctx, "indexer-gapfill", SubjectGapFill, func(ctx context.Context, _ []byte) error {
 			ix.log.Info("full gap-fill requested (ingest was down)")
 			// Deliveries may have been lost for dormant addresses too. A failure (often the provider's rate limit) is not
 			// redelivered every few seconds, which only hits the limit again: the 3-minute gap-fill loop owns the retry.
@@ -263,9 +257,6 @@ func (ix *Indexer) runLive(ctx context.Context, wg *sync.WaitGroup) {
 			}
 			return nil
 		})
-		if err != nil && ctx.Err() == nil {
-			ix.log.Error("consume gapfill", "err", err)
-		}
 	}()
 }
 

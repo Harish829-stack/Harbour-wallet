@@ -218,9 +218,12 @@ func displayAmount(raw string, dec *int) string {
 	if dec == nil || *dec == 0 {
 		return v.String()
 	}
+	if *dec < 0 || *dec > 77 { // BUG-03: hostile decimals would panic (negative) or pad quadratically (huge)
+		return ""
+	}
 	s := v.String()
-	for len(s) <= *dec {
-		s = "0" + s
+	if len(s) <= *dec {
+		s = strings.Repeat("0", *dec-len(s)+1) + s
 	}
 	whole, frac := s[:len(s)-*dec], s[len(s)-*dec:]
 	if len(frac) > 6 {

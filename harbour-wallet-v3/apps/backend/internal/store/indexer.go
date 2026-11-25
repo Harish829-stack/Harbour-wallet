@@ -152,6 +152,12 @@ func nullStr(s string) any {
 	return s
 }
 
+// MaxDecimals is the largest token decimals value that can matter: 10^77 is about the size of a uint256 (BUG-03).
+const MaxDecimals = 77
+
+// ValidDecimals reports whether d is a decimals value worth storing; anything else is treated as unknown (NULL).
+func ValidDecimals(d int) bool { return d >= 0 && d <= MaxDecimals }
+
 // UpsertAsset inserts an asset or fills fields it lacked; returns its id.
 func (s *Store) UpsertAsset(ctx context.Context, q Querier, c *AssetCache, a AssetInput) (int64, error) {
 	key := a.Chain + "|" + a.Ref
@@ -161,7 +167,7 @@ func (s *Store) UpsertAsset(ctx context.Context, q Querier, c *AssetCache, a Ass
 		}
 	}
 	var dec any
-	if a.Decimals != nil {
+	if a.Decimals != nil && ValidDecimals(*a.Decimals) {
 		dec = *a.Decimals
 	}
 	var id int64
@@ -189,7 +195,7 @@ func (s *Store) UpsertAsset(ctx context.Context, q Querier, c *AssetCache, a Ass
 // SetTokenInfo overwrites on-chain metadata and spam score for an asset.
 func (s *Store) SetTokenInfo(ctx context.Context, chain, ref, symbol, name string, decimals *int, spam int) error {
 	var dec any
-	if decimals != nil {
+	if decimals != nil && ValidDecimals(*decimals) {
 		dec = *decimals
 	}
 	_, err := s.Pool.Exec(ctx, `UPDATE assets SET symbol = COALESCE($3, symbol), name = COALESCE($4, name),
@@ -225,6 +231,8 @@ type IngestOptions struct {
 	Classify  func(block uint64) string // finality
 	Spam      func(symbol, name string, decimals *int) int
 	Assets    *AssetCache
+	// OnSkip is told about each malformed event that was left out of the batch (optional; for logging).
+	OnSkip func(ev index.ActivityEvent, reason string)
 }
 
 // IngestResult summarises a batch.
@@ -237,6 +245,8 @@ type IngestResult struct {
 	Parties map[int64]bool
 	// NFTParties moved an NFT (their NFT list needs a resync).
 	NFTParties map[int64]bool
+	// Skipped counts malformed events left out (OBS-10): they no longer block the rest of the batch.
+	Skipped int
 	// Incoming lists new transfers received by a tracked address (for push).
 	Incoming []Incoming
 	// AtBlock is the highest block of the new events per tracked address: a balance read must be at least this fresh.
@@ -284,6 +294,21 @@ func (s *Store) ensurePartitions(ctx context.Context, evs []index.ActivityEvent)
 	return nil
 }
 
+// invalidEvent names what is wrong with an event, or returns "" when it can be stored.
+func invalidEvent(chain string, ev index.ActivityEvent) string {
+	switch {
+	case ev.Chain != chain:
+		return "foreign chain"
+	case ev.TxHash == "" || ev.EventRef == "":
+		return "missing tx hash or event ref"
+	case !validAmount(ev.AmountRaw):
+		return "amount is not a non-negative integer"
+	case len(strings.TrimLeft(ev.AmountRaw, "0")) > 78:
+		return "amount exceeds numeric(78,0)"
+	}
+	return ""
+}
+
 func validAmount(s string) bool {
 	_, ok := new(big.Int).SetString(s, 10)
 	return ok && !strings.HasPrefix(s, "-")
@@ -307,6 +332,20 @@ type summaryItem struct {
 // conflict means the event was already stored and nothing else is written.
 func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.ActivityEvent) (IngestResult, error) {
 	res := IngestResult{Touched: map[int64]map[string]bool{}, Parties: map[int64]bool{}, NFTParties: map[int64]bool{}}
+	// OBS-10: one malformed event (provider or adapter bug) used to fail the whole page or webhook delivery. It is now left out and
+	// reported; the valid events of the batch are still written in one transaction.
+	valid := make([]index.ActivityEvent, 0, len(evs))
+	for _, ev := range evs {
+		if reason := invalidEvent(o.Chain, ev); reason != "" {
+			res.Skipped++
+			if o.OnSkip != nil {
+				o.OnSkip(ev, reason)
+			}
+			continue
+		}
+		valid = append(valid, ev)
+	}
+	evs = valid
 	if len(evs) == 0 {
 		return res, nil
 	}
@@ -347,11 +386,6 @@ func (s *Store) IngestEvents(ctx context.Context, o IngestOptions, evs []index.A
 	// The writes are pipelined in a few round trips (dedupe keys, assets, facts) instead of 4-6 sequential statements
 	// per event. Order within each batch is the event order, so duplicates inside one call resolve exactly as before:
 	// the first occurrence wins.
-	for _, ev := range evs {
-		if ev.Chain != o.Chain || ev.TxHash == "" || ev.EventRef == "" || !validAmount(ev.AmountRaw) {
-			return res, fmt.Errorf("invalid event %s/%s", ev.TxHash, ev.EventRef)
-		}
-	}
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var q Querier = tx
 		// 1. Dedupe keys: one per event.

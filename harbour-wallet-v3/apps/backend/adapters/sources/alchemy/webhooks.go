@@ -116,6 +116,14 @@ func (s *Source) chainForNetwork(network string) (string, bool) {
 }
 
 func decimalsOf(raws ...json.RawMessage) (int, bool) {
+	n, ok := decimalsOfRaw(raws...)
+	if !ok || n < 0 || n > 77 { // BUG-03: out-of-range decimals are treated as unknown at ingestion
+		return 0, false
+	}
+	return n, true
+}
+
+func decimalsOfRaw(raws ...json.RawMessage) (int, bool) {
 	for _, r := range raws {
 		if len(r) == 0 || string(r) == "null" {
 			continue
