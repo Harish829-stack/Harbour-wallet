@@ -46,10 +46,10 @@ async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep
 // Quotes and fresh transactions come from Harbour's swap service (backend /v1/swap), signed with the device key.
 setSwapBackend((method, path, body) => signedRequest(method, path, body === undefined ? undefined : JSON.stringify(body), {}, AbortSignal.timeout(30_000)));
 
-/** The request for a fresh quote of a confirmed step: same assets and amount, our own addresses, the slippage it was quoted with. */
-function freshRequest(raw: any, step: SwapStep, fromAddress: string, toAddress: string, slippagePct: number): SwapRouteRequest {
-  const quotedWith = raw?.request; const quoted = Number(quotedWith?.slippage);
-  return { from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress, toAddress, slippage: String(quoted > 0 && quoted <= 30 ? quoted : slippagePct), sortBy: 'quantity', solanaTurbo: false };
+/** The request for a fresh quote of a confirmed step: same assets and amount, our own addresses and the user's own slippage
+ *  (never a value carried in the route, which came from the backend). */
+function freshRequest(_raw: unknown, step: SwapStep, fromAddress: string, toAddress: string, slippagePct: number): SwapRouteRequest {
+  return { from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress, toAddress, slippage: String(slippagePct), sortBy: 'quantity', solanaTurbo: false };
 }
 async function jupiterTx(raw: any, turbo: boolean, user: string): Promise<string> {
   const r = await backendTransaction({ source: 'jupiter', quote: raw?.quote, priority: turbo ? 'turbo' : 'fast', user });

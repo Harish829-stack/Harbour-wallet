@@ -118,6 +118,7 @@ test('backend routes: only the exact requested trade is kept, shown with the use
   const r = M.acceptRoute(backendRoute(), qreq(), 1000);
   assert.equal(r.steps[0].from.asset.name, 'USD Coin'); assert.equal(r.steps[0].to.asset.logoUrl, ETHA().logoUrl);
   assert.equal(r.steps[0].provider.logoUrl, undefined); assert.ok(!/[<>]/.test(r.steps[0].provider.name)); assert.equal(r.expiresAt, 1000 + 60000);
+  assert.equal(M.acceptRoute(backendRoute({}, { slippage: { userSelected: 30 } }), qreq()).steps[0].slippage.userSelected, 2); // never the server's slippage
   const st = backendRoute().steps[0];
   assert.equal(M.acceptRoute(backendRoute({}, { from: { ...st.from, amount: '99' } }), qreq()), null);                                   // other amount
   assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, asset: USDCA() } }), qreq()), null);                                       // other asset

@@ -58,6 +58,7 @@ export function acceptRoute(r: any, req: SwapRouteRequest, now = Date.now()): Sw
   // Show the user's own asset objects (names, logos), never the server's.
   st.from = { asset: req.from, amount: req.amount };
   st.to = { asset: req.to, amount: st.to.amount, minAmount: st.to.minAmount };
+  st.slippage = { userSelected: Number(req.slippage) };   // the user's own setting; later checks rely on it
   const pid = text(st.provider?.id, 40) || r.source;
   const logo = r.source === 'thorchain' ? '/chains/thorchain.png' : r.source === 'jupiter' ? tokenLogoPath('solana', 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN')
     : typeof st.provider?.logoUrl === 'string' && /^https:\/\//.test(st.provider.logoUrl) ? st.provider.logoUrl.slice(0, 300) : undefined;
