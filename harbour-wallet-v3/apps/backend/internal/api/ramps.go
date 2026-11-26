@@ -28,6 +28,9 @@ type RampsOptions struct {
 	ReturnURL string
 	// MaxOrdersPerHour bounds checkout creation per device (default 20).
 	MaxOrdersPerHour int
+	// TestCountry forces the Onramper country (staging only, RAMPS_TEST_COUNTRY) so a developer can try providers and
+	// currencies of another country, e.g. "gb" for Banxa + GBP in the sandbox.
+	TestCountry string
 }
 
 const (
@@ -65,6 +68,9 @@ func rampType(v string) (string, bool) {
 // rampCountry: the client's choice, else Cloudflare's CF-IPCountry when the API sits behind the operator's proxy, else ""
 // (Onramper would then use the backend's own IP, so the extension always sends one when it knows it).
 func (s *Server) rampCountry(r *http.Request) string {
+	if s.opt.Ramps != nil && s.opt.Ramps.TestCountry != "" {
+		return s.opt.Ramps.TestCountry
+	}
 	if c := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("country"))); rampCountryRe.MatchString(c) {
 		return c
 	}

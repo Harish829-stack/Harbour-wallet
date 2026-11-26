@@ -196,5 +196,9 @@ func rampsFromEnv() (*api.RampsOptions, error) {
 		}
 	}
 	maxOrders, _ := strconv.Atoi(os.Getenv("RAMPS_MAX_ORDERS_PER_HOUR"))
-	return &api.RampsOptions{Client: &onramper.Client{BaseURL: base, APIKey: key, Signer: onramper.NewSigner(priv)}, ReturnURL: ret, MaxOrdersPerHour: maxOrders}, nil
+	testCountry := strings.ToLower(strings.TrimSpace(os.Getenv("RAMPS_TEST_COUNTRY")))
+	if testCountry != "" && (base != onramper.StagingURL || len(testCountry) != 2 || strings.Trim(testCountry, "abcdefghijklmnopqrstuvwxyz") != "") {
+		return nil, errors.New("RAMPS_TEST_COUNTRY must be a 2-letter country code and is only allowed with the staging Onramper API")
+	}
+	return &api.RampsOptions{Client: &onramper.Client{BaseURL: base, APIKey: key, Signer: onramper.NewSigner(priv)}, ReturnURL: ret, MaxOrdersPerHour: maxOrders, TestCountry: testCountry}, nil
 }

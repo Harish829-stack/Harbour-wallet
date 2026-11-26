@@ -60,6 +60,7 @@ Users see their orders under **Fund > Your buy and sell orders** (also in Help >
    | `ONRAMPER_ENV` | `staging` or `production` (optional: a `pk_test_` key selects staging) |
    | `ONRAMPER_WEBHOOK_SECRET` | the webhook secret (used by `webhook-ingest`) |
    | `RAMPS_RETURN_URL` | `https://<api host>/v1/ramps/return` |
+| `RAMPS_TEST_COUNTRY` | staging only, optional: force a country (e.g. `gb`) so sandbox providers such as Banxa answer from India |
 
 5. Apply migrations (`make migrate` or `api -migrate`) and restart `api` and `webhook-ingest`.
 6. The API must see the user's real IP: run it behind your proxy or Cloudflare tunnel with `TRUST_PROXY_HEADERS=1`. A request
