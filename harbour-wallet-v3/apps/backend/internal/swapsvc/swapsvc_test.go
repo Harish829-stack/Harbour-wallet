@@ -381,13 +381,13 @@ func TestJupiter(t *testing.T) {
 		t.Fatalf("swap tx %v %s", err, tx)
 	}
 	// audit M2/M6: the quote stays on the server; only its ref is accepted
-	if _, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: strings.Repeat("b", 48), Priority: "fast", User: solMe}); asErr(err).Code != "price_moved" {
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: strings.Repeat("b", 48), Priority: "fast", User: solMe}); asErr(err).Code != "quote_expired" {
 		t.Fatalf("unknown ref: %v", err)
 	}
 	if _, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: "not-a-ref", Priority: "fast", User: solMe}); asErr(err).Code != "bad_request" {
 		t.Fatalf("bad ref: %v", err)
 	}
-	if _, err := s.Transaction(context.Background(), TxRequest{Source: LiFi, Ref: ref}); asErr(err).Code != "price_moved" {
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: LiFi, Ref: ref}); asErr(err).Code != "quote_expired" {
 		t.Fatalf("a Jupiter ref used for LI.FI: %v", err)
 	}
 	// a quote for other mints than requested is refused

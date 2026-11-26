@@ -6,7 +6,7 @@ package swapsvc
 //     arbitrary provider bodies, and a quote cannot be edited between quote and transaction.
 //   - a short quote cache with in-flight de-duplication (golang.org/x/sync/singleflight): bursts of identical quote
 //     requests (refresh, double click) cost one upstream call per provider;
-//   - a per-provider circuit breaker: after repeated upstream failures a provider is skipped for a short time instead of
+//   - a per-provider circuit breaker: after repeated upstream outages (5xx, timeouts; not 429s) a provider is skipped for a short time instead of
 //     being hammered (and its error is reported as "unavailable").
 // State is in memory: with more than one API replica, route /v1/swap with session affinity (a missing ref only means "quote again").
 
@@ -147,8 +147,10 @@ func (g *guard) record(now time.Time, p string, err error) {
 		g.fails[p] = 0
 		return
 	}
+	// Provider outages only. A 429 (rate_limited) is not counted: one busy device could otherwise switch a provider off for
+	// every user; the per-device rate limit handles that.
 	switch asErr(err).Code {
-	case "server", "timeout", "network", "rate_limited":
+	case "server", "timeout", "network":
 		g.fails[p]++
 		if g.fails[p] >= breakerFailures {
 			g.openTil[p] = now.Add(breakerOpenFor)

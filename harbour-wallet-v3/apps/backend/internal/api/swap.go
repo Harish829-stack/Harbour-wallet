@@ -52,7 +52,7 @@ func swapErr(w http.ResponseWriter, err error) {
 		status, retry = http.StatusUnprocessableEntity, false
 	case "unavailable", "rate_limited":
 		status = http.StatusServiceUnavailable
-	case "price_moved":
+	case "quote_expired":
 		status, retry = http.StatusConflict, false
 	case "timeout":
 		status = http.StatusGatewayTimeout

@@ -100,9 +100,16 @@ test('H4 THORChain: the signed memo carries the confirmed minimum as LIMIT; shor
   assert.equal(code(() => M.checkThorQuote(q(`=:BTC.BTC:${BTCADDR}:1`, { expected_amount_out: '140000' }), st, BTCADDR)), 'price_moved');
   const toUsdc = stepOf(BTC, USDC, '100000', '60000000', '59000000');
   const ME = '0x1111111111111111111111111111111111111111';
-  assert.match(M.checkThorQuote(q(`=:ETH.USDC-EB48:${ME}:0`, { expected_amount_out: '6000000000' }), toUsdc, ME), /^=:ETH\.USDC-EB48:0x1111111111111111111111111111111111111111:5894100000$/);
+  assert.match(M.checkThorQuote(q(`=:ETH.USDC-EB48:${ME}:0`, { expected_amount_out: '6000000000' }), toUsdc, ME), /^=:ETH\.USDC-EB48:0x1111111111111111111111111111111111111111:58941e5$/);
   assert.equal(code(() => M.checkThorQuote(q(`=:ETH.USDC-0X1234:${ME}:0`, { expected_amount_out: '6000000000' }), toUsdc, ME)), 'unsafe_transaction');  // other contract
   assert.equal(code(() => M.checkThorQuote(q(`=:ETH.USDC:${ME}:0`, { expected_amount_out: '6000000000' }), toUsdc, ME)), 'unsafe_transaction');        // no contract at all
+  // the limit is written in THORChain's scientific notation, rounded up (never below the floor), so BTC memos fit 80 bytes
+  assert.equal(M.thorLimit(146853n), '146853'); assert.equal(M.thorLimit(5894100000n), '58941e5'); assert.equal(M.thorLimit(1234500001n), '12346e5');
+  assert.equal(M.thorLimit(9999950000n), '1e10'); assert.equal(M.thorLimit(1612345678n), '16124e5');
+  for (const v of [1234567n, 98765432109n, 10n ** 18n + 1n]) { const t = M.thorLimit(v); const [m, e] = t.split('e'); assert.ok(BigInt(m) * 10n ** BigInt(e ?? 0) >= v, t); }
+  // a real-length BTC → ERC-20 memo (shortened asset from THORNode, 42-char destination, streaming suffix) fits 80 bytes
+  const longMemo = M.checkThorQuote(q(`=:ETH.USDC-EB48:${ME}:0/1/0`, { expected_amount_out: '600000000000' }), stepOf(BTC, USDC, '100000000', '6000000000', '5900000000'), ME);
+  assert.ok(longMemo.length <= 80, `${longMemo.length}: ${longMemo}`);
   assert.ok(M.sameThorAsset('ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48', M.thorAsset(USDC)));
 });
 
@@ -132,16 +139,16 @@ test('H3/M5 route store: ids minted in the worker, owner-bound, confirmation req
   assert.notEqual(shown.id, 'from-backend');
   shown.steps[0].to.minAmount = '0';                                   // editing the popup's copy changes nothing held
   assert.equal(S.get(shown.id, '0xabc', 1).route.steps[0].to.minAmount, '1');
-  assert.equal(code(() => S.get(shown.id, '0xother', 1)), 'price_moved');
-  assert.equal(code(() => S.get('nope', '0xabc', 1)), 'price_moved');
+  assert.equal(code(() => S.get(shown.id, '0xother', 1)), 'quote_expired');
+  assert.equal(code(() => S.get('nope', '0xabc', 1)), 'quote_expired');
   const h = S.get(shown.id, '0xabc', 1);
-  assert.equal(code(() => S.checkConfirm(h, undefined, 1)), 'price_moved');
+  assert.equal(code(() => S.checkConfirm(h, undefined, 1)), 'quote_expired');
   const c1 = S.issueConfirm(shown.id, 1); const c2 = S.issueConfirm(shown.id, 2);
-  assert.equal(code(() => S.checkConfirm(h, c1, 3)), 'price_moved');   // replaced by the later preview
+  assert.equal(code(() => S.checkConfirm(h, c1, 3)), 'quote_expired');   // replaced by the later preview
   assert.equal(code(() => S.checkConfirm(h, c2, 3)), null);
-  assert.equal(code(() => S.checkConfirm(h, c2, 3 + M.CONFIRM_TTL_MS)), 'price_moved');
-  assert.equal(code(() => S.get(shown.id, '0xabc', 1_000_000 + M.ROUTE_GRACE_MS)), 'price_moved');   // expired
-  S.consume(shown.id); assert.equal(code(() => S.get(shown.id, '0xabc', 1)), 'price_moved');
+  assert.equal(code(() => S.checkConfirm(h, c2, 3 + M.CONFIRM_TTL_MS)), 'quote_expired');
+  assert.equal(code(() => S.get(shown.id, '0xabc', 1_000_000 + M.ROUTE_GRACE_MS)), 'quote_expired');   // expired
+  S.consume(shown.id); assert.equal(code(() => S.get(shown.id, '0xabc', 1)), 'quote_expired');
   let release; const first = S.exclusive(() => new Promise((res) => { release = res; }));
   await assert.rejects(() => S.exclusive(async () => 1), (e) => e.code === 'busy');
   release(); await first; assert.equal(await S.exclusive(async () => 7), 7);

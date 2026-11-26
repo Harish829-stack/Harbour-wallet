@@ -28,7 +28,7 @@ const lifiStep = (over = {}) => ({
 });
 
 // ---------------------------------------------------------------- fake Harbour API + chain
-const S = { allowance: 0n, nonce: 0, raws: [], lifi: [], quoteMode: 'ok', stepOver: {}, sim: 'none', gwei: 2, receipts: new Map(), txs: new Map() };
+const S = { allowance: 0n, nonce: 0, raws: [], lifi: [], quoteMode: 'ok', stepOver: {}, sim: 'none', gwei: 2, usd: 100, receipts: new Map(), txs: new Map() };
 const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json' } });
 const hex = (n) => '0x' + BigInt(n).toString(16);
 function rpc(r) {
@@ -79,7 +79,7 @@ async function api(url, init) {
     if (S.quoteMode === '500') return json({ error: { code: 'network', message: 'Couldn’t fetch a quote.' } }, 502);
     if (S.quoteMode === 'none') return json({ error: { code: 'no_liquidity', message: 'Swap unavailable: No provider found.' } }, 422);
     const raw = lifiStep();
-    return json({ refreshInterval: 60, routes: [{ id: 'r1', source: 'lifi', quoteRef: 'a'.repeat(48), expiresAt: Date.now() + 60000, tags: ['RECOMMENDED'], warnings: [], fromAmountUsd: 100, toAmountUsd: 95, priceImpact: -5, steps: [{
+    return json({ refreshInterval: 60, routes: [{ id: 'r1', source: 'lifi', quoteRef: 'a'.repeat(48), expiresAt: Date.now() + 60000, tags: ['RECOMMENDED'], warnings: [], fromAmountUsd: S.usd, toAmountUsd: 95, priceImpact: -5, steps: [{
       id: raw.id, type: 'swap', provider: { id: 'uniswap', name: 'Uniswap' }, fromDomainId: 'ethereum', toDomainId: 'ethereum',
       from: { asset: body.from, amount: raw.action.fromAmount }, to: { asset: body.to, amount: raw.estimate.toAmount, minAmount: raw.estimate.toAmountMin },
       slippage: { userSelected: 2 }, providerFees: [], approval: { tokenAddress: USDC, spender: ROUTER, minAmount: raw.action.fromAmount }, raw }] }] });
@@ -95,7 +95,7 @@ const ASSET = { usdc: { assetId: `c60_t${USDC}`, domainId: 'ethereum', address: 
 const quote = () => send({ type: 'swapQuote', from: ASSET.usdc, to: ASSET.eth, amount: '100000000', slippage: '2' });
 
 before(async () => { H.reset(); F.fetchImpl = api; assert.equal((await send({ type: 'createWallet', password: PASSWORD, mnemonic: PHRASE_ABOUT, name: 'Main' })).ok, true); });
-beforeEach(() => { S.allowance = 0n; S.raws.length = 0; S.lifi.length = 0; S.quoteMode = 'ok'; S.stepOver = {}; S.sim = 'none'; S.gwei = 2; });
+beforeEach(() => { S.allowance = 0n; S.raws.length = 0; S.lifi.length = 0; S.quoteMode = 'ok'; S.stepOver = {}; S.sim = 'none'; S.gwei = 2; S.usd = 100; });
 
 // The popup only ever sends a route id and the confirmation the preview issued (audit H3).
 const lifiRoute = async () => (await quote()).result.routes.find((r) => r.source === 'lifi');
@@ -121,7 +121,7 @@ test('T-DEFI-001: quote → preview → approve (exact amount, to the LI.FI Diam
   const st = await send({ type: 'swapStatus', id: sub.id }); assert.equal(st.ok, true); assert.equal(st.item.status, 'success', JSON.stringify(st.item));
   assert.equal(st.item.txHash, s.hash);
   // single use: the same route can never be sent twice
-  const again = await send({ type: 'swapSubmit', routeId: route.id, confirmId: pv.confirmId }); assert.equal(again.ok, false); assert.equal(again.code, 'price_moved');
+  const again = await send({ type: 'swapSubmit', routeId: route.id, confirmId: pv.confirmId }); assert.equal(again.ok, false); assert.equal(again.code, 'quote_expired');
   // an approval is skipped when the allowance already covers the amount
   const p2 = await previewed();
   const skip = await send({ type: 'swapApprove', routeId: p2.routeId, confirmId: p2.confirmId }); assert.equal(skip.skipped, true); assert.equal(S.raws.length, 2);
@@ -212,4 +212,13 @@ test('audit M4/M8: a simulation that fails for any reason other than "not offere
   S.gwei = 4000;   // 2,000 gwei base fee on Ethereum
   const f = await send({ type: 'swapSubmit', routeId: p.routeId, confirmId: p.confirmId }); assert.equal(f.ok, false); assert.equal(f.code, 'fee_too_high', JSON.stringify(f));
   assert.equal(S.raws.length, 0, 'nothing signed');
+});
+
+test('follow-up: when the RPC cannot simulate, only small swaps go ahead (a hostile RPC can claim it cannot)', async () => {
+  S.sim = 'none'; S.usd = 100;
+  const small = await send({ type: 'swapPreview', routeId: (await lifiRoute()).id }); assert.equal(small.ok, true, JSON.stringify(small)); assert.equal(small.preview.verification, 'checked');
+  S.usd = 5000;
+  const big = await send({ type: 'swapPreview', routeId: (await lifiRoute()).id }); assert.equal(big.ok, false); assert.equal(big.code, 'not_verified');
+  S.sim = 'ok';
+  const sim = await send({ type: 'swapPreview', routeId: (await lifiRoute()).id }); assert.equal(sim.ok, true); assert.equal(sim.preview.verification, 'simulated');
 });

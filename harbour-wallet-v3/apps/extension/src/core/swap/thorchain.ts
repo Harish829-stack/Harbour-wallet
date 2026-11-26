@@ -44,6 +44,18 @@ export function fromThorUnits(amount: string | bigint, decimals: number): bigint
   const v = BigInt(amount);
   return decimals >= THOR_DECIMALS ? v * 10n ** BigInt(decimals - THOR_DECIMALS) : v / 10n ** BigInt(THOR_DECIMALS - decimals);
 }
+/**
+ * A memo LIMIT that fits Bitcoin's 80-byte OP_RETURN: THORChain accepts scientific notation for the trade target
+ * (dev.thorchain.org "Memo Length Reduction": 1234500000 → 12345e5). Rounded UP to 5 significant digits, so the limit
+ * never drops below the confirmed floor (it can rise by at most 0.01%, still under the confirmed minimum).
+ */
+export function thorLimit(v: bigint): string {
+  const s = v.toString(); if (s.length <= 6) return s;
+  let e = s.length - 5; let n = (v + 10n ** BigInt(e) - 1n) / 10n ** BigInt(e);
+  if (n.toString().length > 5) { n /= 10n; e += 1; }        // 99999.x rounded up to 100000
+  while (n % 10n === 0n) { n /= 10n; e += 1; }
+  return `${n}e${e}`;
+}
 /** THORChain's one-letter asset shorthands (docs: "Asset Notation" / memo shortcuts). Anything else must be spelled out. */
 const THOR_SHORT: Record<string, string> = { a: 'AVAX.AVAX', b: 'BTC.BTC', c: 'BCH.BCH', d: 'DOGE.DOGE', e: 'ETH.ETH', f: 'BASE.ETH', g: 'GAIA.ATOM', l: 'LTC.LTC', n: 'BNB.BNB', r: 'THOR.RUNE', s: 'BSC.BNB' };
 /** Does a memo asset name exactly the asset we want? Tokens may be written with a shortened contract (a suffix of the full one). */
@@ -76,7 +88,7 @@ export function checkThorQuote(fresh: any, step: SwapStep, toAddress: string, _s
   const limit = toThorUnits(floor.toString(), step.to.asset.decimals);
   if (limit <= 0n) throw swapError('amount_too_low');
   const stream = String(parts[3] ?? '').match(/(\/\d+\/\d+)$/)?.[1] ?? '';
-  const memo = `${parts[0]}:${parts[1]}:${parts[2]}:${limit}${stream}`;
+  const memo = `${parts[0]}:${parts[1]}:${parts[2]}:${thorLimit(limit)}${stream}`;
   if (memo.length > 80) throw swapError('unsafe_transaction');
   return memo;
 }

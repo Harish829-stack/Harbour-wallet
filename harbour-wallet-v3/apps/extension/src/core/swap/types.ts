@@ -93,7 +93,7 @@ export type SwapErrorCode =
   | 'amount_too_low' | 'amount_too_high' | 'invalid_amount' | 'no_liquidity' | 'unsupported_pair'
   | 'unsupported_domain' | 'invalid_asset' | 'high_price_impact' | 'server' | 'timeout' | 'network'
   | 'invalid_slippage' | 'price_moved' | 'unsafe_transaction' | 'simulation_failed' | 'insufficient_gas'
-  | 'busy' | 'not_verified' | 'unsupported_route' | 'fee_too_high' | 'rate_limited';
+  | 'busy' | 'not_verified' | 'unsupported_route' | 'fee_too_high' | 'rate_limited' | 'quote_expired';
 
 export interface SwapError { code: SwapErrorCode; message: string; minAmount?: string }
 

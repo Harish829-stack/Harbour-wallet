@@ -72,7 +72,14 @@ async function jupiterTx(route: SwapRoute, turbo: boolean, user: string): Promis
  * (at most the sold amount) and the calls' own native value may leave the wallet, and a same-chain swap must pay at least
  * the confirmed minimum. null = this network's RPC cannot simulate; the provider-specific checks still apply.
  */
-async function guardEvmSwap(client: any, address: string, step: SwapStep, calls: SimCall[]): Promise<SwapEffect | null> {
+/** Largest swap (USD, as quoted) that may go ahead when the RPC cannot simulate it. Larger swaps wait for a network that can. */
+export const UNSIMULATED_MAX_USD = 250;
+function unsimulated(route: SwapRoute): null {
+  const usd = route.fromAmountUsd;
+  if (!(typeof usd === 'number' && Number.isFinite(usd) && usd > 0 && usd <= UNSIMULATED_MAX_USD)) throw swapError('not_verified');
+  return null;
+}
+async function guardEvmSwap(client: any, address: string, route: SwapRoute, step: SwapStep, calls: SimCall[]): Promise<SwapEffect | null> {
   let result: any;
   // Only an RPC that does not offer eth_simulateV1 is "cannot simulate" (shown as such on the confirm screen). Any other failure
   // (timeout, rate limit, server error) is retried once and then blocks the swap: it is never silently skipped (audit M4).
@@ -80,21 +87,28 @@ async function guardEvmSwap(client: any, address: string, step: SwapStep, calls:
     try { result = await client.request({ method: 'eth_simulateV1', params: simulateCallsParams(calls) } as any); break; }
     catch (e: any) {
       const code = e?.code ?? e?.cause?.code; const msg = String(e?.details ?? e?.shortMessage ?? e?.message ?? '');
-      if (code === -32601 || code === -32004 || /method.*(not (found|supported|available|exist))|does not exist|unsupported method|not supported/i.test(msg)) return null;
+      // "method not found" (JSON-RPC -32601) or a message that names eth_simulateV1 as unavailable. A hostile RPC can still claim
+      // this, so such swaps are limited to small amounts (UNSIMULATED_MAX_USD).
+      if (code === -32601 || /eth_simulateV1.*(not (found|supported|available|exist)|does not exist|unsupported)|method not found|the method .* does not exist/i.test(msg)) return unsimulated(route);
       if (attempt >= 1) throw swapError('not_verified');
     }
   }
   const sim = readSimulatedCalls(result, address);
-  if (!sim) return null;
+  if (!sim) return unsimulated(route);
   if (!sim.ok) throw swapError('simulation_failed');
   const check = checkSwapEffect(sim.changes, step, { maxNativeOut: calls.reduce((a, c) => a + c.value, 0n) });
   if (check.ok) return check.effect;
   // Some RPCs do not trace internal native transfers: a missing native payout is "not verified", not proof of theft.
-  if (check.reason === 'nothing_received' && step.to.asset.address === 'native') return null;
+  if (check.reason === 'nothing_received' && step.to.asset.address === 'native') return unsimulated(route);
   throw check.reason === 'below_minimum' ? swapError('price_moved') : swapError('unsafe_transaction');
 }
-/** Highest max fee per gas Harbour signs for a swap, per chain (wei; audit M8). A lying or spiking RPC cannot make a swap cost more. */
-const MAX_FEE_PER_GAS: Record<number, bigint> = { 1: 500n * 10n ** 9n, 56: 50n * 10n ** 9n, 137: 5000n * 10n ** 9n, 42161: 10n * 10n ** 9n, 8453: 10n * 10n ** 9n, 11155111: 500n * 10n ** 9n, 84532: 50n * 10n ** 9n };
+/**
+ * Highest max fee per gas Harbour signs for a swap, per chain (wei; audit M8): far above normal (~100-1000x on L2s) so real
+ * spikes still go through, but a lying RPC cannot make a swap cost a fortune. Review when gas markets change. A chain without
+ * an entry gets 5x the latest block's base fee (+ priority) instead of being blocked.
+ */
+const GWEI = 10n ** 9n;
+export const MAX_FEE_PER_GAS: Record<number, bigint> = { 1: 1000n * GWEI, 56: 100n * GWEI, 137: 10_000n * GWEI, 42161: 50n * GWEI, 8453: 50n * GWEI, 11155111: 1000n * GWEI, 84532: 100n * GWEI };
 const MAX_GAS = 3_000_000n;
 const approveData = (spender: string, amount: bigint) => encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [spender as `0x${string}`, amount] });
 
@@ -273,7 +287,7 @@ export async function quote(deps: SwapDeps, p: { from: SwapAsset; to: SwapAsset;
 /** The held route for the popup's id, checked against the account that is active now. */
 async function heldFor(deps: SwapDeps, routeId: unknown): Promise<HeldRoute> {
   const d = domainById(held.peek(routeId)?.route.steps[0]?.fromDomainId ?? '');
-  if (!d) throw swapError('price_moved');
+  if (!d) throw swapError('quote_expired');
   const owner = (await activeAddresses(deps.vault))[d.addressKey] as string | undefined;
   return held.get(routeId, owner ?? '');
 }
@@ -358,7 +372,8 @@ async function patchHistory(id: string, patch: Partial<SwapHistoryItem>) {
 async function broadcastEvm(client: any, chain: any, account: any, tx: { to: `0x${string}`; data: `0x${string}`; value: bigint; gas: bigint }, protectedUrl?: string): Promise<`0x${string}`> {
   const req: any = await client.prepareTransactionRequest({ account, chain, to: tx.to, data: tx.data, value: tx.value, gas: tx.gas });
   const t: any = { chainId: chain.id, to: tx.to, data: tx.data, value: tx.value, gas: req.gas ?? tx.gas, nonce: req.nonce };
-  const cap = MAX_FEE_PER_GAS[chain.id] ?? 0n;
+  let cap = MAX_FEE_PER_GAS[chain.id];
+  if (cap == null) { const b = await client.getBlock({ blockTag: 'latest' }).catch(() => null); cap = b?.baseFeePerGas != null ? b.baseFeePerGas * 5n + 2n * GWEI : 0n; }
   if (BigInt(t.gas) > MAX_GAS || BigInt(req.maxFeePerGas ?? req.gasPrice ?? 0n) > cap) throw swapError('fee_too_high');
   if (req.maxFeePerGas != null) { t.type = 'eip1559'; t.maxFeePerGas = req.maxFeePerGas; t.maxPriorityFeePerGas = req.maxPriorityFeePerGas; }
   else { t.type = 'legacy'; t.gasPrice = req.gasPrice; }
@@ -385,7 +400,7 @@ async function submitHeld(deps: SwapDeps, h: HeldRoute) {
     const slippagePct = h.slippagePct;
     const { d, keys, address } = await ourContext(deps, step);
     try {
-      if (!address || address.toLowerCase() !== h.owner) throw swapError('price_moved');
+      if (!address || address.toLowerCase() !== h.owner) throw swapError('quote_expired');
       let hash: string; let requestId: string | undefined;
       const toDomain = domainById(step.toDomainId)!;
       const ownTo = keys.addresses[toDomain.addressKey]; // payouts always go to our own account, never to an address carried in the route
@@ -414,7 +429,7 @@ async function submitHeld(deps: SwapDeps, h: HeldRoute) {
         {
           const ap = plan.txs.find((t) => t.kind === 'approve');
           const short = !!ap && ((await client.readContract({ address: ap.to, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, step.approval!.spender as `0x${string}`] })) as bigint) < BigInt(step.from.amount);
-          await guardEvmSwap(client, address, step, plan.txs.filter((t) => t.kind === 'execute' || short).map((t) => ({ from: address, to: t.to, data: t.data, value: t.value })));
+          await guardEvmSwap(client, address, p.route, step, plan.txs.filter((t) => t.kind === 'execute' || short).map((t) => ({ from: address, to: t.to, data: t.data, value: t.value })));
         }
         let last: `0x${string}` | undefined;
         if (await gaslessActive(d.chainId!)) {
@@ -471,7 +486,7 @@ async function submitHeld(deps: SwapDeps, h: HeldRoute) {
           }
           const code = await client.getCode({ address: call.to });
           if (!isContractCode(code)) throw swapError('unsafe_transaction'); // routers are real contracts, never wallets
-          await guardEvmSwap(client, address, step, [{ from: address, ...call }]);
+          await guardEvmSwap(client, address, p.route, step, [{ from: address, ...call }]);
           let gas: bigint;
           try { gas = ((await client.estimateGas({ account, ...call })) * 12n) / 10n; }
           catch { throw swapError('simulation_failed'); }
@@ -494,7 +509,7 @@ async function submitHeld(deps: SwapDeps, h: HeldRoute) {
         const allowanceShort = async () => !!a && step.from.asset.address !== 'native'
           && ((await client.readContract({ address: a.tokenAddress as `0x${string}`, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, a.spender as `0x${string}`] })) as bigint) < BigInt(a.minAmount);
         const approveCall = (): Call => ({ to: a!.tokenAddress as `0x${string}`, value: 0n, data: approveData(a!.spender, BigInt(a!.minAmount)) });
-        await guardEvmSwap(client, address, step, [...((await allowanceShort()) ? [approveCall()] : []), { to, data, value }].map((c) => ({ from: address, ...c })));
+        await guardEvmSwap(client, address, p.route, step, [...((await allowanceShort()) ? [approveCall()] : []), { to, data, value }].map((c) => ({ from: address, ...c })));
         let gaslessHash: `0x${string}` | null = null;
         if (await gaslessActive(d.chainId!)) {
           // one sponsored op: (approve) + swap; the bundler simulates it as a whole
@@ -584,7 +599,7 @@ export async function preview(deps: SwapDeps, q: { routeId: unknown }): Promise<
         const tx = refreshed.transactionRequest;
         calls = await withApproval(step.approval?.spender, { from: address, to: tx.to, data: tx.data, value: tx.value == null ? 0n : BigInt(tx.value) });
       } else throw swapError('unsupported_pair');
-      effect = await guardEvmSwap(client, address, step, calls);
+      effect = await guardEvmSwap(client, address, p.route, step, calls);
       const carried = calls.reduce((a, c) => a + c.value, 0n) - (step.from.asset.address === 'native' ? BigInt(step.from.amount) : 0n);
       if (carried > 0n) extraNative = carried;
       simulated = effect != null;

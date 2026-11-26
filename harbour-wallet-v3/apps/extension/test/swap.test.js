@@ -259,16 +259,27 @@ test('safety: router must be the LI.FI Diamond and calldata must pay us', () => 
 test('safety: bridge calls (BridgeData) are decoded; receiver, destination call and sold asset are enforced', () => {
   const I = M.decodeLifiCall(bridgeData(ME, { asset: USDC })); assert.equal(I.kind, 'bridge'); assert.equal(I.receiver.toLowerCase(), ME); assert.equal(I.minAmount, 100000000n);
   const raw = (data) => lifiStep({ transactionRequest: { data } });
-  assert.equal(check(raw(bridgeData(ME, { asset: USDC }))), null);
-  assert.equal(check(raw(bridgeData('0x3333333333333333333333333333333333333333', { asset: USDC })))?.code, 'unsafe_transaction');
-  assert.equal(check(raw(bridgeData(ME, { asset: USDC, call: true })))?.code, 'unsafe_transaction');
-  assert.equal(check(raw(bridgeData(ME, { asset: '0x3333333333333333333333333333333333333333' })))?.code, 'unsafe_transaction');
-  assert.equal(check(raw(bridgeData(ME, { asset: USDC, min: 200000000n })))?.code, 'unsafe_transaction');
+  // a USDC Ethereum → USDC Arbitrum bridge
+  const ARB_USDC = M.popularAssets('arbitrum').find((a) => a.symbol === 'USDC');
+  const base = stepOf(lifiStep());
+  const bstep = { ...base, type: 'bridge', toDomainId: 'arbitrum', to: { ...base.to, asset: ARB_USDC } };
+  const bctx = { ...ctx, destLifiChainId: 42161 };
+  const bcheck = (r, st = bstep, c = bctx) => M.validateLifiTransaction(r, st, c);
+  const bd = (rcv, o = {}) => bridgeData(rcv, { dest: 42161n, ...o });
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC }))), null);
+  assert.equal(bcheck(raw(bd('0x3333333333333333333333333333333333333333', { asset: USDC })))?.code, 'unsafe_transaction');
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC, call: true })))?.code, 'unsafe_transaction');
+  assert.equal(bcheck(raw(bd(ME, { asset: '0x3333333333333333333333333333333333333333' })))?.code, 'unsafe_transaction');
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC, min: 200000000n })))?.code, 'unsafe_transaction');
   // audit H2: a bridge to a non-EVM chain hides the real receiver; it is never signed. The destination chain must be the confirmed one.
-  assert.equal(M.validateLifiTransaction(raw(bridgeData(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana', destLifiChainId: 1151111081099710 })?.code, 'unsupported_route');
-  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' })?.code, 'unsupported_route');
-  assert.equal(check(raw(bridgeData(ME, { asset: USDC, dest: 56n })))?.code, 'unsafe_transaction');
-  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destLifiChainId: undefined })?.code, 'unsafe_transaction');
+  assert.equal(bcheck(raw(bd(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), bstep, { ...ctx, destKind: 'solana', destLifiChainId: 1151111081099710 })?.code, 'unsupported_route');
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC })), bstep, { ...bctx, destKind: 'solana' })?.code, 'unsupported_route');
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC, dest: 56n })))?.code, 'unsafe_transaction');
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC })), bstep, { ...bctx, destLifiChainId: undefined })?.code, 'unsafe_transaction');
+  // follow-up to H2: what arrives must be the bought asset's counterpart of what is bridged (USDC bridged, ETH "bought": refused)
+  assert.equal(bcheck(raw(bd(ME, { asset: USDC })), { ...bstep, to: { ...bstep.to, asset: M.nativeAsset('arbitrum') } })?.code, 'unsupported_route');
+  assert.equal(M.bridgeFamily('arbitrum', 'native'), 'native:ETH'); assert.equal(M.bridgeFamily('polygon', 'native'), 'native:POL');
+  assert.equal(M.bridgeFamily('ethereum', '0x0000000000000000000000000000000000000001'), null);   // unknown token: no family
 });
 
 // Real LI.FI answer (2026-11-26): a Layerswap bridge whose minimum sits 1.00005% under the output at 1% slippage. It must pass the

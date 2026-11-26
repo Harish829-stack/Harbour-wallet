@@ -44,7 +44,7 @@ func (s *Service) Transaction(ctx context.Context, t TxRequest) (json.RawMessage
 		}
 		payload, ok := s.guard.getRef(s.cfg.Now(), t.Ref, t.Source)
 		if !ok {
-			return nil, errCode("price_moved") // expired or unknown: the client quotes again
+			return nil, errCode("quote_expired") // expired or unknown (e.g. after a restart): the client quotes again
 		}
 		if t.Source == LiFi {
 			return s.lifiStepTransaction(ctx, payload)

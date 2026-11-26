@@ -65,8 +65,8 @@ export function acceptRoute(r: any, req: SwapRouteRequest, now = Date.now()): Sw
   st.to = { asset: req.to, amount: st.to.amount, minAmount: st.to.minAmount };
   st.slippage = { userSelected: Number(req.slippage) };   // the user's own setting; later checks rely on it
   const pid = text(st.provider?.id, 40) || r.source;
-  const logo = r.source === 'thorchain' ? '/chains/thorchain.png' : r.source === 'jupiter' ? tokenLogoPath('solana', 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN')
-    : typeof st.provider?.logoUrl === 'string' && /^https:\/\//.test(st.provider.logoUrl) ? st.provider.logoUrl.slice(0, 300) : undefined;
+  // Bundled logos only: a provider-supplied URL would make the popup fetch from any host and leak the user's IP to it.
+  const logo = r.source === 'thorchain' ? '/chains/thorchain.png' : r.source === 'jupiter' ? tokenLogoPath('solana', 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN') : undefined;
   st.provider = { id: pid, name: text(st.provider?.name, 40) || pid, logoUrl: logo };
   st.providerFees = Array.isArray(st.providerFees) ? st.providerFees.filter((f: any) => INT.test(f?.amount ?? '')).slice(0, 6) : [];
   if (st.networkFee && !INT.test(st.networkFee.amount ?? '')) delete st.networkFee;
@@ -98,7 +98,7 @@ function stripAssets<T extends { from: SwapAsset; to: SwapAsset }>(b: T): T {
 export type TxSource = { source: 'lifi'; ref: string } | { source: 'relay' | 'thorchain'; request: SwapRouteRequest } | { source: 'jupiter'; ref: string; priority: 'fast' | 'turbo'; user: string };
 /** The provider's own fresh answer for a confirmed route (checked by the caller before anything is signed). */
 export async function backendTransaction(t: TxSource): Promise<any> {
-  if ('ref' in t && !t.ref) throw swapError('price_moved');   // routes without a server ref cannot be sent: quote again
+  if ('ref' in t && !t.ref) throw swapError('quote_expired');   // routes without a server ref cannot be sent: quote again
   const body: any = { ...t };
   if ('request' in t) body.request = stripAssets({ ...t.request, sortBy: t.request.sortBy ?? 'quantity', solanaTurbo: !!t.request.solanaTurbo });
   return call('POST', '/v1/swap/transaction', body);

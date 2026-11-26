@@ -40,11 +40,11 @@ export class SwapRouteStore {
     });
   }
 
-  /** A held route for this owner, or a "quote again" error. The returned route is a private copy. */
+  /** A held route for this owner, or a "quote expired" error. The returned route is a private copy. */
   get(id: unknown, owner: string, now = Date.now()): HeldRoute {
     const h = typeof id === 'string' ? this.routes.get(id) : undefined;
-    if (!h || h.expiresAt <= now) { if (typeof id === 'string') this.routes.delete(id); throw swapError('price_moved'); }
-    if (h.owner !== owner.toLowerCase()) throw swapError('price_moved');
+    if (!h || h.expiresAt <= now) { if (typeof id === 'string') this.routes.delete(id); throw swapError('quote_expired'); }
+    if (h.owner !== owner.toLowerCase()) throw swapError('quote_expired');
     return h;
   }
 
@@ -53,14 +53,14 @@ export class SwapRouteStore {
 
   /** preview() passed: issue a fresh confirmation id for this route. */
   issueConfirm(id: string, now = Date.now()): string {
-    const h = this.routes.get(id); if (!h) throw swapError('price_moved');
+    const h = this.routes.get(id); if (!h) throw swapError('quote_expired');
     h.confirm = { id: crypto.randomUUID(), expiresAt: now + CONFIRM_TTL_MS };
     return h.confirm.id;
   }
 
   /** The confirmation must match the last preview of this route. */
   checkConfirm(h: HeldRoute, confirmId: unknown, now = Date.now()): void {
-    if (!h.confirm || typeof confirmId !== 'string' || h.confirm.id !== confirmId || h.confirm.expiresAt <= now) throw swapError('price_moved');
+    if (!h.confirm || typeof confirmId !== 'string' || h.confirm.id !== confirmId || h.confirm.expiresAt <= now) throw swapError('quote_expired');
   }
 
   /** Single use: a submitted route (successful or not) can never be sent again. */

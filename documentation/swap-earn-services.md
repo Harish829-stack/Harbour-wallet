@@ -35,14 +35,15 @@ The backend is treated as untrusted by the extension. Before anything is signed:
    in one step, with a minimum not looser than the user's slippage. The user's own asset objects are shown.
 2. **Provider checks on the provider's own fresh answer**: LI.FI must target the LI.FI Diamond, the decoded calldata must pay
    the user and a bridge must name the confirmed destination chain; LI.FI routes are EVM → EVM only (non-EVM receivers are not
-   decodable). Relay contracts must be on Relay's own list, fetched directly from api.relay.link, and approvals are re-encoded for
+   decodable), and the bridged asset must be the bought asset's counterpart (same native coin, or the same curated token on
+   both chains). Relay contracts must be on Relay's own list, fetched directly from api.relay.link, and approvals are re-encoded for
    the exact amount; cross-chain Relay orders are verified the way Relay documents ("Input Validation"): the order id is
    recomputed (types from `@relay-protocol/settlement-sdk`), the order must pay exactly the sold amount, deliver the bought token
    on the destination chain to the user's own address, refund only to the user, carry no calls, and the deposit to Relay's
    depository must commit to that id from the user's address. THORChain's vault must be confirmed by two independent THORNodes,
    the memo must swap to exactly the confirmed asset (shorthands normalised) and pay the user, and its LIMIT is rewritten to the
    confirmed minimum. Jupiter transactions must have the user as the only signer, use only allow-listed programs and pass a dry
-   run that reads token balances: only the sold token may leave and the bought asset must reach the confirmed minimum. Aave
+   run that reads token balances: only the sold token may leave and the bought asset must reach the confirmed minimum, written in THORChain's scientific notation so BTC memos fit 80 bytes. Aave
    plans must match the address book, amount and owner.
 3. **The confirmed minimum is the floor** (audit H4): whatever a fresh answer says, the signed transaction must guarantee at
    least the minimum the user confirmed (0.1% rounding). If the price moved, the swap is refused with `price_moved` and the user
@@ -50,13 +51,16 @@ The backend is treated as untrusted by the extension. Before anything is signed:
 4. **Simulation ("you send X, you get Y")** (`core/swap/simGuard.ts`): the exact calls (approve + swap) are dry-run with
    `eth_simulateV1`. Only the sold asset (up to the sold amount) and the calls' own native value may leave the wallet; a
    same-chain swap must pay at least the confirmed minimum. The confirm screen shows the result; submit enforces it again on its
-   own fresh transaction. Only an RPC that does not offer `eth_simulateV1` falls back to steps 1–3 (the screen says so); any
-   other simulation failure blocks the swap (`not_verified`). Bridge fees carried as native value are capped per chain and shown.
+   own fresh transaction. Only an RPC that does not offer `eth_simulateV1` falls back to steps 1–3 (the screen says so), and
+   then only for swaps quoted at up to $250 (a hostile RPC can claim it cannot simulate); any other simulation failure blocks
+   the swap (`not_verified`). Bridge fees carried as native value are capped per chain and shown.
 5. **Worker-held routes** (`core/swap/routeStore.ts`): quotes stay in the service worker; the popup sends only a route id and the
    one-time confirmation the preview issued. Slippage, unlimited approval (only from the user's swap setting) and expiry come from
-   worker state. A route can be sent once, one swap at a time.
+   worker state. A route can be sent once, one swap at a time. A route that is gone (expired, already sent, service worker
+   restarted, account switched) returns `quote_expired`, not `price_moved`.
 6. **Signing stays in the service worker**; keys never reach the backend or the popup. Swap fees above a per-chain ceiling are
-   never signed (`fee_too_high`). Slippage is capped at 5% (extension and backend).
+   never signed (`fee_too_high`; `MAX_FEE_PER_GAS` in `swapService.ts`: 1,000 gwei Ethereum, 100 BNB Chain, 10,000 Polygon,
+   50 Arbitrum/Base; a chain without an entry gets 5x the latest base fee). Review the ceilings when gas markets change. Slippage is capped at 5% (extension and backend).
 
 ## Operations
 
@@ -71,7 +75,8 @@ Provider errors become stable codes (`no_liquidity`, `amount_too_low`, `timeout`
 passed to users. Redirects from providers are refused so API keys cannot leak, and response bodies are size-capped.
 
 Upstream protection (`swapsvc/guard.go`, earnsvc): identical quote requests within 8 s share one upstream call (cache +
-`golang.org/x/sync/singleflight`); a provider failing 3 times in a row is skipped for 30 s; a quote request is charged to the
+`golang.org/x/sync/singleflight`); a provider failing 3 times in a row (5xx, timeouts; 429s are not counted, so one busy device cannot switch a provider off for
+everyone) is skipped for 30 s; a quote request is charged to the
 device rate limit once per provider asked; Aave markets are cached 60 s and APR fetches are de-duplicated. Quote refs and the
 cache are in memory: with more than one API replica, give `/v1/swap` session affinity (a lost ref only means "quote again").
 
@@ -108,5 +113,8 @@ BTC (no refund address any more), and a too-strict slippage rounding tolerance t
 - Routes no longer offered because their destination cannot be verified (audit H1/H2): LI.FI from Solana, and LI.FI bridges to
   Solana or Bitcoin. EVM → Solana still works through Relay (verified order); BTC through THORChain.
 - Simulation uses the same RPC that broadcasts; an independent simulation endpoint would remove that single point (audit M4).
+  Until then, swaps the RPC "cannot simulate" are limited to $250 as quoted (the quote's USD value comes from the backend).
+- Low-severity audit items still open: Aave "withdraw all" (exact amounts only), native-staking reads going straight to public
+  RPCs, Relay `/quote/v3` + `/intents/status/v3` (needs a live run).
 - Rocket Pool's deposit pool is confirmed by two RPC operators that must agree (audit H5), not pinned: Rocket Pool upgrades it
   through RocketStorage. A pinned list with an update path is still an option.

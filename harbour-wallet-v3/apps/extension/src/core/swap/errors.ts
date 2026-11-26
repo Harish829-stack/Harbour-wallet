@@ -20,6 +20,7 @@ export const SWAP_MESSAGES: Record<SwapErrorCode, string> = {
   insufficient_gas: 'Not enough balance to cover network fees.',
   busy: 'Another swap is still being sent. Wait for it to finish.',
   not_verified: 'This swap couldn’t be checked on this network right now, so it was not sent. Please try again later.',
+  quote_expired: 'This quote expired. Get a new quote and try again.',
   rate_limited: 'Swap providers are busy right now. Please try again in a moment.',
   fee_too_high: 'The network fee is unusually high right now, so the swap was not sent. Try again later.',
   unsupported_route: 'Harbour can’t verify where this route delivers your funds, so it isn’t offered. Try another token or network.',

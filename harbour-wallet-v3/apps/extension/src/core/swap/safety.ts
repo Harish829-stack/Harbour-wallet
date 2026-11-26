@@ -2,6 +2,8 @@
 // a swap may only be signed if the transaction matches what the user was quoted and confirmed.
 import type { SwapStep, SwapError } from './types';
 import { swapError } from './errors';
+import { popularAssets } from './tokens';
+import { domainById } from './domains';
 /** The zero address LI.FI and Relay use for a chain's native coin. */
 export const EVM_NATIVE = '0x0000000000000000000000000000000000000000';
 export const SOL_NATIVE = '11111111111111111111111111111111';
@@ -36,6 +38,17 @@ const LIFI_SWAP_SELECTORS = ['0x4630a0d8', '0x4666fc80', '0x733214a3', '0xaf7060
  * The fee list in the response is untrusted, so it is only believed up to this bound. Unknown chains: none.
  */
 export const LIFI_NATIVE_FEE_CAP: Record<number, bigint> = { 1: 10n ** 16n, 56: 5n * 10n ** 16n, 137: 50n * 10n ** 18n, 42161: 5n * 10n ** 15n, 8453: 5n * 10n ** 15n };
+/**
+ * What a LI.FI bridge leg delivers is the destination counterpart of the asset it bridges (no destination call is allowed),
+ * which calldata cannot name (audit follow-up). Accept a bridge only when the bridged asset and the bought asset are the same
+ * asset family: the chains' native coins with the same symbol, or curated tokens with the same symbol on both chains.
+ */
+export function bridgeFamily(domainId: string, address: string): string | null {
+  const d = domainById(domainId); if (!d) return null;
+  if (address === 'native' || address.toLowerCase() === EVM_NATIVE) return `native:${d.nativeSymbol}`;
+  const t = popularAssets(domainId).find((a) => a.address !== 'native' && a.address.toLowerCase() === address.toLowerCase());
+  return t ? `token:${t.symbol}` : null;
+}
 export interface LifiCallInfo { kind: 'swap' | 'bridge'; receiver: string; minAmount: bigint; destChainId?: bigint; sendingAsset?: string; hasSourceSwaps?: boolean; hasDestinationCall?: boolean }
 const word = (hex: string, i: number): string | null => { const w = hex.slice(10 + i * 64, 10 + (i + 1) * 64); return w.length === 64 ? w : null; };
 const wAddr = (w: string | null): string | null => (w && /^0{24}/.test(w) ? '0x' + w.slice(24) : null);
@@ -101,6 +114,10 @@ export function validateLifiTransaction(refreshed: any, step: SwapStep, ctx: Evm
     if (ctx.destLifiChainId == null || info.destChainId !== BigInt(ctx.destLifiChainId)) return bad;
     if (info.minAmount > fromAmt) return bad;
     if (!info.hasSourceSwaps && info.sendingAsset && !(nativeSell ? info.sendingAsset === ZERO : info.sendingAsset.toLowerCase() === step.from.asset.address.toLowerCase())) return bad;
+    // the asset that arrives must be the bought asset's counterpart of what is bridged
+    const sent = info.sendingAsset ? bridgeFamily(step.fromDomainId, info.sendingAsset) : null;
+    const want = bridgeFamily(step.toDomainId, step.to.asset.address);
+    if (!sent || !want || sent !== want) return swapError('unsupported_route');
   } else {
     if (info.receiver.toLowerCase() !== ctx.ourAddress.toLowerCase()) return bad;
     const em = big(est.toAmountMin); if (em == null || info.minAmount * 1000n < em * 999n) return bad;   // on-chain min-out may not be weaker than the quoted minimum (0.1% rounding)

@@ -61,8 +61,14 @@ func TestCircuitBreakerAnd429(t *testing.T) {
 	}
 	f2 := newFake(t)
 	f2.handler["/lifi/advanced/routes"] = func(w http.ResponseWriter, _ *http.Request, _ []byte) { w.WriteHeader(http.StatusTooManyRequests) }
-	if _, err := guardSvc(f2, -1).Quotes(context.Background(), req(eth(), usdC(), "1000000000000000")); asErr(err).Code != "rate_limited" {
-		t.Fatalf("429: %v", err)
+	s2 := guardSvc(f2, -1)
+	for i := 0; i < breakerFailures+2; i++ { // 429s never open the breaker (one busy device must not switch a provider off for everyone)
+		if _, err := s2.Quotes(context.Background(), req(eth(), usdC(), "1000000000000000")); asErr(err).Code != "rate_limited" {
+			t.Fatalf("429 #%d: %v", i, err)
+		}
+	}
+	if f2.hits.Load() != breakerFailures+2 {
+		t.Fatalf("hits %d", f2.hits.Load())
 	}
 }
 

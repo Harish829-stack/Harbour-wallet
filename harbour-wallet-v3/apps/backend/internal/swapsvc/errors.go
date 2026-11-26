@@ -32,7 +32,7 @@ var Messages = map[string]string{
 	"invalid_slippage":   "Invalid slippage.",
 	"unavailable":        "This swap provider is not available right now.",
 	"bad_request":        "Invalid request.",
-	"price_moved":        "The price moved while preparing this swap. Refresh the quote and try again.",
+	"quote_expired":      "This quote expired. Get a new quote and try again.",
 	"rate_limited":       "Swap providers are busy right now. Please try again in a moment.",
 }
 
