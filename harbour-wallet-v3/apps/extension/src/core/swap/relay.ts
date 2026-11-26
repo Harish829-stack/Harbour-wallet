@@ -2,6 +2,7 @@
 // from 2026-10-02 every call needs an API key, which harbour-gateway adds (`/relay/*`). The quote carries ready-made
 // step items (approve, then deposit/swap); Harbour re-quotes at submit time and signs only items that match the
 // confirmed quote. Field names follow docs.relay.link (get-quote-v2); unverified live from this build environment.
+import { encodeFunctionData, erc20Abi } from 'viem';
 import { hasDangerousSelector } from './safety';
 import type { SwapRoute, SwapRouteRequest, SwapStep, SwapFee } from './types';
 import { domainById } from './domains';
@@ -112,7 +113,9 @@ export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress:
       if (native || !dec || d.to.toLowerCase() !== step.from.asset.address.toLowerCase() || value !== 0n) throw bad;
       if (!step.approval || dec.spender.toLowerCase() !== step.approval.spender.toLowerCase()) throw bad;
       if (!ctx.targets.has(dec.spender.toLowerCase())) throw bad;   // spender must be a contract Relay itself lists for this chain
-      txs.push({ kind: 'approve', to: d.to, data: d.data, value: 0n });
+      // Never sign Relay's own approval calldata (it may ask for an unlimited allowance): approve exactly the amount being sold.
+      const exact = encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [dec.spender as `0x${string}`, sell] });
+      txs.push({ kind: 'approve', to: d.to, data: exact, value: 0n });
     } else {
       if (native ? value > sell : value !== 0n) throw bad;
       if (!ctx.targets.has(d.to.toLowerCase())) throw bad;          // execute target must be a contract Relay itself lists for this chain

@@ -72,6 +72,8 @@ test('Relay route mapping and pre-sign validation of the fresh quote', () => {
   const ctx = { ourAddress: ME, chainId: 1, slippagePct: 1, targets: new Set(['0x4444444444444444444444444444444444444444']) };
   const plan = M.relayTransactions(relayQ(), st, ctx);
   assert.deepEqual(plan.txs.map((t) => t.kind), ['approve', 'execute']); assert.equal(plan.requestId, '0xreq');
+  // Relay asked for an unlimited allowance (ff..ff); Harbour signs an approval for exactly the sold amount instead
+  assert.equal(M.decodeApprove(plan.txs[0].data).amount, 5000000n); assert.equal(M.decodeApprove(plan.txs[0].data).spender.toLowerCase(), '0x4444444444444444444444444444444444444444');
   const evil = relayQ(); evil.steps[0].items[0].data.data = '0x095ea7b3' + '0'.repeat(24) + '9'.repeat(40) + 'f'.repeat(64);
   assert.throws(() => M.relayTransactions(evil, st, ctx), (e) => e.code === 'unsafe_transaction');
   const valued = relayQ(); valued.steps[1].items[0].data.value = '1';

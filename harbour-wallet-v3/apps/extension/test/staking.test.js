@@ -33,7 +33,7 @@ test('validators: sanitises rows, drops junk, https-only websites, bundled snaps
   const r = await M.loadValidatorList('cosmos', async () => { throw new Error('offline'); });
   assert.equal(r.source, 'snapshot'); assert.ok(r.list.length > 30); assert.ok(r.list.every((v) => v.id.startsWith('cosmosvaloper1')));
   M.clearValidatorCache();
-  const live = await M.loadValidatorList('solana', async (u) => { assert.match(u, /raw\.githubusercontent\.com\/trustwallet\/assets\/master\/blockchains\/solana\/validators\/list\.json$/); return json([{ id: 'FiijvR2ibXEHaFqB127CxrL3vSj19K2Kx1jf2RbK4BWS', name: 'N' }]); });
+  const live = await M.loadValidatorList('solana', async (u) => { assert.match(u, /raw\.githubusercontent\.com\/trustwallet\/assets\/[0-9a-f]{40}\/blockchains\/solana\/validators\/list\.json$/); return json([{ id: 'FiijvR2ibXEHaFqB127CxrL3vSj19K2Kx1jf2RbK4BWS', name: 'N' }]); });
   assert.equal(live.source, 'network'); assert.equal(live.list.length, 1);
 });
 test('amount parsing', () => {

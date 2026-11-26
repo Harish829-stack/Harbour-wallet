@@ -3,7 +3,10 @@
 import snapshot from './validators.snapshot.json';
 import type { ValidatorMeta } from './types';
 
-export const VALIDATORS_BASE = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains';
+// Pinned to one reviewed commit of trustwallet/assets (master on 2026-11-26), so the list cannot change under us. To update:
+// `git ls-remote https://github.com/trustwallet/assets refs/heads/master`, review the diff of the validators files, then bump the SHA.
+export const VALIDATORS_COMMIT = 'cae05686a4e7f9f061a96bdf0729b72a7c615650';
+export const VALIDATORS_BASE = `https://raw.githubusercontent.com/trustwallet/assets/${VALIDATORS_COMMIT}/blockchains`;
 export const validatorsUrl = (list: string) => `${VALIDATORS_BASE}/${encodeURIComponent(list)}/validators/list.json`;
 
 const clean = (s: unknown, max: number): string => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '');
