@@ -93,13 +93,15 @@ func TestParsePrivateKeyFormats(t *testing.T) {
 	k := testKey()
 	der, _ := x509.MarshalPKCS8PrivateKey(k)
 	p := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
-	for name, in := range map[string]string{"pem": p, "pem-one-line": strings.ReplaceAll(p, "\n", `\n`), "seed-hex": hex.EncodeToString(k.Seed()), "full-hex": hex.EncodeToString(k)} {
+	lines := strings.Split(strings.TrimSpace(p), "\n")
+	for name, in := range map[string]string{"pem": p, "pem-one-line": strings.ReplaceAll(p, "\n", `\n`), "seed-hex": hex.EncodeToString(k.Seed()), "full-hex": hex.EncodeToString(k),
+		"body-only": lines[1], "quoted": `"` + strings.ReplaceAll(p, "\n", `\n`) + `"`, "spaced": strings.Join(lines, ` \n `), "crlf": strings.ReplaceAll(p, "\n", "\r\n")} {
 		got, err := ParsePrivateKey(in)
 		if err != nil || !got.Equal(k) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	for _, bad := range []string{"", "nope", "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----", hex.EncodeToString(make([]byte, 31))} {
+	for _, bad := range []string{"", "nope", "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----", hex.EncodeToString(make([]byte, 31)), "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA\n-----END PUBLIC KEY-----", "-----BEGIN PRIVATE KEY-----MC4C"} {
 		if _, err := ParsePrivateKey(bad); err == nil {
 			t.Errorf("accepted %q", bad)
 		}

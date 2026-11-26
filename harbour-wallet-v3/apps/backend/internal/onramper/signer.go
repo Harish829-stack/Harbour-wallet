@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"sort"
 	"strings"
@@ -28,38 +27,45 @@ func sha256Hex(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToStri
 // HashIP is the endUserIpHash Onramper binds a checkout session to: lowercase hex SHA-256 of the end user's IP address.
 func HashIP(ip string) string { return sha256Hex([]byte(ip)) }
 
-// ParsePrivateKey reads the Ed25519 signing key: a PKCS#8 PEM block (as made by `openssl genpkey -algorithm ED25519`),
-// optionally stored on one line with literal "\n" separators, or a raw 32-byte seed / 64-byte key in hex or base64.
+// ParsePrivateKey reads the Ed25519 signing key in any of these forms:
+//   - the PKCS#8 PEM file made by `openssl genpkey -algorithm ED25519` (real line breaks, or one line with literal "\n");
+//   - just the base64 line between the BEGIN/END lines of that file (easiest in a .env file);
+//   - a raw 32-byte seed or 64-byte private key in hex or base64.
+//
+// Quotes, spaces and stray "\n"/"\r" are ignored, so .env and Docker Compose quoting styles all work.
 func ParsePrivateKey(s string) (ed25519.PrivateKey, error) {
-	s = strings.TrimSpace(strings.ReplaceAll(s, `\n`, "\n"))
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, `"'`)
 	if s == "" {
 		return nil, errors.New("onramper: signing key is empty")
 	}
-	if strings.Contains(s, "-----BEGIN") {
-		block, _ := pem.Decode([]byte(s))
-		if block == nil {
-			return nil, errors.New("onramper: signing key is not valid PEM")
-		}
-		k, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, errors.New("onramper: signing key is not a PKCS#8 private key")
-		}
-		ed, ok := k.(ed25519.PrivateKey)
-		if !ok {
-			return nil, errors.New("onramper: signing key is not an Ed25519 key")
-		}
-		return ed, nil
+	if strings.Contains(s, "PUBLIC KEY") {
+		return nil, errors.New("onramper: ONRAMPER_SIGNING_KEY holds the PUBLIC key; use the private key (onramper_private.pem)")
 	}
+	body := s
+	if i := strings.Index(s, "-----BEGIN"); i >= 0 {
+		rest := s[i+len("-----BEGIN"):]
+		j := strings.Index(rest, "-----") // end of the BEGIN line
+		k := strings.Index(rest, "-----END")
+		if j < 0 || k < 0 || k <= j {
+			return nil, errors.New("onramper: signing key is not valid PEM (missing BEGIN/END lines)")
+		}
+		body = rest[j+len("-----") : k]
+	}
+	clean := strings.NewReplacer(`\n`, "", `\r`, "", "\n", "", "\r", "", " ", "", "\t", "", `"`, "", "'", "").Replace(body)
 	var raw []byte
-	if b, err := hex.DecodeString(s); err == nil {
+	if b, err := hex.DecodeString(clean); err == nil {
 		raw = b
 	} else {
 		for _, enc := range []*base64.Encoding{base64.StdEncoding, base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding} {
-			if b, err := enc.DecodeString(s); err == nil {
+			if b, err := enc.DecodeString(clean); err == nil {
 				raw = b
 				break
 			}
 		}
+	}
+	if raw == nil {
+		return nil, errors.New("onramper: signing key is not valid PEM or base64")
 	}
 	switch len(raw) {
 	case ed25519.SeedSize:
@@ -71,7 +77,15 @@ func ParsePrivateKey(s string) (ed25519.PrivateKey, error) {
 		}
 		return k, nil
 	}
-	return nil, errors.New("onramper: signing key must be PKCS#8 PEM or a 32-byte Ed25519 seed (hex/base64)")
+	k, err := x509.ParsePKCS8PrivateKey(raw)
+	if err != nil {
+		return nil, errors.New("onramper: signing key is not a PKCS#8 private key")
+	}
+	ed, ok := k.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("onramper: signing key is not an Ed25519 key")
+	}
+	return ed, nil
 }
 
 // formEscape matches the WHATWG application/x-www-form-urlencoded byte serializer (URLSearchParams.toString()):

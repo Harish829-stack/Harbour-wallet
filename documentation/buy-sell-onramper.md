@@ -56,7 +56,7 @@ Users see their orders under **Fund > Your buy and sell orders** (also in Help >
    | Variable | Value |
    | --- | --- |
    | `ONRAMPER_API_KEY` | your `pk_...` key |
-   | `ONRAMPER_SIGNING_KEY_FILE` | path to `onramper_private.pem` (or `ONRAMPER_SIGNING_KEY` with the PEM on one line, `\n` between lines) |
+   | `ONRAMPER_SIGNING_KEY` | the middle line of `onramper_private.pem` (the base64 text between BEGIN and END). The full PEM, one line with `\n`, or `ONRAMPER_SIGNING_KEY_FILE` (outside Docker) also work |
    | `ONRAMPER_ENV` | `staging` or `production` (optional: a `pk_test_` key selects staging) |
    | `ONRAMPER_WEBHOOK_SECRET` | the webhook secret (used by `webhook-ingest`) |
    | `RAMPS_RETURN_URL` | `https://<api host>/v1/ramps/return` |
