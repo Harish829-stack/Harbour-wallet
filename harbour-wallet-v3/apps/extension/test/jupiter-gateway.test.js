@@ -2,7 +2,7 @@
 // Harbour gateway, where the key lives. Nothing in src may call the old host or carry a Jupiter key.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,10 +17,10 @@ test('no code path calls the deprecated lite-api.jup.ag host or embeds a Jupiter
   }
 });
 
-test('Jupiter swap and token search are built on the gateway URL only', () => {
-  const j = readFileSync(path.join(src, 'core/swap/jupiter.ts'), 'utf8');
-  assert.match(j, /JUP_BASE = GATEWAY_URL \? `\$\{GATEWAY_URL\}\/jup\/swap\/v1` : ''/);
-  assert.match(j, /if \(!JUP_BASE\) throw swapError\('network'\)/);
+test('Jupiter swaps go through the backend swap service only (it holds the key); token search through the gateway', () => {
+  const b = readFileSync(path.join(src, 'core/swap/backend.ts'), 'utf8');
+  assert.match(b, /'\/v1\/swap\/quotes'/); assert.match(b, /'\/v1\/swap\/transaction'/);
+  assert.ok(!existsSync(path.join(src, 'core/swap/jupiter.ts')), 'no client-side Jupiter adapter');
   const t = readFileSync(path.join(src, 'core/chains/adapters/tokens.ts'), 'utf8');
   assert.match(t, /\$\{GATEWAY_URL\}\/jup\/tokens\/v2\/search\?query=/);
 });

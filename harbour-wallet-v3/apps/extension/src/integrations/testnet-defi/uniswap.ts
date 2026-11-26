@@ -6,6 +6,23 @@ import { readToken, sameAddress } from './rpc';
 import type { DefiClient } from './rpc';
 import type { DefiToken, PreparedDefi, SwapCatalog } from './types';
 import { GATEWAY_URL } from '../../kit/endpoints';
+import { HB_API_URL } from '../../core/harbour/config';
+
+/** What the backend swap service returns for POST /v1/swap/uniswap/prepare: Uniswap's own quote, approval and swap answers. */
+export interface UniswapPrepared { routing?: string; quote?: any; isTokenApprovalApplicable?: boolean; approval?: any; cancel?: any; swap?: any }
+export type UniswapBackend = (body: { chainId: number; tokenIn: string; tokenOut: string; amount: string; swapper: string; slippageBps: number; deadline: number }) => Promise<UniswapPrepared>;
+// The Harbour backend calls the Uniswap API (quote -> check_approval -> swap) with its key; requests to /v1/swap are signed
+// with the device key by core/harbour/fetchHook.ts. Everything it returns is checked below before anything is signed.
+let uniswapBackend: UniswapBackend = async (body) => {
+  let response: Response;
+  try { response = await fetch(`${HB_API_URL}/v1/swap/uniswap/prepare`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) }); }
+  catch { throw new Error('Uniswap is not responding. Check your connection and try again.'); }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(uniswapError(data));
+  return data;
+};
+/** Tests replace the backend call. */
+export const setUniswapBackend = (f: UniswapBackend): void => { uniswapBackend = f; };
 import { checkUniversalRouterSwap } from './universalRouter';
 
 /** No-Permit2 proxies the Trading API may name (current CREATE2 address first, then the deprecated one). */
@@ -40,22 +57,9 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   const input = nativeIn ? { address: from, symbol: 'ETH', decimals: 18, balance: (await client.getBalance({ address: owner })).toString() } : await readToken(client, from, owner);
   const output = nativeOut ? { address: to, symbol: 'ETH', decimals: 18, balance: (await client.getBalance({ address: owner })).toString() } : await readToken(client, to, owner);
   if (amount > BigInt(input.balance)) throw new Error('Insufficient token balance.');
-  const endpoint = async (path: string, body: unknown): Promise<any> => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20_000);
-    let response: Response;
-    try { response = await fetch(`${GATEWAY_URL}/uniswap/v1/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body), signal: controller.signal }); }
-    catch { throw new Error('Uniswap is not responding. Check your connection and try again.'); }
-    finally { clearTimeout(timer); }
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(uniswapError(data));
-    return data;
-  };
-  const slippageTolerance = slippageBps / 100;
-  const quoteResponse = await endpoint('quote', { type: 'EXACT_INPUT', amount: amount.toString(), tokenInChainId: SEPOLIA.chainId, tokenOutChainId: SEPOLIA.chainId,
-    tokenIn: from, tokenOut: to, swapper: owner, slippageTolerance, routingPreference: 'BEST_PRICE', permitAmount: 'EXACT' });
+  const quoteResponse = await uniswapBackend({ chainId: SEPOLIA.chainId, tokenIn: from, tokenOut: to, amount: amount.toString(), swapper: owner, slippageBps, deadline });
   const quote = quoteResponse?.quote;
-  if (!quote || !['CLASSIC', 'WRAP', 'UNWRAP'].includes(quoteResponse.routing)) throw new Error('Uniswap returned a swap route Harbour cannot execute. Try another pair.');
+  if (!quote || !['CLASSIC', 'WRAP', 'UNWRAP'].includes(String(quoteResponse.routing ?? ''))) throw new Error('Uniswap returned a swap route Harbour cannot execute. Try another pair.');
   const expected = String(quote.output?.amount ?? ''); const minimum = String(quote.output?.minimumAmount ?? '');
   if (!/^\d+$/.test(expected) || !/^\d+$/.test(minimum) || BigInt(expected) <= 0n || BigInt(minimum) <= 0n) throw new Error('Uniswap returned an incomplete quote. Refresh and try again.');
   // The review shows the API's minimum, so it must honour the user's slippage (and never exceed the expected output).
@@ -64,7 +68,7 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
   // Token input: the approval names the proxy, and the swap must target that same proxy (never an address the API picks later).
   let proxy: Address | null = null;
   if (!nativeIn && quoteResponse.isTokenApprovalApplicable !== false) {
-    const approvalResponse = await endpoint('check_approval', { walletAddress: owner, amount: amount.toString(), token: from, chainId: SEPOLIA.chainId, tokenOut: to, tokenOutChainId: SEPOLIA.chainId });
+    const approvalResponse = { approval: quoteResponse.approval, cancel: quoteResponse.cancel };
     // Some tokens (USDT-style) need the old allowance reset to 0 first; the API returns that as `cancel`.
     if (approvalResponse?.cancel) {
       const spender = approvedSpender(validateApiTransaction(approvalResponse.cancel, owner, 'Reset token approval', [from]));
@@ -80,8 +84,7 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
       calls.push({ to: getAddress(from), value: 0n, label: 'Approve input token', data: encodeFunctionData({ abi: tokenAbi, functionName: 'approve', args: [spender.spender, amount] }) });
     }
   }
-  const built = await endpoint('swap', { quote, deadline });
-  const transaction = built?.swap ?? built?.swapTransaction;
+  const transaction = quoteResponse.swap;
   if (!transaction) throw new Error('Uniswap did not return transaction data. Refresh and review again.');
   // Native ETH input: the API targets the Universal Router directly (no approval, so no proxy); its calldata is decoded and every
   // step checked (recipient = the user, reviewed minimum enforced, exact input). Token input: the proxy named by the approval.
@@ -98,8 +101,13 @@ export async function prepareSwap(client: DefiClient, owner: Address, from: Addr
 
 /** Maps gateway/Uniswap error bodies to user-facing text; raw upstream messages are not shown. */
 export function uniswapError(data: any): string {
-  // Gateway rejections ({ error: { code, message } }) are already written for users.
-  if (typeof data?.error?.code === 'string' && typeof data?.error?.message === 'string') return data.error.message;
+  // Backend errors ({ error: { code, message } }): Uniswap-specific wording for "no route" / "busy", otherwise the backend's own
+  // message (already written for users).
+  if (typeof data?.error?.code === 'string' && typeof data?.error?.message === 'string') {
+    if (/^(no_liquidity|unsupported_pair|amount_too_low|amount_too_high)$/.test(data.error.code)) return 'No Uniswap route is available for this pair and amount. Try a smaller amount or another token.';
+    if (/^(server|timeout|network)$/.test(data.error.code)) return 'Uniswap is busy right now. Wait a moment and try again.';
+    return data.error.message;
+  }
   const code = String(data?.errorCode ?? '');
   if (/NO_ROUTE|QUOTE_ERROR|InsufficientLiquidity/i.test(code)) return 'No Uniswap route is available for this pair and amount. Try a smaller amount or another token.';
   if (/RATE_LIMIT|429/i.test(code)) return 'Uniswap is busy right now. Wait a moment and try again.';

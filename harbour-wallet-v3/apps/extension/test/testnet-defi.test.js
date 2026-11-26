@@ -92,6 +92,16 @@ test('slippage floor rounds down precisely for large integer amounts', () => {
   assert.equal(M.minimumOutput(token, raw, 50), raw * 9950n / 10000n);
   for (const slippage of [-1, 0, 501, 0.5, NaN]) assert.throws(() => M.minimumOutput(token, raw, slippage), /Slippage/);
 });
+// The backend swap service (POST /v1/swap/uniswap/prepare) runs quote -> check_approval -> swap against the Uniswap API and
+// returns Uniswap's answers; this stand-in does the same against the per-endpoint fakes below (backend: internal/swapsvc).
+M.setUniswapBackend(async (b) => {
+  const call = async (path, body) => { const r = await globalThis.fetch(`https://api.test/uniswap/v1/${path}`, { method: 'POST', body: JSON.stringify(body) }); const j = await r.json(); if (!r.ok) throw new Error(M.uniswapError(j)); return j; };
+  const q = await call('quote', { amount: b.amount, tokenIn: b.tokenIn, tokenOut: b.tokenOut, swapper: b.swapper, slippageTolerance: b.slippageBps / 100 });
+  const native = /^0x0{40}$/i.test(b.tokenIn);
+  const ap = !native && q.isTokenApprovalApplicable !== false ? await call('check_approval', { walletAddress: b.swapper, amount: b.amount, token: b.tokenIn }) : {};
+  const sw = await call('swap', { quote: q.quote, deadline: b.deadline });
+  return { routing: q.routing, quote: q.quote, isTokenApprovalApplicable: q.isTokenApprovalApplicable, approval: ap.approval, cancel: ap.cancel, swap: sw.swap ?? sw.swapTransaction };
+});
 test('Uniswap API swap: proxy target, exact approval, wrong spender or target refused', async () => {
   const PROXY = M.SEPOLIA.apiRouter; const MAX = (1n << 256n) - 1n;
   const approveData = (spender, amt) => encodeFunctionData({ abi: M.tokenAbi, functionName: 'approve', args: [spender, amt] });

@@ -78,6 +78,16 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
   const [err, setErr] = useState('');
   const busy = useRef(false);
   const step = route?.steps[0];
+  // "You send X, you get Y": the background builds the exact transactions, checks them against this quote and simulates them.
+  const [pv, setPv] = useState<{ loading: boolean; data?: any; error?: string; code?: string }>({ loading: true });
+  useEffect(() => {
+    if (!route) return;
+    let live = true;
+    c.bg({ type: 'swapPreview', route }).then((r: any) => { if (live) setPv(r?.ok ? { loading: false, data: r.preview } : { loading: false, error: r?.error || 'Couldn’t check this swap.', code: r?.code }); })
+      .catch(() => { if (live) setPv({ loading: false, error: 'Couldn’t check this swap.' }); });
+    return () => { live = false; };
+  }, [route]); // eslint-disable-line react-hooks/exhaustive-deps -- re-check only when the route changes
+  const unsafe = pv.code === 'unsafe_transaction';
   if (!route || !step) return <Screen title="Confirm swap" onBack={c.nav.pop}><Empty title="Quote unavailable" sub="Go back and request a new quote." /></Screen>;
 
   const outAmt = fromAtomic(step.to.amount, step.to.asset.decimals);
@@ -115,6 +125,17 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
         <div style={{ textAlign: 'center', color: T.sub, margin: '2px 0' }}><Ic d={ICON.arrowdown} size={18} /></div>
         <Row left={<AssetLogo asset={step.to.asset} />} title={`${fmtToken(outAmt)} ${step.to.asset.symbol}`} sub={route.toAmountUsd != null ? `≈ ${fmtUsd(route.toAmountUsd)} · ${networkName(step.to.asset)}` : networkName(step.to.asset)} />
       </div>
+      <div role="status" style={{ border: `1px solid ${T.border}`, borderRadius: 14, padding: '10px 12px', margin: '0 0 12px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.sub, marginBottom: 6 }}>{pv.loading ? 'Checking the transaction…' : pv.data?.verification === 'simulated' ? 'Simulated result' : pv.data ? 'Checked against your quote' : 'Transaction check'}</div>
+        {pv.loading && <Spinner size={16} />}
+        {pv.data && <>
+          <DetailRow label="You send">−{fmtToken(fromAtomic(pv.data.send.amount, pv.data.send.decimals))} {pv.data.send.symbol}</DetailRow>
+          <DetailRow label={pv.data.receive.afterBridge ? `You receive on ${pv.data.receive.network}` : 'You receive'}>+{fmtToken(fromAtomic(pv.data.receive.amount, pv.data.receive.decimals))} {pv.data.receive.symbol}</DetailRow>
+          {pv.data.verification !== 'simulated' && <div style={{ color: T.sub, fontSize: 12 }}>This network couldn’t simulate the swap; the transaction was checked against your quote instead.</div>}
+          {pv.data.receive.afterBridge && <div style={{ color: T.sub, fontSize: 12 }}>Arrives after bridging; at least {fmtToken(fromAtomic(pv.data.receive.minAmount, pv.data.receive.decimals))} {pv.data.receive.symbol}.</div>}
+        </>}
+        {pv.error && <div style={{ color: unsafe ? T.error : T.sub, fontSize: 12.5 }}>{pv.error}</div>}
+      </div>
       <DetailRow label="Provider">{step.provider.name}</DetailRow>
       {rate != null && <DetailRow label="Rate">1 {step.from.asset.symbol} ≈ {fmtToken(rate)} {step.to.asset.symbol}</DetailRow>}
       <DetailRow label="Minimum received">{fmtToken(minAmt)} {step.to.asset.symbol}</DetailRow>
@@ -130,7 +151,7 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
       {expired && <Notice tone="error">This quote is too old. Go back to get a fresh one.</Notice>}
       {err && <Notice tone="error">{err}</Notice>}
       <div style={{ marginTop: 18 }}>
-        <Btn onClick={run} disabled={phase !== 'review' || expired}>{phase !== 'review' && <span style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}><Spinner size={16} color="#fff" /></span>}{label}</Btn>
+        <Btn onClick={run} disabled={phase !== 'review' || expired || unsafe}>{phase !== 'review' && <span style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}><Spinner size={16} color="#fff" /></span>}{label}</Btn>
       </div>
     </Screen>
   );

@@ -2,7 +2,9 @@
 // a swap may only be signed if the transaction matches what the user was quoted and confirmed.
 import type { SwapStep, SwapError } from './types';
 import { swapError } from './errors';
-import { EVM_NATIVE } from './lifi';
+/** The zero address LI.FI and Relay use for a chain's native coin. */
+export const EVM_NATIVE = '0x0000000000000000000000000000000000000000';
+export const SOL_NATIVE = '11111111111111111111111111111111';
 
 const ZERO = '0x0000000000000000000000000000000000000000';
 const isAddr = (a: unknown): a is string => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);

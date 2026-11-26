@@ -1,5 +1,5 @@
 // QA: the LI.FI swap flow through the REAL worker messages (swapQuote → swapApprove → swapSubmit → swapStatus) against an in-process
-// fake of the Harbour API: device registration, /v1/gw/lifi/v1 (routes, stepTransaction), /v1/rpc/ethereum (a tiny ERC-20 ledger:
+// fake of the Harbour API: device registration, the swap service /v1/swap (quotes, transaction: LI.FI's own step objects), /v1/rpc/ethereum (a tiny ERC-20 ledger:
 // allowance follows the approvals actually broadcast) and /v1/tx/ethereum/broadcast. Every broadcast raw tx is decoded independently.
 // TEST_PLAN: T-DEFI-001 (and T-DEFI-005 for the quote failure modes).
 import { test, before, beforeEach } from 'node:test';
@@ -28,7 +28,7 @@ const lifiStep = (over = {}) => ({
 });
 
 // ---------------------------------------------------------------- fake Harbour API + chain
-const S = { allowance: 0n, nonce: 0, raws: [], lifi: [], quoteMode: 'ok', stepOver: {}, receipts: new Map(), txs: new Map() };
+const S = { allowance: 0n, nonce: 0, raws: [], lifi: [], quoteMode: 'ok', stepOver: {}, sim: 'none', receipts: new Map(), txs: new Map() };
 const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json' } });
 const hex = (n) => '0x' + BigInt(n).toString(16);
 function rpc(r) {
@@ -38,8 +38,22 @@ function rpc(r) {
     eth_call: sel === '0xdd62ed3e' ? '0x' + W(hex(S.allowance)) : sel === '0x70a08231' ? '0x' + W(hex(10n ** 12n)) : '0x',
     eth_getBlockByNumber: { number: '0x100', baseFeePerGas: hex(1e9), timestamp: '0x1', hash: '0x' + '33'.repeat(32), transactions: [], gasLimit: hex(3e7) },
     eth_feeHistory: { oldestBlock: '0xfc', baseFeePerGas: Array(5).fill(hex(1e9)), gasUsedRatio: Array(4).fill(0.5), reward: Array(4).fill([hex(1e9), hex(1e9), hex(2e9)]) },
+    eth_simulateV1: S.sim === 'none' ? undefined : simulate(r.params?.[0]?.blockStateCalls?.[0]?.calls ?? []),
     eth_getTransactionReceipt: S.receipts.get(String(r?.params?.[0]).toLowerCase()) ?? null, eth_getTransactionByHash: S.txs.get(String(r?.params?.[0]).toLowerCase()) ?? null }[r?.method];
   return { jsonrpc: '2.0', id: r?.id ?? 1, ...(res !== undefined ? { result: res } : { error: { code: -32601, message: `method not found: ${r?.method}` } }) };
+}
+// eth_simulateV1 with traceTransfers: the swap pays USDC out and ETH in ('ok'), or also moves a token the user never sold ('drain').
+const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const NATIVE_P = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const tlog = (token, from, to, amount) => ({ address: token, topics: [TRANSFER, '0x' + W(from), '0x' + W(to)], data: hex(amount) });
+function simulate(calls) {
+  return [{ calls: calls.map((c) => {
+    if (String(c.to).toLowerCase() !== ROUTER.toLowerCase()) return { status: '0x1', logs: [] };
+    const logs = [tlog(USDC, ME, ROUTER, 100_000_000n), tlog(NATIVE_P, ROUTER, ME, 30_000_000_000_000_000n)];
+    if (S.sim === 'drain') logs.push(tlog('0x6b175474e89094c44da98b954eedeac495271d0f', ME, EVIL, 5n));
+    if (S.sim === 'short') logs[1] = tlog(NATIVE_P, ROUTER, ME, 1000n);
+    return { status: '0x1', logs };
+  }) }];
 }
 function broadcast(raw) {
   const tx = TransactionFactory.fromSerializedData(Buffer.from(raw.slice(2), 'hex')); const hash = keccak256(raw);
@@ -57,15 +71,22 @@ async function api(url, init) {
   if (u.pathname === '/v1/devices') return json({ device_id: 'qa-device' });
   if (u.pathname.startsWith('/v1/rpc/')) return json(Array.isArray(body) ? body.map(rpc) : rpc(body));
   const bc = u.pathname.match(/^\/v1\/tx\/([^/]+)\/broadcast$/); if (bc) { const h = broadcast(body.raw); return json({ tx_hash: h, status: 'pending' }); }
-  if (u.pathname.startsWith('/v1/gw/lifi/v1/')) {
-    const p = u.pathname.slice('/v1/gw/lifi/v1'.length); S.lifi.push({ p, body });
-    if (p === '/advanced/routes') {
-      if (S.quoteMode === '429') return json({ message: 'Too many requests' }, 429);
-      if (S.quoteMode === '500') return json({ message: 'internal' }, 500);
-      if (S.quoteMode === 'none') return json({ routes: [] });
-      return json({ routes: [{ id: 'r1', fromAmountUSD: '100', toAmountUSD: '95', steps: [lifiStep()] }] });
-    }
-    if (p === '/advanced/stepTransaction') return json(lifiStep(S.stepOver));
+  // Harbour's swap service: the backend maps LI.FI's route (internal/swapsvc) and returns LI.FI's own step for the transaction.
+  if (u.pathname === '/v1/swap/quotes') {
+    S.lifi.push({ p: '/quotes', body });
+    if (S.quoteMode === '429') return json({ error: { code: 'server', message: 'Server error, please try again.' } }, 502);
+    if (S.quoteMode === '500') return json({ error: { code: 'network', message: 'Couldn’t fetch a quote.' } }, 502);
+    if (S.quoteMode === 'none') return json({ error: { code: 'no_liquidity', message: 'Swap unavailable: No provider found.' } }, 422);
+    const raw = lifiStep();
+    return json({ refreshInterval: 60, routes: [{ id: 'r1', source: 'lifi', expiresAt: Date.now() + 60000, tags: ['RECOMMENDED'], warnings: [], fromAmountUsd: 100, toAmountUsd: 95, priceImpact: -5, steps: [{
+      id: raw.id, type: 'swap', provider: { id: 'uniswap', name: 'Uniswap' }, fromDomainId: 'ethereum', toDomainId: 'ethereum',
+      from: { asset: body.from, amount: raw.action.fromAmount }, to: { asset: body.to, amount: raw.estimate.toAmount, minAmount: raw.estimate.toAmountMin },
+      slippage: { userSelected: 2 }, providerFees: [], approval: { tokenAddress: USDC, spender: ROUTER, minAmount: raw.action.fromAmount }, raw }] }] });
+  }
+  if (u.pathname === '/v1/swap/transaction') {
+    S.lifi.push({ p: '/transaction', body });
+    if (body?.source !== 'lifi' || body?.step?.id !== 'step-1') return json({ error: { code: 'bad_request', message: 'Invalid request.' } }, 400);
+    return json(lifiStep(S.stepOver));
   }
   return json({ error: { code: 'not_found', message: 'not found' } }, 404);
 }
@@ -73,13 +94,13 @@ const ASSET = { usdc: { assetId: `c60_t${USDC}`, domainId: 'ethereum', address: 
 const quote = () => send({ type: 'swapQuote', from: ASSET.usdc, to: ASSET.eth, amount: '100000000', slippage: '2' });
 
 before(async () => { H.reset(); F.fetchImpl = api; assert.equal((await send({ type: 'createWallet', password: PASSWORD, mnemonic: PHRASE_ABOUT, name: 'Main' })).ok, true); });
-beforeEach(() => { S.allowance = 0n; S.raws.length = 0; S.lifi.length = 0; S.quoteMode = 'ok'; S.stepOver = {}; });
+beforeEach(() => { S.allowance = 0n; S.raws.length = 0; S.lifi.length = 0; S.quoteMode = 'ok'; S.stepOver = {}; S.sim = 'none'; });
 
 test('T-DEFI-001: quote → approve (exact amount, to the LI.FI Diamond) → submit (validated, to the Diamond, paying us) → status success', async () => {
   const q = await quote(); assert.equal(q.ok, true, JSON.stringify(q));
   const route = q.result.routes.find((r) => r.source === 'lifi'); assert.ok(route, 'LI.FI route');
-  const routesReq = S.lifi.find((x) => x.p === '/advanced/routes').body;
-  assert.equal(routesReq.fromAddress.toLowerCase(), ME); assert.equal(routesReq.toAddress.toLowerCase(), ME); assert.equal(routesReq.fromAmount, '100000000');
+  const routesReq = S.lifi.find((x) => x.p === '/quotes').body;
+  assert.equal(routesReq.fromAddress.toLowerCase(), ME); assert.equal(routesReq.toAddress.toLowerCase(), ME); assert.equal(routesReq.amount, '100000000');
   assert.equal(route.steps[0].approval.needed, true, 'allowance read on chain: approval needed');
   const ap = await send({ type: 'swapApprove', route, stepIndex: 0, unlimited: false }); assert.equal(ap.ok, true, JSON.stringify(ap));
   assert.equal(S.raws.length, 1); const a = S.raws[0];
@@ -89,7 +110,7 @@ test('T-DEFI-001: quote → approve (exact amount, to the LI.FI Diamond) → sub
   const sub = await send({ type: 'swapSubmit', route, stepIndex: 0, id: ap.id }); assert.equal(sub.ok, true, JSON.stringify(sub));
   assert.equal(S.raws.length, 2); const s = S.raws[1];
   assert.equal(s.to, ROUTER.toLowerCase()); assert.equal(s.from, ME); assert.equal(s.value, 0n); assert.equal(s.data, swapData().toLowerCase()); assert.equal(sub.hash, s.hash);
-  assert.ok(S.lifi.some((x) => x.p === '/advanced/stepTransaction'), 'fresh step transaction requested right before signing');
+  assert.ok(S.lifi.some((x) => x.p === '/transaction'), 'fresh step transaction requested right before signing');
   const st = await send({ type: 'swapStatus', id: sub.id }); assert.equal(st.ok, true); assert.equal(st.item.status, 'success', JSON.stringify(st.item));
   assert.equal(st.item.txHash, s.hash);
   // an approval is skipped when the allowance already covers the amount
@@ -126,4 +147,26 @@ test('T-DEFI-005: quote API 429 / 500 / no routes → a plain error code, no sta
     assert.ok(!r.result, 'no stale routes returned');
   }
   assert.equal(S.raws.length, 0);
+});
+
+test('T-DEFI-001: "you send X, you get Y" — the confirm preview simulates the exact transactions; submit refuses one that moves anything else', async () => {
+  const route = (await quote()).result.routes.find((r) => r.source === 'lifi');
+  S.sim = 'ok';
+  const pv = await send({ type: 'swapPreview', route }); assert.equal(pv.ok, true, JSON.stringify(pv));
+  assert.equal(pv.preview.verification, 'simulated'); assert.equal(pv.preview.send.amount, '100000000'); assert.equal(pv.preview.receive.amount, '30000000000000000');
+  assert.equal(S.raws.length, 0, 'the preview signs nothing');
+  S.sim = 'none';
+  const plain = await send({ type: 'swapPreview', route }); assert.equal(plain.ok, true); assert.equal(plain.preview.verification, 'checked');
+  S.stepOver = { transactionRequest: { data: swapData(EVIL) } };
+  assert.equal((await send({ type: 'swapPreview', route })).code, 'unsafe_transaction');
+  S.stepOver = {};
+  assert.equal((await send({ type: 'swapApprove', route, stepIndex: 0, unlimited: false })).ok, true);
+  const n = S.raws.length;
+  S.sim = 'drain';
+  const r = await send({ type: 'swapSubmit', route, stepIndex: 0 }); assert.equal(r.ok, false); assert.equal(r.code, 'unsafe_transaction');
+  S.sim = 'short';
+  const r2 = await send({ type: 'swapSubmit', route, stepIndex: 0 }); assert.equal(r2.ok, false); assert.equal(r2.code, 'price_moved');
+  assert.equal(S.raws.length, n, 'nothing signed when the simulation disagrees with the quote');
+  S.sim = 'ok';
+  const ok = await send({ type: 'swapSubmit', route, stepIndex: 0 }); assert.equal(ok.ok, true, JSON.stringify(ok)); assert.equal(S.raws.length, n + 1);
 });

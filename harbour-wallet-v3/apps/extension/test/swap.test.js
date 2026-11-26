@@ -9,7 +9,7 @@ const out = await build({
   stdin: {
     contents: `
       export * from './rules'; export * from './amount'; export * from './errors'; export * from './safety';
-      export * from './lifi'; export * from './jupiter'; export * from './tokens'; export * from './domains'; export * from './engine';`,
+      export * from './tokens'; export * from './domains'; export * from './engine'; export * from './backend'; export * from './simGuard';`,
     resolveDir: fileURLToPath(new URL('../src/core/swap/', import.meta.url)), sourcefile: entry, loader: 'ts',
   },
   bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
@@ -79,16 +79,6 @@ test('toAtomic/fromAtomic are exact and reject junk', () => {
 });
 
 // ---------------- errors ----------------
-test('aggregator failures map onto user-facing swap errors', () => {
-  const c = (s, m) => M.classifyAggregatorError(s, { message: m }).code;
-  assert.equal(c(500, ''), 'server'); assert.equal(c(429, ''), 'server');
-  assert.equal(c(404, 'No available quotes for the requested transfer'), 'no_liquidity');
-  assert.equal(c(400, 'Amount too low'), 'amount_too_low');
-  assert.equal(c(400, 'amount exceeds the max'), 'amount_too_high');
-  assert.equal(c(400, 'Token not supported'), 'unsupported_pair');
-  assert.equal(c(400, 'weird'), 'network');
-});
-
 // ---------------- fixtures ----------------
 const ME = '0x1111111111111111111111111111111111111111';
 const ROUTER = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE';   // LI.FI Diamond (the only allowed target)
@@ -106,31 +96,87 @@ const lifiStep = (over = {}) => ({
   estimate: { toAmount: '30000000000000000', toAmountMin: '29400000000000000', approvalAddress: ROUTER, executionDuration: 30, feeCosts: [], gasCosts: [{ token: tok(NATIVE, 'ETH', 18), amount: '2000000000000000', amountUSD: '6' }], ...(over.estimate ?? {}) },
   transactionRequest: { from: ME, to: ROUTER, chainId: 1, data: swapData(), value: '0x0', ...(over.transactionRequest ?? {}) },
 });
-const stepOf = (raw) => M.mapLifiStep(raw, 2);
+// The confirmed step as Harbour's swap service returns it (backend internal/swapsvc maps LI.FI's step the same way).
+const assetOf = (t) => (t.address === NATIVE ? M.nativeAsset('ethereum') : M.makeToken('ethereum', t.address, t.symbol, t.symbol, t.decimals));
+const stepOf = (raw) => ({
+  id: raw.id, type: 'swap', provider: { id: 'uniswap', name: 'Uniswap' }, fromDomainId: 'ethereum', toDomainId: 'ethereum',
+  from: { asset: assetOf(raw.action.fromToken), amount: raw.action.fromAmount },
+  to: { asset: assetOf(raw.action.toToken), amount: raw.estimate.toAmount, minAmount: raw.estimate.toAmountMin },
+  slippage: { userSelected: 2 }, providerFees: [],
+  approval: raw.action.fromToken.address !== NATIVE && raw.estimate.approvalAddress ? { tokenAddress: raw.action.fromToken.address, spender: raw.estimate.approvalAddress, minAmount: raw.action.fromAmount } : undefined,
+  raw,
+});
 
-test('LI.FI step mapping: amounts, approval and fees', () => {
-  const s = stepOf(lifiStep());
-  assert.equal(s.from.asset.symbol, 'USDC'); assert.equal(s.to.asset.address, 'native');
-  assert.equal(s.from.amount, '100000000'); assert.equal(s.to.minAmount, '29400000000000000');
-  assert.deepEqual(s.approval && [s.approval.tokenAddress, s.approval.spender], [USDC, ROUTER]);
-  assert.equal(s.networkFee.symbol, 'ETH'); assert.equal(s.networkFee.amount, '2000000000000000');
-  assert.equal(s.provider.name, 'Uniswap');
+// ---------------- backend answers are screened ----------------
+const ETHA = () => M.nativeAsset('ethereum'); const USDCA = () => M.makeToken('ethereum', USDC, 'USDC', 'USD Coin', 6);
+const qreq = (over = {}) => ({ from: USDCA(), to: ETHA(), fromAddress: ME, toAddress: ME, amount: '100000000', slippage: '2', sortBy: 'quantity', ...over });
+const backendRoute = (over = {}, stepOver = {}) => ({ id: 'r1', source: 'lifi', expiresAt: 1, tags: ['RECOMMENDED'], warnings: [], steps: [{
+  id: 's1', type: 'swap', provider: { id: 'uniswap', name: 'Uniswap <b>', logoUrl: 'javascript:alert(1)' }, fromDomainId: 'ethereum', toDomainId: 'ethereum',
+  from: { asset: { ...USDCA(), name: 'evil' }, amount: '100000000' }, to: { asset: { ...ETHA(), logoUrl: 'https://evil/x.png' }, amount: '30000000000000000', minAmount: '29400000000000000' },
+  slippage: { userSelected: 2 }, providerFees: [], approval: { tokenAddress: USDC, spender: ROUTER, minAmount: '100000000' }, raw: {}, ...stepOver }], ...over });
+test('backend routes: only the exact requested trade is kept, shown with the user\'s own assets', () => {
+  const r = M.acceptRoute(backendRoute(), qreq(), 1000);
+  assert.equal(r.steps[0].from.asset.name, 'USD Coin'); assert.equal(r.steps[0].to.asset.logoUrl, ETHA().logoUrl);
+  assert.equal(r.steps[0].provider.logoUrl, undefined); assert.ok(!/[<>]/.test(r.steps[0].provider.name)); assert.equal(r.expiresAt, 1000 + 60000);
+  const st = backendRoute().steps[0];
+  assert.equal(M.acceptRoute(backendRoute({}, { from: { ...st.from, amount: '99' } }), qreq()), null);                                   // other amount
+  assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, asset: USDCA() } }), qreq()), null);                                       // other asset
+  assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, minAmount: '1000' } }), qreq()), null);                                    // minimum looser than the slippage
+  assert.equal(M.acceptRoute(backendRoute({}, { approval: { tokenAddress: USDC, spender: ROUTER, minAmount: '1' } }), qreq()), null);       // approval for another amount
+  assert.equal(M.acceptRoute(backendRoute({ source: 'evil' }), qreq()), null);
+  assert.equal(M.acceptRoute(backendRoute({ steps: [st, st] }), qreq()), null);
 });
-test('LI.FI route mapping rejects routes through unsupported chains and derives price impact from USD', () => {
-  const req = { slippage: '2' };
-  const r = M.mapLifiRoute({ id: 'r1', fromAmountUSD: '100', toAmountUSD: '95', steps: [lifiStep()] }, req, 1000);
-  assert.equal(r.priceImpact, -5); assert.equal(r.expiresAt, 1000 + 60000);
-  const foreign = lifiStep({ action: { toToken: tok(NATIVE, 'X', 18, 999999) } });
-  assert.equal(M.mapLifiRoute({ id: 'r2', steps: [foreign] }, req), null);
+test('backend quotes: errors map to swap errors; no usable route is no_liquidity; sorting + best-return tag', async () => {
+  const reply = (status, body) => async () => new Response(JSON.stringify(body), { status });
+  M.setSwapBackend(reply(422, { error: { code: 'amount_too_low', minAmount: '5000' } }));
+  await assert.rejects(M.getSwapRoutes(qreq()), (e) => e.code === 'amount_too_low' && e.minAmount === '5000');
+  M.setSwapBackend(reply(502, { error: { code: 'weird' } }));
+  await assert.rejects(M.getSwapRoutes(qreq()), (e) => e.code === 'server');
+  M.setSwapBackend(async () => { throw new Error('offline'); });
+  await assert.rejects(M.getSwapRoutes(qreq()), (e) => e.code === 'network');
+  M.setSwapBackend(reply(200, { routes: [backendRoute({ source: 'evil' })] }));
+  await assert.rejects(M.getSwapRoutes(qreq()), (e) => e.code === 'no_liquidity');
+  const a = backendRoute({ id: 'a' }); const b = backendRoute({ id: 'b', source: 'relay' }, { to: { asset: ETHA(), amount: '31000000000000000', minAmount: '30400000000000000' } });
+  let sent;
+  M.setSwapBackend(async (method, path, body) => { sent = { method, path, body }; return new Response(JSON.stringify({ routes: [a, b] }), { status: 200 }); });
+  const res = await M.getSwapRoutes(qreq(), ['lifi', 'relay']);
+  assert.deepEqual(res.routes.map((r) => r.id), ['b', 'a']); assert.ok(res.routes[0].tags.includes('BEST_RETURN'));
+  assert.equal(sent.path, '/v1/swap/quotes'); assert.deepEqual(sent.body.providers, ['lifi', 'relay']); assert.equal(sent.body.from.logoUrl, undefined);
 });
-test('Jupiter route mapping', () => {
-  const sol = M.nativeAsset('solana'); const usdc = M.makeToken('solana', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'USDC', 'USD Coin', 6);
-  const r = M.mapJupiterRoute({ inAmount: '1000000000', outAmount: '150000000', otherAmountThreshold: '148500000', priceImpactPct: '0.0123', routePlan: [{ swapInfo: { label: 'Orca' } }] },
-    { from: sol, to: usdc, amount: '1000000000', slippage: '1', solanaTurbo: true }, 5);
-  const s = r.steps[0];
-  assert.equal(r.source, 'jupiter'); assert.equal(s.to.minAmount, '148500000');
-  assert.ok(Math.abs(s.priceImpact + 1.23) < 1e-9);
-  assert.equal(s.networkFee.upperBound, true); assert.equal(s.networkFee.amount, String(5000 + 1_000_000));
+
+// ---------------- simulation guard ("you send X, you get Y") ----------------
+const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const topic = (a) => '0x' + a.replace('0x', '').toLowerCase().padStart(64, '0');
+const log = (token, from, to, amount) => ({ address: token, topics: [TRANSFER, topic(from), topic(to)], data: '0x' + BigInt(amount).toString(16) });
+const POOL = '0x4444444444444444444444444444444444444444'; const NATIVE_P = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const simResult = (logs, status = '0x1') => [{ calls: [{ status, logs }] }];
+test('simulation guard: the wallet loses only the sold amount and gets at least the minimum', () => {
+  const st = stepOf(lifiStep());   // sell 100 USDC for >= 0.0294 ETH
+  const ok = M.readSimulatedCalls(simResult([log(USDC, ME, POOL, '100000000'), log(NATIVE_P, POOL, ME, '30000000000000000')]), ME);
+  const r = M.checkSwapEffect(ok.changes, st, { maxNativeOut: 0n });
+  assert.equal(r.ok, true); assert.equal(r.effect.received, 30000000000000000n); assert.equal(r.effect.sent, 100000000n);
+  const drain = M.readSimulatedCalls(simResult([log(USDC, ME, POOL, '100000000'), log('0x5555555555555555555555555555555555555555', ME, POOL, '1'), log(NATIVE_P, POOL, ME, '30000000000000000')]), ME);
+  assert.equal(M.checkSwapEffect(drain.changes, st, { maxNativeOut: 0n }).reason, 'unexpected_outflow');   // another token leaves the wallet
+  const over = M.readSimulatedCalls(simResult([log(USDC, ME, POOL, '200000000'), log(NATIVE_P, POOL, ME, '30000000000000000')]), ME);
+  assert.equal(M.checkSwapEffect(over.changes, st, { maxNativeOut: 0n }).reason, 'oversend');
+  const short = M.readSimulatedCalls(simResult([log(USDC, ME, POOL, '100000000'), log(NATIVE_P, POOL, ME, '1000')]), ME);
+  assert.equal(M.checkSwapEffect(short.changes, st, { maxNativeOut: 0n }).reason, 'below_minimum');
+  const eth = M.readSimulatedCalls(simResult([log(USDC, ME, POOL, '100000000'), log(NATIVE_P, ME, POOL, '5')]), ME);
+  assert.equal(M.checkSwapEffect(eth.changes, st, { maxNativeOut: 0n }).reason, 'unexpected_outflow');    // native leaves although the tx sends none
+  assert.deepEqual(M.readSimulatedCalls(simResult([], '0x0'), ME).ok, false);
+  assert.equal(M.readSimulatedCalls({}, ME), null);
+  const p = M.simulateCallsParams([{ from: ME, to: USDC, data: '0x095ea7b3', value: 0n }, { from: ME, to: ROUTER, data: '0x12', value: 10n }]);
+  assert.equal(p[0].blockStateCalls[0].calls.length, 2); assert.equal(p[0].blockStateCalls[0].calls[1].value, '0xa'); assert.equal(p[0].traceTransfers, true);
+});
+test('simulation guard: native sells may spend the sale plus the value carried; cross-chain only checks outflows', () => {
+  const raw = lifiStep({ action: { fromToken: tok(NATIVE, 'ETH', 18), toToken: tok(USDC, 'USDC', 6), fromAmount: '1000' }, estimate: { toAmount: '3000', toAmountMin: '2940', approvalAddress: undefined } });
+  const st = stepOf(raw);
+  const res = M.readSimulatedCalls(simResult([log(NATIVE_P, ME, POOL, '1010'), log(USDC, POOL, ME, '3000')]), ME);
+  assert.equal(M.checkSwapEffect(res.changes, st, { maxNativeOut: 1010n }).ok, true);
+  assert.equal(M.checkSwapEffect(res.changes, st, { maxNativeOut: 1000n }).reason, 'oversend');
+  const bridge = { ...st, toDomainId: 'base' };
+  const out = M.readSimulatedCalls(simResult([log(NATIVE_P, ME, POOL, '1000')]), ME);
+  const r = M.checkSwapEffect(out.changes, bridge, { maxNativeOut: 1000n }); assert.equal(r.ok, true); assert.equal(r.effect.received, null);
 });
 
 // ---------------- safety.validateLifiTransaction ----------------

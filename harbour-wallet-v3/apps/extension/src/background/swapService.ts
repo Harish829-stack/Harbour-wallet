@@ -10,21 +10,22 @@ import { rpcUrl, solanaRpcUrl, protectedRpcUrl } from '../core/rpc';
 import { openActiveKeys, activeAddresses } from './keys';
 import type { VaultService } from '../core/vaultService';
 import type { WalletService } from '../core/walletService';
-import type { SwapAsset, SwapHistoryItem, SwapRoute, SwapSettings, SwapStep, SwapQuoteResult } from '../core/swap/types';
+import type { SwapAsset, SwapHistoryItem, SwapRoute, SwapRouteRequest, SwapSettings, SwapStep, SwapQuoteResult } from '../core/swap/types';
 import { DEFAULT_SWAP_SETTINGS } from '../core/swap/types';
 import { domainById, SWAP_DOMAINS } from '../core/swap/domains';
 import { getSwapRoutes } from '../core/swap/engine';
 import { swapError } from '../core/swap/errors';
-import { lifiStepTransaction, lifiStatus, lifiToken } from '../core/swap/lifi';
+import { backendTransaction, backendStatus, backendToken, setSwapBackend } from '../core/swap/backend';
+import { simulateCallsParams, readSimulatedCalls, checkSwapEffect, type SimCall, type SwapEffect } from '../core/swap/simGuard';
+import { signedRequest } from '../core/harbour/client';
 import { popularAssets, nativeAsset } from '../core/swap/tokens';
 import { pickDust, DUST_DEFAULT_USD, type DustCandidate } from '../core/swap/dust';
-import { jupiterSwapTransaction } from '../core/swap/jupiter';
 import { validateLifiTransaction, isAllowedLifiTarget, parseSolanaTx, attachSolanaSignature, b64ToBytes, bytesToB64, JUPITER_PROGRAM } from '../core/swap/safety';
 import { parseSolTx, resolveLookupTables, guardSolSwapTx, SWAP_BASE_PROGRAMS } from '../core/provider/solanaTx';
 import { simulateSolTx, solAccountData } from '../core/provider/solSim';
 import { SWAP_WATCH_TIMEOUT_MS, normalizeSlippage } from '../core/swap/rules';
-import { relayQuote, relayTransactions, relayStatus, relayTargets } from '../core/swap/relay';
-import { thorQuote, checkThorQuote, verifyThorInbound, thorRouterCall, thorStatus } from '../core/swap/thorchain';
+import { relayTransactions, relayTargets } from '../core/swap/relay';
+import { checkThorQuote, verifyThorInbound, thorRouterCall } from '../core/swap/thorchain';
 import { utxoFamily } from '../core/chains/send/utxo';
 import { chainById } from '../core/chains/index';
 import { sendCalls, sendCallsAvailable } from './smartAccountService';
@@ -41,6 +42,39 @@ async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep
   if (!sim.ok) throw swapError('simulation_failed');
   if (sim.solDelta !== undefined && -sim.solDelta > sell + 20_000_000n) throw bad;
 }
+
+// Quotes and fresh transactions come from Harbour's swap service (backend /v1/swap), signed with the device key.
+setSwapBackend((method, path, body) => signedRequest(method, path, body === undefined ? undefined : JSON.stringify(body), {}, AbortSignal.timeout(30_000)));
+
+/** The request for a fresh quote of a confirmed step: same assets and amount, our own addresses, the slippage it was quoted with. */
+function freshRequest(raw: any, step: SwapStep, fromAddress: string, toAddress: string, slippagePct: number): SwapRouteRequest {
+  const quotedWith = raw?.request; const quoted = Number(quotedWith?.slippage);
+  return { from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress, toAddress, slippage: String(quoted > 0 && quoted <= 30 ? quoted : slippagePct), sortBy: 'quantity', solanaTurbo: false };
+}
+async function jupiterTx(raw: any, turbo: boolean, user: string): Promise<string> {
+  const r = await backendTransaction({ source: 'jupiter', quote: raw?.quote, priority: turbo ? 'turbo' : 'fast', user });
+  if (typeof r?.swapTransaction !== 'string') throw swapError('network');
+  return r.swapTransaction;
+}
+
+/**
+ * Dry-run the calls (approve first when needed, then the swap) and hold them to the confirmed step: only the sold asset
+ * (at most the sold amount) and the calls' own native value may leave the wallet, and a same-chain swap must pay at least
+ * the confirmed minimum. null = this network's RPC cannot simulate; the provider-specific checks still apply.
+ */
+async function guardEvmSwap(client: any, address: string, step: SwapStep, calls: SimCall[]): Promise<SwapEffect | null> {
+  let result: any;
+  try { result = await client.request({ method: 'eth_simulateV1', params: simulateCallsParams(calls) } as any); } catch { return null; }
+  const sim = readSimulatedCalls(result, address);
+  if (!sim) return null;
+  if (!sim.ok) throw swapError('simulation_failed');
+  const check = checkSwapEffect(sim.changes, step, { maxNativeOut: calls.reduce((a, c) => a + c.value, 0n) });
+  if (check.ok) return check.effect;
+  // Some RPCs do not trace internal native transfers: a missing native payout is "not verified", not proof of theft.
+  if (check.reason === 'nothing_received' && step.to.asset.address === 'native') return null;
+  throw check.reason === 'below_minimum' ? swapError('price_moved') : swapError('unsafe_transaction');
+}
+const approveData = (spender: string, amount: bigint) => encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [spender as `0x${string}`, amount] });
 
 const SETTINGS_KEY = 'wallet:swap:settings';
 const HISTORY_KEY = 'wallet:swap:history';
@@ -305,7 +339,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
       if (p.route.source === 'jupiter') {
         if (d.kind !== 'solana') throw swapError('unsupported_pair');
         const raw: any = step.raw;
-        const b64 = await jupiterSwapTransaction({ quote: raw.quote, priority: settings.solanaTurbo ? 'turbo' : 'fast' }, address);
+        const b64 = await jupiterTx(raw, settings.solanaTurbo, address);
         const bytes = b64ToBytes(b64);
         const parsed = parseSolanaTx(bytes);
         const { key } = keys.solanaKey();
@@ -319,11 +353,16 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
       } else if (p.route.source === 'relay') {
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
         const raw: any = step.raw;
-        const fresh = await relayQuote({ ...raw.request, from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress: address, toAddress: ownTo });
+        const fresh = await backendTransaction({ source: 'relay', request: freshRequest(raw, step, address, ownTo, slippagePct) });
         const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
         const account = evmAccountFromBytes(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
         const { chain, client } = evmClient(d.chainId!);
+        {
+          const ap = plan.txs.find((t) => t.kind === 'approve');
+          const short = !!ap && ((await client.readContract({ address: ap.to, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, step.approval!.spender as `0x${string}`] })) as bigint) < BigInt(step.from.amount);
+          await guardEvmSwap(client, address, step, plan.txs.filter((t) => t.kind === 'execute' || short).map((t) => ({ from: address, to: t.to, data: t.data, value: t.value })));
+        }
         let last: `0x${string}` | undefined;
         if (await gaslessActive(d.chainId!)) {
           const calls: Call[] = [];
@@ -356,7 +395,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
       } else if (p.route.source === 'thorchain') {
         const raw: any = step.raw;
         // THORChain asks for a fresh quote right before sending (vault addresses rotate)
-        const fresh = await thorQuote({ ...raw.request, from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress: address, toAddress: ownTo });
+        const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
         checkThorQuote(fresh, step, ownTo, slippagePct);
         await verifyThorInbound(fresh, step);
         if (d.kind === 'utxo') {
@@ -379,6 +418,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
           }
           const code = await client.getCode({ address: call.to });
           if (!isContractCode(code)) throw swapError('unsafe_transaction'); // routers are real contracts, never wallets
+          await guardEvmSwap(client, address, step, [{ from: address, ...call }]);
           let gas: bigint;
           try { gas = ((await client.estimateGas({ account, ...call })) * 12n) / 10n; }
           catch { throw swapError('simulation_failed'); }
@@ -386,7 +426,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         } else throw swapError('unsupported_pair');
       } else if (d.kind === 'solana') {
         // LI.FI Solana-source bridge legs: a base64 transaction we only sign when we are the sole signer and fee payer
-        const refreshed = await lifiStepTransaction(step.raw);
+        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
         const b64 = refreshed?.transactionRequest?.data;
         if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(b64)) throw swapError('unsafe_transaction');
         const fromAmt = String(refreshed?.action?.fromAmount ?? step.from.amount);
@@ -401,7 +441,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         hash = await solRpc('sendTransaction', [bytesToB64(attachSolanaSignature(bytes, parsed, sig)), { encoding: 'base64', skipPreflight: false, maxRetries: 3, preflightCommitment: 'confirmed' }]);
       } else {
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
-        const refreshed = await lifiStepTransaction(step.raw);
+        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
         const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: domainById(step.toDomainId)?.kind });
         if (bad) throw bad;
         const account = evmAccountFromBytes(keys.evmPrivateKey());
@@ -415,7 +455,8 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const a = step.approval;
         const allowanceShort = async () => !!a && step.from.asset.address !== 'native'
           && ((await client.readContract({ address: a.tokenAddress as `0x${string}`, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, a.spender as `0x${string}`] })) as bigint) < BigInt(a.minAmount);
-        const approveCall = (): Call => ({ to: a!.tokenAddress as `0x${string}`, value: 0n, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [a!.spender as `0x${string}`, BigInt(a!.minAmount)] }) });
+        const approveCall = (): Call => ({ to: a!.tokenAddress as `0x${string}`, value: 0n, data: approveData(a!.spender, BigInt(a!.minAmount)) });
+        await guardEvmSwap(client, address, step, [...((await allowanceShort()) ? [approveCall()] : []), { to, data, value }].map((c) => ({ from: address, ...c })));
         let gaslessHash: `0x${string}` | null = null;
         if (await gaslessActive(d.chainId!)) {
           // one sponsored op: (approve) + swap; the bundler simulates it as a whole
@@ -452,6 +493,81 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
   } catch (e) { return fail(e); }
 }
 
+// ---------- pre-sign preview: "you send X, you get Y" ----------
+export interface SwapPreviewSide { symbol: string; decimals: number; amount: string }
+export interface SwapPreview {
+  /** 'simulated' = an on-chain dry run of the exact transactions matched the quote; 'checked' = the transactions were
+   *  checked against the quote but this network could not simulate them (or it is a Bitcoin send to THORChain). */
+  verification: 'simulated' | 'checked';
+  send: SwapPreviewSide;
+  receive: SwapPreviewSide & { minAmount: string; network: string; afterBridge: boolean };
+}
+/**
+ * Builds the same fresh transactions the submit step will sign, runs every pre-sign check on them and simulates them, without
+ * touching keys. The confirm screen shows the result; submit repeats all of it on its own fresh transactions.
+ */
+export async function preview(deps: SwapDeps, p: { route: SwapRoute }): Promise<{ ok: true; preview: SwapPreview } | ReturnType<typeof fail>> {
+  try {
+    const step = checkStepShape(p.route, 0);
+    const settings = await getSettings();
+    const slippagePct = Number(normalizeSlippage(String(step.slippage.userSelected ?? settings.slippage)));
+    const d = domainById(step.fromDomainId)!; const td = domainById(step.toDomainId)!;
+    const addrs = await activeAddresses(deps.vault);
+    const address = addrs[d.addressKey] as string | undefined; const ownTo = addrs[td.addressKey] as string | undefined;
+    if (!address || !ownTo) throw swapError('invalid_asset');
+    const raw: any = step.raw; const source = p.route.source;
+    let effect: SwapEffect | null = null; let simulated = false;
+    if (d.kind === 'evm') {
+      const { client } = evmClient(d.chainId!);
+      const allowance = async (token: string, spender: string) => (await client.readContract({ address: token as `0x${string}`, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, spender as `0x${string}`] })) as bigint;
+      const withApproval = async (spender: string | undefined, call: SimCall): Promise<SimCall[]> => {
+        if (step.from.asset.address === 'native' || !spender) return [call];
+        return (await allowance(step.from.asset.address, spender)) < BigInt(step.from.amount)
+          ? [{ from: address, to: step.from.asset.address, data: approveData(spender, BigInt(step.from.amount)), value: 0n }, call] : [call];
+      };
+      let calls: SimCall[];
+      if (source === 'relay') {
+        const fresh = await backendTransaction({ source: 'relay', request: freshRequest(raw, step, address, ownTo, slippagePct) });
+        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
+        const exec = plan.txs.filter((t) => t.kind === 'execute').map((t) => ({ from: address, to: t.to, data: t.data, value: t.value }));
+        calls = exec.length === 1 ? await withApproval(step.approval?.spender, exec[0]) : exec;
+      } else if (source === 'thorchain') {
+        const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
+        checkThorQuote(fresh, step, ownTo, slippagePct);
+        await verifyThorInbound(fresh, step);
+        const call = thorRouterCall(fresh, step);
+        calls = await withApproval(call.to, { from: address, ...call });
+      } else if (source === 'lifi') {
+        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
+        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: td.kind });
+        if (bad) throw bad;
+        const tx = refreshed.transactionRequest;
+        calls = await withApproval(step.approval?.spender, { from: address, to: tx.to, data: tx.data, value: tx.value == null ? 0n : BigInt(tx.value) });
+      } else throw swapError('unsupported_pair');
+      effect = await guardEvmSwap(client, address, step, calls);
+      simulated = effect != null;
+    } else if (d.kind === 'solana') {
+      const b64 = source === 'jupiter' ? await jupiterTx(raw, settings.solanaTurbo, address)
+        : source === 'lifi' ? String((await backendTransaction({ source: 'lifi', step: step.raw }))?.transactionRequest?.data ?? '') : '';
+      if (!/^[A-Za-z0-9+/=]+$/.test(b64)) throw swapError('unsafe_transaction');
+      const bytes = b64ToBytes(b64); const parsed = parseSolanaTx(bytes);
+      if (deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]) !== address || parsed.sigSlots !== 1) throw swapError('unsafe_transaction');
+      await guardSolanaSwap(bytes, address, step, { strictPrograms: source === 'jupiter' });   // includes a dry run
+      simulated = true;
+    } else if (source === 'thorchain') {
+      const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
+      checkThorQuote(fresh, step, ownTo, slippagePct);
+      await verifyThorInbound(fresh, step);
+    } else throw swapError('unsupported_pair');
+    const sameChain = step.fromDomainId === step.toDomainId;
+    return { ok: true, preview: {
+      verification: simulated ? 'simulated' : 'checked',
+      send: { symbol: step.from.asset.symbol, decimals: step.from.asset.decimals, amount: (effect && step.from.asset.address !== 'native' ? effect.sent : BigInt(step.from.amount)).toString() },
+      receive: { symbol: step.to.asset.symbol, decimals: step.to.asset.decimals, amount: (effect?.received ?? BigInt(step.to.amount)).toString(), minAmount: step.to.minAmount, network: td.name, afterBridge: !sameChain },
+    } };
+  } catch (e) { return fail(e); }
+}
+
 // ---------- settlement status (GetSwapSettlementStatus) ----------
 export async function status(id: string): Promise<{ ok: true; item: SwapHistoryItem } | { ok: false; error: string }> {
   const item = (await listHistory()).find((h) => h.id === id);
@@ -461,12 +577,12 @@ export async function status(id: string): Promise<{ ok: true; item: SwapHistoryI
   let next: Partial<SwapHistoryItem> | null = null;
   try {
     if (item.source === 'relay' && item.requestId) {
-      const st = await relayStatus(item.requestId);
+      const st = (await backendStatus({ source: 'relay', txHash: item.txHash, requestId: item.requestId, fromDomainId: item.fromDomainId, toDomainId: item.toDomainId })).status;
       if (st === 'success') next = { status: 'success' };
       else if (st === 'failed' || st === 'refunded') next = { status: 'failed', error: st === 'refunded' ? 'Swap refunded' : 'Swap failed' };
     } else if (item.source === 'thorchain') {
-      const st = await thorStatus(item.txHash);
-      if (st === 'done') next = { status: 'success' };
+      const st = (await backendStatus({ source: 'thorchain', txHash: item.txHash, fromDomainId: item.fromDomainId, toDomainId: item.toDomainId })).status;
+      if (st === 'success') next = { status: 'success' };
       else if (st === 'refunded' || st === 'failed') next = { status: 'failed', error: st === 'refunded' ? 'Swap refunded by THORChain' : 'Swap failed' };
     } else if (fd.kind === 'solana' && fd.id === td.id) {
       const r = await solRpc('getSignatureStatuses', [[item.txHash], { searchTransactionHistory: true }]);
@@ -478,9 +594,9 @@ export async function status(id: string): Promise<{ ok: true; item: SwapHistoryI
       try { const rc = await client.getTransactionReceipt({ hash: item.txHash as `0x${string}` }); next = rc.status === 'success' ? { status: 'success' } : { status: 'failed', error: 'Transaction reverted' }; }
       catch { /* not mined yet */ }
     } else {
-      const st = await lifiStatus({ txHash: item.txHash, fromChain: fd.lifiChainId, toChain: td.lifiChainId, bridge: item.bridge });
-      if (st.status === 'DONE') next = { status: 'success' };
-      else if (st.status === 'FAILED' || st.status === 'INVALID') next = { status: 'failed', error: st.substatus || 'Bridge failed' };
+      const st = await backendStatus({ source: 'lifi', txHash: item.txHash, fromDomainId: fd.id, toDomainId: td.id, bridge: item.bridge });
+      if (st.status === 'success') next = { status: 'success' };
+      else if (st.status === 'failed' || st.status === 'refunded') next = { status: 'failed', error: st.detail || 'Bridge failed' };
     }
   } catch { /* transient RPC/API failure: keep polling */ }
   if (!next && Date.now() - item.createdAt > SWAP_WATCH_TIMEOUT_MS) next = { status: 'timeout', error: 'Transaction is taking way more than expected' };
@@ -497,7 +613,7 @@ export async function searchTokens(query: string, domainId?: string): Promise<Sw
   const hits = pool.filter((a) => a.symbol.toLowerCase().includes(lq) || a.name.toLowerCase().includes(lq) || a.address.toLowerCase() === lq);
   if (q.length >= 2 && q.length <= 64) {
     const ids = domainId && domainById(domainId) ? [domainId] : SWAP_DOMAINS.map((d) => d.id);
-    const found = await Promise.all(ids.map((id) => lifiToken(id, q)));
+    const found = await Promise.all(ids.map((id) => backendToken(id, q)));
     for (const a of found) if (a && !hits.some((h) => h.assetId === a.assetId)) hits.push(a);
   }
   return hits;
@@ -512,7 +628,7 @@ export async function scanDust(deps: SwapDeps, domainId: string, thresholdUsd = 
     const pool = [...popularAssets(domainId), ...settings.recentAssets.filter((a) => a.domainId === domainId)].filter((a, i, all) => a.address !== 'native' && all.findIndex((b) => b.assetId === a.assetId) === i);
     const balances = await getBalances(deps, pool);
     const held = pool.filter((a) => { try { return BigInt(balances[a.assetId] ?? '0') > 0n; } catch { return false; } });
-    const priced = await Promise.all(held.map(async (a) => ({ asset: a, balance: balances[a.assetId], priceUsd: a.priceUsd ?? (await lifiToken(domainId, a.address))?.priceUsd })));
+    const priced = await Promise.all(held.map(async (a) => ({ asset: a, balance: balances[a.assetId], priceUsd: a.priceUsd ?? (await backendToken(domainId, a.address))?.priceUsd })));
     return { ok: true, items: pickDust(priced, thresholdUsd) };
   } catch (e) { return fail(e); }
 }

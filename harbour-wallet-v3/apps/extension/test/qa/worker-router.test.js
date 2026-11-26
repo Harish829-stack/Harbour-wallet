@@ -63,7 +63,7 @@ function assertSafe(name, r, where) {
 
 // ---------------------------------------------------------------- registry and boot
 
-test('T-MSG-006: the live INTERNAL registry equals the inventory table (MSG-001..182) and nothing is registered PUBLIC', () => {
+test('T-MSG-006: the live INTERNAL registry equals the inventory table (MSG-001..183) and nothing is registered PUBLIC', () => {
   const inv = [...readFileSync(new URL('../../../../qa/FEATURE_INVENTORY.md', import.meta.url), 'utf8').matchAll(/^\| MSG-\d+ \| `([^`]+)`/gm)].map((m) => m[1]).sort();
   assert.deepEqual(messages().sort(), inv);
   assert.deepEqual(M.listEvents().filter((e) => !e.startsWith('INTERNAL_')), []);
