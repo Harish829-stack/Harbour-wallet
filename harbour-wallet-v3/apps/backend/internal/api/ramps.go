@@ -203,9 +203,9 @@ type rampCheckoutReq struct {
 	Country       string `json:"country"`
 }
 
-// ownsAddress: an EVM address must be one this device registered (one key serves every EVM chain, so any chain counts).
+// rampAddressOwned: an EVM address must be one this device registered (one key serves every EVM chain, so any chain counts).
 // Other families are not tracked by the backend yet and get a strict shape check only.
-func (s *Server) ownsAddress(ctx context.Context, deviceID, addr string) (bool, error) {
+func (s *Server) rampAddressOwned(ctx context.Context, deviceID, addr string) (bool, error) {
 	if !evmAddr.MatchString(addr) {
 		return rampOtherAddr.MatchString(addr) && !strings.HasPrefix(strings.ToLower(addr), "0x"), nil
 	}
@@ -260,7 +260,7 @@ func (s *Server) handleRampsCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if typ == "buy" {
-		owns, err := s.ownsAddress(ctx, d.ID, req.Address)
+		owns, err := s.rampAddressOwned(ctx, d.ID, req.Address)
 		if err != nil {
 			s.internalErr(w, r, err)
 			return

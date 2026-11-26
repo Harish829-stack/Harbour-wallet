@@ -145,7 +145,7 @@ func TestRampsOtherFamilyAddressShape(t *testing.T) {
 	s, _ := bareServer(t)
 	for addr, want := range map[string]bool{"bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq": true, "4Nd1mYQn7tVv4y5kqXyV3b8fZ9T2N1gP6dEJc7rWqXvK": true,
 		"0x1234": false, "short": false, "evil\naddr0000000000000000": false, "0XABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD12": false} {
-		got, err := s.ownsAddress(t.Context(), "", addr)
+		got, err := s.rampAddressOwned(t.Context(), "", addr)
 		if err != nil || got != want {
 			t.Errorf("%q: %v %v", addr, got, err)
 		}
