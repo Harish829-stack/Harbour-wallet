@@ -41,7 +41,7 @@ Provider slugs and per-chain Alchemy product coverage (Transfers API, Address Ac
 | LI.FI, Jupiter, Relay, THORChain, Uniswap Trading API | api `/v1/gw` / extension | swap and bridge quotes; Pimlico for optional gasless swaps |
 | Blockscout, Routescan, mempool.space / Esplora | extension | explorer history without keys |
 | GoPlus, ScamSniffer, MetaMask phishing list | extension | token, address and site risk checks (advisory) |
-| Transak, Ramp, MoonPay, Mercuryo, Banxa, Onramper | extension | buy / sell checkout links; the wallet address placed in the link is enforced to be the user's own |
+| Onramper (aggregates MoonPay, Banxa, Transak, Mercuryo and others) | backend | buy / sell quotes and signed checkout sessions; the receiving address comes from the vault and EVM addresses must belong to the device ([buy-sell-onramper.md](buy-sell-onramper.md)) |
 | Hyperliquid, Polymarket | extension | perps and prediction markets (flagged off by default) |
 | WalletConnect / Reown | extension | WalletConnect v2 relay (project id required) |
 | Web Push (VAPID), Firebase Cloud Messaging | notifier, extension | push notifications; FCM optional |

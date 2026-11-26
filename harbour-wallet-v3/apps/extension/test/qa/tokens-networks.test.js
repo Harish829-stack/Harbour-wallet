@@ -1,5 +1,5 @@
-// QA: custom tokens, custom networks and ramp keys through the REAL worker (tokenAdd/tokenList/tokenRemove, networkSave/networkList,
-// rampsKeysSet/Get/Clear) and the registry loaders for data written by older builds. TEST_PLAN: T-CH-006, T-CH-016, T-DEFI-013.
+// QA: custom tokens, custom networks and the ramps catalog through the REAL worker (tokenAdd/tokenList/tokenRemove, networkSave/networkList,
+// rampsConfig) and the registry loaders for data written by older builds. TEST_PLAN: T-CH-006, T-CH-016, T-DEFI-013.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { harness, PASSWORD, PHRASE_ABOUT, allStrings } from './harness.mjs';
@@ -8,7 +8,6 @@ const H = await harness(`
   import './background/index';
   export { readTokens, sanitizeToken, tokenId, MAX_TOKENS } from './core/customTokens';
   export { setNetworkState, getNetworkState, customNetworks, rpcOverride } from './core/networkRegistry';
-  export { RAMP_KEYS_STORAGE } from './core/ramps/keys';
 `);
 const { M, F } = H;
 const INTERNAL = { id: 'test', url: 'chrome-extension://test/src/popup/index.html' };
@@ -57,23 +56,14 @@ test('T-CH-016: token and network records written by older builds load normalise
   M.setNetworkState(null); assert.deepEqual(M.getNetworkState(), { custom: [], rpcOverrides: {} });
 });
 
-test('T-DEFI-013: ramp keys — only publishable formats accepted, the UI only ever sees masked previews, clear removes them', async () => {
-  const pk = 'pk_test_abcdefghijKLMNOP1234';
-  const set = await send({ type: 'rampsKeysSet', providerId: 'moonpay', keys: { apiKey: pk } });
-  assert.equal(set.ok, true, JSON.stringify(set));
-  for (const r of [set, await send({ type: 'rampsKeysGet' })]) assert.ok(!allStrings(r).some((s) => s.includes(pk)), 'full key never returned to the UI');
-  const mp = set.providers.find((p) => p.id === 'moonpay'); assert.equal(mp.fields[0].configured, true); assert.equal(mp.fields[0].preview, 'pk_••••234');
-  // secret keys and junk are refused (the design stores publishable identifiers only; see core/ramps/keys.ts)
-  for (const bad of ['sk_live_abcdefghijklmnop', 'pk_live_<script>', '', 'x'.repeat(500)]) {
-    const r = await send({ type: 'rampsKeysSet', providerId: 'moonpay', keys: { apiKey: bad } });
-    if (bad === '') continue; // blank keeps the stored value
-    assert.equal(r.ok, false, bad);
+test('T-DEFI-013: no user ramp keys any more (Onramper keys live on the backend); an unreachable backend keeps exchange deposits working', async () => {
+  for (const type of ['rampsKeysSet', 'rampsKeysGet', 'rampsKeysClear']) {
+    const r = await send({ type, providerId: 'moonpay', keys: { apiKey: 'pk_test_abcdefghijKLMNOP1234' } });
+    assert.notEqual(r?.ok, true, `${type} must be gone`);
   }
-  assert.equal((await send({ type: 'rampsKeysSet', providerId: 'nope', keys: {} })).ok, false);
-  const stored = F.local.data[M.RAMP_KEYS_STORAGE]; assert.equal(stored.moonpay.apiKey, pk);
-  const cl = await send({ type: 'rampsKeysClear', providerId: 'moonpay' }); assert.equal(cl.ok, true);
-  assert.equal(F.local.data[M.RAMP_KEYS_STORAGE].moonpay, undefined);
-  // stored data is re-validated on read: a tampered secret key in storage is ignored
-  F.local.data[M.RAMP_KEYS_STORAGE] = { moonpay: { apiKey: 'sk_live_tampered1234567' } };
-  const g = await send({ type: 'rampsKeysGet' }); assert.equal(g.providers.find((p) => p.id === 'moonpay').fields[0].configured, false);
+  assert.equal(Object.keys(F.local.data).some((k) => k === 'wallet:ramp:keys'), false, 'nothing stores provider keys');
+  const cfg = await send({ type: 'rampsConfig' });
+  assert.equal(cfg.ok, true, JSON.stringify(cfg));
+  assert.ok(Array.isArray(cfg.cexProviders) && cfg.cexProviders.length > 0, 'deposit-from-exchange catalog still served');
+  if (cfg.assets.length === 0) assert.equal(typeof cfg.unavailable, 'string');
 });

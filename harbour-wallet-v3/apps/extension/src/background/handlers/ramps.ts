@@ -1,18 +1,19 @@
-// Feature message handlers: ramps (Buy / Sell / Fund / CEX deposit / Ramp API keys). Every message here is UI-only (the router enforces
-// isInternalWalletSender before dispatch). Quotes and widget URLs are built HERE, in the service worker, and the wallet address always comes
-// from the vault (never from the UI payload), mirroring TW's `enforceTrustedRampAddress`.
+// Feature message handlers: ramps (Buy / Sell / Fund / CEX deposit). Every message here is UI-only (the router enforces
+// isInternalWalletSender before dispatch). Buy and sell go through Onramper via the Harbour backend, which holds the Onramper
+// API key and signing key. The wallet address always comes from the vault (never from the UI payload), mirroring TW's
+// `enforceTrustedRampAddress`, and the backend additionally checks an EVM address belongs to this device.
 import type { HandlerMap, HandlerCtx } from './types';
-import { local } from '../../core/storage';
 import { ensureAccounts, activeEntry } from '../walletState';
 import { chainById } from '../../core/chains/index';
 import { addressFor } from '../../core/chains/adapters';
+import { api } from '../../core/harbour/client';
 import {
-  RAMP_FIATS, isRampFiat, buildRampAssets, rampAssetById, PROVIDERS, providerById, PAYMENT_CATEGORIES, getRampQuotes, fetchMarketReference, parseAmount, isPlausibleAddress,
-  buildCheckoutUrl, ProviderError, normalizeKeys, setProviderKeys, describeKeys, RAMP_KEYS_STORAGE, keysFor, buildRecurringIcs, buildP2pUrl, isP2pAsset,
-  CEX_PROVIDERS, cexProvider, fetchCexAssets, cexDepositInfo, type CexAssets, type PaymentCategoryId, type RampMode, type RampKeys,
+  RAMP_FIATS, isRampFiat, buildRampAssets, rampAssetById, PAYMENT_CATEGORIES, fetchMarketReference, parseAmount, isPlausibleAddress,
+  buildRecurringIcs, buildP2pUrl, isP2pAsset, CEX_PROVIDERS, cexProvider, fetchCexAssets, cexDepositInfo, rampableAssets, mapQuotes, parseQuoteId,
+  matchCrypto, isTrustedCheckout, orderView, type CexAssets, type RampMode, type OnramperConfig,
 } from '../../core/ramps/index';
+import { openCheckoutTab, pollRampOrders } from '../rampsWatch';
 
-const readKeys = async (): Promise<RampKeys> => normalizeKeys(await local.get(RAMP_KEYS_STORAGE));
 const fail = (error: string) => ({ ok: false, error });
 const mode = (m: unknown): RampMode | null => (m === 'buy' || m === 'sell' ? m : null);
 
@@ -27,6 +28,19 @@ async function ownAddress(ctx: HandlerCtx, chainId: string): Promise<string> {
   return addr;
 }
 
+// Onramper catalog per mode, cached for 30 minutes (the backend caches for an hour as well).
+const cfgCache = new Map<RampMode, { at: number; v: OnramperConfig }>();
+async function onramperConfig(m: RampMode): Promise<OnramperConfig> {
+  const c = cfgCache.get(m); if (c && Date.now() - c.at < 30 * 60_000) return c.v;
+  const v = await api<OnramperConfig>('GET', `/v1/ramps/config?type=${m}`);
+  const safe: OnramperConfig = { country: typeof v?.country === 'string' ? v.country : '', type: m, cryptos: Array.isArray(v?.cryptos) ? v.cryptos : [], fiats: Array.isArray(v?.fiats) ? v.fiats : [] };
+  cfgCache.set(m, { at: Date.now(), v: safe }); return safe;
+}
+async function cryptoFor(m: RampMode, assetId: string) {
+  const asset = rampAssetById(assetId); if (!asset) return null;
+  const crypto = matchCrypto(asset, (await onramperConfig(m)).cryptos); return crypto ? { asset, crypto } : null;
+}
+
 const cexCache = new Map<string, { at: number; v: CexAssets }>();
 async function cexAssetsCached(id: 'binance-pay' | 'coinbase-pay'): Promise<CexAssets> {
   const c = cexCache.get(id); if (c && Date.now() - c.at < 3600_000) return c.v;
@@ -34,47 +48,63 @@ async function cexAssetsCached(id: 'binance-pay' | 'coinbase-pay'): Promise<CexA
 }
 
 export const handlers: HandlerMap = {
-  // Static catalog for the flow: fiat list + ramp-able assets (each with the providers that carry it) + provider descriptors (never key values).
+  // Catalog for the flow: fiat list + the Harbour assets Onramper carries in the user's region. `providers` stays empty: there
+  // are no user-supplied provider keys any more.
   rampsConfig: async () => {
-    const keys = await readKeys();
-    const assets = buildRampAssets().map((a) => ({ ...a, providers: PROVIDERS.filter((p) => p.code(a)).map((p) => p.id) })).filter((a) => a.providers.length > 0);
-    return { ok: true, fiats: RAMP_FIATS, assets, providers: describeKeys(keys), categories: PAYMENT_CATEGORIES, cexProviders: CEX_PROVIDERS };
+    // Deposit-from-exchange shares this catalog, so an unavailable Onramper must not break it: return an empty asset list and
+    // `unavailable` with the reason instead of failing.
+    const base = { ok: true, providers: [], categories: PAYMENT_CATEGORIES, cexProviders: CEX_PROVIDERS };
+    try {
+      const [buy, sell] = await Promise.all([onramperConfig('buy'), onramperConfig('sell').catch(() => null)]);
+      const sellIds = new Set(sell ? rampableAssets(buildRampAssets(), sell).map((x) => x.asset.assetId) : []);
+      const assets = rampableAssets(buildRampAssets(), buy).map(({ asset }) => ({ ...asset, providers: ['onramper'], sellable: sellIds.has(asset.assetId) }));
+      const codes = new Set(buy.fiats.map((f) => String(f.code ?? f.id ?? '').toUpperCase()));
+      const fiats = codes.size ? RAMP_FIATS.filter((f) => codes.has(f.code)) : RAMP_FIATS;
+      return { ...base, fiats: fiats.length ? fiats : RAMP_FIATS, assets, country: buy.country };
+    } catch (e: any) { return { ...base, fiats: RAMP_FIATS, assets: [], unavailable: String(e?.message ?? 'Buying and selling crypto is unavailable right now.') }; }
   },
   rampsQuotes: async (msg) => {
-    const m = mode(msg.mode); const asset = rampAssetById(String(msg.assetId ?? ''));
-    if (!m || !asset) return fail('Unsupported asset');
+    const m = mode(msg.mode); if (!m) return fail('Unsupported request');
     if (!isRampFiat(msg.fiat)) return fail('Unsupported currency');
     const amt = parseAmount(msg.amount); if (!amt.ok) return fail(amt.error);
-    try { return { ok: true, ...(await getRampQuotes({ mode: m, asset, fiat: msg.fiat, amount: amt.value }, await readKeys(), fetch)) }; } catch (e: any) { return fail(e?.message ?? 'Quote failed'); }
+    try {
+      const pair = await cryptoFor(m, String(msg.assetId ?? '')); if (!pair) return fail('This crypto is not available to ' + m + ' in your region.');
+      const fiat = String(msg.fiat).toLowerCase();
+      const qs = new URLSearchParams({ type: m, source: m === 'buy' ? fiat : pair.crypto.id, destination: m === 'buy' ? pair.crypto.id : fiat, amount: amt.value });
+      const res = await api('GET', `/v1/ramps/quotes?${qs.toString()}`);
+      return { ok: true, ...mapQuotes(res, { mode: m, asset: pair.asset, fiat: msg.fiat, amount: amt.value }) };
+    } catch (e: any) { return fail(e?.message ?? 'Could not get quotes'); }
   },
   rampsMarketRef: async (msg) => {
     const asset = rampAssetById(String(msg.assetId ?? '')); if (!asset || !isRampFiat(msg.fiat)) return fail('Unsupported');
     const rate = await fetchMarketReference(asset.cg, msg.fiat, fetch); return rate ? { ok: true, rate } : fail('Market price unavailable');
   },
+  // Creates the order on the backend (which signs the Onramper checkout intent) and opens the provider page from the worker,
+  // so the popup can close without losing the follow-up.
   rampsCheckout: async (msg, ctx) => {
     try {
-      const m = mode(msg.mode); const asset = rampAssetById(String(msg.assetId ?? '')); const q = msg.quote ?? {};
-      const p = providerById(q.providerId);
-      if (!m || !asset || !p) return fail('Unsupported request');
+      const m = mode(msg.mode); const q = parseQuoteId(msg.quote?.id);
+      if (!m || !q) return fail('Unsupported request');
       if (!isRampFiat(msg.fiat)) return fail('Unsupported currency');
       const amt = parseAmount(msg.amount); if (!amt.ok) return fail(amt.error);
-      const category = typeof q.categoryId === 'string' && q.categoryId in PAYMENT_CATEGORIES ? (q.categoryId as PaymentCategoryId) : undefined;
-      const sub = typeof q.id === 'string' ? q.id.split(':')[2] : undefined;
-      const address = await ownAddress(ctx, asset.chainId);
-      const { url } = buildCheckoutUrl(p, { mode: m, asset, fiat: msg.fiat, amount: amt.value, address, category, subProvider: sub }, keysFor(await readKeys(), p.id));
-      return { ok: true, url, providerName: p.name, address };
-    } catch (e: any) {
-      return { ok: false, error: e?.message ?? 'Could not open the provider', needsKey: e instanceof ProviderError && e.kind === 'needs_key' };
-    }
+      const pair = await cryptoFor(m, String(msg.assetId ?? '')); if (!pair) return fail('This crypto is not available in your region.');
+      const address = m === 'buy' ? await ownAddress(ctx, pair.asset.chainId) : '';
+      const fiat = String(msg.fiat).toLowerCase();
+      const r = await api<{ order_id: string; checkout_url: string; return_url?: string }>('POST', '/v1/ramps/checkout', {
+        type: m, provider: q.provider, payment_method: q.paymentMethod, source: m === 'buy' ? fiat : pair.crypto.id, destination: m === 'buy' ? pair.crypto.id : fiat,
+        network: pair.crypto.network, chain: pair.asset.chainId, amount: amt.value, ...(address ? { address } : {}),
+      });
+      if (!isTrustedCheckout(r?.checkout_url)) return fail('The provider link was blocked because it is not a secure Onramper page.');
+      await openCheckoutTab(r.checkout_url, r.return_url);
+      return { ok: true, opened: true, orderId: r.order_id, providerName: msg.quote?.providerName ?? 'the provider', address };
+    } catch (e: any) { return fail(e?.message ?? 'Could not open the provider'); }
   },
-  rampsKeysGet: async () => ({ ok: true, providers: describeKeys(await readKeys()) }),
-  rampsKeysSet: async (msg) => {
-    const r = setProviderKeys(await readKeys(), msg.providerId, msg.keys); if (!r.ok) return fail(r.error);
-    await local.set(RAMP_KEYS_STORAGE, r.keys); return { ok: true, providers: describeKeys(r.keys) };
-  },
-  rampsKeysClear: async (msg) => {
-    const p = providerById(msg.providerId); if (!p) return fail('Unknown provider');
-    const cur = await readKeys(); delete cur[p.id]; await local.set(RAMP_KEYS_STORAGE, cur); return { ok: true, providers: describeKeys(cur) };
+  rampsOrders: async () => {
+    try {
+      const orders = await pollRampOrders();
+      const cryptos = (await onramperConfig('buy').catch(() => null))?.cryptos ?? [];
+      return { ok: true, orders: orders.map((o) => orderView(o, cryptos)) };
+    } catch (e: any) { return fail(e?.message ?? 'Could not load orders'); }
   },
   rampsRecurringIcs: async (msg) => {
     const asset = rampAssetById(String(msg.assetId ?? '')); const amt = parseAmount(msg.amount);

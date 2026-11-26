@@ -72,9 +72,9 @@ export const HelpScreen: React.FC<Ctx> = (c) => {
                 <button type="button" aria-expanded={o} onClick={() => setOpen(o ? null : k)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: 'none', background: 'transparent', padding: '12px 14px', cursor: 'pointer', color: T.text, fontWeight: 700, textAlign: 'left', fontSize: 14 }}>{it.q}<Ic d={o ? ICON.down : ICON.chevron} size={16} /></button>
                 {o && <div style={{ padding: '0 14px 12px', color: T.sub, fontSize: 13, lineHeight: 1.5 }}>{it.a}</div>}
               </div>); })}</div>)}
-          <SectionLabel>Developer</SectionLabel>
-          <Row left={<span style={{ color: T.accent }}><Ic d={ICON.card} size={22} /></span>} title="Ramp API keys" sub="Provider keys for buy and sell quotes" right={<Ic d={ICON.chevron} size={16} />} onClick={() => c.nav.push('rampApiKeys')} />
-          <div style={{ textAlign: 'center', color: T.sub, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>Harbour Wallet {ver() ? `version ${ver()}` : ''}<br />Data sources: CoinGecko, DeFiLlama, public block explorers, open.er-api.com. No analytics.</div>
+          <SectionLabel>Buy and sell</SectionLabel>
+          <Row left={<span style={{ color: T.accent }}><Ic d={ICON.card} size={22} /></span>} title="Your orders" sub="Status of purchases and sales through Onramper" right={<Ic d={ICON.chevron} size={16} />} onClick={() => c.nav.push('rampOrders')} />
+          <div style={{ textAlign: 'center', color: T.sub, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>Harbour Wallet {ver() ? `version ${ver()}` : ''}<br />Data sources: CoinGecko, DeFiLlama, public block explorers, open.er-api.com; buy and sell through Onramper. No analytics.</div>
         </div>)}
       {edit && cfg && <HelpEdit c={c} cfg={cfg} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); h.reload(); }} />}
     </Screen>);

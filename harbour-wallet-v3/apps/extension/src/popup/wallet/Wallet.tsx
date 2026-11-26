@@ -96,6 +96,7 @@ export const Wallet: React.FC<{
     const path = window.location.hash.split('?')[0];
     if (path === '#/settings/connections/blacklist' || path === '#/settings/connections-blacklist') return [{ name: 'connections' }, { name: 'connectionsBlacklist' }];
     if (path === '#/settings/connections') return [{ name: 'connections' }];
+    if (path === '#/ramps/orders') return [{ name: 'rampOrders' }]; // the finished buy/sell provider tab lands here (background/rampsWatch.ts)
     const detail = path.match(/^#\/settings\/connection\/([^/]+)$/);
     if (detail) return [{ name: 'connections' }, { name: 'connectionDetail', params: { id: decodeURIComponent(detail[1]) } }];
     return [];

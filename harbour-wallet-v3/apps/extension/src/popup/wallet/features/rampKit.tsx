@@ -26,10 +26,11 @@ export const writePrefs = (p: Partial<RampPrefs>) => { try { localStorage.setIte
 // ---- catalog (rampsConfig) loaded once per popup session
 export interface RampCfg {
   fiats: Array<{ code: string; name: string; popular: boolean; suggested: number[]; defaultAmount: number }>;
-  assets: Array<{ assetId: string; symbol: string; name: string; chainId: string; chainName: string; isNative: boolean; cg?: string; providers: string[] }>;
-  providers: KeyProvider[]; categories: Record<string, string>; cexProviders: Array<{ id: string; name: string; needsPlatform: boolean }>;
+  assets: Array<{ assetId: string; symbol: string; name: string; chainId: string; chainName: string; isNative: boolean; cg?: string; providers: string[]; sellable?: boolean }>;
+  providers: unknown[]; categories: Record<string, string>; cexProviders: Array<{ id: string; name: string; needsPlatform: boolean }>;
+  /** Set when buy/sell is unavailable (Onramper not configured or down); the exchange-deposit flow still works. */
+  unavailable?: string; country?: string;
 }
-export interface KeyProvider { id: string; name: string; docsUrl: string; note?: string; widgetOnly: boolean; modes: string[]; fields: Array<{ field: string; label: string; hint: string; optional: boolean; configured: boolean; preview: string }> }
 let cfgPromise: Promise<RampCfg> | null = null;
 export const loadRampCfg = (bg: Bg, force = false): Promise<RampCfg> => {
   if (!cfgPromise || force) cfgPromise = bg({ type: 'rampsConfig' }).then((r) => { if (!r?.ok) throw new Error(r?.error ?? 'Could not load'); return r as RampCfg; }).catch((e) => { cfgPromise = null; throw e; });

@@ -1,6 +1,7 @@
 // Buy / Sell / P2P / Recurring flow (TW routes /buy/new[/enter-amount|select-fiat|select-crypto|select-network|select-provider|select-payment-method],
-// /buy/recurring-setup, /sell/new[...], /fiat-ramps). One state machine, real quotes from background `rampsQuotes`, real widget hand-off through
-// `rampsCheckout` (address always from the vault). See evidences/re-evidence/36-ramps/SPEC.md.
+// /buy/recurring-setup, /sell/new[...], /fiat-ramps). One state machine, real Onramper quotes from background `rampsQuotes` (via the Harbour
+// backend), and `rampsCheckout`, which creates the order and opens the provider page from the service worker (address always from the vault).
+// See documentation/buy-sell-onramper.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme';
 import type { Ctx } from '../screens';
@@ -46,7 +47,7 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
   const [freq, setFreq] = useState<'weekly' | 'monthly'>('monthly');
   const [start, setStart] = useState(() => new Date(Date.now() + 86400_000).toISOString().slice(0, 10));
   const [stack, setStack] = useState<Step[]>([]);
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [errKey, setErrKey] = useState(false);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const [done, setDone] = useState<null | { provider: string; recurring?: boolean }>(null);
   const [rate, setRate] = useState<number | null>(null); const [pct, setPct] = useState(0);
   const initialised = useRef(false);
@@ -79,11 +80,9 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
   const activeCat = result ? (categoryId && result.categories.some((x) => x.id === categoryId) ? categoryId : result.quotes.find((q) => q.id === result.bestQuoteId)?.paymentMethod.categoryId ?? result.categories[0]?.id ?? null) : null;
   const inCat = result?.quotes.filter((q) => q.paymentMethod.categoryId === activeCat) ?? [];
   const chosen: QuoteView | undefined = inCat.find((q) => q.id === quoteId) ?? inCat.find((q) => q.isRecommended) ?? inCat[0];
-  const mercuryoReady = !!cfg?.providers.find((p) => p.id === 'mercuryo')?.fields.some((f) => f.field === 'widgetId' && f.configured);
   const go = (s: Step) => setStack((x) => [...x, s]);
   const back = () => setStack((x) => x.slice(0, -1));
   const top = stack[stack.length - 1];
-  const pushKeys = () => c.nav.push('rampApiKeys');
 
   const amountOk = validAmt(amount);
   const balNum = asset ? heldNum(asset) : 0;
@@ -94,12 +93,12 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
 
   const remember = (a: CfgAsset) => writePrefs({ fiat, recent: [a.assetId, ...(readPrefs().recent ?? []).filter((x) => x !== a.assetId)].slice(0, 5) });
   const checkout = async (quote: QuoteView, m: 'buy' | 'sell', recurringFlag = false) => {
-    if (!asset) return; setBusy(true); setErr(''); setErrKey(false);
+    if (!asset) return; setBusy(true); setErr('');
     try {
-      const r = await c.bg({ type: 'rampsCheckout', mode: m, assetId: asset.assetId, fiat, amount, quote: { id: quote.id, providerId: quote.providerId, categoryId: quote.paymentMethod.categoryId } });
-      if (!r?.ok) { setErr(r?.error ?? 'Something went wrong. Please try again.'); setErrKey(!!r?.needsKey); return false; }
-      if (!openHttps(r.url)) { setErr('The provider link was blocked because it is not a secure https address.'); return false; }
-      remember(asset); setDone({ provider: r.providerName, recurring: recurringFlag }); return true;
+      // The service worker creates the order, opens the provider tab and follows it, so this popup may close safely.
+      const r = await c.bg({ type: 'rampsCheckout', mode: m, assetId: asset.assetId, fiat, amount, quote: { id: quote.id, providerName: quote.providerName } });
+      if (!r?.ok) { setErr(r?.error ?? 'Something went wrong. Please try again.'); return false; }
+      remember(asset); setDone({ provider: r.providerName ?? quote.providerName, recurring: recurringFlag }); return true;
     } catch (e: any) { setErr(String(e?.message ?? 'Something went wrong. Please try again.')); return false; } finally { setBusy(false); }
   };
   const onContinue = () => {
@@ -113,17 +112,17 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
     catch (e: any) { setErr(String(e?.message ?? 'Could not open Binance P2P')); } finally { setBusy(false); }
   };
   const startRecurring = async () => {
-    const m = result?.quotes.find((q) => q.providerId === 'mercuryo') ?? chosen; if (!m || !asset) { setErr('No Mercuryo quote is available for this amount.'); return; }
-    const q = result?.quotes.find((x) => x.providerId === 'mercuryo'); if (!q) { setErr('Mercuryo has no quote for this asset and amount, so a recurring buy cannot start.'); return; }
+    const q = chosen; if (!q || !asset) { setErr('No provider has a quote for this asset and amount, so a recurring buy cannot start.'); return; }
     const ok = await checkout(q, 'buy', true);
     if (ok) { const r = await c.bg({ type: 'rampsRecurringIcs', assetId: asset.assetId, fiat, amount, frequency: freq, start }); if (r?.ok) download(r.filename, 'text/calendar', r.ics); setStack([]); }
   };
 
   if (cfgState.error) return <Screen title={mode === 'sell' ? 'Sell' : 'Buy crypto'} onBack={c.nav.pop}><ErrorBox message={cfgState.error} onRetry={loadCfg} /></Screen>;
   if (!cfg) { const b = <Busy label="Loading…" />; return c.embedded ? b : <Screen title={mode === 'sell' ? 'Sell' : 'Buy crypto'} onBack={c.nav.pop}>{b}</Screen>; }
+  if (cfg.unavailable && mode !== 'p2p') { const e = <ErrorBox message={cfg.unavailable} onRetry={loadCfg} />; return c.embedded ? e : <Screen title={mode === 'sell' ? 'Sell' : 'Buy crypto'} onBack={c.nav.pop}>{e}</Screen>; }
 
   // ---------- overlay steps
-  const sellAllowed = (a: CfgAsset) => heldNum(a) > 0 && a.providers.length > 0;
+  const sellAllowed = (a: CfgAsset) => heldNum(a) > 0 && a.sellable !== false;
   const p2pAllowed = (a: CfgAsset) => P2P_SYMBOLS.includes(a.symbol) && a.assetId === (a.isNative ? a.chainId : a.assetId) && ['ethereum', 'bitcoin', 'smartchain', 'tron', 'solana'].includes(a.chainId) && (a.symbol !== 'USDC' || a.chainId === 'ethereum');
   const stepEl = (() => {
     if (top === 'crypto') return <CryptoStep cfg={cfg} mode={mode} selectedId={asset?.assetId} network={network} fiat={fiat} recent={readPrefs().recent ?? []} allowed={mode === 'sell' ? sellAllowed : mode === 'p2p' ? p2pAllowed : undefined}
@@ -131,9 +130,9 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
       onPick={(a) => { setAsset(a); setPct(0); if (mode === 'sell') setAmount(''); setStack([]); }} />;
     if (top === 'fiat') return <FiatStep cfg={cfg} selected={fiat} onBack={back} onPick={(code) => { setFiat(code); writePrefs({ fiat: code }); const f = cfg.fiats.find((x) => x.code === code); if (mode === 'buy' && f) setAmount(String(f.defaultAmount)); back(); }} />;
     if (top === 'network') return <NetworkStep cfg={cfg} selected={network} onBack={back} onPick={(id) => { setNetwork(id); back(); }} />;
-    if (top === 'provider') return <ProviderStep result={result} loading={quotes.loading} category={activeCat} selectedId={chosen?.id ?? null} mode={apiMode} fiat={fiat} symbol={asset?.symbol ?? ''} onBack={back} onMethod={() => go('method')} onKeys={pushKeys} onPick={(q) => { setQuoteId(q.id); back(); }} />;
+    if (top === 'provider') return <ProviderStep result={result} loading={quotes.loading} category={activeCat} selectedId={chosen?.id ?? null} mode={apiMode} fiat={fiat} symbol={asset?.symbol ?? ''} onBack={back} onMethod={() => go('method')} onPick={(q) => { setQuoteId(q.id); back(); }} />;
     if (top === 'method') return <MethodStep result={result} loading={quotes.loading} selected={activeCat} onBack={back} onPick={(id) => { setCategoryId(id); setQuoteId(null); back(); }} />;
-    if (top === 'recurring' && asset) return <RecurringStep asset={asset} fiat={fiat} amount={amount} frequency={freq} start={start} mercuryoReady={mercuryoReady} busy={busy} error={err} onFrequency={setFreq} onStart={setStart} onContinue={startRecurring} onKeys={pushKeys} onBack={back} />;
+    if (top === 'recurring' && asset) return <RecurringStep asset={asset} fiat={fiat} amount={amount} frequency={freq} start={start} providerName={chosen?.providerName} busy={busy} error={err} onFrequency={setFreq} onStart={setStart} onContinue={startRecurring} onBack={back} />;
     return null;
   })();
 
@@ -152,7 +151,6 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
   const card = (chip: React.ReactNode, body: React.ReactNode) => <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.bgAlt, borderRadius: 18, padding: 14 }}>{chip}{body}</div>;
   const outValue = (txt: string, loading: boolean) => loading ? <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}><Skeleton w={120} h={30} /></div> : <div aria-live="polite" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 28, fontWeight: 800, color: txt === '0' ? T.sub : T.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>{txt}</div>;
   const pendingQ = amountOk && (quotes.loading || quotes.pending) && mode !== 'p2p';
-  const hasKeyIssue = result?.providers.some((p) => p.state === 'needs_key');
   const anyOk = !!result && result.quotes.length > 0;
 
   const body = (
@@ -189,7 +187,7 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
             <div style={{ background: T.bgAlt, borderRadius: 16, overflow: 'hidden' }}>
               <button type="button" onClick={() => go('provider')} className="hb-tap" style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: T.text, textAlign: 'left' }}>
                 <Letter name={chosen.providerName} size={40} />
-                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>{chosen.paymentMethod.label}</div><div style={{ fontSize: 12, color: T.sub }}>with {chosen.providerName}{chosen.isRecommended ? ' · Recommended' : ''}{chosen.crypto.amount == null && mode === 'buy' ? ' · price shown in widget' : ''}</div></div>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700 }}>{chosen.paymentMethod.label}</div><div style={{ fontSize: 12, color: T.sub }}>with {chosen.providerName}{chosen.isRecommended ? ' · Recommended' : ''}</div></div>
                 <Ic d={ICON.chevron} size={18} />
               </button>
               {mode === 'buy' && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
@@ -198,12 +196,12 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
               </div>}
             </div>)
           : <div>
-              <Notice tone={hasKeyIssue ? 'warn' : 'info'} action={hasKeyIssue ? { label: 'Open Ramp API keys', onClick: pushKeys } : undefined}>{hasKeyIssue ? <><b>No provider is configured for this pair.</b> {mode === 'sell' ? 'Sell' : 'Buy'} quotes need provider keys that you add yourself; Harbour never shows invented prices.</> : 'No available payment method'}</Notice>
+              <Notice>No provider can {mode === 'sell' ? 'buy this asset from you' : 'sell you this asset'} for this amount in your region. Try a different amount, currency or asset.</Notice>
               {result && result.providers.length > 0 && <button type="button" onClick={() => go('provider')} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', padding: '2px 4px', fontSize: 13 }}>Why? Provider status</button>}
             </div>}
       </div>
       {minMax && <Notice tone="error">{minMax}</Notice>}
-      {err && <Notice tone="error" action={errKey ? { label: 'Open Ramp API keys', onClick: pushKeys } : undefined}>{err}</Notice>}
+      {err && <Notice tone="error">{err}</Notice>}
       <Btn onClick={onContinue} disabled={busy || !asset || !amountOk && mode !== 'p2p' || overBalance || (mode !== 'p2p' && !chosen) || (mode === 'p2p' && !asset)}>
         {busy ? 'Opening…' : mode === 'p2p' ? 'Open Binance P2P' : amountOk ? 'Continue' : mode === 'sell' ? 'Enter amount' : 'Enter amount'}</Btn>
       <div style={{ fontSize: 11, color: T.sub, textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>{mode === 'p2p' ? 'Third-party marketplace.' : 'Payment and identity checks happen on the provider’s own page. Harbour passes only your public wallet address.'}</div>
@@ -215,6 +213,7 @@ export const RampFlow: React.FC<Ctx & { forced?: FlowMode; embedded?: boolean }>
         <SuccessCheck size={64} />
         <div style={{ fontWeight: 800, fontSize: 18, margin: '10px 0 6px' }}>{done.provider} opened in a new tab</div>
         <div style={{ color: T.sub, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>{mode === 'sell' ? 'Finish the sale there. You will be asked to send the crypto from this wallet to the provider.' : mode === 'p2p' ? 'Complete the trade on Binance P2P, then withdraw to Harbour.' : `Complete the payment there. ${asset?.symbol ?? 'Your crypto'} arrives at your Harbour ${asset?.chainName ?? ''} address once the provider finishes.`}{done.recurring ? ' A recurring reminder (.ics) was downloaded.' : ''}</div>
+        {mode !== 'p2p' && <div style={{ marginBottom: 10 }}><Btn variant="ghost" onClick={() => { setDone(null); c.nav.push('rampOrders'); }}>Track order</Btn></div>}
         <Btn onClick={() => { setDone(null); c.nav.home(); }}>Return to home</Btn>
       </div>
     </Sheet>);

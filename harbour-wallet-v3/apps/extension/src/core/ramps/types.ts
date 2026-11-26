@@ -1,8 +1,9 @@
 // Fiat on/off-ramp domain types. Shapes mirror Trust Wallet's recovered buy flow (evidences/re-evidence/36-ramps/SPEC.md): a quote has
 // {id, provider{name,imageUrl}, paymentMethod{paymentMethod,categoryId,providerName}, digitalMoney{amount,currency}, fiatMoney{amount,currency},
-// isRecommended, badges[]}; quotes are grouped by payment category. Harbour fills them from public provider endpoints (never TW's gateway).
+// isRecommended, badges[]}; quotes are grouped by payment category. Harbour fills them from Onramper through its own backend (never TW's gateway).
 export type RampMode = 'buy' | 'sell';
-export type RampProviderId = 'transak' | 'ramp' | 'moonpay' | 'mercuryo' | 'banxa' | 'onramper';
+/** All quotes come through Onramper (the concrete provider is RampQuote.providerName). */
+export type RampProviderId = 'onramper';
 
 /** A buyable/sellable asset. `assetId` is the Harbour asset id: a registry chain id for natives, `<chainId>:<SYMBOL>` for stable tokens. */
 export interface RampAsset { assetId: string; symbol: string; name: string; chainId: string; chainName: string; isNative: boolean; cg?: string }
@@ -35,4 +36,3 @@ export interface QuoteRequest { mode: RampMode; asset: RampAsset; fiat: string; 
 export interface QuoteResult { quotes: RampQuote[]; categories: PaymentCategory[]; providers: ProviderState[]; bestQuoteId?: string }
 
 export type Fetcher = typeof fetch;
-export type RampKeys = Partial<Record<RampProviderId, Record<string, string>>>;

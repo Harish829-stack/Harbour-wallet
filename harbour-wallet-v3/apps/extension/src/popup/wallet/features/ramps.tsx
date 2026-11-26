@@ -1,9 +1,10 @@
-// Screens for feature "ramps": Fund menu, Buy/Sell/P2P/Recurring, Deposit from exchange, Ramp API keys.
+// Screens for feature "ramps": Fund menu, Buy/Sell/P2P/Recurring, Deposit from exchange, buy/sell orders.
 import React, { useState } from 'react';
 import type { Ctx } from '../screens';
 import { Screen } from '../ui';
 import { RampFlow } from './rampFlow';
-import { FundScreen, FundCexScreen, FundCexPlatformScreen, FundCexAssetsScreen, FundCexQrScreen, RampApiKeysScreen, Tabs } from './rampFund';
+import { FundScreen, FundCexScreen, FundCexPlatformScreen, FundCexAssetsScreen, FundCexQrScreen, Tabs } from './rampFund';
+import { RampOrdersScreen } from './rampOrders';
 
 const Buy: React.FC<Ctx> = (c) => <RampFlow {...c} />;
 const Sell: React.FC<Ctx> = (c) => <RampFlow {...c} forced="sell" />;
@@ -15,5 +16,5 @@ const FiatRamps: React.FC<Ctx> = (c) => {
 export const SCREENS_ramps: Record<string, React.FC<Ctx>> = {
   fund: FundScreen, buy: Buy, sell: Sell, fiatRamps: FiatRamps,
   fundCex: FundCexScreen, fundCexPlatform: FundCexPlatformScreen, fundCexAssets: FundCexAssetsScreen, fundCexQr: FundCexQrScreen,
-  rampApiKeys: RampApiKeysScreen,
+  rampOrders: RampOrdersScreen,
 };

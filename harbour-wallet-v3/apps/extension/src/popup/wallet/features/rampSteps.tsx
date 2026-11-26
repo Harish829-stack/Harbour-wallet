@@ -8,7 +8,7 @@ import { SearchBox, Chip, ChipRow, Notice, Letter, fmtCrypto, fmtFiat, ON_BRAND,
 
 export type CfgAsset = RampCfg['assets'][number];
 export interface QuoteView { id: string; providerId: string; providerName: string; paymentMethod: { categoryId: string; label: string; providerName?: string }; fiat: { currency: string; amount: number }; crypto: { symbol: string; amount: number | null }; feeFiat?: number; isRecommended: boolean; badges: string[]; mode: string }
-export interface ProviderStateView { id: string; name: string; state: 'ok' | 'needs_key' | 'unsupported' | 'error' | 'widget_only'; message?: string }
+export interface ProviderStateView { id: string; name: string; state: 'ok' | 'unsupported' | 'error'; message?: string }
 export interface QuotesView { quotes: QuoteView[]; categories: Array<{ id: string; displayName: string }>; providers: ProviderStateView[]; bestQuoteId?: string }
 
 const Header: React.FC<{ title: string; onBack: () => void; children: React.ReactNode }> = ({ title, onBack, children }) => <Screen title={title} onBack={onBack}>{children}</Screen>;
@@ -85,10 +85,10 @@ export const NetworkStep: React.FC<{ cfg: RampCfg; selected: string | null; onPi
 
 // ---------------------------------------------------------------- provider
 export const ProviderStep: React.FC<{ result: QuotesView | null; loading: boolean; category: string | null; selectedId: string | null; mode: 'buy' | 'sell'; fiat: string; symbol: string;
-  onPick: (q: QuoteView) => void; onMethod: () => void; onKeys: () => void; onBack: () => void }> = ({ result, loading, category, selectedId, mode, fiat, symbol, onPick, onMethod, onKeys, onBack }) => {
+  onPick: (q: QuoteView) => void; onMethod: () => void; onBack: () => void }> = ({ result, loading, category, selectedId, mode, fiat, symbol, onPick, onMethod, onBack }) => {
   const qs = (result?.quotes ?? []).filter((q) => !category || q.paymentMethod.categoryId === category);
   const catName = result?.categories.find((c) => c.id === category)?.displayName;
-  const down = (result?.providers ?? []).filter((p) => p.state !== 'ok' && p.state !== 'widget_only');
+  const down = (result?.providers ?? []).filter((p) => p.state !== 'ok');
   return (
     <Header title="Select provider" onBack={onBack}>
       {catName && <Row onClick={onMethod} left={<span style={{ width: 40, height: 40, borderRadius: 12, background: T.accentSoft, color: T.accent, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Ic d={ICON.card} size={20} /></span>} title={catName} sub="Payment method" right={<Ic d={ICON.chevron} size={18} />} />}
@@ -102,8 +102,8 @@ export const ProviderStep: React.FC<{ result: QuotesView | null; loading: boolea
         ))}
       {down.length > 0 && <>
         <div style={{ color: T.sub, fontSize: 12, fontWeight: 700, margin: '16px 0 4px' }}>Unavailable providers</div>
-        {down.map((p) => <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', color: T.sub, fontSize: 13 }}><Letter name={p.name} size={28} /><div style={{ flex: 1 }}><div style={{ fontWeight: 600, color: T.text }}>{p.name}</div><div>{p.state === 'needs_key' ? 'Needs API key' : p.state === 'unsupported' ? 'Not available for this asset' : 'Quote failed'}{p.message ? ` · ${p.message}` : ''}</div></div></div>)}
-        {down.some((p) => p.state === 'needs_key') && <Notice action={{ label: 'Open Ramp API keys', onClick: onKeys }}>Providers marked "Needs API key" only quote registered integrators. Add your own key to enable them; Harbour never shows invented prices.</Notice>}
+        {down.map((p) => <div key={p.name} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', color: T.sub, fontSize: 13 }}><Letter name={p.name} size={28} /><div style={{ flex: 1 }}><div style={{ fontWeight: 600, color: T.text }}>{p.name}</div><div>{p.message ?? (p.state === 'unsupported' ? 'Not available for this asset' : 'Quote failed')}</div></div></div>)}
+        <Notice>Providers come from Onramper. Each one decides which countries, amounts and payment methods it serves.</Notice>
       </>}
     </Header>
   );
@@ -124,23 +124,21 @@ export const MethodStep: React.FC<{ result: QuotesView | null; loading: boolean;
 );
 
 // ---------------------------------------------------------------- recurring setup
-export const RecurringStep: React.FC<{ asset: CfgAsset; fiat: string; amount: string; frequency: 'weekly' | 'monthly'; start: string; mercuryoReady: boolean; busy: boolean; error: string;
-  onFrequency: (f: 'weekly' | 'monthly') => void; onStart: (d: string) => void; onContinue: () => void; onKeys: () => void; onBack: () => void }> = (p) => {
+export const RecurringStep: React.FC<{ asset: CfgAsset; fiat: string; amount: string; frequency: 'weekly' | 'monthly'; start: string; providerName?: string; busy: boolean; error: string;
+  onFrequency: (f: 'weekly' | 'monthly') => void; onStart: (d: string) => void; onContinue: () => void; onBack: () => void }> = (p) => {
   const min = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
   return (
     <Header title="Set a recurring buy" onBack={p.onBack}>
       <Notice>Recurring buy refers to Dollar-cost averaging (DCA). This is a very efficient investment strategy, where you buy regularly in up and down markets.</Notice>
       <Row left={<Coin sym={p.asset.symbol} assetId={p.asset.isNative ? p.asset.chainId : undefined} size={36} />} title={p.asset.symbol} sub="Asset" right={`${p.amount} ${p.fiat}`} />
-      <Row left={<Letter name="Mercuryo" size={36} />} title="Mercuryo" sub="Provider" right={p.mercuryoReady ? undefined : <span style={{ color: T.error, fontSize: 12 }}>Needs widget ID</span>} />
-      <div style={{ fontSize: 12, color: T.sub, margin: '0 0 12px' }}>*Mercuryo is the only available provider for recurring buy</div>
+      <Row left={<Letter name={p.providerName ?? 'Provider'} size={36} />} title={p.providerName ?? 'Best available provider'} sub="Provider for the first purchase" />
       <div style={{ fontWeight: 700, margin: '8px 0' }}>Repeat</div>
       <ChipRow>{(['weekly', 'monthly'] as const).map((f) => <Chip key={f} active={p.frequency === f} onClick={() => p.onFrequency(f)}>{f === 'weekly' ? 'Weekly' : 'Monthly'}</Chip>)}</ChipRow>
       <label style={{ display: 'block', fontWeight: 700, margin: '8px 0 6px' }} htmlFor="rb-start">Start date</label>
       <input id="rb-start" type="date" min={min} value={p.start} onChange={(e) => p.onStart(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 14, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.text, fontSize: 15 }} />
-      <Notice tone="warn">Harbour has no provider-side scheduler. Continue makes your first purchase with Mercuryo and downloads a calendar reminder (.ics) repeating {p.frequency} so each next purchase is one tap.</Notice>
-      {!p.mercuryoReady && <Notice tone="error" action={{ label: 'Open Ramp API keys', onClick: p.onKeys }}>Add your Mercuryo widget ID to continue.</Notice>}
+      <Notice tone="warn">Harbour has no provider-side scheduler. Continue makes your first purchase with the selected provider and downloads a calendar reminder (.ics) repeating {p.frequency} so each next purchase is one tap.</Notice>
       {p.error && <Notice tone="error">{p.error}</Notice>}
-      <div style={{ marginTop: 12 }}><Btn onClick={p.onContinue} disabled={!p.mercuryoReady || p.busy || !p.start}>{p.busy ? 'Opening…' : 'Continue'}</Btn></div>
+      <div style={{ marginTop: 12 }}><Btn onClick={p.onContinue} disabled={!p.providerName || p.busy || !p.start}>{p.busy ? 'Opening…' : 'Continue'}</Btn></div>
     </Header>
   );
 };

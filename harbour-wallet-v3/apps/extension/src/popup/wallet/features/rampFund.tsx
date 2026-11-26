@@ -1,10 +1,10 @@
-// Fund menu, Deposit-from-exchange (CEX) flow and Developer > Ramp API keys. TW routes: /fund, /fund/cex/{providers,platform,assets,qr}.
+// Fund menu and Deposit-from-exchange (CEX) flow. TW routes: /fund, /fund/cex/{providers,platform,assets,qr}.
 import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { T } from '../../theme';
 import type { Ctx } from '../screens';
-import { Screen, Btn, Coin, Ic, ICON, Row, Sheet, Empty } from '../ui';
-import { Notice, Chip, ChipRow, SearchBox, Letter, ListSkeleton, ErrorBox, Busy, openHttps, useAsync, useDebounced, loadRampCfg, type KeyProvider } from './rampKit';
+import { Screen, Btn, Coin, Ic, ICON, Row, Empty } from '../ui';
+import { Notice, Chip, ChipRow, SearchBox, Letter, ListSkeleton, ErrorBox, Busy, openHttps, useAsync, useDebounced, loadRampCfg } from './rampKit';
 
 const MenuRow: React.FC<{ icon: string; title: string; sub: string; onClick: () => void; testid?: string }> = ({ icon, title, sub, onClick, testid }) => (
   <button type="button" data-testid={testid} onClick={onClick} className="hb-tap" style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 12px', border: 'none', background: T.bgAlt, borderRadius: 16, cursor: 'pointer', textAlign: 'left', color: T.text, marginBottom: 10 }}>
@@ -23,6 +23,7 @@ export const FundScreen: React.FC<Ctx> = (c) => (
       <MenuRow testid="fund-p2p" icon="contacts" title="Buy with P2P" sub="Trade directly with other people on Binance P2P" onClick={() => c.nav.push('buy', { mode: 'p2p' })} />
       <MenuRow testid="fund-recurring" icon="history" title="Set a recurring buy" sub="Buy a fixed amount on a schedule" onClick={() => c.nav.push('buy', { mode: 'recurring' })} />
       <MenuRow testid="fund-sell" icon="send" title="Sell crypto" sub="Cash out to your bank or card through a provider" onClick={() => c.nav.push('sell')} />
+      <MenuRow testid="fund-orders" icon="history" title="Your buy and sell orders" sub="Status of purchases and sales started from Harbour" onClick={() => c.nav.push('rampOrders')} />
     </div>
   </Screen>);
 
@@ -104,41 +105,4 @@ export const FundCexQrScreen: React.FC<Ctx> = (c) => {
     </Screen>);
 };
 
-// ---------- Developer > Ramp API keys (publishable keys only, local only)
-const KeySheet: React.FC<{ c: Ctx; p: KeyProvider; onClose: () => void; onSaved: (ps: KeyProvider[]) => void }> = ({ c, p, onClose, onSaved }) => {
-  const [vals, setVals] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
-  const save = async () => { setBusy(true); setErr(''); try { const r = await c.bg({ type: 'rampsKeysSet', providerId: p.id, keys: vals }); if (!r?.ok) setErr(r?.error ?? 'Could not save'); else { onSaved(r.providers); onClose(); } } catch (e: any) { setErr(String(e?.message ?? 'Could not save')); } finally { setBusy(false); } };
-  const clear = async () => { setBusy(true); try { const r = await c.bg({ type: 'rampsKeysClear', providerId: p.id }); if (r?.ok) { onSaved(r.providers); onClose(); } else setErr(r?.error ?? 'Could not clear'); } finally { setBusy(false); } };
-  return (
-    <Sheet title={p.name} onClose={onClose}>
-      <div style={{ fontSize: 13, color: T.sub, lineHeight: 1.5, marginBottom: 10 }}>{p.note ?? (p.widgetOnly ? 'This provider has no public quote API; it opens its widget.' : 'Enter the publishable key from your own provider dashboard.')} Keys are stored only in this browser profile and are never sent anywhere except to {p.name}. Use publishable keys only, never secret keys.</div>
-      {p.fields.length === 0 ? <Notice>{p.name} needs no key.</Notice> : p.fields.map((f) => (
-        <label key={f.field} style={{ display: 'block', marginBottom: 12, fontSize: 12.5, color: T.sub, fontWeight: 600 }}>{f.label}{f.optional ? ' (optional)' : ''}
-          <input aria-label={f.label} autoComplete="off" spellCheck={false} value={vals[f.field] ?? ''} placeholder={f.configured ? `Saved: ${f.preview} (leave blank to keep)` : f.hint} onChange={(e) => setVals((v) => ({ ...v, [f.field]: e.target.value }))} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '12px 14px', borderRadius: 12, border: `1px solid ${T.border}`, background: T.bgAlt, fontSize: 14 }} />
-        </label>))}
-      {err && <Notice tone="error">{err}</Notice>}
-      <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-        {p.fields.some((f) => f.configured) && <Btn variant="ghost" onClick={clear} disabled={busy}>Clear</Btn>}
-        {p.fields.length > 0 && <Btn onClick={save} disabled={busy || Object.values(vals).every((v) => !v.trim())}>{busy ? 'Saving…' : 'Save'}</Btn>}
-      </div>
-      <div style={{ textAlign: 'center', marginTop: 10 }}><button type="button" onClick={() => openHttps(p.docsUrl)} style={{ border: 'none', background: 'none', color: T.accent, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Open {p.name} developer docs</button></div>
-    </Sheet>);
-};
-
-export const RampApiKeysScreen: React.FC<Ctx> = (c) => {
-  const r = useAsync(async () => { const x = await c.bg({ type: 'rampsKeysGet' }); if (!x?.ok) throw new Error(x?.error ?? 'Could not load'); return x.providers as KeyProvider[]; }, []);
-  const [override, setOverride] = useState<KeyProvider[] | null>(null); const [sel, setSel] = useState<string | null>(null);
-  const list = override ?? r.data ?? [];
-  const p = list.find((x) => x.id === sel);
-  return (
-    <Screen title="Ramp API keys" onBack={c.nav.pop}>
-      <Notice>Buy and sell quotes come from providers that require your own partner key. Harbour ships none and never invents prices. Keys stay in this browser only.</Notice>
-      <div style={{ height: 10 }} />
-      {r.loading ? <ListSkeleton n={6} /> : r.error ? <ErrorBox message={r.error} onRetry={r.reload} /> : list.map((x) => {
-        const n = x.fields.filter((f) => f.configured).length;
-        return <Row key={x.id} left={<Letter name={x.name} />} title={x.name} sub={x.fields.length === 0 ? 'No key needed' : n > 0 ? `${n} of ${x.fields.length} saved` : x.widgetOnly ? 'Widget only, no quotes' : 'Needs API key'} right={<Ic d={ICON.chevron} size={18} />} onClick={() => setSel(x.id)} />;
-      })}
-      {p && <KeySheet c={c} p={p} onClose={() => setSel(null)} onSaved={setOverride} />}
-    </Screen>);
-};
 export { Tabs };

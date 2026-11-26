@@ -42,9 +42,9 @@ export interface FaqItem { q: string; a: string }
 export const FAQ: Array<{ title: string; items: FaqItem[] }> = [
   { title: 'Funding your wallet', items: [
     { q: 'How do I buy crypto?', a: 'Home › Fund › Buy crypto. Pick a currency, an asset and a network, enter an amount, compare provider quotes, then continue: the provider’s own page opens in a new tab with your wallet address pre-filled. Payment and identity checks happen on the provider’s site, not in Harbour.' },
-    { q: 'Why does a provider say "Needs API key"?', a: 'Most ramp providers only give quotes to registered integrators. Harbour never ships shared keys: add your own publishable key under Settings › Developer › Ramp API keys (stored on this device only). Providers without a key are listed with the reason instead of showing made-up prices.' },
+    { q: 'Who are the buy and sell providers?', a: 'Harbour compares offers from the providers available through Onramper in your country (for example MoonPay, Banxa, Transak or Mercuryo). The provider you pick handles payment and identity checks; Harbour never sees your card or bank details and only shares your public wallet address. Track orders under Fund › Your buy and sell orders.' },
     { q: 'How do I deposit from an exchange?', a: 'Fund › Deposit from exchange. Choose Binance or Coinbase and an asset, then use the address or QR on the next screen in the exchange’s withdrawal form. Always select the same network the screen shows.' },
-    { q: 'What is a recurring buy?', a: 'A repeat purchase of the same amount (dollar-cost averaging). Harbour makes the first purchase through Mercuryo and gives you a calendar reminder (.ics) for the next ones, because automatic charging needs a provider-side account.' },
+    { q: 'What is a recurring buy?', a: 'A repeat purchase of the same amount (dollar-cost averaging). Harbour makes the first purchase with the provider you pick (through Onramper) and gives you a calendar reminder (.ics) for the next ones, because automatic charging needs a provider-side account.' },
   ] },
   { title: 'Discover and market data', items: [
     { q: 'Where do dApps come from?', a: 'Discover lists protocols from DeFiLlama’s open directory (ranked by total value locked). Harbour does not audit or endorse them. Opening one launches its website in a new tab.' },

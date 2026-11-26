@@ -32,6 +32,7 @@ import { handlers as settingsCoreEvents } from './modules/settingsCore';
 import { allExtraHandlers } from './handlers';
 import { ACTIVITY_ALARM, pollActivity, syncRemotePush, wireNotifications } from './notify';
 import { ACTIVITY_PENDING_ALARM, startActivityRecording, reconcilePendingActivity } from './activityRuntime';
+import { RAMPS_ALARM, pollRampOrders } from './rampsWatch'; // buy/sell checkout tab watcher + order polling
 import { initProviderBackground, initWalletConnectBackground } from './provider/index';
 import { scheduleAddressSync, syncAddresses, wireRealtime, wirePushEvents, reconnectRealtime } from './harbour';
 import { setBroadcastListener } from '../core/harbour/fetchHook'; // dApp provider (content-script ports, approval window, inpage registration)
@@ -55,6 +56,7 @@ browser.alarms.onAlarm.addListener(async (a) => {
   if (a.name === CONFIG_ALARM) { void applyRemoteConfig(); void syncRemotePush(vaultState); void syncAddresses(vaultState); return; }
   if (a.name === ACTIVITY_ALARM) { void pollActivity(vaultState).catch((e) => logError('activity poll', e)); return; }
   if (a.name === ACTIVITY_PENDING_ALARM) { void reconcilePendingActivity(); return; }
+  if (a.name === RAMPS_ALARM) { void pollRampOrders(); return; }
   if (a.name !== LOCK_ALARM) return;
   try { await new VaultService(await getCore()).lock(); } catch { /* already locked */ }
   store.dispatch(actions.wallet.patch({ unlocked: false }));
