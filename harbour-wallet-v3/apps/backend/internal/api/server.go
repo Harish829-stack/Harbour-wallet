@@ -23,6 +23,7 @@ import (
 	"harbour/backend/internal/config"
 	"harbour/backend/internal/core/risk"
 	"harbour/backend/internal/store"
+	"harbour/backend/internal/swapsvc"
 )
 
 // Publisher publishes internal events (NATS JetStream from phase 3).
@@ -74,6 +75,8 @@ type Options struct {
 	GatewayHosts *GatewayHosts
 	// Ramps configures fiat buy/sell through Onramper (/v1/ramps). Nil: the endpoints answer 503.
 	Ramps *RampsOptions
+	// Swap overrides the swap service (/v1/swap). Nil builds it from the gateway keys and hosts.
+	Swap *swapsvc.Service
 }
 
 // Server holds dependencies.
@@ -88,6 +91,7 @@ type Server struct {
 	http     *http.Client
 	media    *http.Client
 	gw       *gateway
+	swap     *swapsvc.Service
 }
 
 type cachedDevice struct {
@@ -123,6 +127,10 @@ func New(opt Options) *Server {
 		cache = redisGWCache{rdb: opt.CacheRedis}
 	}
 	s.gw = newGateway(keys, hosts, alchemySlugs(opt.Config), cache)
+	s.swap = opt.Swap
+	if s.swap == nil {
+		s.swap = newSwapService(keys, hosts, opt.Now)
+	}
 	if opt.GatewayURL != "" && opt.Config != nil {
 		route := &rpcRoute{url: opt.GatewayURL, token: opt.GatewayToken, chains: map[uint64]string{}}
 		for name, c := range opt.Config.Chains {
@@ -199,6 +207,12 @@ func (s *Server) Handler() http.Handler {
 			r.Get("/ramps/quotes", s.handleRampsQuotes)
 			r.Post("/ramps/checkout", s.handleRampsCheckout)
 			r.Get("/ramps/orders", s.handleRampsOrders)
+			r.Get("/swap/providers", s.handleSwapProviders)
+			r.Post("/swap/quotes", s.handleSwapQuotes)
+			r.Post("/swap/transaction", s.handleSwapTransaction)
+			r.Post("/swap/status", s.handleSwapStatus)
+			r.Get("/swap/token", s.handleSwapToken)
+			r.Post("/swap/uniswap/prepare", s.handleSwapUniswap)
 		})
 	})
 	return r
