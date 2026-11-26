@@ -192,13 +192,13 @@ const Block: React.FC<{
   label: string; side: 'from' | 'to'; asset: any; amount: string; onAmount?: (v: string) => void; placeholder?: string; readOnly?: boolean; loading?: boolean;
   fiat?: number; balance?: string; onMax?: () => void; onSelect: () => void; showFund?: boolean; onFund?: () => void;
 }> = ({ label, side, asset, amount, onAmount, placeholder = '0', readOnly, loading, fiat, balance, onMax, onSelect, showFund, onFund }) => (
-  <div data-testid={`swap-${side}`} style={{ background: T.bgAlt, borderRadius: 16, padding: '14px 16px' }}>
+  <div data-testid={`swap-${side}`} className="hb-amount-card" style={{ background: T.bgAlt, borderRadius: 16, padding: '14px 16px' }}>
     <div style={{ fontSize: 12, color: T.sub, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
       <span>{label}</span>
       {asset && balance !== undefined && <span>Balance: {fmtToken(balance, 6)}{side === 'from' && onMax && Number(balance) > 0 && <button type="button" onClick={onMax} data-testid="swap-max" style={{ marginLeft: 8, background: T.accentSoft, color: T.accent, border: 'none', borderRadius: 999, padding: '1px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Max</button>}</span>}
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="hb-amount-field" style={{ flex: 1, minWidth: 0 }}>
         {readOnly
           ? <div aria-live="polite" style={{ fontSize: 26, fontWeight: 700, color: amount ? T.text : T.sub, minHeight: 34, overflow: 'hidden', textOverflow: 'ellipsis' }}>{loading && !amount ? <span className="hb-skel" style={{ display: 'inline-block', width: 110, height: 24 }} /> : (amount || placeholder)}</div>
           : <input aria-label="Amount to swap" value={amount} onChange={(e) => onAmount?.(e.target.value)} placeholder={placeholder} inputMode="decimal" autoComplete="off" style={{ width: '100%', fontSize: 26, fontWeight: 700, border: 'none', background: 'transparent', outline: 'none', color: T.text, padding: 0, minHeight: 34 }} />}

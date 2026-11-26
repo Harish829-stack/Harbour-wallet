@@ -145,7 +145,10 @@ export function injectStyles() {
   /* Inputs drawn borderless inside their own box (amount fields, address rows, inline editors): no inner rectangle —
      the box that frames them takes the focus glow on its edge instead. */
   .hb-root :is(input,textarea):is([style*="border: none"],[style*="border: 0"],[style*="border-style: none"],[style*="border-width: 0"]):focus,.hb-root :is(input,textarea):is([style*="border: none"],[style*="border: 0"],[style*="border-style: none"],[style*="border-width: 0"]):focus-visible{outline:none!important;box-shadow:none!important}
-  .hb-root :not(.hb-search-box):has(> :is(input,textarea):is([style*="border: none"],[style*="border: 0"],[style*="border-style: none"],[style*="border-width: 0"]):focus){border-color:var(--hb-focus)!important;box-shadow:var(--hb-focus-ring);transition:border-color .15s ease,box-shadow .15s ease}
+  .hb-root :not(.hb-search-box,.hb-amount-field):has(> :is(input,textarea):is([style*="border: none"],[style*="border: 0"],[style*="border-style: none"],[style*="border-width: 0"]):focus){border-color:var(--hb-focus)!important;box-shadow:var(--hb-focus-ring);transition:border-color .15s ease,box-shadow .15s ease}
+  /* Swap amount cards: the glow frames the whole card, never the small input + fiat-value column inside it. */
+  .hb-amount-card{transition:box-shadow .15s ease}
+  .hb-amount-card:focus-within{box-shadow:var(--hb-focus-ring)}
   .hb-search-box{border:1px solid transparent;transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease}
   .hb-search-box:focus-within{border-color:var(--hb-focus);box-shadow:var(--hb-focus-ring)}
   .hb-search-box input,.hb-search-box input:focus,.hb-search-box input:focus-visible{outline:none!important;box-shadow:none!important;border:0!important;background:transparent!important;-webkit-appearance:none;appearance:none}
