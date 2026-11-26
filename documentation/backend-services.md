@@ -52,6 +52,7 @@ Developer tools, not deployed: `hbdevice` (acts like the extension from a termin
 | `POST /v1/realtime/token` | signed | Centrifugo connection token plus one subscription token per tracked address and pending transaction |
 | `GET /v1/push/vapid` (unsigned), `PUT/DELETE /v1/me/push` | mixed | Web Push subscription |
 | `GET/POST /v1/gw/*` | signed | the extension's route to third-party APIs (LI.FI, Uniswap, Jupiter, Relay, Pimlico, CoinGecko, Helius, Etherscan, TronGrid, TON Center, Alchemy). **The keys live only here** and the request body is validated before it is forwarded |
+| `/v1/swap/*`, `/v1/earn/*` | signed | swap and earn services: quotes and unsigned transaction plans from the providers' official APIs (see [swap-earn-services.md](swap-earn-services.md)) |
 | `GET /v1/media/{key}` | none (for `<img>`) | NFT image proxy: server-side fetch, refuses private addresses, PNG/JPEG/GIF/WebP only, downsized to 512 px, re-encoded, cached 24 h |
 | `GET /healthz` | none | liveness |
 

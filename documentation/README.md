@@ -10,6 +10,7 @@ Start here. Each guide has one job; read them in this order if you are new.
 | [extension.md](extension.md) | find your way around the extension code, build settings, the dApp request path and key behaviours |
 | [chains-and-providers.md](chains-and-providers.md) | see which chains are served and how, which providers are used, and how to add a chain |
 | [buy-sell-onramper.md](buy-sell-onramper.md) | set up and understand buy / sell crypto through Onramper (flow, security, keys, testing) |
+| [swap-earn-services.md](swap-earn-services.md) | how Swap and Earn reach their providers (backend services, endpoints, pre-sign checks and simulation, kill switches) |
 | [security.md](security.md) | understand the security model, audit status, open items and the hardware test matrix |
 | [deployment-railway.md](deployment-railway.md) | deploy the backend to Railway, service by service |
 | [release.md](release.md) | cut a signed extension release and publish it to the Chrome Web Store |
