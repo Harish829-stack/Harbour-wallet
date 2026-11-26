@@ -22,6 +22,7 @@ import (
 
 	"harbour/backend/internal/config"
 	"harbour/backend/internal/core/risk"
+	"harbour/backend/internal/earnsvc"
 	"harbour/backend/internal/store"
 	"harbour/backend/internal/swapsvc"
 )
@@ -77,6 +78,8 @@ type Options struct {
 	Ramps *RampsOptions
 	// Swap overrides the swap service (/v1/swap). Nil builds it from the gateway keys and hosts.
 	Swap *swapsvc.Service
+	// Earn overrides the earn service (/v1/earn). Nil builds it from the environment.
+	Earn *earnsvc.Service
 }
 
 // Server holds dependencies.
@@ -92,6 +95,7 @@ type Server struct {
 	media    *http.Client
 	gw       *gateway
 	swap     *swapsvc.Service
+	earn     *earnsvc.Service
 }
 
 type cachedDevice struct {
@@ -130,6 +134,10 @@ func New(opt Options) *Server {
 	s.swap = opt.Swap
 	if s.swap == nil {
 		s.swap = newSwapService(keys, hosts, opt.Now)
+	}
+	s.earn = opt.Earn
+	if s.earn == nil {
+		s.earn = newEarnService(opt.Now)
 	}
 	if opt.GatewayURL != "" && opt.Config != nil {
 		route := &rpcRoute{url: opt.GatewayURL, token: opt.GatewayToken, chains: map[uint64]string{}}
@@ -213,6 +221,10 @@ func (s *Server) Handler() http.Handler {
 			r.Post("/swap/status", s.handleSwapStatus)
 			r.Get("/swap/token", s.handleSwapToken)
 			r.Post("/swap/uniswap/prepare", s.handleSwapUniswap)
+			r.Get("/earn/providers", s.handleEarnProviders)
+			r.Post("/earn/aave/markets", s.handleEarnAaveMarkets)
+			r.Post("/earn/aave/transaction", s.handleEarnAaveTransaction)
+			r.Get("/earn/apr", s.handleEarnAPR)
 		})
 	})
 	return r

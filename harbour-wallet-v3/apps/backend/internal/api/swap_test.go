@@ -50,3 +50,22 @@ func TestSwapHandlersErrorsAndShapes(t *testing.T) {
 		t.Fatalf("providers: %s", rec.Body)
 	}
 }
+
+func TestEarnHandlersErrors(t *testing.T) {
+	s := &Server{opt: Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, earn: newEarnService(time.Now)}
+	rec := httptest.NewRecorder()
+	s.handleEarnAaveTransaction(rec, httptest.NewRequest(http.MethodPost, "/v1/earn/aave/transaction", strings.NewReader(`{"action":"supply","chainId":1,"market":"0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27","sender":"0x7ece450c274672c8007372F81cfCCC1c412466bb","value":"1"}`)))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"code":"unsupported"`) {
+		t.Fatalf("mainnet aave: %d %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	s.handleEarnAaveMarkets(rec, httptest.NewRequest(http.MethodPost, "/v1/earn/aave/markets", strings.NewReader(`{"chainId":84532,"query":"{ evil }"}`)))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("client GraphQL must be refused: %d", rec.Code)
+	}
+	rec = httptest.NewRecorder()
+	s.handleEarnProviders(rec, httptest.NewRequest(http.MethodGet, "/v1/earn/providers", nil))
+	if !strings.Contains(rec.Body.String(), `"aave":true`) {
+		t.Fatalf("providers %s", rec.Body)
+	}
+}

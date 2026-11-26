@@ -48,11 +48,13 @@ function reset() {
       return { status: state.receiptStatus };
     },
   };
-  // AaveKit is offline by default, so Earn uses the on-chain builder; tests that need AaveKit set state.kit.
+  // The earn service (/v1/earn/aave/{markets,transaction}, which runs AaveKit) is offline by default, so Earn uses the on-chain
+  // builder; tests that need AaveKit set state.kit, which answers with AaveKit's own data.
   globalThis.fetch = async (url, init) => {
     if (!state.kit) throw new TypeError('Failed to fetch');
-    const { query } = JSON.parse(init.body);
-    return new Response(JSON.stringify({ data: state.kit(query) }), { status: 200 });
+    const op = String(url).endsWith('/v1/earn/aave/markets') ? 'markets' : String(url).endsWith('/v1/earn/aave/transaction') ? 'transaction' : null;
+    if (!op) throw new TypeError('unexpected ' + url);
+    return new Response(JSON.stringify({ data: state.kit(op, JSON.parse(init.body)) }), { status: 200 });
   };
   globalThis.__defi = state; return state;
 }
@@ -110,7 +112,7 @@ test('AaveKit plans are verified: a tampered beneficiary is refused, not silentl
   const word = (hex) => hex.toLowerCase().replace(/^0x/, '').padStart(64, '0');
   const supply = (onBehalf) => `0x617ba037${word(TOKEN)}${word('0xf4240')}${word(onBehalf)}${word('0x0')}`; // supply(asset, 1e6, onBehalfOf, 0)
   let beneficiary = ACCOUNT;
-  s.kit = (query) => query.includes('markets')
+  s.kit = (op) => op === 'markets'
     ? { markets: [{ address: POOL, chain: { chainId: 84532 }, reserves: [{ underlyingToken: { address: TOKEN, symbol: 'TEST', decimals: 6 }, aToken: { address: ATOKEN }, acceptsNative: null, isFrozen: false, isPaused: false, supplyInfo: { apy: { formatted: '1.5' }, supplyCapReached: false, supplyCap: { amount: { raw: '0' } }, total: { value: '0' } } }] }] }
     : { value: { __typename: 'TransactionRequest', to: POOL, from: ACCOUNT, data: supply(beneficiary), value: '0', chainId: 84532, operation: 'SUPPLY' } };
   const { review } = await prepare();

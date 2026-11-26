@@ -50,9 +50,14 @@ test('native withdraw requires aWETH approval to the gateway and withdrawETH to 
   assert.throws(() => M.verifyKitTx(tx(GATEWAY, encodeFunctionData({ abi: M.gatewayAbi, functionName: 'withdrawETH', args: [D.pool, 10n ** 14n, USDC] })), ctx, 'main'), /unexpected/);
 });
 
-test('API outages are AaveKitUnavailable (fallback allowed); user-input errors become friendly text', async () => {
-  await assert.rejects(M.aaveKitQuery('{x}', {}, async () => { throw new TypeError('Failed to fetch'); }), (e) => e instanceof M.AaveKitUnavailable);
-  await assert.rejects(M.aaveKitQuery('{x}', {}, async () => new Response('', { status: 503 })), (e) => e instanceof M.AaveKitUnavailable);
-  const bad = async () => new Response(JSON.stringify({ data: null, errors: [{ message: 'Bad user input - Supply cap reached for reserve 0xba50 on market 0x8bAB' }] }));
-  await assert.rejects(M.aaveKitQuery('{x}', {}, bad), (e) => !(e instanceof M.AaveKitUnavailable) && /remaining supply cap/.test(e.message) && !/0x/.test(e.message));
+test('earn service: outages are AaveKitUnavailable (fallback allowed); Aave input refusals become friendly text', async () => {
+  await assert.rejects(M.aaveKitCall('markets', { chainId: 84532 }, async () => { throw new TypeError('Failed to fetch'); }), (e) => e instanceof M.AaveKitUnavailable);
+  await assert.rejects(M.aaveKitCall('markets', { chainId: 84532 }, async () => new Response('', { status: 503 })), (e) => e instanceof M.AaveKitUnavailable);
+  const bad = async () => new Response(JSON.stringify({ error: { code: 'aave_rejected', reason: 'supply_cap', message: 'x' } }), { status: 422 });
+  await assert.rejects(M.aaveKitCall('transaction', {}, bad), (e) => !(e instanceof M.AaveKitUnavailable) && /remaining supply cap/.test(e.message));
+  // the earn service is called with structured fields only (the backend owns the GraphQL text)
+  let seen;
+  const ok = async (url, init) => { seen = { url, body: JSON.parse(init.body) }; return new Response(JSON.stringify({ data: { markets: [] } }), { status: 200 }); };
+  assert.deepEqual(await M.aaveKitCall('markets', { chainId: 84532 }, ok), { markets: [] });
+  assert.match(seen.url, /\/v1\/earn\/aave\/markets$/); assert.deepEqual(seen.body, { chainId: 84532 });
 });

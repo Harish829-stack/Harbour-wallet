@@ -8,7 +8,7 @@ import { keccak256 } from 'viem';
 
 const PREFIX = `${HB_API_URL}/v1/rpc/`;
 const GW_PREFIX = `${HB_API_URL}/v1/gw/`;
-const SWAP_PREFIX = `${HB_API_URL}/v1/swap/`; // backend swap service: signed like the gateway
+const SERVICE_PREFIXES = [`${HB_API_URL}/v1/swap/`, `${HB_API_URL}/v1/earn/`]; // backend swap / earn services: signed like the gateway
 let onBroadcast: ((chain: string, hash: string) => void) | null = null;
 /** Called after the API accepted a broadcast (the service worker refreshes its realtime subscriptions). */
 export const setBroadcastListener = (f: (chain: string, hash: string) => void): void => { onBroadcast = f; };
@@ -88,7 +88,7 @@ export async function harbourGateway(url: string, init: RequestInit | undefined,
 export function makeHarbourFetch(base: typeof fetch): typeof fetch {
   const wrapped = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (url.startsWith(GW_PREFIX) || url.startsWith(SWAP_PREFIX)) return harbourGateway(url, init ?? (input instanceof Request ? { method: input.method, headers: input.headers } : undefined), base);
+    if (url.startsWith(GW_PREFIX) || SERVICE_PREFIXES.some((p) => url.startsWith(p))) return harbourGateway(url, init ?? (input instanceof Request ? { method: input.method, headers: input.headers } : undefined), base);
     if (!url.startsWith(PREFIX)) return base(input, init);
     const chain = url.slice(PREFIX.length).split(/[/?#]/)[0];
     if (!evmIdOfBackend(chain) || (init?.method ?? 'GET').toUpperCase() !== 'POST' || typeof init?.body !== 'string') return base(input, init);

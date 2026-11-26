@@ -185,7 +185,7 @@ test('lido overview from mocked eth_call + APR endpoint', async () => {
   const owner = '0x1111111111111111111111111111111111111111';
   const call = (data) => ({ ok: true, status: 200, json: async () => ({ result: data }) });
   const f = async (url, init) => {
-    if (String(url).includes('eth-api.lido.fi')) return json({ data: { smaApr: 2.71 } });
+    if (String(url).includes('/v1/earn/apr?provider=lido')) return json({ provider: 'lido', apr: 2.71 }); // backend earn service
     const b = JSON.parse(init.body); const d = b.params[0].data; const to = b.params[0].to.toLowerCase();
     if (to === M.LIDO.stETH.toLowerCase() && d.startsWith('0x70a08231')) return call(M.encodeFunctionResult({ abi: M.stethAbi, functionName: 'balanceOf', result: 3n * 10n ** 18n }));
     if (d.startsWith(M.toFunctionSelector('getWithdrawalRequests(address)'))) return call(M.encodeFunctionResult({ abi: M.queueAbi, functionName: 'getWithdrawalRequests', result: [11n, 12n, 13n] }));

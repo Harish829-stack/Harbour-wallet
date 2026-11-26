@@ -6,6 +6,7 @@ import type { Fetcher } from '../chains/adapters/types';
 import { firstOf, jsonPost } from '../chains/adapters/types';
 import type { Position, StakeAction, StakeOverview, Validator, ValidatorMeta } from './types';
 import { stakeError } from './types';
+import { HB_API_URL } from '../harbour/config';
 
 export interface CallPlan { to: `0x${string}`; data: `0x${string}`; value: bigint; label: string; /** upper-bound gas used when estimation is impossible (depends on an earlier tx) */ gasFallback: bigint }
 
@@ -36,7 +37,8 @@ export async function multicall(f: Fetcher, urls: string[], calls: Array<{ to: s
 export const LIDO = {
   stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84' as const,
   queue: '0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1' as const,
-  aprUrl: 'https://eth-api.lido.fi/v1/protocol/steth/apr/sma',
+  // APR through Harbour's earn service (backend /v1/earn/apr: Lido's official API, cached, validated)
+  aprUrl: `${HB_API_URL}/v1/earn/apr?provider=lido`,
   minWithdrawal: 100n, maxWithdrawal: 1000n * 10n ** 18n,
 };
 export const stethAbi = parseAbi(['function submit(address _referral) payable returns (uint256)', 'function balanceOf(address) view returns (uint256)', 'function approve(address spender, uint256 amount) returns (bool)', 'function allowance(address owner, address spender) view returns (uint256)']);
@@ -70,7 +72,7 @@ export function lidoClaimPlan(requestId: bigint): CallPlan[] {
 export async function lidoApr(f: Fetcher): Promise<number | null> {
   try {
     const res = await f(LIDO.aprUrl, { signal: AbortSignal.timeout(8000) }); if (!res.ok) return null;
-    const j: any = await res.json(); const v = Number(j?.data?.smaApr);
+    const j: any = await res.json(); const v = Number(j?.apr);
     return Number.isFinite(v) && v > 0 && v < 100 ? Math.round(v * 100) / 100 : null;
   } catch { return null; }
 }
@@ -118,7 +120,8 @@ export async function fetchLidoOverview(f: Fetcher, urls: string[], owner: strin
 export const ROCKET = {
   storage: '0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46' as const,
   rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393' as const,
-  aprUrl: 'https://api.rocketpool.net/mainnet/reth/apr',
+  // APR through Harbour's earn service (backend /v1/earn/apr: Rocket Pool's official API, cached, validated)
+  aprUrl: `${HB_API_URL}/v1/earn/apr?provider=rocketpool`,
   minDeposit: 10n ** 16n, // 0.01 ETH
 };
 export const rocketStorageAbi = parseAbi(['function getAddress(bytes32 _key) view returns (address)']);
@@ -136,7 +139,7 @@ const readR = async (f: Fetcher, urls: string[], fn: 'balanceOf' | 'getEthValue'
 export async function rocketApr(f: Fetcher): Promise<number | null> {
   try {
     const res = await f(ROCKET.aprUrl, { signal: AbortSignal.timeout(8000) }); if (!res.ok) return null;
-    const v = Number((await res.json())?.yearlyAPR);
+    const v = Number((await res.json())?.apr);
     return Number.isFinite(v) && v > 0 && v < 100 ? Math.round(v * 100) / 100 : null;
   } catch { return null; }
 }
