@@ -42,6 +42,8 @@ type Options struct {
 	// webhook stops being accepted). Default 1 minute.
 	KeyCacheTTL time.Duration
 	Now         func() time.Time
+	// OnramperSecret enables POST /webhooks/onramper (fiat ramp order updates); empty leaves the route off.
+	OnramperSecret string
 }
 
 type cachedKey struct {
@@ -106,6 +108,9 @@ func New(o Options) *Ingest {
 // Handler serves POST /webhooks/{source} and GET /healthz.
 func (in *Ingest) Handler() http.Handler {
 	r := chi.NewRouter()
+	if in.o.OnramperSecret != "" {
+		r.Post("/webhooks/onramper", in.receiveOnramper) // static route wins over {source}
+	}
 	r.Post("/webhooks/{source}", in.receive)
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)

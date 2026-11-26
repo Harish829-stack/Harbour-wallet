@@ -55,7 +55,7 @@ func TestQAFreshSchemaHasEveryObject(t *testing.T) {
 	}
 	tables := []string{"chains", "assets", "devices", "tracked_addresses", "device_addresses", "event_keys", "transactions", "transfers", "price_ticks",
 		"balances", "nft_holdings", "address_activity", "balance_snapshots", "pending_transactions", "webhooks", "webhook_deliveries",
-		"service_heartbeats", "push_subscriptions", "push_routes"}
+		"service_heartbeats", "push_subscriptions", "push_routes", "ramp_orders"}
 	for _, tb := range tables {
 		var exists bool
 		ok(t, st.Pool.QueryRow(ctx, `SELECT to_regclass($1) IS NOT NULL`, "public."+tb).Scan(&exists))
@@ -185,7 +185,7 @@ func TestQAMigration0010PreservesData(t *testing.T) {
 	defer st.Close()
 	applied, err := st.Migrate(ctx)
 	ok(t, err)
-	if strings.Join(applied, ",") != "0010_compact_refs" {
+	if len(applied) == 0 || applied[0] != "0010_compact_refs" { // later migrations follow it
 		t.Fatalf("applied %v", applied)
 	}
 	var after int

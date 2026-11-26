@@ -72,6 +72,8 @@ type Options struct {
 	// GatewayKeys / GatewayHosts configure the third-party gateway (/v1/gw). Nil uses the environment and the real upstreams.
 	GatewayKeys  *GatewayKeys
 	GatewayHosts *GatewayHosts
+	// Ramps configures fiat buy/sell through Onramper (/v1/ramps). Nil: the endpoints answer 503.
+	Ramps *RampsOptions
 }
 
 // Server holds dependencies.
@@ -171,6 +173,7 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/devices", s.handleRegister)
 		r.Get("/media/{key}", s.handleMedia) // loaded by <img>: unsigned, keys are unguessable
 		r.Get("/push/vapid", s.handleVAPID)
+		r.Get("/ramps/return", s.handleRampsReturn) // provider redirect target after a purchase: static page, no data
 		r.Group(func(r chi.Router) {
 			r.Use(s.deviceAuth, s.rateLimit)
 			r.Get("/me", s.handleMe)
@@ -192,6 +195,10 @@ func (s *Server) Handler() http.Handler {
 			r.Post("/realtime/token", s.handleRealtimeToken)
 			r.Put("/me/push", s.handlePutPush)
 			r.Delete("/me/push", s.handleDeletePush)
+			r.Get("/ramps/config", s.handleRampsConfig)
+			r.Get("/ramps/quotes", s.handleRampsQuotes)
+			r.Post("/ramps/checkout", s.handleRampsCheckout)
+			r.Get("/ramps/orders", s.handleRampsOrders)
 		})
 	})
 	return r

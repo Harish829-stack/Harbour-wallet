@@ -83,7 +83,11 @@ func main() {
 			}
 		}
 	}
-	in := ingest.New(ingest.Options{Store: st, Bus: bus, Log: log, Box: box, Sources: sources, StaticKeys: static})
+	onramperSecret := strings.TrimSpace(os.Getenv("ONRAMPER_WEBHOOK_SECRET"))
+	if onramperSecret == "" {
+		log.Warn("ONRAMPER_WEBHOOK_SECRET not set: buy/sell order updates from Onramper are not received")
+	}
+	in := ingest.New(ingest.Options{Store: st, Bus: bus, Log: log, Box: box, Sources: sources, StaticKeys: static, OnramperSecret: onramperSecret})
 	if err := in.Start(ctx); err != nil {
 		fail("start", err)
 	}

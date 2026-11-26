@@ -6,9 +6,11 @@ import (
 	"errors"
 	"flag"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"harbour/backend/internal/core/risk"
 	"harbour/backend/internal/events"
 	"harbour/backend/internal/logx"
+	"harbour/backend/internal/onramper"
 	"harbour/backend/internal/registry"
 	"harbour/backend/internal/store"
 )
@@ -128,6 +131,13 @@ func main() {
 		log.Error("TRUSTED_PROXY_CIDRS", "err", err)
 		os.Exit(1)
 	}
+	ramps, err := rampsFromEnv()
+	if err != nil {
+		fail("onramper", err)
+	}
+	if ramps == nil {
+		log.Warn("ONRAMPER_API_KEY / ONRAMPER_SIGNING_KEY not set: buy and sell crypto are unavailable")
+	}
 	srv := api.New(api.Options{
 		Config: cfg, Store: st, Redis: rdb, CacheRedis: cacheRDB, LinkCrypto: lc, Log: log, Events: pub,
 		GatewayURL:     config.Env("RPC_GATEWAY_URL", "http://localhost:8081"),
@@ -139,6 +149,7 @@ func main() {
 		RealtimeSecret: []byte(os.Getenv("CENTRIFUGO_TOKEN_HMAC_SECRET")),
 		RealtimeURL:    config.Env("REALTIME_PUBLIC_URL", "ws://localhost:8000/connection/websocket"),
 		VAPIDPublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
+		Ramps:          ramps,
 	})
 	hs := &http.Server{Addr: *addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second}
@@ -152,4 +163,38 @@ func main() {
 	if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fail("serve", err)
 	}
+}
+
+// rampsFromEnv configures Onramper: ONRAMPER_API_KEY (pk_prod_/pk_test_), ONRAMPER_SIGNING_KEY (Ed25519 PKCS#8 PEM, or
+// ONRAMPER_SIGNING_KEY_FILE), ONRAMPER_ENV (production | staging, default from the key prefix) and RAMPS_RETURN_URL.
+// Both keys unset = feature off; only one set is a configuration error.
+func rampsFromEnv() (*api.RampsOptions, error) {
+	key, sk := strings.TrimSpace(os.Getenv("ONRAMPER_API_KEY")), os.Getenv("ONRAMPER_SIGNING_KEY")
+	if key == "" && strings.TrimSpace(sk) == "" {
+		return nil, nil
+	}
+	if key == "" || strings.TrimSpace(sk) == "" {
+		return nil, errors.New("set both ONRAMPER_API_KEY and ONRAMPER_SIGNING_KEY (or neither)")
+	}
+	priv, err := onramper.ParsePrivateKey(sk)
+	if err != nil {
+		return nil, err
+	}
+	base := onramper.ProductionURL
+	switch env := strings.ToLower(strings.TrimSpace(os.Getenv("ONRAMPER_ENV"))); {
+	case env == "staging", env == "" && strings.HasPrefix(key, "pk_test_"):
+		base = onramper.StagingURL
+	case env == "production", env == "":
+	default:
+		return nil, errors.New("ONRAMPER_ENV must be production or staging")
+	}
+	ret := strings.TrimSpace(os.Getenv("RAMPS_RETURN_URL"))
+	if ret != "" {
+		u, err := url.Parse(ret)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
+			return nil, errors.New("RAMPS_RETURN_URL must be an https URL without query (e.g. https://api.example.com/v1/ramps/return)")
+		}
+	}
+	maxOrders, _ := strconv.Atoi(os.Getenv("RAMPS_MAX_ORDERS_PER_HOUR"))
+	return &api.RampsOptions{Client: &onramper.Client{BaseURL: base, APIKey: key, Signer: onramper.NewSigner(priv)}, ReturnURL: ret, MaxOrdersPerHour: maxOrders}, nil
 }
