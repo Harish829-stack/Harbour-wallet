@@ -93,7 +93,9 @@ export function validateLifiTransaction(refreshed: any, step: SwapStep, ctx: Evm
   const outQuoted = big(step.to.amount);
   if (outNow == null || minNow == null || outQuoted == null) return bad;
   const bps = BigInt(Math.round(ctx.slippagePct * 100));
-  if (minNow * 10_000n < outNow * (10_000n - bps) - outNow / 1000n) return bad;       // min below user tolerance (+0.1% rounding)
+  // min below user tolerance (+0.1% rounding = outNow * 10 on the x10_000 scale; was outNow / 1000, i.e. 0.00001%, which refused
+  // live LI.FI Layerswap bridges quoting their minimum 1.00005% below the output at 1% slippage)
+  if (minNow * 10_000n < outNow * (10_000n - bps) - outNow * 10n) return bad;
   if (outNow * 10_000n < outQuoted * (10_000n - bps)) return swapError('price_moved'); // drifted beyond tolerance since the quote
   return null;
 }

@@ -110,7 +110,10 @@ func (s *Service) thorQuoteRaw(ctx context.Context, r *QuoteRequest) (json.RawMe
 		return nil, nil, errCode("amount_too_low")
 	}
 	slip, _ := slippagePct(r.Slippage)
-	v := url.Values{"from_asset": {from}, "to_asset": {to}, "amount": {units.String()}, "destination": {r.ToAddress}, "refund_address": {r.FromAddress},
+	// No refund_address: THORChain then refunds to the address that sent the deposit (ours), and the memo stays
+	// "=:ASSET:DEST:LIMIT/INTERVAL/QUANTITY". A refund address would be appended to DEST ("DEST/REFUND"), which makes
+	// BTC memos exceed the 80-byte OP_RETURN limit (live 2026-11-26: "generated memo too long for source chain").
+	v := url.Values{"from_asset": {from}, "to_asset": {to}, "amount": {units.String()}, "destination": {r.ToAddress},
 		"streaming_interval": {"1"}, "streaming_quantity": {"0"}, "liquidity_tolerance_bps": {fmt.Sprint(int64(math.Round(slip * 100)))}}
 	var raw json.RawMessage
 	if err := s.thorGet(ctx, "/thorchain/quote/swap?"+v.Encode(), &raw); err != nil {

@@ -49,7 +49,8 @@ export function acceptRoute(r: any, req: SwapRouteRequest, now = Date.now()): Sw
   if (!INT.test(st.to?.amount ?? '') || !INT.test(st.to?.minAmount ?? '')) return null;
   const out = BigInt(st.to.amount); const min = BigInt(st.to.minAmount);
   const bps = BigInt(Math.round(Number(req.slippage) * 100));
-  if (out <= 0n || min <= 0n || min > out || min * 10_000n < out * (10_000n - bps) - out / 1000n) return null;
+  // 0.1% rounding tolerance (out * 10 on the x10_000 scale): live LI.FI bridges (Layerswap) quote minimums a hair under 1%.
+  if (out <= 0n || min <= 0n || min > out || min * 10_000n < out * (10_000n - bps) - out * 10n) return null;
   if (st.approval != null) {
     const a = st.approval;
     if (req.from.address === 'native' || typeof a.spender !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(a.spender) || String(a.tokenAddress).toLowerCase() !== req.from.address.toLowerCase() || a.minAmount !== req.amount) return null;

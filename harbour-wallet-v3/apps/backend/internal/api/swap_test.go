@@ -16,7 +16,7 @@ func swapTestServer(t *testing.T, h http.HandlerFunc) *Server {
 	t.Cleanup(up.Close)
 	hosts := DefaultGatewayHosts()
 	hosts.LiFi, hosts.Relay, hosts.Jupiter, hosts.Uniswap, hosts.Thor = up.URL+"/lifi", up.URL+"/relay", up.URL+"/jup", up.URL+"/uni", up.URL+"/thor"
-	return &Server{opt: Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, swap: newSwapService(GatewayKeys{LiFi: "k"}, hosts, time.Now)}
+	return &Server{opt: Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, swap: newSwapService(GatewayKeys{LiFi: "k"}, hosts, time.Now, nil)}
 }
 
 func TestSwapHandlersErrorsAndShapes(t *testing.T) {

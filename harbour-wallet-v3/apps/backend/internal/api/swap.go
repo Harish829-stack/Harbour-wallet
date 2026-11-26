@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -23,7 +24,7 @@ const (
 )
 
 // newSwapService builds the swap service from the gateway's keys and hosts.
-func newSwapService(keys GatewayKeys, hosts GatewayHosts, now func() time.Time) *swapsvc.Service {
+func newSwapService(keys GatewayKeys, hosts GatewayHosts, now func() time.Time, log *slog.Logger) *swapsvc.Service {
 	thor := []string{hosts.Thor}
 	if hosts.Thor == DefaultGatewayHosts().Thor {
 		thor = append(thor, "https://thornode.ninerealms.com") // second public THORNode, used when the first is down
@@ -33,6 +34,7 @@ func newSwapService(keys GatewayKeys, hosts GatewayHosts, now func() time.Time) 
 		Hosts:    swapsvc.Hosts{LiFi: hosts.LiFi, Jupiter: hosts.Jupiter, Relay: hosts.Relay, Uniswap: hosts.Uniswap, Thor: thor},
 		Disabled: swapsvc.ParseDisabled(os.Getenv("SWAP_DISABLED_PROVIDERS")),
 		Now:      now,
+		Log:      log,
 	})
 }
 

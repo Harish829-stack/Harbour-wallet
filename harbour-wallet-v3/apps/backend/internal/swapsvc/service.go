@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"math/big"
 	"net"
 	"net/http"
@@ -46,6 +47,8 @@ type Config struct {
 	ProviderTimeout time.Duration // per provider, default 12 s
 	Client          *http.Client
 	Now             func() time.Time
+	// Log receives provider failures for operators (host, path, status and a short, key-scrubbed body). Nil: not logged.
+	Log *slog.Logger
 }
 
 // Service is safe for concurrent use.
@@ -428,7 +431,9 @@ func (s *Service) do(ctx context.Context, method, url string, headers map[string
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		var eb map[string]any
 		_ = json.Unmarshal(raw, &eb)
-		return classify(res.StatusCode, eb)
+		e := classify(res.StatusCode, eb)
+		s.logUpstream(req, res.StatusCode, raw, e.Code)
+		return e
 	}
 	if out == nil {
 		return nil
@@ -497,4 +502,21 @@ func mustRaw(v any) json.RawMessage {
 		return json.RawMessage("null")
 	}
 	return b
+}
+
+// logUpstream records a provider failure for operators. The query string is dropped and our keys are scrubbed from the body.
+func (s *Service) logUpstream(req *http.Request, status int, body []byte, code string) {
+	if s.cfg.Log == nil {
+		return
+	}
+	b := string(body)
+	if len(b) > 400 {
+		b = b[:400]
+	}
+	for _, k := range []string{s.cfg.Keys.LiFi, s.cfg.Keys.Jupiter, s.cfg.Keys.Relay, s.cfg.Keys.Uniswap} {
+		if len(k) >= 8 {
+			b = strings.ReplaceAll(b, k, "***")
+		}
+	}
+	s.cfg.Log.Warn("swap provider error", "host", req.URL.Host, "path", req.URL.Path, "status", status, "code", code, "body", cleanText(b, 400))
 }

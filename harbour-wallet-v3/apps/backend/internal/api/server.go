@@ -133,7 +133,7 @@ func New(opt Options) *Server {
 	s.gw = newGateway(keys, hosts, alchemySlugs(opt.Config), cache)
 	s.swap = opt.Swap
 	if s.swap == nil {
-		s.swap = newSwapService(keys, hosts, opt.Now)
+		s.swap = newSwapService(keys, hosts, opt.Now, opt.Log)
 	}
 	s.earn = opt.Earn
 	if s.earn == nil {

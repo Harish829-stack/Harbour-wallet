@@ -315,13 +315,20 @@ func TestTHORChainFallbackUnitsAndStatus(t *testing.T) {
 	if st.To.Amount != "1500000000000000" || st.To.MinAmount != "1485000000000000" || st.Approval != nil || *st.PriceImpact != -0.25 {
 		t.Fatalf("thor step %+v", st)
 	}
-	if res.Routes[0].ExpiresAt != 1800000030000 || !strings.Contains(q, "amount=1000000") || !strings.Contains(q, "liquidity_tolerance_bps=100") {
+	if res.Routes[0].ExpiresAt != 1800000030000 || !strings.Contains(q, "amount=1000000") || !strings.Contains(q, "liquidity_tolerance_bps=100") || strings.Contains(q, "refund_address") {
 		t.Fatalf("expiry/query %d %s", res.Routes[0].ExpiresAt, q)
 	}
 	// below THORChain's minimum: amount_too_low with the minimum in the asset's own units
 	_, err = s.Quotes(context.Background(), req(btc(), eth(), "5000"))
 	if e := asErr(err); e.Code != "amount_too_low" || e.MinAmount != "10000" {
 		t.Fatalf("min amount %+v", e)
+	}
+	f.handler["/thor2/thorchain/quote/swap"] = func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+		w.WriteHeader(400)
+		io.WriteString(w, `{"code":3,"message":"failed to simulate swap: trading is halted, can't process swap"}`)
+	}
+	if _, err := s.Quotes(context.Background(), req(btc(), eth(), "1000000")); asErr(err).Code != "unavailable" {
+		t.Fatalf("halted chain: %v", err)
 	}
 	f.handler["/thor2/thorchain/tx/status/"] = jsonOK(`{"out_txs":[{"memo":"REFUND:ABC"}],"stages":{}}`)
 	sr, err := s.Status(context.Background(), StatusRequest{Source: THORChain, TxHash: "0x" + strings.Repeat("ab", 32)})

@@ -123,6 +123,8 @@ test('backend routes: only the exact requested trade is kept, shown with the use
   assert.equal(M.acceptRoute(backendRoute({}, { from: { ...st.from, amount: '99' } }), qreq()), null);                                   // other amount
   assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, asset: USDCA() } }), qreq()), null);                                       // other asset
   assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, minAmount: '1000' } }), qreq()), null);                                    // minimum looser than the slippage
+  assert.ok(M.acceptRoute(backendRoute({}, { to: { ...st.to, minAmount: '29380000000000000' } }), qreq()));   // 2.07% below: within the 0.1% rounding tolerance (live Layerswap)
+  assert.equal(M.acceptRoute(backendRoute({}, { to: { ...st.to, minAmount: '29300000000000000' } }), qreq()), null); // 2.33% below: refused
   assert.equal(M.acceptRoute(backendRoute({}, { approval: { tokenAddress: USDC, spender: ROUTER, minAmount: '1' } }), qreq()), null);       // approval for another amount
   assert.equal(M.acceptRoute(backendRoute({ source: 'evil' }), qreq()), null);
   assert.equal(M.acceptRoute(backendRoute({ steps: [st, st] }), qreq()), null);
@@ -255,4 +257,16 @@ test('safety: bridge calls (BridgeData) are decoded; receiver, destination call 
   assert.equal(check(raw(bridgeData(ME, { asset: USDC, min: 200000000n })))?.code, 'unsafe_transaction');
   const toSol = M.validateLifiTransaction(raw(bridgeData(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' }); assert.equal(toSol, null);
   assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' })?.code, 'unsafe_transaction');
+});
+
+// Real LI.FI answer (2026-11-26): a Layerswap bridge whose minimum sits 1.00005% under the output at 1% slippage. It must pass the
+// pre-sign checks (0.1% rounding tolerance), and the same transaction paying someone else must not.
+test('live LI.FI Layerswap bridge passes the pre-sign checks; a tampered receiver does not', async () => {
+  const { readFileSync } = await import('node:fs');
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/lifi-layerswap-live.json', import.meta.url), 'utf8'));
+  const ctx = { ourAddress: fx.fresh.transactionRequest.from, chainId: 42161, slippagePct: 1, destKind: 'evm' };
+  assert.equal(M.validateLifiTransaction(fx.fresh, fx.step, ctx), null);
+  const evil = structuredClone(fx.fresh); const me = ctx.ourAddress.slice(2).toLowerCase();
+  evil.transactionRequest.data = evil.transactionRequest.data.replace(me, '3333333333333333333333333333333333333333');
+  assert.equal(M.validateLifiTransaction(evil, fx.step, ctx)?.code, 'unsafe_transaction');
 });

@@ -61,7 +61,7 @@ export function relayTransactions(fresh: any, step: SwapStep, ctx: { ourAddress:
   const quoted = big(step.to.amount);
   if (outNow == null || minNow == null || quoted == null) throw bad;
   const bps = BigInt(Math.round(ctx.slippagePct * 100));
-  if (minNow * 10_000n < outNow * (10_000n - bps) - outNow / 1000n) throw bad;
+  if (minNow * 10_000n < outNow * (10_000n - bps) - outNow * 10n) throw bad;   // minimum within the user's slippage (+0.1% rounding)
   if (outNow * 10_000n < quoted * (10_000n - bps)) throw swapError('price_moved');
   return { txs, requestId: requestId ?? fresh?.requestId };
 }

@@ -49,6 +49,8 @@ func classify(status int, body map[string]any) *Error {
 		return errCode("server")
 	case status == 401 || status == 403:
 		return errCode("unavailable") // our key is missing/invalid: an operator problem, not the user's
+	case strings.Contains(msg, "halted") || strings.Contains(msg, "paused"):
+		return errCode("unavailable") // the provider stopped trading this pair (e.g. THORChain chain halt)
 	case reNoRoute.MatchString(msg):
 		return errCode("no_liquidity")
 	case reTooLow.MatchString(msg):
