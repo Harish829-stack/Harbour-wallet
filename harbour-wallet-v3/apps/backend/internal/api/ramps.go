@@ -197,7 +197,11 @@ func (s *Server) handleRampsQuotes(w http.ResponseWriter, r *http.Request) {
 		reasons := map[string]int{}
 		for _, x := range quotes {
 			for _, e := range x.Errors {
-				reasons[fmt.Sprintf("%s/%v", e.Type, e.ErrorID)]++
+				msg := e.Message
+				if len(msg) > 120 {
+					msg = msg[:120]
+				}
+				reasons[fmt.Sprintf("%s/%v: %s", e.Type, e.ErrorID, msg)]++
 			}
 		}
 		s.opt.Log.Warn("onramper returned no usable quotes", "type", typ, "source", src, "destination", dst, "country", s.rampCountry(r), "reasons", reasons)
