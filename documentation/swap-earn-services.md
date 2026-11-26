@@ -59,10 +59,27 @@ Redirects from providers are refused so API keys cannot leak, and response bodie
 The old gateway pass-through routes (`/v1/gw/lifi`, `/jup`, `/relay`, `/uniswap`, `/thornode`) are still served for installed
 extensions; remove them once every user runs a build with the swap service.
 
+## Live tests
+
+Quotes and unsigned transactions only; nothing is signed or sent.
+
+```sh
+cd harbour-wallet-v3/apps/backend
+set -a; . ./.env; set +a
+HB_LIVE_OUT=/tmp/live go test -tags live -count=1 -v ./internal/swapsvc ./internal/earnsvc
+cd ../extension && node scripts/live-swap-check.mjs /tmp/live   # the extension's pre-sign checks on those real answers
+```
+
+Run 2026-11-26: LI.FI (same-chain and Arbitrum→Base bridge), Relay (USDC Ethereum→ETH Base, ETH Base→SOL), Jupiter
+(SOL→USDC), Uniswap Sepolia (both directions), AaveKit (markets, native supply), Lido and Rocket Pool APR all answered, and all
+16 extension pre-sign checks passed on the real answers. THORChain answered "trading is halted" for every pair at the time
+(network-wide halt), so its quote → transaction path is still unverified live. Fixed from this run: THORChain memos too long for
+BTC (no refund address any more), and a too-strict slippage rounding tolerance that refused a live LI.FI Layerswap bridge.
+
 ## Not done yet (needs a person)
 
-- Live runs: small mainnet swaps per provider (LI.FI on an EVM chain, Relay EVM → Solana, THORChain BTC ↔ ETH, Jupiter) and the
-  Sepolia / Base Sepolia QA checklist. The adapters are tested against recorded and synthetic responses only.
+- Signed, broadcast swaps with real funds (small amounts) per provider, and THORChain once trading resumes.
+- The Sepolia / Base Sepolia QA checklist in the extension.
 - Aave on mainnet: the backend supports it per chain (`EARN_AAVE_CHAINS`), but the mainnet Earn screen and the address-book pins
   per chain are not built.
 - Independent review of `swapsvc`, `earnsvc`, `simGuard.ts` and the pre-sign checks.
