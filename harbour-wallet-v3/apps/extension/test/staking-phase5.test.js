@@ -90,3 +90,16 @@ test('Rocket Pool storage key, registry filters assets to enabled chains', () =>
   assert.ok(M.STAKING_ASSETS.some((a) => a.chainId === 'tron') && M.STAKING_ASSETS.some((a) => a.chainId === 'polkadot'));
   assert.equal(M.STAKING_ASSETS.some((a) => a.chainId === 'cardano'), false); // Cardano is an extra chain, off until enabled
 });
+
+// Audit H5: the Rocket Pool deposit pool (where staked ETH is sent) must be confirmed by two RPC operators that agree.
+test('Rocket Pool deposit pool address needs two agreeing RPC operators', async () => {
+  const POOL = '0x' + '0'.repeat(24) + 'dd3f50f8a6cafbe9b31a427582963f465e745af8';
+  const EVIL = '0x' + '0'.repeat(24) + '000000000000000000000000000000000000bad1';
+  const rpc = (answers) => async (url) => { const a = answers[new URL(url).hostname]; if (a == null) throw new Error('down'); return { ok: true, status: 200, json: async () => ({ jsonrpc: '2.0', id: 1, result: a }), text: async () => JSON.stringify({ result: a }) }; };
+  const urls = ['https://rpc.one.example/eth', 'https://rpc.two.example/eth', 'https://other.one.example/x'];
+  const want = '0xdd3f50f8a6cafbe9b31a427582963f465e745af8';
+  assert.equal((await M.rocketDepositPool(rpc({ 'rpc.one.example': POOL, 'rpc.two.example': POOL }), urls)).toLowerCase(), want);
+  await assert.rejects(() => M.rocketDepositPool(rpc({ 'rpc.one.example': POOL, 'rpc.two.example': EVIL }), urls));     // disagreement
+  await assert.rejects(() => M.rocketDepositPool(rpc({ 'rpc.one.example': POOL }), urls));                              // only one answer
+  await assert.rejects(() => M.rocketDepositPool(rpc({ 'rpc.one.example': POOL, 'other.one.example': POOL }), urls.slice(0, 1).concat(['https://other.one.example/x'])));  // same operator twice
+});

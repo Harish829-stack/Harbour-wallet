@@ -7,6 +7,7 @@ import { encodeFunctionData, getAddress } from 'viem';
 import type { SwapAsset, SwapStep } from './types';
 import { swapError } from './errors';
 import { GATEWAY_URL } from '../../kit/endpoints';
+import { confirmedFloor } from './safety';
 
 type F = typeof fetch;
 export const THORNODE_URLS = [
@@ -43,24 +44,41 @@ export function fromThorUnits(amount: string | bigint, decimals: number): bigint
   const v = BigInt(amount);
   return decimals >= THOR_DECIMALS ? v * 10n ** BigInt(decimals - THOR_DECIMALS) : v / 10n ** BigInt(THOR_DECIMALS - decimals);
 }
+/** THORChain's one-letter asset shorthands (docs: "Asset Notation" / memo shortcuts). Anything else must be spelled out. */
+const THOR_SHORT: Record<string, string> = { a: 'AVAX.AVAX', b: 'BTC.BTC', c: 'BCH.BCH', d: 'DOGE.DOGE', e: 'ETH.ETH', f: 'BASE.ETH', g: 'GAIA.ATOM', l: 'LTC.LTC', n: 'BNB.BNB', r: 'THOR.RUNE', s: 'BSC.BNB' };
+/** Does a memo asset name exactly the asset we want? Tokens may be written with a shortened contract (a suffix of the full one). */
+export function sameThorAsset(memoAsset: string, want: string): boolean {
+  const g = (THOR_SHORT[memoAsset] ?? memoAsset).toUpperCase(); const w = want.toUpperCase();
+  const [gName, gContract] = g.split('-'); const [wName, wContract] = w.split('-');
+  if (gName !== wName) return false;
+  if (!wContract) return !gContract;
+  if (!gContract) return false;
+  const short = gContract.replace(/^0X/, '');
+  return short.length >= 3 && wContract.replace(/^0X/, '').endsWith(short);
+}
 /**
  * Pre-sign check for a FRESH quote fetched at submit time (THORChain asks that vault addresses are never cached).
- * The memo must pay out to our own destination address, and the expected output may not have drifted past the
- * user's slippage since the confirmed quote.
+ * The memo must swap to exactly the confirmed asset and pay out to our own destination address. Returns the memo to sign,
+ * whose LIMIT is rewritten to the minimum the user confirmed: THORChain refunds instead of paying out less (audit H4/M3).
  */
-export function checkThorQuote(fresh: any, step: SwapStep, toAddress: string, slippagePct: number): void {
+export function checkThorQuote(fresh: any, step: SwapStep, toAddress: string, _slippagePct?: number): string {
   if (!fresh?.inbound_address || typeof fresh.memo !== 'string' || fresh.memo.length > 80) throw swapError('unsafe_transaction');
   const parts = fresh.memo.split(':');
   if (!['=', 's', 'swap', 'SWAP'].includes(parts[0]) || parts[2]?.toLowerCase() !== toAddress.toLowerCase()) throw swapError('unsafe_transaction');
-  // full memo: =:ASSET:DEST:LIMIT[/INTERVAL/QUANTITY] and nothing else (no affiliate / fee fields); the asset may not be swapped for a different one
+  // full memo: =:ASSET:DEST:LIMIT[/INTERVAL/QUANTITY] and nothing else (no affiliate / fee fields)
   if (parts.length > 4 || (parts[3] != null && !/^\d*(\/\d+\/\d+)?$/.test(parts[3]))) throw swapError('unsafe_transaction');
-  const want = thorAsset(step.to.asset); const got = String(parts[1] ?? '');
-  if (want && got.includes('.') && got.toUpperCase().split('-')[0] !== want.toUpperCase().split('-')[0]) throw swapError('unsafe_transaction');
+  const want = thorAsset(step.to.asset);
+  if (!want || !sameThorAsset(String(parts[1] ?? ''), want)) throw swapError('unsafe_transaction');
+  const floor = confirmedFloor(step);
   const outNow = fromThorUnits(String(fresh.expected_amount_out ?? '0'), step.to.asset.decimals);
-  const quoted = BigInt(step.to.amount);
-  const bps = BigInt(Math.round(slippagePct * 100));
-  if (outNow * 10_000n < quoted * (10_000n - bps)) throw swapError('price_moved');
+  if (outNow < floor) throw swapError('price_moved');
   if (fresh.expiry && Number(fresh.expiry) * 1000 < Date.now()) throw swapError('price_moved');
+  const limit = toThorUnits(floor.toString(), step.to.asset.decimals);
+  if (limit <= 0n) throw swapError('amount_too_low');
+  const stream = String(parts[3] ?? '').match(/(\/\d+\/\d+)$/)?.[1] ?? '';
+  const memo = `${parts[0]}:${parts[1]}:${parts[2]}:${limit}${stream}`;
+  if (memo.length > 80) throw swapError('unsafe_transaction');
+  return memo;
 }
 
 /**

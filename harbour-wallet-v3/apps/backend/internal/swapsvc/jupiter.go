@@ -53,12 +53,10 @@ func (s *Service) jupiterRoutes(ctx context.Context, r *QuoteRequest) ([]Route, 
 		return nil, errCode("no_liquidity")
 	}
 	// The quote must be for exactly the requested mints and input amount.
-	if q.InputMint != jupMint(r.From) || q.OutputMint != jupMint(r.To) || (q.InAmount != "" && q.InAmount != r.Amount) {
-		return nil, errCode("no_liquidity")
-	}
+	// The quote must be for exactly the requested mints and input amount, and name its own minimum (audit M2).
 	min := digits(q.OtherAmountThreshold)
-	if min == "" {
-		min = q.OutAmount
+	if q.InputMint != jupMint(r.From) || q.OutputMint != jupMint(r.To) || q.InAmount != r.Amount || min == "" || min == "0" {
+		return nil, errCode("no_liquidity")
 	}
 	priority := "fast"
 	if r.SolanaTurbo {

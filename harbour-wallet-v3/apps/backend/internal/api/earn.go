@@ -8,6 +8,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,7 +18,7 @@ import (
 	"harbour/backend/internal/earnsvc"
 )
 
-func newEarnService(now func() time.Time) *earnsvc.Service {
+func newEarnService(now func() time.Time, log *slog.Logger) *earnsvc.Service {
 	var chains map[uint64]bool
 	if v := strings.TrimSpace(os.Getenv("EARN_AAVE_CHAINS")); v != "" {
 		chains = map[uint64]bool{}
@@ -27,7 +28,7 @@ func newEarnService(now func() time.Time) *earnsvc.Service {
 			}
 		}
 	}
-	return earnsvc.New(earnsvc.Config{AaveChains: chains, Disabled: earnsvc.ParseDisabled(os.Getenv("EARN_DISABLED_PROVIDERS")), Now: now})
+	return earnsvc.New(earnsvc.Config{AaveChains: chains, Disabled: earnsvc.ParseDisabled(os.Getenv("EARN_DISABLED_PROVIDERS")), Now: now, Log: log})
 }
 
 func earnErr(w http.ResponseWriter, err error) {

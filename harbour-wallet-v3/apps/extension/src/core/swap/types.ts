@@ -78,6 +78,8 @@ export interface SwapRoute {
   toAmountUsd?: number;
   priceImpact?: number;
   totalSeconds?: number;
+  /** Server-held provider object for the transaction (LI.FI, Jupiter): the backend builds from this, never from a client body. */
+  quoteRef?: string;
 }
 
 export interface SwapQuoteResult {
@@ -90,7 +92,8 @@ export interface SwapQuoteResult {
 export type SwapErrorCode =
   | 'amount_too_low' | 'amount_too_high' | 'invalid_amount' | 'no_liquidity' | 'unsupported_pair'
   | 'unsupported_domain' | 'invalid_asset' | 'high_price_impact' | 'server' | 'timeout' | 'network'
-  | 'invalid_slippage' | 'price_moved' | 'unsafe_transaction' | 'simulation_failed' | 'insufficient_gas';
+  | 'invalid_slippage' | 'price_moved' | 'unsafe_transaction' | 'simulation_failed' | 'insufficient_gas'
+  | 'busy' | 'not_verified' | 'unsupported_route' | 'fee_too_high' | 'rate_limited';
 
 export interface SwapError { code: SwapErrorCode; message: string; minAmount?: string }
 

@@ -16,15 +16,16 @@ import { domainById, SWAP_DOMAINS } from '../core/swap/domains';
 import { getSwapRoutes } from '../core/swap/engine';
 import { swapError } from '../core/swap/errors';
 import { backendTransaction, backendStatus, backendToken, setSwapBackend } from '../core/swap/backend';
-import { simulateCallsParams, readSimulatedCalls, checkSwapEffect, type SimCall, type SwapEffect } from '../core/swap/simGuard';
+import { simulateCallsParams, readSimulatedCalls, checkSwapEffect, checkSolSwapEffect, type SimCall, type SwapEffect } from '../core/swap/simGuard';
 import { signedRequest } from '../core/harbour/client';
 import { popularAssets, nativeAsset } from '../core/swap/tokens';
 import { pickDust, DUST_DEFAULT_USD, type DustCandidate } from '../core/swap/dust';
-import { validateLifiTransaction, isAllowedLifiTarget, parseSolanaTx, attachSolanaSignature, b64ToBytes, bytesToB64, JUPITER_PROGRAM } from '../core/swap/safety';
+import { validateLifiTransaction, isAllowedLifiTarget, parseSolanaTx, attachSolanaSignature, b64ToBytes, bytesToB64, JUPITER_PROGRAM, confirmedFloor } from '../core/swap/safety';
 import { parseSolTx, resolveLookupTables, guardSolSwapTx, SWAP_BASE_PROGRAMS } from '../core/provider/solanaTx';
 import { simulateSolTx, solAccountData } from '../core/provider/solSim';
 import { SWAP_WATCH_TIMEOUT_MS, normalizeSlippage } from '../core/swap/rules';
-import { relayTransactions, relayTargets } from '../core/swap/relay';
+import { SwapRouteStore, type HeldRoute } from '../core/swap/routeStore';
+import { relayTransactions, relayTargets, relayChains } from '../core/swap/relay';
 import { checkThorQuote, verifyThorInbound, thorRouterCall } from '../core/swap/thorchain';
 import { utxoFamily } from '../core/chains/send/utxo';
 import { chainById } from '../core/chains/index';
@@ -32,16 +33,25 @@ import { sendCalls, sendCallsAvailable } from './smartAccountService';
 import { isSmartAccountChain } from '../core/smartAccount/constants';
 type Call = { to: `0x${string}`; value: bigint; data: `0x${string}` };
 import { isContractCode } from '../core/evmCode';
-/** Refuse a third-party-built Solana transaction unless every instruction is understood and a dry run succeeds without draining more SOL than the sale. */
-async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep, o: { strictPrograms: boolean }): Promise<void> {
+/**
+ * Refuse a Jupiter-built Solana transaction unless every instruction is a known program (no direct token transfers, no
+ * authority changes) and a dry run shows only the sold asset leaving and at least the confirmed minimum arriving (audit H1/M2).
+ */
+async function guardSolanaSwap(bytes: Uint8Array, wallet: string, step: SwapStep): Promise<void> {
   const bad = swapError('unsafe_transaction');
   let tx; try { tx = await resolveLookupTables(parseSolTx(bytes), (a) => solAccountData(solRpc, a)); } catch { throw bad; }
   const sell = step.from.asset.address === 'native' ? BigInt(step.from.amount) : 0n;
-  if (guardSolSwapTx(tx, { wallet, sellLamports: sell, programs: o.strictPrograms ? [...SWAP_BASE_PROGRAMS, JUPITER_PROGRAM] : undefined, allowTokenTransfers: !o.strictPrograms })) throw bad;
-  const sim = await simulateSolTx(solRpc, bytes, wallet);
+  if (guardSolSwapTx(tx, { wallet, sellLamports: sell, programs: [...SWAP_BASE_PROGRAMS, JUPITER_PROGRAM], allowTokenTransfers: false })) throw bad;
+  const sim = await simulateSolTx(solRpc, bytes, wallet, tx);
   if (!sim.ok) throw swapError('simulation_failed');
-  if (sim.solDelta !== undefined && -sim.solDelta > sell + 20_000_000n) throw bad;
+  const why = checkSolSwapEffect(sim, step, confirmedFloor(step));
+  if (why === 'not_verified') throw swapError('not_verified');
+  if (why === 'below_minimum') throw swapError('price_moved');
+  if (why) throw bad;
 }
+
+/** Routes live in the worker; the popup refers to them by id (audit H3). */
+const held = new SwapRouteStore();
 
 // Quotes and fresh transactions come from Harbour's swap service (backend /v1/swap), signed with the device key.
 setSwapBackend((method, path, body) => signedRequest(method, path, body === undefined ? undefined : JSON.stringify(body), {}, AbortSignal.timeout(30_000)));
@@ -51,8 +61,8 @@ setSwapBackend((method, path, body) => signedRequest(method, path, body === unde
 function freshRequest(_raw: unknown, step: SwapStep, fromAddress: string, toAddress: string, slippagePct: number): SwapRouteRequest {
   return { from: step.from.asset, to: step.to.asset, amount: step.from.amount, fromAddress, toAddress, slippage: String(slippagePct), sortBy: 'quantity', solanaTurbo: false };
 }
-async function jupiterTx(raw: any, turbo: boolean, user: string): Promise<string> {
-  const r = await backendTransaction({ source: 'jupiter', quote: raw?.quote, priority: turbo ? 'turbo' : 'fast', user });
+async function jupiterTx(route: SwapRoute, turbo: boolean, user: string): Promise<string> {
+  const r = await backendTransaction({ source: 'jupiter', ref: route.quoteRef ?? '', priority: turbo ? 'turbo' : 'fast', user });
   if (typeof r?.swapTransaction !== 'string') throw swapError('network');
   return r.swapTransaction;
 }
@@ -64,7 +74,16 @@ async function jupiterTx(raw: any, turbo: boolean, user: string): Promise<string
  */
 async function guardEvmSwap(client: any, address: string, step: SwapStep, calls: SimCall[]): Promise<SwapEffect | null> {
   let result: any;
-  try { result = await client.request({ method: 'eth_simulateV1', params: simulateCallsParams(calls) } as any); } catch { return null; }
+  // Only an RPC that does not offer eth_simulateV1 is "cannot simulate" (shown as such on the confirm screen). Any other failure
+  // (timeout, rate limit, server error) is retried once and then blocks the swap: it is never silently skipped (audit M4).
+  for (let attempt = 0; ; attempt++) {
+    try { result = await client.request({ method: 'eth_simulateV1', params: simulateCallsParams(calls) } as any); break; }
+    catch (e: any) {
+      const code = e?.code ?? e?.cause?.code; const msg = String(e?.details ?? e?.shortMessage ?? e?.message ?? '');
+      if (code === -32601 || code === -32004 || /method.*(not (found|supported|available|exist))|does not exist|unsupported method|not supported/i.test(msg)) return null;
+      if (attempt >= 1) throw swapError('not_verified');
+    }
+  }
   const sim = readSimulatedCalls(result, address);
   if (!sim) return null;
   if (!sim.ok) throw swapError('simulation_failed');
@@ -74,6 +93,9 @@ async function guardEvmSwap(client: any, address: string, step: SwapStep, calls:
   if (check.reason === 'nothing_received' && step.to.asset.address === 'native') return null;
   throw check.reason === 'below_minimum' ? swapError('price_moved') : swapError('unsafe_transaction');
 }
+/** Highest max fee per gas Harbour signs for a swap, per chain (wei; audit M8). A lying or spiking RPC cannot make a swap cost more. */
+const MAX_FEE_PER_GAS: Record<number, bigint> = { 1: 500n * 10n ** 9n, 56: 50n * 10n ** 9n, 137: 5000n * 10n ** 9n, 42161: 10n * 10n ** 9n, 8453: 10n * 10n ** 9n, 11155111: 500n * 10n ** 9n, 84532: 50n * 10n ** 9n };
+const MAX_GAS = 3_000_000n;
 const approveData = (spender: string, amount: bigint) => encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [spender as `0x${string}`, amount] });
 
 const SETTINGS_KEY = 'wallet:swap:settings';
@@ -243,8 +265,17 @@ export async function quote(deps: SwapDeps, p: { from: SwapAsset; to: SwapAsset;
       const risk = await checkToken(td.chainId!, p.to.address);
       if (risk.risky) for (const r of result.routes) r.warnings.push({ code: 'token_risk', message: `Token flagged as risky: ${risk.flags.join(', ')}` });
     }
+    result.routes = held.put(result.routes, { slippagePct: Number(normalizeSlippage(p.slippage)), owner: fromAddress });
     return { ok: true, result };
   } catch (e) { return fail(e); }
+}
+
+/** The held route for the popup's id, checked against the account that is active now. */
+async function heldFor(deps: SwapDeps, routeId: unknown): Promise<HeldRoute> {
+  const d = domainById(held.peek(routeId)?.route.steps[0]?.fromDomainId ?? '');
+  if (!d) throw swapError('price_moved');
+  const owner = (await activeAddresses(deps.vault))[d.addressKey] as string | undefined;
+  return held.get(routeId, owner ?? '');
 }
 
 // ---------- approval ----------
@@ -267,9 +298,20 @@ function expectedSpender(source: SwapRoute['source'], raw: any): string {
   return String(raw?.estimate?.approvalAddress ?? '');
 }
 
-export async function approve(deps: SwapDeps, p: { route: SwapRoute; stepIndex: number; unlimited: boolean }) {
+/** Approve the sold token for a previewed route. Unlimited approvals only when the user turned them on in swap settings. */
+export async function approve(deps: SwapDeps, p: { routeId: unknown; confirmId: unknown }) {
   try {
-    const step = checkStepShape(p.route, p.stepIndex);
+    const h = await heldFor(deps, p.routeId);
+    held.checkConfirm(h, p.confirmId);
+    const settings = await getSettings();
+    return await held.exclusive(() => approveHeld(deps, h, settings.unlimitedAllowance));
+  } catch (e) { return fail(e); }
+}
+
+async function approveHeld(deps: SwapDeps, h: HeldRoute, unlimited: boolean) {
+  const p = { route: h.route, unlimited };
+  try {
+    const step = checkStepShape(p.route, 0);
     const a = step.approval; const { d, keys, address } = await ourContext(deps, step);
     if (d.kind !== 'evm' || !a || !isAddress(a.tokenAddress) || !isAddress(a.spender)) { keys.dispose(); throw swapError('unsupported_pair'); }
     const raw: any = step.raw;
@@ -298,6 +340,7 @@ export async function approve(deps: SwapDeps, p: { route: SwapRoute; stepIndex: 
       if (cur > 0n && token.toLowerCase() === USDT_MAINNET && d.chainId === 1) { const h0 = await send(0n); await client.waitForTransactionReceipt({ hash: h0, timeout: 120_000 }); }
       const hash = await send(amount);
       const id = crypto.randomUUID(); const now = Date.now();
+      h.historyId = id;
       await saveHistory({ id, createdAt: now, updatedAt: now, status: 'approving', address, fromAsset: step.from.asset, toAsset: step.to.asset, fromAmount: step.from.amount, toAmountExpected: step.to.amount, toAmountMin: step.to.minAmount, provider: step.provider.name, stepIndex: 0, stepCount: 1, approvalTxHash: hash, fromDomainId: step.fromDomainId, toDomainId: step.toDomainId });
       const rc = await client.waitForTransactionReceipt({ hash, timeout: 120_000 });
       if (rc.status !== 'success') { await patchHistory(id, { status: 'failed', error: 'Approval failed' }); throw new Error('Approval transaction failed'); }
@@ -315,6 +358,8 @@ async function patchHistory(id: string, patch: Partial<SwapHistoryItem>) {
 async function broadcastEvm(client: any, chain: any, account: any, tx: { to: `0x${string}`; data: `0x${string}`; value: bigint; gas: bigint }, protectedUrl?: string): Promise<`0x${string}`> {
   const req: any = await client.prepareTransactionRequest({ account, chain, to: tx.to, data: tx.data, value: tx.value, gas: tx.gas });
   const t: any = { chainId: chain.id, to: tx.to, data: tx.data, value: tx.value, gas: req.gas ?? tx.gas, nonce: req.nonce };
+  const cap = MAX_FEE_PER_GAS[chain.id] ?? 0n;
+  if (BigInt(t.gas) > MAX_GAS || BigInt(req.maxFeePerGas ?? req.gasPrice ?? 0n) > cap) throw swapError('fee_too_high');
   if (req.maxFeePerGas != null) { t.type = 'eip1559'; t.maxFeePerGas = req.maxFeePerGas; t.maxPriorityFeePerGas = req.maxPriorityFeePerGas; }
   else { t.type = 'legacy'; t.gasPrice = req.gasPrice; }
   const serialized = await account.signTransaction(t);
@@ -323,30 +368,38 @@ async function broadcastEvm(client: any, chain: any, account: any, tx: { to: `0x
 }
 
 // ---------- submit ----------
-export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: number; id?: string }) {
+/** Send a previewed route. Single use: the route is gone afterwards whatever happens. */
+export async function submit(deps: SwapDeps, p: { routeId: unknown; confirmId: unknown }) {
   try {
-    const step = checkStepShape(p.route, p.stepIndex);
+    const h = await heldFor(deps, p.routeId);
+    held.checkConfirm(h, p.confirmId);
+    return await held.exclusive(async () => { held.consume(h.route.id); return submitHeld(deps, h); });
+  } catch (e) { return fail(e); }
+}
+
+async function submitHeld(deps: SwapDeps, h: HeldRoute) {
+  const p = { route: h.route, id: h.historyId };
+  try {
+    const step = checkStepShape(p.route, 0);
     const settings = await getSettings();
-    const slippagePct = Number(normalizeSlippage(String(step.slippage.userSelected ?? settings.slippage)));
+    const slippagePct = h.slippagePct;
     const { d, keys, address } = await ourContext(deps, step);
     try {
-      if (!address) throw swapError('invalid_asset');
-      if (Date.now() > p.route.expiresAt + 5 * 60_000) throw swapError('price_moved');
+      if (!address || address.toLowerCase() !== h.owner) throw swapError('price_moved');
       let hash: string; let requestId: string | undefined;
       const toDomain = domainById(step.toDomainId)!;
       const ownTo = keys.addresses[toDomain.addressKey]; // payouts always go to our own account, never to an address carried in the route
       if (!ownTo) throw swapError('invalid_asset');
       if (p.route.source === 'jupiter') {
         if (d.kind !== 'solana') throw swapError('unsupported_pair');
-        const raw: any = step.raw;
-        const b64 = await jupiterTx(raw, settings.solanaTurbo, address);
+        const b64 = await jupiterTx(p.route, settings.solanaTurbo, address);
         const bytes = b64ToBytes(b64);
         const parsed = parseSolanaTx(bytes);
         const { key } = keys.solanaKey();
         const feePayer = deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]);
         const programs = parsed.accountKeys.map((k) => deps.core.Base58.encodeNoCheck(k));
         if (feePayer !== address || parsed.sigSlots !== 1 || !programs.includes(JUPITER_PROGRAM)) throw swapError('unsafe_transaction');
-        await guardSolanaSwap(bytes, address, step, { strictPrograms: true });
+        await guardSolanaSwap(bytes, address, step);
         const sig: Uint8Array = key.sign(parsed.message, deps.core.Curve.ed25519);
         const signed = attachSolanaSignature(bytes, parsed, sig);
         hash = await solRpc('sendTransaction', [bytesToB64(signed), { encoding: 'base64', skipPreflight: false, maxRetries: 3, preflightCommitment: 'confirmed' }]);
@@ -354,7 +407,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
         const raw: any = step.raw;
         const fresh = await backendTransaction({ source: 'relay', request: freshRequest(raw, step, address, ownTo, slippagePct) });
-        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
+        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!), ownTo, chains: await relayChains() });
         const account = evmAccountFromBytes(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
         const { chain, client } = evmClient(d.chainId!);
@@ -396,7 +449,7 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
         const raw: any = step.raw;
         // THORChain asks for a fresh quote right before sending (vault addresses rotate)
         const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
-        checkThorQuote(fresh, step, ownTo, slippagePct);
+        fresh.memo = checkThorQuote(fresh, step, ownTo);
         await verifyThorInbound(fresh, step);
         if (d.kind === 'utxo') {
           const chain = btcChain(); const env = sendEnv(deps.core);
@@ -424,25 +477,10 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
           catch { throw swapError('simulation_failed'); }
           hash = await broadcastEvm(client, chain, account, { ...call, gas }, undefined);
         } else throw swapError('unsupported_pair');
-      } else if (d.kind === 'solana') {
-        // LI.FI Solana-source bridge legs: a base64 transaction we only sign when we are the sole signer and fee payer
-        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
-        const b64 = refreshed?.transactionRequest?.data;
-        if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(b64)) throw swapError('unsafe_transaction');
-        const fromAmt = String(refreshed?.action?.fromAmount ?? step.from.amount);
-        if (fromAmt !== step.from.amount) throw swapError('unsafe_transaction');
-        const outNow = BigInt(refreshed?.estimate?.toAmount ?? '0');
-        if (outNow * 10_000n < BigInt(step.to.amount) * (10_000n - BigInt(Math.round(slippagePct * 100)))) throw swapError('price_moved');
-        const bytes = b64ToBytes(b64); const parsed = parseSolanaTx(bytes);
-        const { key } = keys.solanaKey();
-        if (deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]) !== address || parsed.sigSlots !== 1) throw swapError('unsafe_transaction');
-        await guardSolanaSwap(bytes, address, step, { strictPrograms: false });
-        const sig: Uint8Array = key.sign(parsed.message, deps.core.Curve.ed25519);
-        hash = await solRpc('sendTransaction', [bytesToB64(attachSolanaSignature(bytes, parsed, sig)), { encoding: 'base64', skipPreflight: false, maxRetries: 3, preflightCommitment: 'confirmed' }]);
       } else {
         if (d.kind !== 'evm') throw swapError('unsupported_pair');
-        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
-        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: domainById(step.toDomainId)?.kind });
+        const refreshed = await backendTransaction({ source: 'lifi', ref: p.route.quoteRef ?? '' });
+        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: toDomain.kind, destLifiChainId: toDomain.lifiChainId });
         if (bad) throw bad;
         const account = evmAccountFromBytes(keys.evmPrivateKey());
         if (account.address.toLowerCase() !== address.toLowerCase()) throw swapError('unsafe_transaction');
@@ -494,29 +532,31 @@ export async function submit(deps: SwapDeps, p: { route: SwapRoute; stepIndex: n
 }
 
 // ---------- pre-sign preview: "you send X, you get Y" ----------
-export interface SwapPreviewSide { symbol: string; decimals: number; amount: string }
+export interface SwapPreviewSide { symbol: string; decimals: number; amount: string; /** native coin the transactions carry beyond a native sale (bridge/messaging fees) */ extraNative?: string; nativeSymbol?: string }
 export interface SwapPreview {
   /** 'simulated' = an on-chain dry run of the exact transactions matched the quote; 'checked' = the transactions were
    *  checked against the quote but this network could not simulate them (or it is a Bitcoin send to THORChain). */
   verification: 'simulated' | 'checked';
   send: SwapPreviewSide;
-  receive: SwapPreviewSide & { minAmount: string; network: string; afterBridge: boolean };
+  receive: SwapPreviewSide & { minAmount: string; network: string; afterBridge: boolean; /** our own address that receives it */ address: string };
 }
 /**
  * Builds the same fresh transactions the submit step will sign, runs every pre-sign check on them and simulates them, without
  * touching keys. The confirm screen shows the result; submit repeats all of it on its own fresh transactions.
  */
-export async function preview(deps: SwapDeps, p: { route: SwapRoute }): Promise<{ ok: true; preview: SwapPreview } | ReturnType<typeof fail>> {
+export async function preview(deps: SwapDeps, q: { routeId: unknown }): Promise<{ ok: true; preview: SwapPreview; confirmId: string } | ReturnType<typeof fail>> {
   try {
+    const h = await heldFor(deps, q.routeId);
+    const p = { route: h.route };
     const step = checkStepShape(p.route, 0);
     const settings = await getSettings();
-    const slippagePct = Number(normalizeSlippage(String(step.slippage.userSelected ?? settings.slippage)));
+    const slippagePct = h.slippagePct;
     const d = domainById(step.fromDomainId)!; const td = domainById(step.toDomainId)!;
     const addrs = await activeAddresses(deps.vault);
     const address = addrs[d.addressKey] as string | undefined; const ownTo = addrs[td.addressKey] as string | undefined;
     if (!address || !ownTo) throw swapError('invalid_asset');
     const raw: any = step.raw; const source = p.route.source;
-    let effect: SwapEffect | null = null; let simulated = false;
+    let effect: SwapEffect | null = null; let simulated = false; let extraNative = 0n;
     if (d.kind === 'evm') {
       const { client } = evmClient(d.chainId!);
       const allowance = async (token: string, spender: string) => (await client.readContract({ address: token as `0x${string}`, abi: erc20Abi, functionName: 'allowance', args: [address as `0x${string}`, spender as `0x${string}`] })) as bigint;
@@ -528,42 +568,45 @@ export async function preview(deps: SwapDeps, p: { route: SwapRoute }): Promise<
       let calls: SimCall[];
       if (source === 'relay') {
         const fresh = await backendTransaction({ source: 'relay', request: freshRequest(raw, step, address, ownTo, slippagePct) });
-        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!) });
+        const plan = relayTransactions(fresh, step, { ourAddress: address, chainId: d.chainId!, slippagePct, targets: await relayTargets(d.chainId!), ownTo, chains: await relayChains() });
         const exec = plan.txs.filter((t) => t.kind === 'execute').map((t) => ({ from: address, to: t.to, data: t.data, value: t.value }));
         calls = exec.length === 1 ? await withApproval(step.approval?.spender, exec[0]) : exec;
       } else if (source === 'thorchain') {
         const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
-        checkThorQuote(fresh, step, ownTo, slippagePct);
+        fresh.memo = checkThorQuote(fresh, step, ownTo);
         await verifyThorInbound(fresh, step);
         const call = thorRouterCall(fresh, step);
         calls = await withApproval(call.to, { from: address, ...call });
       } else if (source === 'lifi') {
-        const refreshed = await backendTransaction({ source: 'lifi', step: step.raw });
-        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: td.kind });
+        const refreshed = await backendTransaction({ source: 'lifi', ref: p.route.quoteRef ?? '' });
+        const bad = validateLifiTransaction(refreshed, step, { ourAddress: address, chainId: d.chainId!, slippagePct, destKind: td.kind, destLifiChainId: td.lifiChainId });
         if (bad) throw bad;
         const tx = refreshed.transactionRequest;
         calls = await withApproval(step.approval?.spender, { from: address, to: tx.to, data: tx.data, value: tx.value == null ? 0n : BigInt(tx.value) });
       } else throw swapError('unsupported_pair');
       effect = await guardEvmSwap(client, address, step, calls);
+      const carried = calls.reduce((a, c) => a + c.value, 0n) - (step.from.asset.address === 'native' ? BigInt(step.from.amount) : 0n);
+      if (carried > 0n) extraNative = carried;
       simulated = effect != null;
     } else if (d.kind === 'solana') {
-      const b64 = source === 'jupiter' ? await jupiterTx(raw, settings.solanaTurbo, address)
-        : source === 'lifi' ? String((await backendTransaction({ source: 'lifi', step: step.raw }))?.transactionRequest?.data ?? '') : '';
+      if (source !== 'jupiter') throw swapError('unsupported_route');   // Solana-source LI.FI bridges cannot be verified (audit H1)
+      const b64 = await jupiterTx(p.route, settings.solanaTurbo, address);
       if (!/^[A-Za-z0-9+/=]+$/.test(b64)) throw swapError('unsafe_transaction');
       const bytes = b64ToBytes(b64); const parsed = parseSolanaTx(bytes);
-      if (deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]) !== address || parsed.sigSlots !== 1) throw swapError('unsafe_transaction');
-      await guardSolanaSwap(bytes, address, step, { strictPrograms: source === 'jupiter' });   // includes a dry run
+      if (deps.core.Base58.encodeNoCheck(parsed.accountKeys[0]) !== address || parsed.sigSlots !== 1 || !parsed.accountKeys.some((k) => deps.core.Base58.encodeNoCheck(k) === JUPITER_PROGRAM)) throw swapError('unsafe_transaction');
+      await guardSolanaSwap(bytes, address, step);   // includes a dry run
       simulated = true;
     } else if (source === 'thorchain') {
       const fresh = await backendTransaction({ source: 'thorchain', request: freshRequest(raw, step, address, ownTo, slippagePct) });
-      checkThorQuote(fresh, step, ownTo, slippagePct);
+      fresh.memo = checkThorQuote(fresh, step, ownTo);
       await verifyThorInbound(fresh, step);
     } else throw swapError('unsupported_pair');
     const sameChain = step.fromDomainId === step.toDomainId;
-    return { ok: true, preview: {
+    return { ok: true, confirmId: held.issueConfirm(h.route.id), preview: {
       verification: simulated ? 'simulated' : 'checked',
-      send: { symbol: step.from.asset.symbol, decimals: step.from.asset.decimals, amount: (effect && step.from.asset.address !== 'native' ? effect.sent : BigInt(step.from.amount)).toString() },
-      receive: { symbol: step.to.asset.symbol, decimals: step.to.asset.decimals, amount: (effect?.received ?? BigInt(step.to.amount)).toString(), minAmount: step.to.minAmount, network: td.name, afterBridge: !sameChain },
+      send: { symbol: step.from.asset.symbol, decimals: step.from.asset.decimals, amount: (effect && step.from.asset.address !== 'native' ? effect.sent : BigInt(step.from.amount)).toString(),
+        ...(extraNative > 0n ? { extraNative: extraNative.toString(), nativeSymbol: d.nativeSymbol } : {}) },
+      receive: { symbol: step.to.asset.symbol, decimals: step.to.asset.decimals, amount: (effect?.received ?? BigInt(step.to.amount)).toString(), minAmount: step.to.minAmount, network: td.name, afterBridge: !sameChain, address: ownTo },
     } };
   } catch (e) { return fail(e); }
 }
@@ -634,7 +677,10 @@ export async function scanDust(deps: SwapDeps, domainId: string, thresholdUsd = 
 }
 
 /** Convert each selected dust balance into the native coin, one after another (best quote, approve if needed, swap). */
-export async function convertDust(deps: SwapDeps, assets: SwapAsset[]): Promise<{ ok: true; results: Array<{ assetId: string; ok: boolean; id?: string; hash?: string; error?: string }> }> {
+export async function convertDust(deps: SwapDeps, assets: SwapAsset[]): Promise<{ ok: true; results: Array<{ assetId: string; ok: boolean; id?: string; hash?: string; error?: string }> } | ReturnType<typeof fail>> {
+  try { return await held.exclusive(() => convertDustNow(deps, assets)); } catch (e) { return fail(e); }
+}
+async function convertDustNow(deps: SwapDeps, assets: SwapAsset[]): Promise<{ ok: true; results: Array<{ assetId: string; ok: boolean; id?: string; hash?: string; error?: string }> }> {
   const results: Array<{ assetId: string; ok: boolean; id?: string; hash?: string; error?: string }> = [];
   for (const a of assets.slice(0, 10)) {
     try {
@@ -645,13 +691,13 @@ export async function convertDust(deps: SwapDeps, assets: SwapAsset[]): Promise<
       if (!q.ok) { results.push({ assetId: a.assetId, ok: false, error: (q as any).error ?? 'No quote' }); continue; }
       const route = q.result.routes.find((r) => r.steps.length === 1);
       if (!route) { results.push({ assetId: a.assetId, ok: false, error: 'No route' }); continue; }
-      let id: string | undefined;
+      const h = await heldFor(deps, route.id);
       if (route.steps[0].approval?.needed) {
-        const ap: any = await approve(deps, { route, stepIndex: 0, unlimited: false });
+        const ap: any = await approveHeld(deps, h, false);
         if (!ap.ok) { results.push({ assetId: a.assetId, ok: false, error: ap.error ?? 'Approval failed' }); continue; }
-        id = ap.id;
       }
-      const sub: any = await submit(deps, { route, stepIndex: 0, id });
+      held.consume(route.id);
+      const sub: any = await submitHeld(deps, h);
       results.push(sub.ok ? { assetId: a.assetId, ok: true, id: sub.id, hash: sub.hash } : { assetId: a.assetId, ok: false, error: sub.error ?? 'Swap failed' });
     } catch (e: any) { results.push({ assetId: a.assetId, ok: false, error: e?.message ?? 'Swap failed' }); }
   }

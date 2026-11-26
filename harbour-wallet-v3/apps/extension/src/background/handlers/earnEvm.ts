@@ -1,5 +1,6 @@
 // Executes a staking call plan on an EVM chain: estimate -> sign (viem, local key) -> broadcast -> (wait between dependent calls).
-// Fee estimation never invents a number: if the node cannot estimate gas the plan's documented upper bound is used and labelled.
+// Fee estimation never invents a number: at review, later dependent calls show their documented upper bound (labelled); at send
+// time every call must estimate against current state or it is not signed.
 import { createPublicClient, defineChain, fallback, http } from 'viem';
 import { evmAccountFromBytes } from '../../core/provider/evmAccount';
 import type { ChainInfo } from '../../core/chains/types';
@@ -38,7 +39,11 @@ export async function runPlan(chain: ChainInfo, privateKey: Uint8Array, plan: Ca
   for (let i = 0; i < plan.length; i++) {
     const c = plan[i]; const fees = await feeData(client, legacy);
     if (cap && (fees.maxFeePerGas ?? fees.gasPrice ?? 0n) > cap.maxPrice) throw i === 0 ? cap.onFeeRose() : new Error('Step 1 was sent, but the network fee rose before the next step. Open Earn and review the remaining step again.');
-    const gas = (await estimateCall(client, account.address, c, true)).gas;
+    // Each call is estimated against current state (a dependent call only after the previous one is mined). A failed estimate
+    // almost always means the call would revert: nothing is signed with a guessed gas limit (audit M7).
+    const est = await estimateCall(client, account.address, c, true);
+    if (!est.estimated) throw new Error(i === 0 ? 'The network says this transaction would fail, so nothing was sent. Try again later.' : 'Step 1 was sent, but the next step would fail on-chain right now, so it was not sent. Open Earn and review the remaining step again.');
+    const gas = est.gas;
     const base = { chainId: chain.evmChainId!, to: c.to, data: c.data, value: c.value, nonce, gas };
     const raw = await account.signTransaction(legacy || !fees.maxFeePerGas ? { ...base, type: 'legacy' as const, gasPrice: fees.gasPrice ?? fees.maxFeePerGas! } : { ...base, type: 'eip1559' as const, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n });
     const hash = await client.sendRawTransaction({ serializedTransaction: raw });

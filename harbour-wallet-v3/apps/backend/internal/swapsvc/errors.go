@@ -32,6 +32,8 @@ var Messages = map[string]string{
 	"invalid_slippage":   "Invalid slippage.",
 	"unavailable":        "This swap provider is not available right now.",
 	"bad_request":        "Invalid request.",
+	"price_moved":        "The price moved while preparing this swap. Refresh the quote and try again.",
+	"rate_limited":       "Swap providers are busy right now. Please try again in a moment.",
 }
 
 var (
@@ -45,7 +47,9 @@ var (
 func classify(status int, body map[string]any) *Error {
 	msg := strings.ToLower(upstreamMessage(body))
 	switch {
-	case status == 429, status >= 500:
+	case status == 429:
+		return errCode("rate_limited")
+	case status >= 500:
 		return errCode("server")
 	case status == 401 || status == 403:
 		return errCode("unavailable") // our key is missing/invalid: an operator problem, not the user's

@@ -43,15 +43,15 @@ export const handlers: HandlerMap = {
   },
   swapApprove: async (msg, ctx) => {
     const { core, vault, wallet } = ctx as any;
- return swapSvc.approve({ core, vault, wallet }, { route: msg.route, stepIndex: Number(msg.stepIndex ?? 0), unlimited: msg.unlimited === true });
+ return swapSvc.approve({ core, vault, wallet }, { routeId: msg.routeId, confirmId: msg.confirmId });
   },
   swapPreview: async (msg, ctx) => {
     const { core, vault, wallet } = ctx as any;
-    return swapSvc.preview({ core, vault, wallet }, { route: msg.route });
+    return swapSvc.preview({ core, vault, wallet }, { routeId: msg.routeId });
   },
   swapSubmit: async (msg, ctx) => {
     const { core, vault, wallet } = ctx as any;
- return swapSvc.submit({ core, vault, wallet }, { route: msg.route, stepIndex: Number(msg.stepIndex ?? 0), id: typeof msg.id === 'string' ? msg.id : undefined });
+ return swapSvc.submit({ core, vault, wallet }, { routeId: msg.routeId, confirmId: msg.confirmId });
   },
   swapDustScan: async (msg, ctx) => {
     const { core, vault, wallet } = ctx as any;

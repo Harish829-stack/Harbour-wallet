@@ -19,17 +19,18 @@ var (
 )
 
 // TxRequest asks for a fresh, unsigned transaction for a route the user confirmed.
-//   - lifi:      Step = the LI.FI step object from the quote (raw)
+//   - lifi:      Ref = the route's QuoteRef (the LI.FI step stays on the server)
 //   - relay, thorchain: Request = the quote request (a fresh quote is the transaction source)
-//   - jupiter:   Quote = Jupiter's quote, Priority = fast|turbo, User = the Solana address
+//   - jupiter:   Ref = the route's QuoteRef (Jupiter's quote stays on the server), Priority = fast|turbo, User = the Solana address
 type TxRequest struct {
-	Source   string          `json:"source"`
-	Step     json.RawMessage `json:"step,omitempty"`
-	Request  *QuoteRequest   `json:"request,omitempty"`
-	Quote    json.RawMessage `json:"quote,omitempty"`
-	Priority string          `json:"priority,omitempty"`
-	User     string          `json:"user,omitempty"`
+	Source   string        `json:"source"`
+	Ref      string        `json:"ref,omitempty"`
+	Request  *QuoteRequest `json:"request,omitempty"`
+	Priority string        `json:"priority,omitempty"`
+	User     string        `json:"user,omitempty"`
 }
+
+var reQuoteRef = regexp.MustCompile(`^[0-9a-f]{48}$`)
 
 // Transaction returns the provider's own answer (the extension checks it before signing).
 func (s *Service) Transaction(ctx context.Context, t TxRequest) (json.RawMessage, error) {
@@ -37,10 +38,18 @@ func (s *Service) Transaction(ctx context.Context, t TxRequest) (json.RawMessage
 		return nil, errCode("unavailable")
 	}
 	switch t.Source {
-	case LiFi:
-		return s.lifiStepTransaction(ctx, t.Step)
-	case Jupiter:
-		return s.jupiterSwap(ctx, t.Quote, t.Priority, t.User)
+	case LiFi, Jupiter:
+		if !reQuoteRef.MatchString(t.Ref) {
+			return nil, errCode("bad_request")
+		}
+		payload, ok := s.guard.getRef(s.cfg.Now(), t.Ref, t.Source)
+		if !ok {
+			return nil, errCode("price_moved") // expired or unknown: the client quotes again
+		}
+		if t.Source == LiFi {
+			return s.lifiStepTransaction(ctx, payload)
+		}
+		return s.jupiterSwap(ctx, payload, t.Priority, t.User)
 	case Relay, THORChain:
 		if t.Request == nil {
 			return nil, errCode("bad_request")

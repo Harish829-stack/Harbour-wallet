@@ -88,7 +88,7 @@ func jsonOK(v string) func(http.ResponseWriter, *http.Request, []byte) {
 
 func svc(f *fake, keys Keys) *Service {
 	return New(Config{Keys: keys, Hosts: Hosts{LiFi: f.srv.URL + "/lifi", Jupiter: f.srv.URL + "/jup", Relay: f.srv.URL + "/relay", Uniswap: f.srv.URL + "/uni", Thor: []string{f.srv.URL + "/thor1", f.srv.URL + "/thor2"}},
-		Now: func() time.Time { return time.Unix(1_800_000_000, 0) }, ProviderTimeout: 2 * time.Second})
+		Now: func() time.Time { return time.Unix(1_800_000_000, 0) }, ProviderTimeout: 2 * time.Second, QuoteCache: -1})
 }
 
 const lifiRoutesJSON = `{"routes":[
@@ -111,7 +111,7 @@ func TestValidate(t *testing.T) {
 	cases := map[string]func(r *QuoteRequest){
 		"invalid_amount":     func(r *QuoteRequest) { r.Amount = "0" },
 		"invalid_amount2":    func(r *QuoteRequest) { r.Amount = "1.5" },
-		"invalid_slippage":   func(r *QuoteRequest) { r.Slippage = "31" },
+		"invalid_slippage":   func(r *QuoteRequest) { r.Slippage = "5.1" },
 		"invalid_slippage2":  func(r *QuoteRequest) { r.Slippage = "0" },
 		"unsupported_pair":   func(r *QuoteRequest) { r.To = eth() },
 		"unsupported_domain": func(r *QuoteRequest) { r.To.DomainID = "dogecoin" },
@@ -211,7 +211,7 @@ func TestKillSwitchAndMissingKeys(t *testing.T) {
 	if asErr(err).Code != "unsupported_pair" || f.hits.Load() != 0 {
 		t.Fatalf("disabled provider was called: %v hits=%d", err, f.hits.Load())
 	}
-	if _, err := s.Transaction(context.Background(), TxRequest{Source: LiFi, Step: json.RawMessage(`{"id":"x"}`)}); asErr(err).Code != "unavailable" {
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: LiFi, Ref: strings.Repeat("a", 48)}); asErr(err).Code != "unavailable" {
 		t.Fatal("disabled provider built a transaction")
 	}
 }
@@ -375,9 +375,20 @@ func TestJupiter(t *testing.T) {
 		Priority string          `json:"priority"`
 	}
 	json.Unmarshal(st.Raw, &raw)
-	tx, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Quote: raw.Quote, Priority: raw.Priority, User: solMe})
+	ref := res.Routes[0].QuoteRef
+	tx, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: ref, Priority: raw.Priority, User: solMe})
 	if err != nil || string(tx) != `{"swapTransaction":"AQID"}` {
 		t.Fatalf("swap tx %v %s", err, tx)
+	}
+	// audit M2/M6: the quote stays on the server; only its ref is accepted
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: strings.Repeat("b", 48), Priority: "fast", User: solMe}); asErr(err).Code != "price_moved" {
+		t.Fatalf("unknown ref: %v", err)
+	}
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: Jupiter, Ref: "not-a-ref", Priority: "fast", User: solMe}); asErr(err).Code != "bad_request" {
+		t.Fatalf("bad ref: %v", err)
+	}
+	if _, err := s.Transaction(context.Background(), TxRequest{Source: LiFi, Ref: ref}); asErr(err).Code != "price_moved" {
+		t.Fatalf("a Jupiter ref used for LI.FI: %v", err)
 	}
 	// a quote for other mints than requested is refused
 	f.handler["/jup/quote"] = jsonOK(`{"inputMint":"` + wsolMint + `","outputMint":"So1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","inAmount":"1000000","outAmount":"999999999"}`)

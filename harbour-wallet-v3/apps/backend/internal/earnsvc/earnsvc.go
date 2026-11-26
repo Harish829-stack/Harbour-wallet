@@ -13,7 +13,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"regexp"
@@ -21,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // Error is a stable code. For Aave input errors Reason says which kind (the provider's text is never returned).
@@ -67,13 +71,22 @@ type Config struct {
 	Disabled map[string]bool
 	Client   *http.Client
 	Now      func() time.Time
+	// Log receives provider failures for operators (host, path and status only). Nil: not logged.
+	Log *slog.Logger
 }
 
 type Service struct {
-	cfg    Config
-	client *http.Client
-	mu     sync.Mutex
-	apr    map[string]aprEntry
+	cfg     Config
+	client  *http.Client
+	mu      sync.Mutex
+	apr     map[string]aprEntry
+	markets map[uint64]marketsEntry
+	flight  singleflight.Group // one upstream call per key at a time (audit M6: no stampede)
+}
+
+type marketsEntry struct {
+	at  time.Time
+	raw json.RawMessage
 }
 
 type aprEntry struct {
@@ -82,8 +95,9 @@ type aprEntry struct {
 }
 
 const (
-	maxBody = 2 << 20
-	aprTTL  = 10 * time.Minute
+	maxBody    = 2 << 20
+	aprTTL     = 10 * time.Minute
+	marketsTTL = 60 * time.Second
 )
 
 // New returns a Service; redirects are never followed.
@@ -106,7 +120,7 @@ func New(cfg Config) *Service {
 	}
 	cc := *c
 	cc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &Service{cfg: cfg, client: &cc, apr: map[string]aprEntry{}}
+	return &Service{cfg: cfg, client: &cc, apr: map[string]aprEntry{}, markets: map[uint64]marketsEntry{}}
 }
 
 // ParseDisabled reads a comma-separated provider list.
@@ -144,6 +158,7 @@ func (s *Service) do(ctx context.Context, method, url string, body any, out any)
 	}
 	res, err := s.client.Do(req)
 	if err != nil {
+		s.logUpstream(req, 0)
 		var ne net.Error
 		if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
 			return &Error{Code: "unavailable", Reason: "timeout"}
@@ -153,12 +168,20 @@ func (s *Service) do(ctx context.Context, method, url string, body any, out any)
 	defer res.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, maxBody+1))
 	if err != nil || len(raw) > maxBody || res.StatusCode < 200 || res.StatusCode > 299 {
+		s.logUpstream(req, res.StatusCode)
 		return errCode("unavailable")
 	}
 	if json.Unmarshal(raw, out) != nil {
 		return errCode("unavailable")
 	}
 	return nil
+}
+
+// logUpstream records a provider failure: host, path and status only (never query strings or bodies).
+func (s *Service) logUpstream(req *http.Request, status int) {
+	if s.cfg.Log != nil {
+		s.cfg.Log.Warn("earn provider failed", "host", req.URL.Host, "path", req.URL.Path, "status", status)
+	}
 }
 
 // ---------- Aave (AaveKit) ----------
@@ -227,7 +250,25 @@ func (s *Service) AaveMarkets(ctx context.Context, chainID uint64) (json.RawMess
 	if !s.cfg.AaveChains[chainID] {
 		return nil, errCode("unsupported")
 	}
-	return s.aaveQuery(ctx, aaveMarkets, map[string]any{"r": map[string]any{"chainIds": []uint64{chainID}}})
+	s.mu.Lock()
+	if e, ok := s.markets[chainID]; ok && s.cfg.Now().Sub(e.at) < marketsTTL {
+		s.mu.Unlock()
+		return e.raw, nil
+	}
+	s.mu.Unlock()
+	v, err, _ := s.flight.Do(fmt.Sprintf("markets:%d", chainID), func() (any, error) {
+		raw, err := s.aaveQuery(ctx, aaveMarkets, map[string]any{"r": map[string]any{"chainIds": []uint64{chainID}}})
+		if err == nil {
+			s.mu.Lock()
+			s.markets[chainID] = marketsEntry{at: s.cfg.Now(), raw: raw}
+			s.mu.Unlock()
+		}
+		return raw, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v.(json.RawMessage), nil
 }
 
 // AaveTxRequest asks for a supply / withdraw plan. Token "" means the chain's native coin (Aave's WETH gateway).
@@ -290,6 +331,14 @@ func (s *Service) APR(ctx context.Context, provider string) (float64, error) {
 		return e.val, nil
 	}
 	s.mu.Unlock()
+	v, err, _ := s.flight.Do("apr:"+provider, func() (any, error) { return s.fetchAPR(ctx, provider, url) })
+	if err != nil {
+		return 0, err
+	}
+	return v.(float64), nil
+}
+
+func (s *Service) fetchAPR(ctx context.Context, provider, url string) (float64, error) {
 	var raw map[string]any
 	if err := s.do(ctx, http.MethodGet, url, nil, &raw); err != nil {
 		return 0, err

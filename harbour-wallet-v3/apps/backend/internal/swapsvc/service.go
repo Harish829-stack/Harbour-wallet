@@ -47,6 +47,8 @@ type Config struct {
 	ProviderTimeout time.Duration // per provider, default 12 s
 	Client          *http.Client
 	Now             func() time.Time
+	// QuoteCache is how long an identical quote answer is reused (default 8 s; negative: off).
+	QuoteCache time.Duration
 	// Log receives provider failures for operators (host, path, status and a short, key-scrubbed body). Nil: not logged.
 	Log *slog.Logger
 }
@@ -55,6 +57,7 @@ type Config struct {
 type Service struct {
 	cfg    Config
 	client *http.Client
+	guard  *guard
 }
 
 // Provider ids.
@@ -82,6 +85,9 @@ func New(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
+	if cfg.QuoteCache == 0 {
+		cfg.QuoteCache = quoteCacheTTL
+	}
 	if cfg.UniswapChains == nil {
 		cfg.UniswapChains = map[uint64]bool{11155111: true}
 	}
@@ -94,7 +100,7 @@ func New(cfg Config) *Service {
 	}
 	cc := *c
 	cc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &Service{cfg: cfg, client: &cc}
+	return &Service{cfg: cfg, client: &cc, guard: newGuard()}
 }
 
 // ParseDisabled reads a comma-separated provider list.
@@ -172,9 +178,12 @@ func validAsset(a Asset) (*Domain, bool) {
 	return d, d.Kind != "utxo" && validAddr(d.Kind, a.Address)
 }
 
+// MaxSlippagePct is the highest slippage tolerance accepted (percent; audit M9). The extension uses the same ceiling.
+const MaxSlippagePct = 5.0
+
 func slippagePct(s string) (float64, bool) {
 	v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-	return v, err == nil && v > 0 && v <= 30
+	return v, err == nil && v > 0 && v <= MaxSlippagePct
 }
 
 // Validate checks a quote request (port of the extension's validateRouteRequest, plus address formats).
@@ -224,6 +233,14 @@ func contains(list []string, v string) bool {
 // ---------- quotes ----------
 
 // eligible lists the providers that can quote this pair (port of eligibleProviders).
+// ProviderCount is how many providers a valid request would ask (0 for an invalid request).
+func (s *Service) ProviderCount(r *QuoteRequest) int {
+	if r.Validate() != nil {
+		return 0
+	}
+	return len(s.eligible(r))
+}
+
 func (s *Service) eligible(r *QuoteRequest) []string {
 	fd, td := domainByID(r.From.DomainID), domainByID(r.To.DomainID)
 	var out []string
@@ -267,6 +284,13 @@ func (s *Service) Quotes(ctx context.Context, r QuoteRequest) (*QuoteResult, err
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
+	if s.cfg.QuoteCache < 0 {
+		return s.quotesNow(ctx, r)
+	}
+	return s.guard.quotes(ctx, s.cfg.Now, s.cfg.QuoteCache, &r, func() (*QuoteResult, error) { return s.quotesNow(ctx, r) })
+}
+
+func (s *Service) quotesNow(ctx context.Context, r QuoteRequest) (*QuoteResult, error) {
 	providers := s.eligible(&r)
 	if len(providers) == 0 {
 		return nil, errCode("unsupported_pair")
@@ -279,12 +303,17 @@ func (s *Service) Quotes(ctx context.Context, r QuoteRequest) (*QuoteResult, err
 	ch := make(chan res, len(providers))
 	var wg sync.WaitGroup
 	for _, p := range providers {
+		if s.guard.open(s.cfg.Now(), p) {
+			ch <- res{p, nil, errCode("unavailable")}
+			continue
+		}
 		wg.Add(1)
 		go func(p string) {
 			defer wg.Done()
 			pctx, cancel := context.WithTimeout(ctx, s.cfg.ProviderTimeout)
 			defer cancel()
 			routes, err := s.safeRun(pctx, p, &r)
+			s.guard.record(s.cfg.Now(), p, err)
 			ch <- res{p, routes, err}
 		}(p)
 	}
@@ -301,6 +330,9 @@ func (s *Service) Quotes(ctx context.Context, r QuoteRequest) (*QuoteResult, err
 			}
 			continue
 		}
+		for i := range x.routes {
+			s.attachRef(&x.routes[i])
+		}
 		out.Routes = append(out.Routes, x.routes...)
 	}
 	sort.Slice(out.ProviderErrors, func(i, j int) bool { return out.ProviderErrors[i].Provider < out.ProviderErrors[j].Provider })
@@ -313,6 +345,24 @@ func (s *Service) Quotes(ctx context.Context, r QuoteRequest) (*QuoteResult, err
 	sortRoutes(out.Routes, r.SortBy)
 	tagBestReturn(out.Routes)
 	return out, nil
+}
+
+// attachRef keeps the provider object a transaction will be built from on the server (LI.FI step, Jupiter quote).
+func (s *Service) attachRef(rt *Route) {
+	if len(rt.Steps) != 1 {
+		return
+	}
+	switch rt.Source {
+	case LiFi:
+		rt.QuoteRef = s.guard.putRef(s.cfg.Now(), LiFi, rt.Steps[0].Raw)
+	case Jupiter:
+		var raw struct {
+			Quote json.RawMessage `json:"quote"`
+		}
+		if json.Unmarshal(rt.Steps[0].Raw, &raw) == nil && len(raw.Quote) > 0 {
+			rt.QuoteRef = s.guard.putRef(s.cfg.Now(), Jupiter, raw.Quote)
+		}
+	}
 }
 
 // safeRun turns a provider panic (unexpected response shape) into an error instead of crashing the request.

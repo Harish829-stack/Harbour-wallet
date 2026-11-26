@@ -61,7 +61,7 @@ const relayQ = (over = {}) => ({
 });
 
 test('Relay route mapping and pre-sign validation of the fresh quote', () => {
-  const r = req(USDC, M.nativeAsset('base'), '5000000');
+  const r = req(USDC, ETH, '5000000');   // same-chain (cross-chain orders: test/swap-audit.test.js)
   const st = stepFor('relay', r, '2000000000000000', '1980000000000000', { approval: { tokenAddress: USDC.address, spender: '0x4444444444444444444444444444444444444444', minAmount: '5000000' } });
   const ctx = { ourAddress: ME, chainId: 1, slippagePct: 1, targets: new Set(['0x4444444444444444444444444444444444444444']) };
   const plan = M.relayTransactions(relayQ(), st, ctx);

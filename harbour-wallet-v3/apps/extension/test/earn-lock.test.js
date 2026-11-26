@@ -13,7 +13,7 @@ const out = await build({
 });
 const M = await import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 
-const state = { baseFee: 10_000_000_000n, sent: 0 };
+const state = { baseFee: 10_000_000_000n, sent: 0, revert: false };
 const server = http.createServer((req, res) => {
   let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => {
     const one = (m) => {
@@ -21,6 +21,7 @@ const server = http.createServer((req, res) => {
         eth_getBlockByNumber: { number: '0x1', hash: '0x' + '11'.repeat(32), baseFeePerGas: '0x' + state.baseFee.toString(16), timestamp: '0x1', transactions: [] },
         eth_sendRawTransaction: '0x' + 'ab'.repeat(32) }[m.method];
       if (m.method === 'eth_sendRawTransaction') state.sent++;
+      if (m.method === 'eth_estimateGas' && state.revert) return { jsonrpc: '2.0', id: m.id, error: { code: 3, message: 'execution reverted' } };
       return { jsonrpc: '2.0', id: m.id, result: r ?? null };
     };
     const j = JSON.parse(body); res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(Array.isArray(j) ? j.map(one) : one(j)));
@@ -41,6 +42,11 @@ test('runPlan signs at the reviewed price, and refuses before signing when the l
   state.sent = 0; state.baseFee = 30_000_000_000n; // fee tripled after review
   await assert.rejects(M.runPlan(chain, KEY, plan, cap), (e) => e.code === 'fee_changed');
   assert.equal(state.sent, 0, 'nothing was broadcast');
+  // audit M7: a call the node says would revert is never sent with a guessed gas limit
+  state.baseFee = 10_000_000_000n; state.revert = true;
+  await assert.rejects(M.runPlan(chain, KEY, plan, cap), /would fail/);
+  assert.equal(state.sent, 0, 'nothing was broadcast');
+  state.revert = false;
   server.close();
 });
 

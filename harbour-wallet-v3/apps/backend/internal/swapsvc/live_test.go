@@ -99,7 +99,7 @@ func TestLiveQuotesAndTransactions(t *testing.T) {
 			var tx TxRequest
 			switch r.Source {
 			case LiFi:
-				tx = TxRequest{Source: LiFi, Step: st.Raw}
+				tx = TxRequest{Source: LiFi, Ref: r.QuoteRef}
 			case Relay, THORChain:
 				tx = TxRequest{Source: r.Source, Request: &req}
 			case Jupiter:
@@ -108,7 +108,7 @@ func TestLiveQuotesAndTransactions(t *testing.T) {
 					Priority string          `json:"priority"`
 				}
 				json.Unmarshal(st.Raw, &raw)
-				tx = TxRequest{Source: Jupiter, Quote: raw.Quote, Priority: raw.Priority, User: c.fromAddr}
+				tx = TxRequest{Source: Jupiter, Ref: r.QuoteRef, Priority: raw.Priority, User: c.fromAddr}
 			}
 			out, err := s.Transaction(ctx, tx)
 			if err != nil {

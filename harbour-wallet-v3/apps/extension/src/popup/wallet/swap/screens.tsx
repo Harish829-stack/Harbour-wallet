@@ -79,11 +79,11 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
   const busy = useRef(false);
   const step = route?.steps[0];
   // "You send X, you get Y": the background builds the exact transactions, checks them against this quote and simulates them.
-  const [pv, setPv] = useState<{ loading: boolean; data?: any; error?: string; code?: string }>({ loading: true });
+  const [pv, setPv] = useState<{ loading: boolean; data?: any; confirmId?: string; error?: string; code?: string }>({ loading: true });
   useEffect(() => {
     if (!route) return;
     let live = true;
-    c.bg({ type: 'swapPreview', route }).then((r: any) => { if (live) setPv(r?.ok ? { loading: false, data: r.preview } : { loading: false, error: r?.error || 'Couldn’t check this swap.', code: r?.code }); })
+    c.bg({ type: 'swapPreview', routeId: route.id }).then((r: any) => { if (live) setPv(r?.ok ? { loading: false, data: r.preview, confirmId: r.confirmId } : { loading: false, error: r?.error || 'Couldn’t check this swap.', code: r?.code }); })
       .catch(() => { if (live) setPv({ loading: false, error: 'Couldn’t check this swap.' }); });
     return () => { live = false; };
   }, [route]); // eslint-disable-line react-hooks/exhaustive-deps -- re-check only when the route changes
@@ -101,15 +101,14 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
   const run = async () => {
     if (busy.current) return; busy.current = true; setErr('');
     try {
-      let id: string | undefined;
+      if (!pv.confirmId) { setErr(pv.error || 'This swap hasn’t been checked yet.'); return; }
       if (needsApproval) {
         setPhase('approving');
-        const a = await c.bg({ type: 'swapApprove', route, stepIndex: 0, unlimited });
+        const a = await c.bg({ type: 'swapApprove', routeId: route.id, confirmId: pv.confirmId });
         if (!a?.ok) { setErr(a?.error || 'Approval failed'); setPhase('review'); return; }
-        id = a.id;
       }
       setPhase('submitting');
-      const r = await c.bg({ type: 'swapSubmit', route, stepIndex: 0, id });
+      const r = await c.bg({ type: 'swapSubmit', routeId: route.id, confirmId: pv.confirmId });
       if (!r?.ok) { setErr(r?.error || 'Swap failed'); setPhase('review'); return; }
       resetSwapForm(); c.refresh?.();
       c.nav.pop(); c.nav.push('swapStatus', { id: r.id });
@@ -132,7 +131,8 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
           <DetailRow label="You send">−{fmtToken(fromAtomic(pv.data.send.amount, pv.data.send.decimals))} {pv.data.send.symbol}</DetailRow>
           <DetailRow label={pv.data.receive.afterBridge ? `You receive on ${pv.data.receive.network}` : 'You receive'}>+{fmtToken(fromAtomic(pv.data.receive.amount, pv.data.receive.decimals))} {pv.data.receive.symbol}</DetailRow>
           {pv.data.verification !== 'simulated' && <div style={{ color: T.sub, fontSize: 12 }}>This network couldn’t simulate the swap; the transaction was checked against your quote instead.</div>}
-          {pv.data.receive.afterBridge && <div style={{ color: T.sub, fontSize: 12 }}>Arrives after bridging; at least {fmtToken(fromAtomic(pv.data.receive.minAmount, pv.data.receive.decimals))} {pv.data.receive.symbol}.</div>}
+          {pv.data.send.extraNative && <DetailRow label="Plus bridge fee">−{fmtToken(fromAtomic(pv.data.send.extraNative, 18))} {pv.data.send.nativeSymbol}</DetailRow>}
+          {pv.data.receive.afterBridge && <div style={{ color: T.sub, fontSize: 12 }}>Arrives after bridging at your address {pv.data.receive.address.slice(0, 6)}…{pv.data.receive.address.slice(-4)} on {pv.data.receive.network}; at least {fmtToken(fromAtomic(pv.data.receive.minAmount, pv.data.receive.decimals))} {pv.data.receive.symbol}.</div>}
         </>}
         {pv.error && <div style={{ color: unsafe ? T.error : T.sub, fontSize: 12.5 }}>{pv.error}</div>}
       </div>
@@ -151,7 +151,7 @@ export const SwapConfirmScreen: React.FC<Ctx> = (c) => {
       {expired && <Notice tone="error">This quote is too old. Go back to get a fresh one.</Notice>}
       {err && <Notice tone="error">{err}</Notice>}
       <div style={{ marginTop: 18 }}>
-        <Btn onClick={run} disabled={phase !== 'review' || expired || unsafe}>{phase !== 'review' && <span style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}><Spinner size={16} color="#fff" /></span>}{label}</Btn>
+        <Btn onClick={run} disabled={phase !== 'review' || expired || unsafe || !pv.confirmId}>{phase !== 'review' && <span style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}><Spinner size={16} color="#fff" /></span>}{label}</Btn>
       </div>
     </Screen>
   );

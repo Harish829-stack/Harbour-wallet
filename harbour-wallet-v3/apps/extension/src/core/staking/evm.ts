@@ -17,6 +17,19 @@ export async function ethCall(f: Fetcher, urls: string[], to: string, data: stri
     return j.result as `0x${string}`;
   });
 }
+/**
+ * eth_call answered by at least `need` different RPC operators that all agree (audit H5). Used where the answer decides
+ * where the user's money goes, so one lying or compromised RPC cannot redirect it. Fewer answers, or any disagreement: throws.
+ */
+export async function ethCallQuorum(f: Fetcher, urls: string[], to: string, data: string, need = 2): Promise<`0x${string}`> {
+  const hosts = new Map<string, string>();
+  for (const u of urls) { try { const h = new URL(u).hostname.split('.').slice(-2).join('.'); if (!hosts.has(h)) hosts.set(h, u); } catch { /* skip */ } }
+  const answers = (await Promise.all([...hosts.values()].slice(0, 5).map(async (u) => {
+    try { const j = await jsonPost(f, u, { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }, 12000); return typeof j?.result === 'string' && /^0x[0-9a-fA-F]*$/.test(j.result) ? j.result.toLowerCase() : null; } catch { return null; }
+  }))).filter((x): x is string => x != null);
+  if (answers.length < need || answers.some((a) => a !== answers[0])) throw stakeError('unavailable', 'Couldn’t confirm the contract address with enough independent networks. Try again later.');
+  return answers[0] as `0x${string}`;
+}
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
 const mcAbi = parseAbi(['struct Call3 { address target; bool allowFailure; bytes callData; }', 'struct Result { bool success; bytes returnData; }', 'function aggregate3(Call3[] calls) payable returns (Result[] returnData)']);
 /** Batched read; failures come back as null per call. */
@@ -129,7 +142,8 @@ export const rocketDepositAbi = parseAbi(['function deposit() payable', 'functio
 export const rethAbi = parseAbi(['function balanceOf(address) view returns (uint256)', 'function getEthValue(uint256 _rethAmount) view returns (uint256)', 'function getRethValue(uint256 _ethAmount) view returns (uint256)', 'function getTotalCollateral() view returns (uint256)', 'function burn(uint256 _rethAmount)']);
 export const rocketKey = (name: string) => keccak256(encodePacked(['string', 'string'], ['contract.address', name]));
 export async function rocketDepositPool(f: Fetcher, urls: string[]): Promise<`0x${string}`> {
-  const raw = await ethCall(f, urls, ROCKET.storage, encodeFunctionData({ abi: rocketStorageAbi, functionName: 'getAddress', args: [rocketKey('rocketDepositPool')] }));
+  // The deposit pool receives the user's ETH and is upgradable (resolved from RocketStorage): two independent RPCs must agree.
+  const raw = await ethCallQuorum(f, urls, ROCKET.storage, encodeFunctionData({ abi: rocketStorageAbi, functionName: 'getAddress', args: [rocketKey('rocketDepositPool')] }));
   const a = decodeFunctionResult({ abi: rocketStorageAbi, functionName: 'getAddress', data: raw }) as `0x${string}`;
   if (!isEvmAddress(a) || a === ZERO) throw stakeError('unavailable', 'Rocket Pool deposit pool not found');
   return a;
@@ -153,7 +167,7 @@ export async function rocketStakePlan(f: Fetcher, urls: string[], amount: bigint
   const pool = await rocketDepositPool(f, urls);
   const max = decodeFunctionResult({ abi: rocketDepositAbi, functionName: 'getMaximumDepositAmount', data: await ethCall(f, urls, pool, encodeFunctionData({ abi: rocketDepositAbi, functionName: 'getMaximumDepositAmount' })) }) as bigint;
   if (amount > max) throw stakeError('pool_full', 'The Rocket Pool deposit pool is full right now; try Lido or a smaller amount');
-  return [{ to: pool, data: encodeFunctionData({ abi: rocketDepositAbi, functionName: 'deposit' }), value: amount, label: 'Stake ETH (Rocket Pool deposit)', gasFallback: 250_000n }];
+  return [{ to: pool, data: encodeFunctionData({ abi: rocketDepositAbi, functionName: 'deposit' }), value: amount, label: `Stake ETH (Rocket Pool deposit pool ${pool.slice(0, 6)}…${pool.slice(-4)})`, gasFallback: 250_000n }];
 }
 /** Burn rETH worth `ethAmount` (or the whole balance when `all`). */
 export async function rocketUnstakePlan(f: Fetcher, urls: string[], owner: string, ethAmount: bigint, all: boolean): Promise<{ plan: CallPlan[]; eth: bigint }> {

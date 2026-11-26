@@ -50,8 +50,10 @@ func swapErr(w http.ResponseWriter, err error) {
 		status, retry = http.StatusBadRequest, false
 	case "no_liquidity", "amount_too_low", "amount_too_high":
 		status, retry = http.StatusUnprocessableEntity, false
-	case "unavailable":
+	case "unavailable", "rate_limited":
 		status = http.StatusServiceUnavailable
+	case "price_moved":
+		status, retry = http.StatusConflict, false
 	case "timeout":
 		status = http.StatusGatewayTimeout
 	}
@@ -81,6 +83,21 @@ func (s *Server) handleSwapQuotes(w http.ResponseWriter, r *http.Request) {
 	var req swapsvc.QuoteRequest
 	if !decodeLimited(w, r, swapMaxBody, &req) {
 		return
+	}
+	// One quote request fans out to several providers: charge the device's rate limit per provider asked (audit M6;
+	// the middleware already counted one).
+	if n := s.swap.ProviderCount(&req); n > 1 {
+		d := deviceFrom(r.Context())
+		ok, err := s.counter(r.Context(), "hb:rl:"+s.devTag(d.ID), int64(n-1), s.tier(d.Tier).RequestsPerMinute)
+		if err != nil {
+			s.internalErr(w, r, err)
+			return
+		}
+		if !ok {
+			w.Header().Set("Retry-After", "60")
+			writeErr(w, http.StatusTooManyRequests, "rate_limited", "Too many requests. Please wait a moment.", true)
+			return
+		}
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), swapQuoteTimeout)
 	defer cancel()

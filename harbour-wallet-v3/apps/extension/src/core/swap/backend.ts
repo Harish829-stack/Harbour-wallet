@@ -46,6 +46,10 @@ export function acceptRoute(r: any, req: SwapRouteRequest, now = Date.now()): Sw
   const st = r.steps[0];
   if (!st || st.fromDomainId !== req.from.domainId || st.toDomainId !== req.to.domainId) return null;
   if (!sameAsset(st.from?.asset, req.from) || !sameAsset(st.to?.asset, req.to) || st.from?.amount !== req.amount) return null;
+  // LI.FI routes Harbour can verify end to end are EVM → EVM only (Solana-source and non-EVM-destination legs: audit H1/H2).
+  if (r.source === 'lifi' && (domainById(req.from.domainId)?.kind !== 'evm' || domainById(req.to.domainId)?.kind !== 'evm')) return null;
+  // Relay: EVM source only (the backend never offers others; cross-chain orders are verified before signing).
+  if (r.source === 'relay' && domainById(req.from.domainId)?.kind !== 'evm') return null;
   if (!INT.test(st.to?.amount ?? '') || !INT.test(st.to?.minAmount ?? '')) return null;
   const out = BigInt(st.to.amount); const min = BigInt(st.to.minAmount);
   const bps = BigInt(Math.round(Number(req.slippage) * 100));
@@ -70,6 +74,7 @@ export function acceptRoute(r: any, req: SwapRouteRequest, now = Date.now()): Sw
     ...r, steps: [st],
     // expiry on our own clock: the backend's clock may differ
     expiresAt: now + Math.min(QUOTE_REFRESH_SECONDS, r.source === 'relay' ? 30 : QUOTE_REFRESH_SECONDS) * 1000,
+    quoteRef: typeof r.quoteRef === 'string' && /^[0-9a-f]{48}$/.test(r.quoteRef) ? r.quoteRef : undefined,
     tags: Array.isArray(r.tags) ? r.tags.filter((t: unknown) => typeof t === 'string').map((t: string) => text(t, 24)).slice(0, 6) : [],
     warnings: Array.isArray(r.warnings) ? r.warnings.slice(0, 4).map((w: any) => ({ code: text(w?.code, 24), message: text(w?.message, 200) })) : [],
   };
@@ -90,9 +95,10 @@ function stripAssets<T extends { from: SwapAsset; to: SwapAsset }>(b: T): T {
   return { ...b, from: pick(b.from), to: pick(b.to) } as T;
 }
 
-export type TxSource = { source: 'lifi'; step: unknown } | { source: 'relay' | 'thorchain'; request: SwapRouteRequest } | { source: 'jupiter'; quote: unknown; priority: 'fast' | 'turbo'; user: string };
+export type TxSource = { source: 'lifi'; ref: string } | { source: 'relay' | 'thorchain'; request: SwapRouteRequest } | { source: 'jupiter'; ref: string; priority: 'fast' | 'turbo'; user: string };
 /** The provider's own fresh answer for a confirmed route (checked by the caller before anything is signed). */
 export async function backendTransaction(t: TxSource): Promise<any> {
+  if ('ref' in t && !t.ref) throw swapError('price_moved');   // routes without a server ref cannot be sent: quote again
   const body: any = { ...t };
   if ('request' in t) body.request = stripAssets({ ...t.request, sortBy: t.request.sortBy ?? 'quantity', solanaTurbo: !!t.request.solanaTurbo });
   return call('POST', '/v1/swap/transaction', body);

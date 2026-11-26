@@ -11,7 +11,7 @@ if (!dir) { console.error('usage: node scripts/live-swap-check.mjs <dir>'); proc
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const out = await build({ stdin: { contents: `
   export { acceptRoute } from './core/swap/backend'; export { validateLifiTransaction, parseSolanaTx, b64ToBytes, JUPITER_PROGRAM } from './core/swap/safety';
-  export { relayTransactions, relayTargets } from './core/swap/relay'; export { checkThorQuote } from './core/swap/thorchain';
+  export { relayTransactions, relayTargets, relayChains } from './core/swap/relay'; export { checkThorQuote } from './core/swap/thorchain';
   export { prepareSwap, setUniswapBackend } from './integrations/testnet-defi/uniswap'; export { verifyKitTx } from './integrations/testnet-defi/aavekit';
   export { BASE_SEPOLIA, SEPOLIA } from './integrations/testnet-defi/config'; export { domainById } from './core/swap/domains';`,
   resolveDir: src, loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
@@ -39,12 +39,13 @@ for (const name of ['lifi_eth_usdc_ethereum', 'lifi_usdc_eth_base', 'lifi_bridge
   const step = route.steps[0]; const d = M.domainById(step.fromDomainId); const td = M.domainById(step.toDomainId);
   try {
     if (route.source === 'lifi') {
-      const e = M.validateLifiTransaction(t.fresh, step, { ourAddress: req.fromAddress, chainId: d.chainId, slippagePct: Number(req.slippage), destKind: td.kind });
-      e ? bad(`${name}: LI.FI pre-sign checks`, `${e.code} (tx.to=${t.fresh?.transactionRequest?.to}, selector=${String(t.fresh?.transactionRequest?.data).slice(0, 10)})`) : ok(`${name}: LI.FI pre-sign checks`, `to=${t.fresh.transactionRequest.to}`);
+      const e = M.validateLifiTransaction(t.fresh, step, { ourAddress: req.fromAddress, chainId: d.chainId, slippagePct: Number(req.slippage), destKind: td.kind, destLifiChainId: td.lifiChainId });
+      e?.code === 'price_moved' ? results.push(['MOVED', `${name}: LI.FI pre-sign checks`, 'the fresh answer guarantees less than the confirmed minimum: refused, the user re-quotes (audit H4)'])
+        : e ? bad(`${name}: LI.FI pre-sign checks`, `${e.code} (tx.to=${t.fresh?.transactionRequest?.to}, selector=${String(t.fresh?.transactionRequest?.data).slice(0, 10)})`) : ok(`${name}: LI.FI pre-sign checks`, `to=${t.fresh.transactionRequest.to}`);
     } else if (route.source === 'relay') {
       if (!relayChains) { bad(`${name}: Relay pre-sign checks`, 'no relay_chains capture'); continue; }
       const targets = await M.relayTargets(d.chainId, relayFetch);
-      const plan = M.relayTransactions(t.fresh, step, { ourAddress: req.fromAddress, chainId: d.chainId, slippagePct: Number(req.slippage), targets });
+      const plan = M.relayTransactions(t.fresh, step, { ourAddress: req.fromAddress, chainId: d.chainId, slippagePct: Number(req.slippage), targets, ownTo: req.toAddress, chains: await M.relayChains(relayFetch) });
       ok(`${name}: Relay pre-sign checks`, `${plan.txs.map((x) => x.kind).join('+')} to ${[...new Set(plan.txs.map((x) => x.to))].join(',')}`);
     } else if (route.source === 'jupiter') {
       const p = M.parseSolanaTx(M.b64ToBytes(t.fresh.swapTransaction));

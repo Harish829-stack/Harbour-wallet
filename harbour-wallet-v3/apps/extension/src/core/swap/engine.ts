@@ -2,6 +2,7 @@ import type { SwapQuoteResult, SwapRoute, SwapRouteRequest, SwapSource } from '.
 import { domainById } from './domains';
 import { swapError } from './errors';
 import { backendQuotes } from './backend';
+import { SLIPPAGE_MAX } from './rules';
 
 // Route discovery = TW AmberRpcClient.getRoutes (POST /v1/route). Harbour's backend swap service asks the providers
 // (LI.FI, Relay, Jupiter, THORChain) through their official APIs; this file validates the request and orders the answers.
@@ -12,7 +13,7 @@ export function validateRouteRequest(r: SwapRouteRequest) {
   let amt = 0n; try { amt = BigInt(r.amount); } catch { /* invalid */ }
   if (amt <= 0n) throw swapError('invalid_amount');
   const s = Number(r.slippage);
-  if (!(s > 0 && s <= 30)) throw swapError('invalid_slippage');
+  if (!(s > 0 && s <= SLIPPAGE_MAX)) throw swapError('invalid_slippage');
   if (!r.fromAddress || !r.toAddress) throw swapError('invalid_asset');
 }
 

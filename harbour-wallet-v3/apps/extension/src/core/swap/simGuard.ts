@@ -53,3 +53,30 @@ export function checkSwapEffect(changes: AssetChange[], step: SwapStep, o: { max
   }
   return { ok: true, effect: { sent, received: sameChain ? received : null, nativeOut } };
 }
+
+export interface SolSimView { ok: boolean; solDelta?: bigint; tokensChecked?: boolean; tokenChanges?: { mint: string; amount: string; direction: 'in' | 'out' }[]; tokenWarnings?: string[] }
+/** Lamports a Solana swap may cost beyond the sale (fees, priority fee, rent for a new token account). */
+export const SOL_FEE_ALLOWANCE = 10_000_000n;
+/**
+ * Solana dry-run rules (audit H1/M2): token balances must have been read before and after; no token account may change owner or
+ * gain a delegate; the only token that may leave is the sold one (at most the sold amount); SOL may leave only up to the sale plus
+ * fees; and the bought asset must arrive with at least the confirmed minimum. null = ok, otherwise the reason to refuse.
+ */
+export function checkSolSwapEffect(sim: SolSimView, step: SwapStep, floor: bigint): 'not_verified' | 'unexpected_outflow' | 'oversend' | 'below_minimum' | null {
+  if (!sim.ok || sim.solDelta === undefined || !sim.tokensChecked || !sim.tokenChanges) return 'not_verified';
+  if (sim.tokenWarnings?.length) return 'unexpected_outflow';
+  const nativeSell = step.from.asset.address === 'native'; const nativeBuy = step.to.asset.address === 'native';
+  const sell = BigInt(step.from.amount);
+  let got = 0n;
+  for (const c of sim.tokenChanges) {
+    const amt = BigInt(c.amount);
+    if (c.direction === 'out') {
+      if (nativeSell || c.mint !== step.from.asset.address) return 'unexpected_outflow';
+      if (amt > sell) return 'oversend';
+    } else if (!nativeBuy && c.mint === step.to.asset.address) got += amt;
+  }
+  if (-sim.solDelta > (nativeSell ? sell : 0n) + SOL_FEE_ALLOWANCE) return 'oversend';
+  if (nativeBuy) got = sim.solDelta + (nativeSell ? sell : 0n) + SOL_FEE_ALLOWANCE;   // generous to fees: may only err towards refusing less
+  if (got < floor) return 'below_minimum';
+  return null;
+}

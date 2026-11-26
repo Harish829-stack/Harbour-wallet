@@ -8,7 +8,15 @@ export const SOL_NATIVE = '11111111111111111111111111111111';
 
 const ZERO = '0x0000000000000000000000000000000000000000';
 const isAddr = (a: unknown): a is string => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
-const big = (v: unknown): bigint | null => { try { return BigInt(v as any); } catch { return null; } };
+/** Integer from a decimal or 0x-hex string or a bigint/safe integer; anything else (including '' and booleans) is null. */
+const big = (v: unknown): bigint | null => {
+  if (typeof v === 'bigint') return v;
+  if (typeof v === 'number') return Number.isSafeInteger(v) ? BigInt(v) : null;
+  if (typeof v !== 'string' || !/^(\d{1,78}|0x[0-9a-fA-F]{1,64})$/.test(v)) return null;
+  return BigInt(v);
+};
+/** The floor every signed transaction must meet: the minimum the user confirmed, less 0.1% for rounding (audit H4). */
+export const confirmedFloor = (step: SwapStep): bigint => { const m = BigInt(step.to.minAmount); return m - m / 1000n; };
 
 /** Selectors that move tokens or grant authority (transfer, transferFrom, approve, increaseAllowance, setApprovalForAll, permit). A swap/bridge step is never one of these. */
 export const DANGEROUS_SELECTORS = ['0xa9059cbb', '0x23b872dd', '0x095ea7b3', '0x39509351', '0xa22cb465', '0xd505accf', '0x42842e0e', '0xb88d4fde'];
@@ -23,6 +31,11 @@ export const LIFI_NON_EVM_RECEIVER = '0x11f111f111f111f111f111f111f111f111f111f1
 // GenericSwapFacet / GenericSwapFacetV3 selectors: (bytes32 id, string integrator, string referrer, address receiver, uint256 minAmountOut, swapData)
 const LIFI_SWAP_SELECTORS = ['0x4630a0d8', '0x4666fc80', '0x733214a3', '0xaf7060fd', '0x5fd9ae2e', '0x2c57e884', '0x736eac0b'];
 
+/**
+ * Most native coin a LI.FI transaction may carry ON TOP of a native sale (bridge/messaging fees), per chain, in wei (audit M1).
+ * The fee list in the response is untrusted, so it is only believed up to this bound. Unknown chains: none.
+ */
+export const LIFI_NATIVE_FEE_CAP: Record<number, bigint> = { 1: 10n ** 16n, 56: 5n * 10n ** 16n, 137: 50n * 10n ** 18n, 42161: 5n * 10n ** 15n, 8453: 5n * 10n ** 15n };
 export interface LifiCallInfo { kind: 'swap' | 'bridge'; receiver: string; minAmount: bigint; destChainId?: bigint; sendingAsset?: string; hasSourceSwaps?: boolean; hasDestinationCall?: boolean }
 const word = (hex: string, i: number): string | null => { const w = hex.slice(10 + i * 64, 10 + (i + 1) * 64); return w.length === 64 ? w : null; };
 const wAddr = (w: string | null): string | null => (w && /^0{24}/.test(w) ? '0x' + w.slice(24) : null);
@@ -44,7 +57,7 @@ export function decodeLifiCall(data: string): LifiCallInfo | null {
   } catch { return null; }
 }
 
-export interface EvmTxCheckCtx { ourAddress: string; chainId: number; slippagePct: number; /** destination kind of the step (evm | solana | utxo) */ destKind?: string }
+export interface EvmTxCheckCtx { ourAddress: string; chainId: number; slippagePct: number; /** destination kind of the step (evm | solana | utxo) */ destKind?: string; /** LI.FI's id for the destination chain (bridges must name it) */ destLifiChainId?: number }
 
 export function validateLifiTransaction(refreshed: any, step: SwapStep, ctx: EvmTxCheckCtx): SwapError | null {
   const tx = refreshed?.transactionRequest; const est = refreshed?.estimate ?? {};
@@ -67,7 +80,8 @@ export function validateLifiTransaction(refreshed: any, step: SwapStep, ctx: Evm
     if (f?.token?.address === EVM_NATIVE) nativeFees += big(f.amount) ?? 0n;
   }
   const nativeSell = step.from.asset.address === 'native';
-  const maxValue = (nativeSell ? fromAmt : 0n) + nativeFees;
+  const feeCap = LIFI_NATIVE_FEE_CAP[ctx.chainId] ?? 0n;
+  const maxValue = (nativeSell ? fromAmt : 0n) + (nativeFees < feeCap ? nativeFees : feeCap);
   if (value > maxValue) return bad;
   if (nativeSell && value < fromAmt) return bad;
   // token sells: the contract that pulls the tokens must be the contract that was approved
@@ -79,24 +93,28 @@ export function validateLifiTransaction(refreshed: any, step: SwapStep, ctx: Evm
   // calldata must send the proceeds to us: decode receiver (and the swap's own min-out) instead of trusting the response's summary
   const info = decodeLifiCall(tx.data); if (!info) return bad;
   if (info.kind === 'bridge') {
-    const crossToNonEvm = ctx.destKind === 'solana' || ctx.destKind === 'utxo';
+    // Non-EVM destinations keep the real receiver in facet-specific data Harbour cannot decode: never signed (audit H2).
+    if (ctx.destKind !== 'evm' || info.receiver.toLowerCase() === LIFI_NON_EVM_RECEIVER) return swapError('unsupported_route');
     if (info.hasDestinationCall) return bad;
-    if (info.receiver.toLowerCase() !== (crossToNonEvm ? LIFI_NON_EVM_RECEIVER : ctx.ourAddress.toLowerCase())) return bad;
+    if (info.receiver.toLowerCase() !== ctx.ourAddress.toLowerCase()) return bad;
+    // the bridge must deliver on the confirmed destination chain
+    if (ctx.destLifiChainId == null || info.destChainId !== BigInt(ctx.destLifiChainId)) return bad;
     if (info.minAmount > fromAmt) return bad;
     if (!info.hasSourceSwaps && info.sendingAsset && !(nativeSell ? info.sendingAsset === ZERO : info.sendingAsset.toLowerCase() === step.from.asset.address.toLowerCase())) return bad;
   } else {
     if (info.receiver.toLowerCase() !== ctx.ourAddress.toLowerCase()) return bad;
     const em = big(est.toAmountMin); if (em == null || info.minAmount * 1000n < em * 999n) return bad;   // on-chain min-out may not be weaker than the quoted minimum (0.1% rounding)
   }
-  // output protection: min received must honour the user's slippage; the price may not drift past it
+  // output protection: the response's own minimum must honour the user's slippage (+0.1% rounding = outNow * 10 on the
+  // x10_000 scale; live LI.FI Layerswap bridges quote their minimum 1.00005% below the output at 1% slippage) ...
   const outNow = big(est.toAmount); const minNow = big(est.toAmountMin);
-  const outQuoted = big(step.to.amount);
-  if (outNow == null || minNow == null || outQuoted == null) return bad;
+  if (outNow == null || minNow == null) return bad;
   const bps = BigInt(Math.round(ctx.slippagePct * 100));
-  // min below user tolerance (+0.1% rounding = outNow * 10 on the x10_000 scale; was outNow / 1000, i.e. 0.00001%, which refused
-  // live LI.FI Layerswap bridges quoting their minimum 1.00005% below the output at 1% slippage)
   if (minNow * 10_000n < outNow * (10_000n - bps) - outNow * 10n) return bad;
-  if (outNow * 10_000n < outQuoted * (10_000n - bps)) return swapError('price_moved'); // drifted beyond tolerance since the quote
+  // ... and what is signed must guarantee the minimum the user confirmed, not a new minimum taken from a lower fresh price
+  // (slippage applied twice). Swaps: the calldata's own min-out; bridges: the bridge's quoted minimum.
+  const floor = confirmedFloor(step);
+  if (outNow < floor || (info.kind === 'swap' ? info.minAmount : minNow) < floor) return swapError('price_moved');
   return null;
 }
 

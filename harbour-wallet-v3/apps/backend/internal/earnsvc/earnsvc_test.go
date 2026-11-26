@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -170,5 +171,22 @@ func TestRedirectNotFollowed(t *testing.T) {
 	s, _ := testSvc(t, func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, other.URL, http.StatusFound) })
 	if _, err := s.AaveMarkets(context.Background(), sepolA); err == nil || leaked.Load() != 0 {
 		t.Fatal("redirect followed")
+	}
+}
+
+// Audit M6: markets are cached briefly and concurrent requests share one upstream call.
+func TestMarketsCachedAndDeduplicated(t *testing.T) {
+	s, hits := testSvc(t, func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(30 * time.Millisecond)
+		io.WriteString(w, `{"data":{"markets":[]}}`)
+	})
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); s.AaveMarkets(context.Background(), sepolA) }()
+	}
+	wg.Wait()
+	if _, err := s.AaveMarkets(context.Background(), sepolA); err != nil || hits.Load() != 1 {
+		t.Fatalf("err %v hits %d", err, hits.Load())
 	}
 }

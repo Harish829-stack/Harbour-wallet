@@ -39,16 +39,16 @@ test('slippage helpers clamp and normalise', () => {
   assert.equal(M.normalizeSlippage(''), '2');
   assert.equal(M.normalizeSlippage('-1'), '2');
   assert.equal(M.normalizeSlippage('abc'), '2');
-  assert.equal(M.normalizeSlippage('45'), '30');
+  assert.equal(M.normalizeSlippage('45'), '5');
   assert.equal(M.normalizeSlippage('1.5'), '1.5');
   assert.equal(M.stepSlippage('2', 0.1), '2.1');
   assert.equal(M.stepSlippage('0', -0.1), '0');
-  assert.equal(M.stepSlippage('29.95', 0.1), '30');
+  assert.equal(M.stepSlippage('4.95', 0.1), '5');
   assert.equal(M.acceptSlippageInput('2', '0x10'), '2');
   assert.equal(M.acceptSlippageInput('2', '-3'), '2');
-  assert.equal(M.acceptSlippageInput('2', '99'), '30');
-  assert.equal(M.isHighSlippage('5'), false);
-  assert.equal(M.isHighSlippage('5.1'), true);
+  assert.equal(M.acceptSlippageInput('2', '99'), '5');
+  assert.equal(M.isHighSlippage('3'), false);
+  assert.equal(M.isHighSlippage('3.1'), true);
 });
 test('poll cadence is 2s/5s/10s', () => {
   assert.equal(M.pollDelayMs(0), 2000); assert.equal(M.pollDelayMs(14999), 2000);
@@ -183,7 +183,7 @@ test('simulation guard: native sells may spend the sale plus the value carried; 
 });
 
 // ---------------- safety.validateLifiTransaction ----------------
-const ctx = { ourAddress: ME, chainId: 1, slippagePct: 2 };
+const ctx = { ourAddress: ME, chainId: 1, slippagePct: 2, destKind: 'evm', destLifiChainId: 1 };
 const check = (raw, step = stepOf(lifiStep())) => M.validateLifiTransaction(raw, step, ctx);
 test('safety: accepts the transaction that matches the quote', () => { assert.equal(check(lifiStep()), null); });
 test('safety: rejects wrong chain, wrong sender, zero/garbage target', () => {
@@ -213,6 +213,15 @@ test('safety: native sell must send exactly the sell amount (plus native fees on
 test('safety: min-out must honour slippage and price may not drift past it', () => {
   assert.equal(check(lifiStep({ estimate: { toAmountMin: '1000' } }))?.code, 'unsafe_transaction');          // min way below tolerance
   assert.equal(check(lifiStep({ estimate: { toAmount: '20000000000000000', toAmountMin: '19600000000000000' } }))?.code, 'price_moved'); // output fell ~33% since quote
+  // audit H4: a fresh answer 1.5% lower, with a min-out honouring 2% of THAT price, would guarantee ~3.5% less than confirmed: refused
+  const lower = lifiStep({ estimate: { toAmount: '29550000000000000', toAmountMin: '28959000000000000' }, transactionRequest: { data: swapData(ME, '28959000000000000') } });
+  assert.equal(check(lower)?.code, 'price_moved');
+  // audit M1: native fees declared in the (untrusted) response are believed only up to a per-chain cap
+  const fee = (amt) => ({ estimate: { feeCosts: [{ token: tok(NATIVE, 'ETH', 18), amount: amt }] }, transactionRequest: { value: '0x' + BigInt(amt).toString(16) } });
+  assert.equal(check(lifiStep(fee('2000000000000000'))), null);                         // 0.002 ETH bridge fee: fine
+  assert.equal(check(lifiStep(fee('500000000000000000')))?.code, 'unsafe_transaction');  // 0.5 ETH "fee" on a token sale: refused
+  // the same fresh answer whose on-chain min-out still meets the confirmed minimum is fine
+  assert.equal(check(lifiStep({ estimate: { toAmount: '29550000000000000', toAmountMin: '29400000000000000' } })), null);
 });
 
 // ---------------- Solana tx helpers ----------------
@@ -255,8 +264,11 @@ test('safety: bridge calls (BridgeData) are decoded; receiver, destination call 
   assert.equal(check(raw(bridgeData(ME, { asset: USDC, call: true })))?.code, 'unsafe_transaction');
   assert.equal(check(raw(bridgeData(ME, { asset: '0x3333333333333333333333333333333333333333' })))?.code, 'unsafe_transaction');
   assert.equal(check(raw(bridgeData(ME, { asset: USDC, min: 200000000n })))?.code, 'unsafe_transaction');
-  const toSol = M.validateLifiTransaction(raw(bridgeData(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' }); assert.equal(toSol, null);
-  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' })?.code, 'unsafe_transaction');
+  // audit H2: a bridge to a non-EVM chain hides the real receiver; it is never signed. The destination chain must be the confirmed one.
+  assert.equal(M.validateLifiTransaction(raw(bridgeData(M.LIFI_NON_EVM_RECEIVER, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana', destLifiChainId: 1151111081099710 })?.code, 'unsupported_route');
+  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destKind: 'solana' })?.code, 'unsupported_route');
+  assert.equal(check(raw(bridgeData(ME, { asset: USDC, dest: 56n })))?.code, 'unsafe_transaction');
+  assert.equal(M.validateLifiTransaction(raw(bridgeData(ME, { asset: USDC })), stepOf(lifiStep()), { ...ctx, destLifiChainId: undefined })?.code, 'unsafe_transaction');
 });
 
 // Real LI.FI answer (2026-11-26): a Layerswap bridge whose minimum sits 1.00005% under the output at 1% slippage. It must pass the
@@ -264,7 +276,8 @@ test('safety: bridge calls (BridgeData) are decoded; receiver, destination call 
 test('live LI.FI Layerswap bridge passes the pre-sign checks; a tampered receiver does not', async () => {
   const { readFileSync } = await import('node:fs');
   const fx = JSON.parse(readFileSync(new URL('./fixtures/lifi-layerswap-live.json', import.meta.url), 'utf8'));
-  const ctx = { ourAddress: fx.fresh.transactionRequest.from, chainId: 42161, slippagePct: 1, destKind: 'evm' };
+  const ctx = { ourAddress: fx.fresh.transactionRequest.from, chainId: 42161, slippagePct: 1, destKind: 'evm', destLifiChainId: 8453 };
+  assert.equal(M.validateLifiTransaction(fx.fresh, fx.step, { ...ctx, destLifiChainId: 42161 })?.code, 'unsafe_transaction');   // wrong destination chain
   assert.equal(M.validateLifiTransaction(fx.fresh, fx.step, ctx), null);
   const evil = structuredClone(fx.fresh); const me = ctx.ourAddress.slice(2).toLowerCase();
   evil.transactionRequest.data = evil.transactionRequest.data.replace(me, '3333333333333333333333333333333333333333');

@@ -24,7 +24,7 @@ const Row: React.FC<{ title: string; desc: string; on: boolean; onChange: (v: bo
   </div>
 );
 
-// TW SettingsModal: slippage stepper (±0.1, ≤30), presets 0.1/0.5/1.0/2.5, >5% warning, plus the
+// TW SettingsModal: slippage stepper (±0.1, ≤5), presets 0.1/0.5/1.0/2.5, >5% warning, plus the
 // swap settings flags (mev, solanaTurboSwaps, unlimitedAllowance).
 export const SwapSettingsSheet: React.FC<{ onClose: () => void; fromDomainId?: string }> = ({ onClose, fromDomainId }) => {
   const { settings } = useSwapStore();

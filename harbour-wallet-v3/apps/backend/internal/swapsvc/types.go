@@ -106,6 +106,8 @@ type Route struct {
 	ToAmountUSD   *float64  `json:"toAmountUsd,omitempty"`
 	PriceImpact   *float64  `json:"priceImpact,omitempty"`
 	TotalSeconds  *float64  `json:"totalSeconds,omitempty"`
+	// QuoteRef names the server-held provider object for /transaction (LI.FI and Jupiter).
+	QuoteRef string `json:"quoteRef,omitempty"`
 }
 
 // ProviderError reports why one provider gave no route (the request still succeeds when another provider answered).

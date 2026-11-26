@@ -40,7 +40,7 @@ func TestSwapHandlersErrorsAndShapes(t *testing.T) {
 	}
 	// disabled / unconfigured provider
 	rec = httptest.NewRecorder()
-	s.handleSwapTransaction(rec, httptest.NewRequest(http.MethodPost, "/v1/swap/transaction", strings.NewReader(`{"source":"jupiter","quote":{},"priority":"fast","user":"x"}`)))
+	s.handleSwapTransaction(rec, httptest.NewRequest(http.MethodPost, "/v1/swap/transaction", strings.NewReader(`{"source":"jupiter","ref":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","priority":"fast","user":"x"}`)))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("jupiter without key: %d %s", rec.Code, rec.Body)
 	}
@@ -52,7 +52,7 @@ func TestSwapHandlersErrorsAndShapes(t *testing.T) {
 }
 
 func TestEarnHandlersErrors(t *testing.T) {
-	s := &Server{opt: Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, earn: newEarnService(time.Now)}
+	s := &Server{opt: Options{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, earn: newEarnService(time.Now, nil)}
 	rec := httptest.NewRecorder()
 	s.handleEarnAaveTransaction(rec, httptest.NewRequest(http.MethodPost, "/v1/earn/aave/transaction", strings.NewReader(`{"action":"supply","chainId":1,"market":"0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27","sender":"0x7ece450c274672c8007372F81cfCCC1c412466bb","value":"1"}`)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"code":"unsupported"`) {

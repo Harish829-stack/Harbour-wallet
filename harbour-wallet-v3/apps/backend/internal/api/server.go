@@ -137,7 +137,7 @@ func New(opt Options) *Server {
 	}
 	s.earn = opt.Earn
 	if s.earn == nil {
-		s.earn = newEarnService(opt.Now)
+		s.earn = newEarnService(opt.Now, opt.Log)
 	}
 	if opt.GatewayURL != "" && opt.Config != nil {
 		route := &rpcRoute{url: opt.GatewayURL, token: opt.GatewayToken, chains: map[uint64]string{}}
