@@ -63,7 +63,8 @@ func TestRampsQuotesNormalisesAndValidates(t *testing.T) {
 		t.Fatalf("%s ? %s", gotPath, gotQuery)
 	}
 	for _, q := range []string{"type=swap&source=eur&destination=eth&amount=1", "source=eur&destination=eth&amount=0", "source=eur&destination=eth&amount=1e3",
-		"source=eur/../x&destination=eth&amount=1", "source=eur&destination=eth&amount=1&payment_method=a%20b", "source=&destination=eth&amount=1"} {
+		"source=eur/../x&destination=eth&amount=1", "source=eur&destination=eth&amount=1&payment_method=a%20b", "source=&destination=eth&amount=1",
+		"source=eur&destination=eth&amount=1&wallet_address=0x1%26x%3D1", "type=sell&source=eth&destination=eur&amount=1&wallet_address=0x0000000000000000000000000000000000000001"} {
 		w := httptest.NewRecorder()
 		s.handleRampsQuotes(w, httptest.NewRequest("GET", "/v1/ramps/quotes?"+q, nil))
 		if w.Code != 400 {

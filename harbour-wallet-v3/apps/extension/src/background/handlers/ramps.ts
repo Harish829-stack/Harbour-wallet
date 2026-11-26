@@ -63,7 +63,7 @@ export const handlers: HandlerMap = {
       return { ...base, fiats: fiats.length ? fiats : RAMP_FIATS, assets, country: buy.country };
     } catch (e: any) { return { ...base, fiats: RAMP_FIATS, assets: [], unavailable: String(e?.message ?? 'Buying and selling crypto is unavailable right now.') }; }
   },
-  rampsQuotes: async (msg) => {
+  rampsQuotes: async (msg, ctx) => {
     const m = mode(msg.mode); if (!m) return fail('Unsupported request');
     if (!isRampFiat(msg.fiat)) return fail('Unsupported currency');
     const amt = parseAmount(msg.amount); if (!amt.ok) return fail(amt.error);
@@ -71,6 +71,9 @@ export const handlers: HandlerMap = {
       const pair = await cryptoFor(m, String(msg.assetId ?? '')); if (!pair) return fail('This crypto is not available to ' + m + ' in your region.');
       const fiat = String(msg.fiat).toLowerCase();
       const qs = new URLSearchParams({ type: m, source: m === 'buy' ? fiat : pair.crypto.id, destination: m === 'buy' ? pair.crypto.id : fiat, amount: amt.value });
+      // Some providers only quote with the receiving address (Binance Connect, Simplex, BTC Direct...). It comes from the vault;
+      // a locked wallet simply gets the quotes that don't need it.
+      if (m === 'buy') { const addr = await ownAddress(ctx, pair.asset.chainId).catch(() => ''); if (addr) qs.set('wallet_address', addr); }
       const res = await api('GET', `/v1/ramps/quotes?${qs.toString()}`);
       return { ok: true, ...mapQuotes(res, { mode: m, asset: pair.asset, fiat: msg.fiat, amount: amt.value }) };
     } catch (e: any) { return fail(e?.message ?? 'Could not get quotes'); }

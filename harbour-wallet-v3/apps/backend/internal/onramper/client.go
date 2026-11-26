@@ -239,6 +239,9 @@ type Quote struct {
 // QuoteRequest asks for quotes. For "buy" Source is the fiat and Destination the crypto id; for "sell" the reverse.
 type QuoteRequest struct {
 	Type, Source, Destination, Amount, Country, PaymentMethod string
+	// WalletAddress is required by some providers (Binance Connect, Simplex, BTC Direct, ...). When set, the request is
+	// signed (Signature V2), as Onramper requires for requests carrying a wallet address.
+	WalletAddress string
 }
 
 // Quotes returns every provider's answer; entries with Errors or no Payout are kept so callers can explain gaps.
@@ -250,8 +253,13 @@ func (c *Client) Quotes(ctx context.Context, r QuoteRequest) ([]Quote, error) {
 	if r.PaymentMethod != "" {
 		q.Set("paymentMethod", r.PaymentMethod)
 	}
+	signed := false
+	if r.WalletAddress != "" && c.Signer != nil {
+		q.Set("walletAddress", r.WalletAddress)
+		signed = true
+	}
 	path := "/quotes/" + url.PathEscape(strings.ToLower(r.Source)) + "/" + url.PathEscape(strings.ToLower(r.Destination))
-	raw, err := c.do(ctx, http.MethodGet, path, q, nil, false, nil)
+	raw, err := c.do(ctx, http.MethodGet, path, q, nil, signed, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -159,7 +159,9 @@ func (s *Server) handleRampsQuotes(w http.ResponseWriter, r *http.Request) {
 	typ, ok := rampType(q.Get("type"))
 	src, dst, amt := strings.ToLower(q.Get("source")), strings.ToLower(q.Get("destination")), q.Get("amount")
 	pm := strings.ToLower(q.Get("payment_method"))
-	if !ok || !rampCurrencyRe.MatchString(src) || !rampCurrencyRe.MatchString(dst) || !rampAmountRe.MatchString(amt) || (pm != "" && !rampWordRe.MatchString(pm)) {
+	wallet := q.Get("wallet_address") // optional (buy): some providers only quote with the receiving address
+	if !ok || !rampCurrencyRe.MatchString(src) || !rampCurrencyRe.MatchString(dst) || !rampAmountRe.MatchString(amt) || (pm != "" && !rampWordRe.MatchString(pm)) ||
+		(wallet != "" && (typ != "buy" || !(evmAddr.MatchString(wallet) || rampOtherAddr.MatchString(wallet)))) {
 		writeErr(w, http.StatusBadRequest, "bad_request", "Invalid request.", false)
 		return
 	}
@@ -167,7 +169,7 @@ func (s *Server) handleRampsQuotes(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "bad_amount", "Enter an amount greater than 0.", false)
 		return
 	}
-	quotes, err := s.opt.Ramps.Client.Quotes(r.Context(), onramper.QuoteRequest{Type: typ, Source: src, Destination: dst, Amount: amt, Country: s.rampCountry(r), PaymentMethod: pm})
+	quotes, err := s.opt.Ramps.Client.Quotes(r.Context(), onramper.QuoteRequest{Type: typ, Source: src, Destination: dst, Amount: amt, Country: s.rampCountry(r), PaymentMethod: pm, WalletAddress: wallet})
 	if err != nil {
 		s.rampUpstreamErr(w, r, err, "No provider can quote this pair right now.")
 		return

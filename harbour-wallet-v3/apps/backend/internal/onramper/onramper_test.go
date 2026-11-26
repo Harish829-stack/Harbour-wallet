@@ -160,7 +160,7 @@ func TestClientAgainstFakeServer(t *testing.T) {
 			gotQuery = r.URL.RawQuery
 			w.Write([]byte(`{"message":{"crypto":[{"id":"eth","code":"ETH","network":"ethereum","chainId":1,"decimals":18},{"id":"usdc_base","code":"USDC","network":"base","chainId":"8453","address":"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"},{"code":"NOID"}],"fiat":[{"id":"eur","code":"EUR"}]}}`))
 		case strings.HasPrefix(r.URL.Path, "/quotes/eur/eth"):
-			gotQuery = r.URL.RawQuery
+			gotQuery, gotSig = r.URL.RawQuery, r.Header.Get("x-onramper-signature")
 			w.Write([]byte(`[{"ramp":"banxa","paymentMethod":"creditcard","rate":2000,"payout":0.05,"quoteId":"q1","availablePaymentMethods":[{"paymentTypeId":"creditcard","name":"Card"}]},{"ramp":"moonpay","errors":[{"type":"x","errorId":6103,"message":"no pm"}]}]`))
 		case r.URL.Path == "/checkout/v2/intent":
 			gotSig = r.Header.Get("x-onramper-signature")
@@ -179,9 +179,14 @@ func TestClientAgainstFakeServer(t *testing.T) {
 		t.Fatalf("%v %+v %v %s", err, cr, fi, gotQuery)
 	}
 	qs, err := c.Quotes(ctx, QuoteRequest{Type: "buy", Source: "EUR", Destination: "eth", Amount: "100", Country: "de"})
-	if err != nil || len(qs) != 2 || qs[0].Payout != 0.05 || len(qs[1].Errors) != 1 || !strings.Contains(gotQuery, "platform=browser-extension") {
-		t.Fatalf("%v %+v %s", err, qs, gotQuery)
+	if err != nil || len(qs) != 2 || qs[0].Payout != 0.05 || len(qs[1].Errors) != 1 || !strings.Contains(gotQuery, "platform=browser-extension") || gotSig != "" {
+		t.Fatalf("%v %+v %s %s", err, qs, gotQuery, gotSig)
 	}
+	if _, err := c.Quotes(ctx, QuoteRequest{Type: "buy", Source: "EUR", Destination: "eth", Amount: "100", WalletAddress: "0xAbCdEf0000000000000000000000000000000001"}); err != nil ||
+		!strings.Contains(gotQuery, "walletAddress=0xAbCdEf") || !strings.HasPrefix(gotSig, "v2:") {
+		t.Fatalf("wallet quote must be signed: %v %s %s", err, gotQuery, gotSig)
+	}
+	gotSig = ""
 	in, err := c.CreateIntent(ctx, vectorIntent())
 	if err != nil || in.SessionID != "S" || !strings.HasPrefix(gotSig, "v2:") || !strings.Contains(gotBody, `"partnerContext":"ord-1"`) {
 		t.Fatalf("%v %+v %s %s", err, in, gotSig, gotBody)
