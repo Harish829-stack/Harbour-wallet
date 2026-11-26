@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"regexp"
@@ -184,6 +185,16 @@ func (s *Server) handleRampsQuotes(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, rampQuoteView{Provider: prov, PaymentMethod: strings.ToLower(x.PaymentMethod), PaymentMethods: x.PaymentMethods, Rate: x.Rate,
 			Payout: x.Payout, NetworkFee: x.NetworkFee, TransactionFee: x.TransactionFee, Recommendations: x.Recommendations})
+	}
+	if len(out) == 0 && len(quotes) > 0 {
+		// Operator diagnostics: why every provider declined (Onramper error type/id, never shown to the user).
+		reasons := map[string]int{}
+		for _, x := range quotes {
+			for _, e := range x.Errors {
+				reasons[fmt.Sprintf("%s/%v", e.Type, e.ErrorID)]++
+			}
+		}
+		s.opt.Log.Warn("onramper returned no usable quotes", "type", typ, "source", src, "destination", dst, "country", s.rampCountry(r), "reasons", reasons)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"quotes": out, "unavailable": unavailable})
 }
