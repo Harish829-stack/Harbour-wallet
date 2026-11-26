@@ -15,9 +15,7 @@ const REVIEWED = [
   ['gasFees.ts', 'Number(BigInt(wei)) / 1e9', 'gwei label for display only; fee decisions stay BigInt'],
   ['txHistory.ts', 'historic_exchange_rate', 'fiat exchange rate for display'],
   ['txHistory.ts', "Number(x.amount) === 0", 'zero test of a display amount to hide spam rows'],
-  ['ramps/pA.ts', 'Number(req.amount)', 'fiat/crypto quote amount sent to a ramp provider; no on-chain value'],
-  ['ramps/pB.ts', 'Number(req.amount)', 'fiat/crypto quote amount sent to a ramp provider; no on-chain value'],
-  ['ramps/pC.ts', 'Number(req.amount)', 'fiat/crypto quote amount sent to a ramp provider; no on-chain value'],
+  ['ramps/onramper.ts', 'Number(req.amount)', 'fiat/crypto amount shown on an Onramper quote card; no on-chain value (the provider checks out)'],
   ['sendService.ts', 'Number(raw.decimals)', 'token decimals metadata'],
   ['erc20.ts', 'Number(d.value)', 'token decimals read from eth_call'],
   ['chains/adapters/tokens.ts', "Number(BigInt('0x'", 'token decimals read from eth_call'],
@@ -29,9 +27,6 @@ const REVIEWED = [
   ['smartAccount/permissions.ts', 'Number(BigInt(raw.chainId', 'chain id, not an amount'],
   ['swap/amount.ts', 'Number(value)', 'fmtToken display formatting'],
   ['swap/rules.ts', 'Number(raw)', 'slippage percentage'],
-  ['swap/relay.ts', 'Number(fee.currency?.decimals', 'quote fee decimals / USD display values'],
-  ['swap/relay.ts', 'Number(fee.amountUsd)', 'quote fee USD display'],
-  ['swap/relay.ts', 'Number(gas.amountUsd)', 'quote fee USD display'],
 ];
 
 test('T-X-002: every Number()/parseFloat() on an amount-like value in src/core/** is a reviewed display/metadata use', () => {

@@ -25,9 +25,19 @@ const MODES = {
 const LEAK = /\bHTTP\s*\d{3}\b|https?:\/\/|\bTypeError\b|\bSyntaxError\b|\bat \S+:\d+:\d+|\bundefined\b|\[object|Unexpected (token|end)|\bJSON\b|Failed to fetch/i;
 const BROADCAST = /eth_sendRawTransaction|\/broadcast|sendTransaction|submit/i;
 
+// Ramps go through the Harbour backend (Onramper): the device registers and the backend serves the catalog; the failure modes
+// below then hit the quote and market-reference calls.
+const ok = (b) => new Response(JSON.stringify(b), { status: 200, headers: { 'content-type': 'application/json' } });
+const backend = (u) => {
+  const p = new URL(String(u)).pathname;
+  if (p === '/v1/devices/challenge') return ok({ challenge: 'qa', difficulty: 0 });
+  if (p === '/v1/devices') return ok({ device_id: 'qa-device' });
+  if (p === '/v1/ramps/config') return ok({ country: 'us', cryptos: [{ id: 'eth', code: 'ETH', network: 'ethereum', chainId: 1 }], fiats: [{ id: 'usd', code: 'USD' }, { id: 'eur', code: 'EUR' }] });
+  return null;
+};
 before(async () => {
   H.reset();
-  F.fetchImpl = (u) => { seen.push(String(u)); return Promise.resolve(new Response('{}', { status: 200 })); };
+  F.fetchImpl = (u) => { seen.push(String(u)); return Promise.resolve(backend(u) ?? new Response('{}', { status: 200 })); };
   assert.equal((await send({ type: 'createWallet', password: PASSWORD, mnemonic: PHRASE_ABOUT, name: 'Main' })).ok, true);
 });
 
@@ -36,6 +46,7 @@ const cfg = async () => { const c = await send({ type: 'rampsConfig' }); assert.
 for (const [mode, make] of Object.entries(MODES)) {
   test(`T-DEFI-017: ramps — ${mode}: friendly failure or empty quotes, never a leak`, async () => {
     const c = await cfg(); const asset = c.assets.find((a) => /eth/i.test(a.id)) ?? c.assets[0];
+    assert.ok(asset, `the backend catalog yields a rampable asset: ${JSON.stringify(c).slice(0, 200)}`);
     F.fetchImpl = (u, i) => { seen.push(String(u)); return Promise.resolve().then(() => make(u, i)); };
     for (const m of [{ type: 'rampsQuotes', mode: 'buy', assetId: asset.id, fiat: 'USD', amount: '100' }, { type: 'rampsQuotes', mode: 'sell', assetId: asset.id, fiat: 'EUR', amount: '0.5' }, { type: 'rampsMarketRef', assetId: asset.id, fiat: 'USD' }]) {
       const r = await Promise.race([send(m), new Promise((res) => setTimeout(() => res({ timeout: true }), 30_000))]);
